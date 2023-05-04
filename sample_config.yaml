@@ -1,0 +1,6 @@
+api_bible_key: your_api_bible_key_here
+matrix_homeserver: https://your_homeserver_url_here
+matrix_user: @your_bot_username:your_homeserver_domain
+matrix_access_token: your_matrix_access_token_here
+matrix_room_id: !your_room_id:your_homeserver_domain
+default_translation: kjv
