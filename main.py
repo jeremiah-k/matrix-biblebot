@@ -4,6 +4,7 @@ import re
 from nio import AsyncClient, RoomMessageText, MatrixRoom, InviteEvent, RoomMemberEvent
 import asyncio
 import requests
+import time
 
 # Load config
 def load_config(config_file):
@@ -40,6 +41,7 @@ class BibleBot:
 
     async def start(self):
         self.client.access_token = self.config["matrix_access_token"]
+        self.start_time = int(time.time() * 1000)  # Store bot start time in milliseconds
         await self.client.sync_forever(timeout=30000)  # Sync every 30 seconds
 
     async def on_invite(self, room_id: str, state: MatrixRoom):
@@ -51,6 +53,7 @@ class BibleBot:
             room.room_id == self.config["matrix_room_id"]
             and event.body.startswith("!scripture")
             and event.sender != self.client.user_id
+            and event.server_timestamp > self.start_time  # Check if the event occurred after the bot started
         ):
             await self.handle_scripture_command(room.room_id, event.body)
 
