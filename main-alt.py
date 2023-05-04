@@ -8,7 +8,6 @@ import yaml
 import logging
 import re
 import httpx
-from unidecode import unidecode
 
 bot_start_time = datetime.now()
 
@@ -27,13 +26,6 @@ MATRIX_ROOM_ID = config['matrix_room_id']
 DEFAULT_TRANSLATION = config['default_translation']
 TRANSLATIONS = config['translations']
 
-def get_translation_id(search_query):
-    search_query = unidecode(search_query.lower())
-    for abbr, bible_id in TRANSLATIONS.items():
-        if search_query in unidecode(abbr.lower()) or search_query in unidecode(TRANSLATIONS[abbr].lower()):
-            return bible_id
-    return None
-
 async def fetch_scripture(translation_abbr, book, chapter, verse_start, verse_end=None):
     headers = {'api-key': API_BIBLE_KEY}
     if verse_end:
@@ -42,7 +34,7 @@ async def fetch_scripture(translation_abbr, book, chapter, verse_start, verse_en
         verse_range = verse_start
     # Create the passageId
     book_no_space = book.replace(' ', '')
-    passage_id = f'{book_no_space}.{chapter}.{verse_range}'.replace(" ", "")
+    passage_id = f'{book_no_space}.{chapter}.{verse_range}'.replace(".", ":").replace(" ", "")
 
     # Get the Bible ID using the translation abbreviation
     translation_id = TRANSLATIONS[translation_abbr]
@@ -92,60 +84,32 @@ async def main():
                         }
                     )
                 elif event.body.startswith('!scripture'):
-                    parts = event.body.split(maxsplit=1)
-                    if len(parts) == 2:
-                        _, reference = parts
-                        translation = config['default_translation']
-
-                        # Check if the user provided a translation
-                        if '|' in reference:
-                            reference, provided_translation = reference.rsplit('|', 1)
-                            provided_translation = provided_translation.strip()
-                            translation_id = get_translation_id(provided_translation)
-                            if translation_id:
-                                translation = provided_translation
-                            else:
-                                await client.room_send(
-                                    room_id=room.room_id,
-                                    message_type='m.room.message',
-                                    content={
-                                        'msgtype': 'm.text',
-                                        'body': f"Translation '{provided_translation}' not found. Using the default translation."
-                                    }
-                                )
-                        # Parse the reference and call fetch_scripture with the correct parameters
-                        match = re.match(r"(\d?\s?[A-Za-z]{1,}\s?[A-Za-z]{0,})\s*(\d+):(\d+)-?(\d+)?", reference)
-                        if match:
-                            book, chapter, verse_start, verse_end = match.groups()
-                            book = book.strip()
-                            logging.info(f'Parsed reference: {book} {chapter}:{verse_start}-{verse_end if verse_end else ""}')
-                            logging.info(f'Translation: {translation}')
-                            scripture = await fetch_scripture(translation, book, chapter, verse_start, verse_end)
-                            if scripture:
-                                await client.room_send(
-                                    room_id=room.room_id,
-                                    message_type='m.room.message',
-                                    content={
-                                        'msgtype': 'm.text',
-                                        'body': scripture
-                                    }
-                                )
-                            else:
-                                await client.room_send(
-                                    room_id=room.room_id,
-                                    message_type='m.room.message',
-                                    content={
-                                        'msgtype': 'm.text',
-                                        'body': 'Error fetching scripture. Please check the provided reference and translation.'
-                                    }
-                                )
+                    _, reference = event.body.split(maxsplit=1)
+                    translation = config['default_translation']
+                    # Parse the reference and call fetch_scripture with the correct parameters
+                    match = re.match(r"(\d?\s?[A-Za-z]{1,}\s?[A-Za-z]{0,})\s*(\d+):(\d+)-?(\d+)?", reference)
+                    if match:
+                        book, chapter, verse_start, verse_end = match.groups()
+                        book = book.strip()
+                        logging.info(f'Parsed reference: {book} {chapter}:{verse_start}-{verse_end if verse_end else ""}')
+                        logging.info(f'Translation: {translation}')
+                        scripture = await fetch_scripture(translation, book, chapter, verse_start, verse_end)
+                        if scripture:
+                            await client.room_send(
+                                room_id=room.room_id,
+                                message_type='m.room.message',
+                                content={
+                                    'msgtype': 'm.text',
+                                    'body': scripture
+                                }
+                            )
                         else:
                             await client.room_send(
                                 room_id=room.room_id,
                                 message_type='m.room.message',
                                 content={
                                     'msgtype': 'm.text',
-                                    'body': 'Invalid reference format. Please use the format: !scripture Book Chapter:Verse-EndVerse | Translation'
+                                    'body': 'Error fetching scripture. Please check the provided reference and translation.'
                                 }
                             )
                     else:
@@ -154,9 +118,11 @@ async def main():
                             message_type='m.room.message',
                             content={
                                 'msgtype': 'm.text',
-                                'body': 'Invalid command format. Please use the format: !scripture Book Chapter:Verse-EndVerse | Translation'
+                                'body': 'Invalid reference format. Please use the format: !scripture Book Chapter:Verse-EndVerse'
                             }
                         )
+                else:
+                    logging.info("Unknown command")
 
     client.add_event_callback(on_text, RoomMessageText)  # Fix the indentation here
 
