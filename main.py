@@ -33,8 +33,9 @@ async def fetch_scripture(translation_abbr, book, chapter, verse_start, verse_en
     else:
         verse_range = verse_start
     # URL-encode the book name
-    book_encoded = quote(book)
+    book_encoded = book.replace(' ', '%20')
     passage_id = f'{book_encoded} {chapter} {verse_range}'
+
     # Get the Bible ID using the translation abbreviation
     translation_id = TRANSLATIONS[translation_abbr]
     async with httpx.AsyncClient() as client:
@@ -77,6 +78,7 @@ async def main():
                     match = re.match(r"(\d?\s?[A-Za-z]{1,}\s?[A-Za-z]{0,})\s*(\d+):(\d+)-?(\d+)?", reference)
                     if match:
                         book, chapter, verse_start, verse_end = match.groups()
+                        book = book.strip()
                         logging.info(f'Parsed reference: {book} {chapter}:{verse_start}-{verse_end if verse_end else ""}')
                         logging.info(f'Translation: {translation}')
                         scripture = await fetch_scripture(translation, book, chapter, verse_start, verse_end)
