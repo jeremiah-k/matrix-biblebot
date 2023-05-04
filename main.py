@@ -1,11 +1,13 @@
 import asyncio
 from nio import AsyncClient, MatrixRoom, RoomMessageText
 from datetime import datetime
+from urllib.parse import quote
 import requests
 import json
 import yaml
 import logging
 import re
+import httpx
 
 bot_start_time = datetime.now()
 
@@ -22,20 +24,28 @@ MATRIX_USER = config['matrix_user']
 MATRIX_ACCESS_TOKEN = config['matrix_access_token']
 MATRIX_ROOM_ID = config['matrix_room_id']
 DEFAULT_TRANSLATION = config['default_translation']
+TRANSLATIONS = config['translations']
 
-async def fetch_scripture(translation, book, chapter, verse_start, verse_end=None):
+async def fetch_scripture(translation_abbr, book, chapter, verse_start, verse_end=None):
     headers = {'api-key': API_BIBLE_KEY}
     if verse_end:
         verse_range = f'{verse_start}-{verse_end}'
     else:
         verse_range = verse_start
-    response = requests.get(f'https://api.scripture.api.bible/v1/bibles/{translation}/passages/{book}.{chapter}.{verse_range}', headers=headers)
+    # URL-encode the book name
+    book_encoded = quote(book)
+    passage_id = f'{book_encoded} {chapter} {verse_range}'
+    # Get the Bible ID using the translation abbreviation
+    translation_id = TRANSLATIONS[translation_abbr]
+    async with httpx.AsyncClient() as client:
+        response = await client.get(f'https://api.scripture.api.bible/v1/bibles/{translation_id}/passages/{passage_id}', headers=headers)
 
-    if response.status_code == 200:
-        data = json.loads(response.text)
-        return data['content']
-    else:
-        return None
+        if response.status_code == 200:
+            data = response.json()
+            return data['content']
+        else:
+            logging.error(f"Error fetching scripture: {response.status_code} {response.text}")
+            return None
 
 async def main():
     client = AsyncClient(MATRIX_HOMESERVER, MATRIX_USER)
