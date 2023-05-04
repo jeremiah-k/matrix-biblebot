@@ -34,7 +34,7 @@ async def fetch_scripture(translation_abbr, book, chapter, verse_start, verse_en
         verse_range = verse_start
     # Create the passageId
     book_no_space = book.replace(' ', '')
-    passage_id = f'{book_no_space}.{chapter}.{verse_range}'.replace(".", ":").replace(" ", "")
+    passage_id = f'{book_no_space}.{chapter}.{verse_range}'.replace(" ", "")
 
     # Get the Bible ID using the translation abbreviation
     translation_id = TRANSLATIONS[translation_abbr]
@@ -47,9 +47,15 @@ async def fetch_scripture(translation_abbr, book, chapter, verse_start, verse_en
         '&include-verse-spans=false'
         '&use-org-id=false'
     )
+
+    # Log the request URL and headers
+    url = f'https://api.scripture.api.bible/v1/bibles/{translation_id}/passages/{passage_id}?{params}'
+    logging.info(f"Request URL: {url}")
+    logging.info(f"Request Headers: {headers}")
+
     async with httpx.AsyncClient() as client:
         response = await client.get(
-            f'https://api.scripture.api.bible/v1/bibles/{translation_id}/passages/{passage_id}?{params}',
+            url,
             headers=headers
         )
 
