@@ -5,7 +5,6 @@ import requests
 import json
 import yaml
 import logging
-import re
 
 bot_start_time = datetime.now()
 
