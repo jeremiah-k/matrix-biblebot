@@ -3,30 +3,3 @@ matrix_homeserver: https://your_homeserver_url_here
 matrix_user: @your_bot_username:your_homeserver_domain
 matrix_access_token: your_matrix_access_token_here
 matrix_room_id: !your_room_id:your_homeserver_domain
-default_translation: kjv
-
-translations:
-  asv: "685d1470fe4d5c3b-01"
-  berean: "bba9f40183526463-01"
-  brenton_updated: "6bab4d6c61b31b80-01"
-  brenton: "65bfdebd704a8324-01"
-  cambridge: "55212e3cf5d04d49-01"
-  douay_rheims_1899: "179568874c45066f-01"
-  emtv: "55ec700d9e0d77ea-01"
-  free_bible: "65eec8e0b60e656b-01"
-  geneva: "c315fa9f71d4af3a-01"
-  jps_1917: "bf8f1c7f3f9045a5-01"
-  kjv_authorized: "de4e12af7f28f599-01"
-  kjv_1611: "de4e12af7f28f599-02"
-  lsv: "01b29f4b342acc35-01"
-  rv_1885: "40072c4a5aba4022-01"
-  targum_onkelos: "ec290b5045ff54a5-01"
-  tcent: "32339cf2f720ff8e-01"
-  ent_35: "2f0fd81d7b85b923-01"
-  asv_holy_bible: "06125adad2d5898a-01"
-  translation_for_translators: "66c22495370cdfc0-01"
-  web: "9879dbb7cfe39e4d-01"
-  web_american_edition: "32664dc3288a28df-01"
-  web_british_edition: "7142879509583d59-01"
-  wmb: "f72b840c855f362c-04"
-  wmb_british_edition: "04da588535d2f823-04"
