@@ -37,3 +37,11 @@ matrix_user: @your_bot_username:your_homeserver_domain
 matrix_access_token: your_matrix_access_token_here
 matrix_room_id: !your_room_id:your_homeserver_domain
 ```
+
+Run the script:
+
+```
+python3 main.py
+```
+
+This is just to get the ball rolling for a BibleBot on Matrix. PRs are welcome so feel free to contribute!
