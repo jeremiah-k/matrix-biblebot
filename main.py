@@ -47,6 +47,7 @@ class BibleBot:
     async def start(self):
         self.client.access_token = self.config["matrix_access_token"]
         self.start_time = int(time.time() * 1000)  # Store bot start time in milliseconds
+        logging.info("Starting bot...")
         await self.client.sync_forever(timeout=30000)  # Sync every 30 seconds
 
     async def on_invite(self, room_id: str, state: MatrixRoom):
@@ -86,12 +87,12 @@ class BibleBot:
                 "m.room.message",
                 {
                     "msgtype": "m.text",
-                    "body": "Error: Invalid passage format. Use [Book Chapter:Verse]",
+                    "body": "Error: Invalid passage format. Use [Book Chapter:Verse-range (optional]",
                 },
             )
         else:
             logging.info(f"Scripture search: {passage}")
-            message = f"{text} - {reference}"
+            message = f"{text}"
             await self.client.room_send(
                 room_id,
                 "m.room.message",
