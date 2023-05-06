@@ -51,11 +51,23 @@ class BibleBot:
     async def on_room_message(self, room: MatrixRoom, event: RoomMessageText):
         if (
             room.room_id == self.config["matrix_room_id"]
-            and event.body.startswith("!scripture")
             and event.sender != self.client.user_id
             and event.server_timestamp > self.start_time  # Check if the event occurred after the bot started
         ):
-            await self.handle_scripture_command(room.room_id, event.body)
+            search_patterns = [
+                r"^!scripture\s+([\w\s]+[\d]+[:]\d+[-]?\d*)$",
+                r"^([\w\s]+[\d]+[:]\d+[-]?\d*)$",
+            ]
+
+            passage = None
+            for pattern in search_patterns:
+                match = re.match(pattern, event.body)
+                if match:
+                    passage = match.group(1)
+                    break
+
+            if passage:
+                await self.handle_scripture_command(room.room_id, passage)
 
     async def handle_scripture_command(self, room_id, command_text):
         search_pattern = r"!scripture\s+([\w\s]+[\d]+[:]\d+[-]?\d*)"
