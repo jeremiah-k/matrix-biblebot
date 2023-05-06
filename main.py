@@ -69,27 +69,24 @@ class BibleBot:
             if passage:
                 await self.handle_scripture_command(room.room_id, passage)
 
-    async def handle_scripture_command(self, room_id, command_text):
-        search_pattern = r"!scripture\s+([\w\s]+[\d]+[:]\d+[-]?\d*)"
-        match = re.match(search_pattern, command_text)
-
-        if match:
-            passage = match.group(1)
-            text = get_esv_text(passage, self.config["api_bible_key"])
-            await self.client.room_send(
-                room_id,
-                "m.room.message",
-                {"msgtype": "m.text", "body": text},
-            )
-        else:
+    async def handle_scripture_command(self, room_id, passage):
+        text = get_esv_text(passage, self.config["api_bible_key"])
+        if text.startswith('Error:'):
             await self.client.room_send(
                 room_id,
                 "m.room.message",
                 {
                     "msgtype": "m.text",
-                    "body": "Error: Invalid command format. Use !scripture [Book Chapter:Verse]",
+                    "body": "Error: Invalid passage format. Use [Book Chapter:Verse]",
                 },
             )
+        else:
+            await self.client.room_send(
+                room_id,
+                "m.room.message",
+                {"msgtype": "m.text", "body": text},
+            )
+
 
 # Run bot
 async def main():
