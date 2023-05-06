@@ -5,6 +5,10 @@ from nio import AsyncClient, RoomMessageText, MatrixRoom, InviteEvent, RoomMembe
 import asyncio
 import requests
 import time
+import logging
+
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+
 
 # Load config
 def load_config(config_file):
@@ -21,7 +25,7 @@ def get_esv_text(passage, api_key):
         'include-footnotes': False,
         'include-verse-numbers': False,
         'include-short-copyright': False,
-        'include-passage-references': False
+        'include-passage-references': True
     }
 
     headers = {
@@ -31,8 +35,9 @@ def get_esv_text(passage, api_key):
     response = requests.get(API_URL, params=params, headers=headers)
 
     passages = response.json()['passages']
+    reference = response.json()['canonical']
 
-    return passages[0].strip() if passages else 'Error: Passage not found'
+    return (passages[0].strip(), reference) if passages else ('Error: Passage not found', '')
 
 class BibleBot:
     def __init__(self, config):
@@ -46,7 +51,10 @@ class BibleBot:
 
     async def on_invite(self, room_id: str, state: MatrixRoom):
         if room_id == self.config["matrix_room_id"]:
+            logging.info(f"Joined room: {room_id}")
             await self.client.join(room_id)
+        else:
+            logging.warning(f"Unexpected room invite: {room_id}")
 
     async def on_room_message(self, room: MatrixRoom, event: RoomMessageText):
         if (
@@ -70,8 +78,9 @@ class BibleBot:
                 await self.handle_scripture_command(room.room_id, passage)
 
     async def handle_scripture_command(self, room_id, passage):
-        text = get_esv_text(passage, self.config["api_bible_key"])
+        text, reference = get_esv_text(passage, self.config["api_bible_key"])
         if text.startswith('Error:'):
+            logging.warning(f"Invalid passage format: {passage}")
             await self.client.room_send(
                 room_id,
                 "m.room.message",
@@ -81,12 +90,13 @@ class BibleBot:
                 },
             )
         else:
+            logging.info(f"Scripture search: {passage}")
+            message = f"{text} - {reference}"
             await self.client.room_send(
                 room_id,
                 "m.room.message",
-                {"msgtype": "m.text", "body": text},
+                {"msgtype": "m.text", "body": message},
             )
-
 
 # Run bot
 async def main():
