@@ -113,7 +113,7 @@ class BibleBot:
             await self.send_reaction(room_id, event.event_id, "✅")
 
             # Add the string of emojis (🕊️✝️ 📔) at the end of the reference
-            message = f"{text} - {reference} 🕊️✝️ 📔⚔️"
+            message = f"{text} - {reference} 🕊️✝️"
             await self.client.room_send(
                 room_id,
                 "m.room.message",
