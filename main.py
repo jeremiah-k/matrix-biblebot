@@ -1,7 +1,6 @@
-import sys
 import yaml
 import re
-from nio import AsyncClient, RoomMessageText, MatrixRoom, InviteEvent, RoomMemberEvent
+from nio import AsyncClient, RoomMessageText, MatrixRoom, InviteEvent
 import asyncio
 import requests
 import time
@@ -39,6 +38,7 @@ def get_esv_text(passage, api_key):
     reference = response.json()['canonical']
 
     return (passages[0].strip(), reference) if passages else ('Error: Passage not found', '')
+
 
 class BibleBot:
     def __init__(self, config):
@@ -91,10 +91,10 @@ class BibleBot:
                     break
 
             if passage:
-                await self.handle_scripture_command(room.room_id, passage)
+                await self.handle_scripture_command(room.room_id, passage, event)
 
 
-    async def handle_scripture_command(self, room_id, passage):
+    async def handle_scripture_command(self, room_id, passage, event):
         text, reference = get_esv_text(passage, self.config["api_bible_key"])
         if text.startswith('Error:'):
             logging.warning(f"Invalid passage format: {passage}")
@@ -109,12 +109,8 @@ class BibleBot:
         else:
             logging.info(f"Scripture search: {passage}")
 
-            # Send the white check with green background (✅) when a search is successfully executed
-            await self.client.room_send(
-                room_id,
-                "m.room.message",
-                {"msgtype": "m.text", "body": "✅"},
-            )
+            # Send the green checkbox (✅) as a reaction to the requester's message
+            await self.send_reaction(room_id, event.event_id, "✅")
 
             # Add the string of emojis (🕊️✝️ 📔) at the end of the reference
             message = f"{text} - {reference} 🕊️✝️ 📔"
@@ -137,3 +133,5 @@ async def main():
 
 if __name__ == "__main__":
     asyncio.run(main())
+
+# noqa: E501
