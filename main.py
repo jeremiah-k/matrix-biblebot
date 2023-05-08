@@ -25,7 +25,7 @@ def get_esv_text(passage, api_key):
         'include-footnotes': False,
         'include-verse-numbers': False,
         'include-short-copyright': False,
-        'include-passage-references': True
+        'include-passage-references': False
     }
 
     headers = {
@@ -92,7 +92,7 @@ class BibleBot:
             )
         else:
             logging.info(f"Scripture search: {passage}")
-            message = f"{text}"
+            message = f"{text} - {reference}"
             await self.client.room_send(
                 room_id,
                 "m.room.message",
