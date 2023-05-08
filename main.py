@@ -15,6 +15,7 @@ def load_config(config_file):
     with open(config_file, "r") as f:
         return yaml.safe_load(f)
 
+
 # Get ESV text
 def get_esv_text(passage, api_key):
     API_URL = 'https://api.esv.org/v3/passage/text/'
@@ -56,6 +57,20 @@ class BibleBot:
             await self.client.join(room_id)
         else:
             logging.warning(f"Unexpected room invite: {room_id}")
+    
+    async def send_reaction(self, room_id, event_id, emoji):
+        content = {
+            "m.relates_to": {
+                "rel_type": "m.annotation",
+                "event_id": event_id,
+                "key": emoji
+            }
+        }
+        await self.client.room_send(
+            room_id,
+            "m.reaction",
+            content,
+        )
 
     async def on_room_message(self, room: MatrixRoom, event: RoomMessageText):
         if (
@@ -78,6 +93,7 @@ class BibleBot:
             if passage:
                 await self.handle_scripture_command(room.room_id, passage)
 
+
     async def handle_scripture_command(self, room_id, passage):
         text, reference = get_esv_text(passage, self.config["api_bible_key"])
         if text.startswith('Error:'):
@@ -87,17 +103,27 @@ class BibleBot:
                 "m.room.message",
                 {
                     "msgtype": "m.text",
-                    "body": "Error: Invalid passage format. Use [Book Chapter:Verse-range (optional]",
+                    "body": "Error: Invalid passage format. Use [Book Chapter:Verse-range (optional)]",
                 },
             )
         else:
             logging.info(f"Scripture search: {passage}")
-            message = f"{text} - {reference}"
+
+            # Send the white check with green background (✅) when a search is successfully executed
+            await self.client.room_send(
+                room_id,
+                "m.room.message",
+                {"msgtype": "m.text", "body": "✅"},
+            )
+
+            # Add the string of emojis (🕊️✝️ 📔) at the end of the reference
+            message = f"{text} - {reference} 🕊️✝️ 📔"
             await self.client.room_send(
                 room_id,
                 "m.room.message",
                 {"msgtype": "m.text", "body": message},
             )
+
 
 # Run bot
 async def main():
