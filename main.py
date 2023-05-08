@@ -51,13 +51,12 @@ class BibleBot:
         logging.info("Starting bot...")
         await self.client.sync_forever(timeout=30000)  # Sync every 30 seconds
 
-    async def on_invite(self, room: MatrixRoom, event: InviteMemberEvent):
-        room_id = room.room_id
-        if room_id in self.config["matrix_room_ids"]:
-            logging.info(f"Joined room: {room_id}")
-            await self.client.join(room_id)
+    async def on_invite(self, room: MatrixRoom, event: InviteEvent):
+        if room.room_id in self.config["matrix_room_ids"]:
+            logging.info(f"Joined room: {room.room_id}")
+            await self.client.join(room.room_id)
         else:
-            logging.warning(f"Unexpected room invite: {room_id}")
+            logging.warning(f"Unexpected room invite: {room.room_id}")
     
     async def send_reaction(self, room_id, event_id, emoji):
         content = {
@@ -127,7 +126,7 @@ async def main():
     config = load_config("config.yaml")
     bot = BibleBot(config)
 
-    bot.client.add_event_callback(bot.on_invite, InviteMemberEvent)
+    bot.client.add_event_callback(bot.on_invite, InviteEvent)
     bot.client.add_event_callback(bot.on_room_message, RoomMessageText)
 
     await bot.start()
