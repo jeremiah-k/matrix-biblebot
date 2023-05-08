@@ -52,7 +52,7 @@ class BibleBot:
         await self.client.sync_forever(timeout=30000)  # Sync every 30 seconds
 
     async def on_invite(self, room_id: str, state: MatrixRoom):
-        if room_id == self.config["matrix_room_id"]:
+        if room_id in self.config["matrix_room_ids"]:
             logging.info(f"Joined room: {room_id}")
             await self.client.join(room_id)
         else:
@@ -74,7 +74,7 @@ class BibleBot:
 
     async def on_room_message(self, room: MatrixRoom, event: RoomMessageText):
         if (
-            room.room_id == self.config["matrix_room_id"]
+            room.room_id in self.config["matrix_room_ids"]
             and event.sender != self.client.user_id
             and event.server_timestamp > self.start_time  # Check if the event occurred after the bot started
         ):
