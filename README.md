@@ -47,6 +47,6 @@ python3 main.py
 ```
 
 ## Usage
-Invite the bot to rooms that are listed in the config.yaml file, if they are not joined already. The bot will respond to messages that start with `Book Chapter:Verse-(range)` (e.g. `John 3:16`).
+Invite the bot to rooms that are listed in the config.yaml file, if they are not joined already. The bot will respond to messages that start with `Book Chapter:Verse-(range)` (e.g. `John 3:16` or `1 Cor 15:1-4`).
 
 This is just to get the ball rolling for a BibleBot on Matrix. PRs are welcome so feel free to contribute!
