@@ -1,7 +1,7 @@
 # matrix-biblebot
 BibleBot for Matrix
 
-Simple bot that will fetch Bible verse using APIs from [bible-api.com](https://www.bible-api.com) & [esv.org](https://api.esv.org/)
+Simple bot that will fetch Bible verse using APIs from [bible-api.com](https://bible-api.com) & [esv.org](https://api.esv.org/)
 
 ## Supported Translations:
 Supported Translations:
