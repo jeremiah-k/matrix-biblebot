@@ -8,37 +8,36 @@ import logging
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
-
 # Load config
 def load_config(config_file):
     with open(config_file, "r") as f:
         return yaml.safe_load(f)
 
-
-# Get ESV text
-def get_esv_text(passage, api_key):
-    API_URL = 'https://api.esv.org/v3/passage/text/'
-
-    params = {
-        'q': passage,
-        'include-headings': False,
-        'include-footnotes': False,
-        'include-verse-numbers': False,
-        'include-short-copyright': False,
-        'include-passage-references': False
-    }
-
-    headers = {
-        'Authorization': 'Token %s' % api_key
-    }
-
-    response = requests.get(API_URL, params=params, headers=headers)
-
-    passages = response.json()['passages']
-    reference = response.json()['canonical']
-
-    return (passages[0].strip(), reference) if passages else ('Error: Passage not found', '')
-
+# Get Bible text
+def get_bible_text(passage, translation='kjv'):
+    if translation == 'esv':
+        API_URL = 'https://api.esv.org/v3/passage/text/'
+        params = {
+            'q': passage,
+            'include-headings': False,
+            'include-footnotes': False,
+            'include-verse-numbers': False,
+            'include-short-copyright': False,
+            'include-passage-references': False
+        }
+        headers = {'Authorization': 'Token %s' % api_key}
+        response = requests.get(API_URL, params=params, headers=headers)
+        passages = response.json()['passages']
+        reference = response.json()['canonical']
+        return (passages[0].strip(), reference) if passages else ('Error: Passage not found', '')
+    else:
+        api_url = f"https://bible-api.com/{passage}?translation={translation}"
+        response = requests.get(api_url)
+        if response.status_code == 200:
+            data = response.json()
+            return data['text'], data['reference']
+        else:
+            return None, None
 
 class BibleBot:
     def __init__(self, config):
@@ -118,8 +117,7 @@ class BibleBot:
                 room_id,
                 "m.room.message",
                 {"msgtype": "m.text", "body": message},
-            )
-
+            )   
 
 # Run bot
 async def main():
