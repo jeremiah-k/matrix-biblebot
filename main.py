@@ -81,8 +81,7 @@ class BibleBot:
         ):
             
             search_patterns = [
-                r"^!scripture\s+([\w\s]+)([\d]+[:]\d+[-]?\d*)$",
-                r"^([\w\s]+)([\d]+[:]\d+[-]?\d*)$",
+                r"^([\w\s]+)([\d]+[:]\d+[-]?\d*)\s*(kjv|esv)?$",
             ]
 
             passage = None
@@ -95,6 +94,8 @@ class BibleBot:
                     passage = f"{book_name} {verse_reference}"
                     if match.group(3):  # Check if the translation (esv or kjv) is specified
                         translation = match.group(3).lower()
+                    else:
+                        translation = 'kjv'  # Default to kjv if not specified
                     logging.info(f"Extracted passage: {passage}, Extracted translation: {translation}")
                     break
 
