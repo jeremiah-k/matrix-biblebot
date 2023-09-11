@@ -81,17 +81,17 @@ class BibleBot:
         ):
             
             search_patterns = [
-                r"^!scripture\s+([\w\s]+[\d]+[:]\d+[-]?\d*)$",
-                r"^([\w\s]+[\d]+[:]\d+[-]?\d*)$",
+                r"^!scripture\s+([\w\s]+)([\d]+[:]\d+[-]?\d*)$",
+                r"^([\w\s]+)([\d]+[:]\d+[-]?\d*)$",
             ]
 
             passage = None
-            translation = 'kjv'  # Default translation
+            translation = 'kjv'  # Default translation is KJV
             for pattern in search_patterns:
                 match = re.match(pattern, event.body)
                 if match:
-                    book_name = match.group(1).strip()  # Extract book name (e.g., "John" or "1 John")
-                    verse_reference = match.group(2).strip()  # Extract verse reference (e.g., "3:16")
+                    book_name = match.group(1).strip()
+                    verse_reference = match.group(2).strip()
                     passage = f"{book_name} {verse_reference}"
                     if match.group(3):  # Check if the translation (esv or kjv) is specified
                         translation = match.group(3).lower()
