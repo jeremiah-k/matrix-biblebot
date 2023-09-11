@@ -100,7 +100,8 @@ class BibleBot:
         translation = translation_match.group(1).lower() if translation_match else 'kjv'
         passage = passage.replace(translation, '').strip()  # Remove the translation from the passage string
 
-        text, reference = get_bible_text(passage, 'esv', self.config["api_bible_key"])
+        text, reference = get_bible_text(passage, translation, self.config["api_bible_key"])
+        
         if text.startswith('Error:'):
             logging.warning(f"Invalid passage format: {passage}")
             await self.client.room_send(
