@@ -78,9 +78,10 @@ class BibleBot:
             and event.server_timestamp > self.start_time  # Check if the event occurred after the bot started
         ):
             search_patterns = [
-                r"^!scripture\s+([\w\s]+[\d]+[:]\d+[-]?\d*)$",
-                r"^([\w\s]+[\d]+[:]\d+[-]?\d*)$",
+                r"^!scripture\s+([\w\s]+[\d]+[:]\d+[-]?\d*)\s*(esv|kjv)?$",
+                r"^([\w\s]+[\d]+[:]\d+[-]?\d*)\s*(esv|kjv)?$",
             ]
+
 
             passage = None
             for pattern in search_patterns:
@@ -94,6 +95,11 @@ class BibleBot:
 
 
     async def handle_scripture_command(self, room_id, passage, event):
+        # Extract translation from the passage if it exists
+        translation_match = re.search(r"(esv|kjv)$", passage, re.IGNORECASE)
+        translation = translation_match.group(1).lower() if translation_match else 'kjv'
+        passage = passage.replace(translation, '').strip()  # Remove the translation from the passage string
+
         text, reference = get_bible_text(passage, 'esv', self.config["api_bible_key"])
         if text.startswith('Error:'):
             logging.warning(f"Invalid passage format: {passage}")
