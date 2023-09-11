@@ -91,11 +91,13 @@ class BibleBot:
                     passage_with_translation = match.group(1)
                     translation_match = re.search(r"(esv|kjv)$", passage_with_translation, re.IGNORECASE)
                     translation = translation_match.group(1).lower() if translation_match else 'kjv'
+                    logging.info(f"Extracted passage: {passage}, Extracted translation: {translation}")  # Debug log
                     passage = passage_with_translation.replace(translation, '').strip()
                     break
 
             if passage:
-                await self.handle_scripture_command(room.room_id, passage, translation, event) # Pass the translation here
+                await self.handle_scripture_command(room.room_id, passage, translation, event)
+
 
 
     async def handle_scripture_command(self, room_id, passage, translation, event): # Added translation parameter
