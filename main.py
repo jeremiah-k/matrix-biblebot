@@ -85,19 +85,21 @@ class BibleBot:
             ]
 
             passage = None
+            translation = 'kjv'  # Default translation
             for pattern in search_patterns:
                 match = re.match(pattern, event.body)
                 if match:
                     book_name = match.group(1).strip()  # Extract book name (e.g., "John" or "1 John")
                     verse_reference = match.group(2).strip()  # Extract verse reference (e.g., "3:16")
                     passage = f"{book_name} {verse_reference}"
-                    translation_match = re.search(r"(esv|kjv)$", passage_with_translation, re.IGNORECASE)
-                    translation = translation_match.group(1).lower() if translation_match else 'kjv'
+                    if match.group(3):  # Check if the translation (esv or kjv) is specified
+                        translation = match.group(3).lower()
                     logging.info(f"Extracted passage: {passage}, Extracted translation: {translation}")
                     break
 
             if passage:
                 await self.handle_scripture_command(room.room_id, passage, translation, event)
+
 
 
 
