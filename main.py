@@ -14,7 +14,7 @@ def load_config(config_file):
         return yaml.safe_load(f)
 
 # Get Bible text
-def get_bible_text(passage, translation='kjv'):
+def get_bible_text(passage, translation='kjv', api_key=None):
     if translation == 'esv':
         API_URL = 'https://api.esv.org/v3/passage/text/'
         params = {
@@ -25,7 +25,7 @@ def get_bible_text(passage, translation='kjv'):
             'include-short-copyright': False,
             'include-passage-references': False
         }
-        headers = {'Authorization': 'Token %s' % api_key}
+        headers = {'Authorization': f'Token {api_key}'}
         response = requests.get(API_URL, params=params, headers=headers)
         passages = response.json()['passages']
         reference = response.json()['canonical']
@@ -94,7 +94,7 @@ class BibleBot:
 
 
     async def handle_scripture_command(self, room_id, passage, event):
-        text, reference = get_bible_text(passage, 'esv')
+        text, reference = get_bible_text(passage, 'esv', self.config["api_bible_key"])
         if text.startswith('Error:'):
             logging.warning(f"Invalid passage format: {passage}")
             await self.client.room_send(
