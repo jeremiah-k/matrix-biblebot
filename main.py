@@ -81,7 +81,7 @@ class BibleBot:
         ):
             
             search_patterns = [
-                r"^([\w\s]+)([\d]+[:]\d+[-]?\d*)\s*(kjv|esv)?$",
+                r"^([\w\s]+?)(\d+[:]\d+[-]?\d*)\s*(kjv|esv)?$",
             ]
 
             passage = None
