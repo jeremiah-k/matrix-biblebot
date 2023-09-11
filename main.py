@@ -97,6 +97,7 @@ class BibleBot:
 
 
     async def handle_scripture_command(self, room_id, passage, translation, event): # Added translation parameter
+        logging.info(f"Handling scripture command with translation: {translation}")  # Add this debug log
         text, reference = get_bible_text(passage, translation, self.config["api_bible_key"])
         
         if text.startswith('Error:'):
