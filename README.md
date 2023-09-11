@@ -1,9 +1,12 @@
 # matrix-biblebot
 BibleBot for Matrix
 
-Simple bot that uses the [ESV API](https://api.esv.org/). (API key required)
+Simple bot that will fetch Bible verse using APIs from [bible-api.com](https://www.bible-api.com) & [esv.org](https://api.esv.org/)
 
-More APIs and translations might be added later, but this is functional for now.
+## Supported Translations:
+Supported Translations:
+King James Version (KJV)
+English Standard Version (ESV) - requires an API key
 
 ## Installation
 
