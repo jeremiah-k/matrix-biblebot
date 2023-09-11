@@ -133,6 +133,9 @@ class BibleBot:
                 },
             )
         else:
+            # Formatting KJV text to ensure one space between words
+            text = ' '.join(text.split())
+            
             logging.info(f"Scripture search: {passage}")
             await self.send_reaction(room_id, event.event_id, "✅")
             message = f"{text} - {reference} 🕊️✝️"
