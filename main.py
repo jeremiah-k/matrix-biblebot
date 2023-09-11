@@ -80,20 +80,20 @@ class BibleBot:
             and event.server_timestamp > self.start_time
         ):
             search_patterns = [
-                r"^!scripture\s+([\w\s]+)\s?(\d+[:]\d+[-]?\d*)\s*(esv|kjv)?",
-                r"^([\w\s]+)\s?(\d+[:]\d+[-]?\d*)\s*(esv|kjv)?",
+                r"^!scripture\s+((?:\d?\s*\w+\s*)+)\s*(\d+[:]\d+[-]?\d*)\s*(esv|kjv)?",
+                r"^((?:\d?\s*\w+\s*)+)\s*(\d+[:]\d+[-]?\d*)\s*(esv|kjv)?",
             ]
-
 
             passage = None
             for pattern in search_patterns:
                 match = re.match(pattern, event.body)
                 if match:
-                    passage_with_translation = match.group(1)
+                    book_name = match.group(1).strip()  # Extract book name (e.g., "John" or "1 John")
+                    verse_reference = match.group(2).strip()  # Extract verse reference (e.g., "3:16")
+                    passage = f"{book_name} {verse_reference}"
                     translation_match = re.search(r"(esv|kjv)$", passage_with_translation, re.IGNORECASE)
                     translation = translation_match.group(1).lower() if translation_match else 'kjv'
-                    logging.info(f"Extracted passage: {passage}, Extracted translation: {translation}")  # Debug log
-                    passage = passage_with_translation.replace(translation, '').strip()
+                    logging.info(f"Extracted passage: {passage}, Extracted translation: {translation}")
                     break
 
             if passage:
