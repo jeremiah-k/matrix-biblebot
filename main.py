@@ -79,12 +79,11 @@ class BibleBot:
             and event.sender != self.client.user_id
             and event.server_timestamp > self.start_time
         ):
+            
             search_patterns = [
-                r"^!scripture\s+(\d?\s*?\w+)\s*([\d:]+[-]?\d*)\s*(esv|kjv)?",
-                r"^(\d?\s*?\w+)\s*([\d:]+[-]?\d*)\s*(esv|kjv)?",
+                r"^!scripture\s+([\w\s]+[\d]+[:]\d+[-]?\d*)$",
+                r"^([\w\s]+[\d]+[:]\d+[-]?\d*)$",
             ]
-
-
 
             passage = None
             translation = 'kjv'  # Default translation
