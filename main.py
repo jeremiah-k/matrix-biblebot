@@ -16,6 +16,7 @@ def load_config(config_file):
 # Get Bible text
 def get_bible_text(passage, translation='kjv', api_key=None):
     if translation == 'esv':
+        logging.info("Using ESV API")  # Debug log
         API_URL = 'https://api.esv.org/v3/passage/text/'
         params = {
             'q': passage,
@@ -31,6 +32,7 @@ def get_bible_text(passage, translation='kjv', api_key=None):
         reference = response.json()['canonical']
         return (passages[0].strip(), reference) if passages else ('Error: Passage not found', '')
     else:
+        logging.info("Using Bible-API for KJV")  # Debug log
         api_url = f"https://bible-api.com/{passage}?translation={translation}"
         response = requests.get(api_url)
         if response.status_code == 200:
