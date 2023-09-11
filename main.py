@@ -101,10 +101,23 @@ class BibleBot:
 
 
 
-    async def handle_scripture_command(self, room_id, passage, translation, event): # Added translation parameter
-        logging.info(f"Handling scripture command with translation: {translation}")  # Add this debug log
+    async def handle_scripture_command(self, room_id, passage, translation, event): 
+        logging.info(f"Handling scripture command with translation: {translation}")  
         text, reference = get_bible_text(passage, translation, self.config["api_bible_key"])
         
+        # Check if text is None
+        if not text:
+            logging.warning(f"Failed to retrieve passage: {passage}")
+            await self.client.room_send(
+                room_id,
+                "m.room.message",
+                {
+                    "msgtype": "m.text",
+                    "body": "Error: Failed to retrieve the specified passage.",
+                },
+            )
+            return
+
         if text.startswith('Error:'):
             logging.warning(f"Invalid passage format: {passage}")
             await self.client.room_send(
@@ -117,17 +130,14 @@ class BibleBot:
             )
         else:
             logging.info(f"Scripture search: {passage}")
-
-            # Send the green checkbox (✅) as a reaction to the requester's message
             await self.send_reaction(room_id, event.event_id, "✅")
-
-            # Add the string of emojis (🕊️✝️ 📔) at the end of the reference
             message = f"{text} - {reference} 🕊️✝️"
             await self.client.room_send(
                 room_id,
                 "m.room.message",
                 {"msgtype": "m.text", "body": message},
             )
+
 
 
 # Run bot
