@@ -94,7 +94,7 @@ class BibleBot:
 
 
     async def handle_scripture_command(self, room_id, passage, event):
-        text, reference = get_esv_text(passage, self.config["api_bible_key"])
+        text, reference = get_bible_text(passage, 'esv')
         if text.startswith('Error:'):
             logging.warning(f"Invalid passage format: {passage}")
             await self.client.room_send(
