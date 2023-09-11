@@ -87,7 +87,10 @@ class BibleBot:
             for pattern in search_patterns:
                 match = re.match(pattern, event.body)
                 if match:
-                    passage = match.group(1)
+                    passage_with_translation = match.group(1)
+                    translation_match = re.search(r"(esv|kjv)$", passage_with_translation, re.IGNORECASE)
+                    translation = translation_match.group(1).lower() if translation_match else 'kjv'
+                    passage = passage_with_translation.replace(translation, '').strip()
                     break
 
             if passage:
