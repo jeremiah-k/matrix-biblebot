@@ -82,6 +82,14 @@ class BibleBot:
                 r"^([\w\s]+[\d]+[:]\d+[-]?\d*)\s*(esv|kjv)?$",
             ]
 
+            translation_match = re.search(r"(esv|kjv)$", passage, re.IGNORECASE)
+            translation = translation_match.group(1).lower() if translation_match else 'kjv'
+            passage = passage.replace(translation, '').strip()
+
+            # Add debugging logs
+            logging.info(f"Extracted Passage: {passage}")
+            logging.info(f"Using Translation: {translation}")
+
 
             passage = None
             for pattern in search_patterns:
