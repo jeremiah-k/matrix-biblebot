@@ -75,21 +75,12 @@ class BibleBot:
         if (
             room.room_id in self.config["matrix_room_ids"]
             and event.sender != self.client.user_id
-            and event.server_timestamp > self.start_time  # Check if the event occurred after the bot started
+            and event.server_timestamp > self.start_time
         ):
             search_patterns = [
                 r"^!scripture\s+([\w\s]+[\d]+[:]\d+[-]?\d*)\s*(esv|kjv)?$",
                 r"^([\w\s]+[\d]+[:]\d+[-]?\d*)\s*(esv|kjv)?$",
             ]
-
-            translation_match = re.search(r"(esv|kjv)$", passage, re.IGNORECASE)
-            translation = translation_match.group(1).lower() if translation_match else 'kjv'
-            passage = passage.replace(translation, '').strip()
-
-            # Add debugging logs
-            logging.info(f"Extracted Passage: {passage}")
-            logging.info(f"Using Translation: {translation}")
-
 
             passage = None
             for pattern in search_patterns:
@@ -99,7 +90,16 @@ class BibleBot:
                     break
 
             if passage:
+                translation_match = re.search(r"(esv|kjv)$", passage, re.IGNORECASE)
+                translation = translation_match.group(1).lower() if translation_match else 'kjv'
+                passage = passage.replace(translation, '').strip()
+
+                # Add debugging logs
+                logging.info(f"Extracted Passage: {passage}")
+                logging.info(f"Using Translation: {translation}")
+
                 await self.handle_scripture_command(room.room_id, passage, event)
+
 
 
     async def handle_scripture_command(self, room_id, passage, event):
