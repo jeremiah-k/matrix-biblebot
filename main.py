@@ -93,21 +93,10 @@ class BibleBot:
                     break
 
             if passage:
-                # Add debugging logs
-                logging.info(f"Extracted Passage: {passage}")
-                logging.info(f"Using Translation: {translation}")
-
-                await self.handle_scripture_command(room.room_id, passage, event)
+                await self.handle_scripture_command(room.room_id, passage, translation, event) # Pass the translation here
 
 
-
-
-    async def handle_scripture_command(self, room_id, passage, event):
-        # Extract translation from the passage if it exists
-        translation_match = re.search(r"(esv|kjv)$", passage, re.IGNORECASE)
-        translation = translation_match.group(1).lower() if translation_match else 'kjv'
-        passage = passage.replace(translation, '').strip()  # Remove the translation from the passage string
-
+    async def handle_scripture_command(self, room_id, passage, translation, event): # Added translation parameter
         text, reference = get_bible_text(passage, translation, self.config["api_bible_key"])
         
         if text.startswith('Error:'):
@@ -132,7 +121,8 @@ class BibleBot:
                 room_id,
                 "m.room.message",
                 {"msgtype": "m.text", "body": message},
-            )   
+            )
+
 
 # Run bot
 async def main():
