@@ -5,8 +5,8 @@ Simple bot that will fetch Bible verse using APIs from [bible-api.com](https://w
 
 ## Supported Translations:
 Supported Translations:
-King James Version (KJV)
-English Standard Version (ESV) - requires an API key
+- King James Version (KJV)
+- English Standard Version (ESV) - requires an API key
 
 ## Installation
 
