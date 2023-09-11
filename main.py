@@ -79,7 +79,7 @@ class BibleBot:
             and event.sender != self.client.user_id
             and event.server_timestamp > self.start_time
         ):
-            
+            #Finally the right regex I think!!
             search_patterns = [
                 r"^([\w\s]+?)(\d+[:]\d+[-]?\d*)\s*(kjv|esv)?$",
             ]
