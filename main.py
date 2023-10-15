@@ -13,10 +13,17 @@ def load_config(config_file):
     with open(config_file, "r") as f:
         return yaml.safe_load(f)
 
+#Handles headers & parameters for API requests
+def make_api_request(url, headers=None, params=None):
+    response = requests.get(url, headers=headers, params=params)
+    if response.status_code == 200:
+        return response.json()
+    return None
+
+
 # Get Bible text
 def get_bible_text(passage, translation='kjv', api_key=None):
     if translation == 'esv':
-        logging.info("Using ESV API")  # Debug log
         API_URL = 'https://api.esv.org/v3/passage/text/'
         params = {
             'q': passage,
@@ -27,19 +34,16 @@ def get_bible_text(passage, translation='kjv', api_key=None):
             'include-passage-references': False
         }
         headers = {'Authorization': f'Token {api_key}'}
-        response = requests.get(API_URL, params=params, headers=headers)
-        passages = response.json()['passages']
-        reference = response.json()['canonical']
-        return (passages[0].strip(), reference) if passages else ('Error: Passage not found', '')
-    else:
-        logging.info("Using Bible-API for KJV")  # Debug log
-        api_url = f"https://bible-api.com/{passage}?translation={translation}"
-        response = requests.get(api_url)
-        if response.status_code == 200:
-            data = response.json()
-            return data['text'], data['reference']
-        else:
-            return None, None
+        response = make_api_request(API_URL, headers, params)
+        passages = response['passages'] if response else None
+        reference = response['canonical'] if response else None
+    else:  # Assuming KJV as the default
+        API_URL = f"https://bible-api.com/{passage}?translation=kjv"
+        response = make_api_request(API_URL)
+        passages = [response['text']] if response else None
+        reference = response['reference'] if response else None
+
+    return (passages[0].strip(), reference) if passages else ('Error: Passage not found', '')
 
 class BibleBot:
     def __init__(self, config):
