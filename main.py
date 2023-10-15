@@ -1,10 +1,17 @@
 import yaml
 import re
-from nio import AsyncClient, RoomMessageText, MatrixRoom, InviteEvent
 import asyncio
 import requests
 import time
 import logging
+import os
+from nio import AsyncClient, RoomMessageText, MatrixRoom, InviteEvent
+from dotenv import load_dotenv
+
+load_dotenv()
+
+api_bible_key = os.getenv("API_BIBLE_KEY")
+matrix_access_token = os.getenv("MATRIX_ACCESS_TOKEN")
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
@@ -51,7 +58,7 @@ class BibleBot:
         self.client = AsyncClient(config["matrix_homeserver"], config["matrix_user"])
 
     async def start(self):
-        self.client.access_token = self.config["matrix_access_token"]
+        self.client.access_token = matrix_access_token
         self.start_time = int(time.time() * 1000)  # Store bot start time in milliseconds
         logging.info("Starting bot...")
         await self.client.sync_forever(timeout=30000)  # Sync every 30 seconds
@@ -111,7 +118,7 @@ class BibleBot:
 
     async def handle_scripture_command(self, room_id, passage, translation, event): 
         logging.info(f"Handling scripture command with translation: {translation}")  
-        text, reference = get_bible_text(passage, translation, self.config["api_bible_key"])
+        text, reference = get_bible_text(passage, translation, api_bible_key)
         
         # Check if text is None
         if not text:
