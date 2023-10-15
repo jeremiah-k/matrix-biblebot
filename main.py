@@ -21,15 +21,16 @@ def load_config(config_file):
         return yaml.safe_load(f)
 
 #Handles headers & parameters for API requests
-def make_api_request(url, headers=None, params=None):
-    response = requests.get(url, headers=headers, params=params)
-    if response.status_code == 200:
-        return response.json()
-    return None
+async def make_api_request(url, headers=None, params=None):
+    async with aiohttp.ClientSession() as session:
+        async with session.get(url, headers=headers, params=params) as response:
+            if response.status == 200:
+                return await response.json()
+            return None
 
 
 # Get Bible text
-def get_bible_text(passage, translation='kjv', api_key=None):
+async def get_bible_text(passage, translation='kjv', api_key=None):
     if translation == 'esv':
         API_URL = 'https://api.esv.org/v3/passage/text/'
         params = {
@@ -41,7 +42,7 @@ def get_bible_text(passage, translation='kjv', api_key=None):
             'include-passage-references': False
         }
         headers = {'Authorization': f'Token {api_key}'}
-        response = make_api_request(API_URL, headers, params)
+        response = await make_api_request(API_URL, headers, params)
         passages = response['passages'] if response else None
         reference = response['canonical'] if response else None
     else:  # Assuming KJV as the default

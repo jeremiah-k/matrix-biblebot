@@ -3,3 +3,5 @@ requests
 pyaml
 httpx
 python-dotenv
+aiohttp
+asyncio
