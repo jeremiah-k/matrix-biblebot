@@ -5,6 +5,7 @@ import requests
 import time
 import logging
 import os
+import aiohttp
 from nio import AsyncClient, RoomMessageText, MatrixRoom, InviteEvent
 from dotenv import load_dotenv
 
@@ -35,11 +36,11 @@ async def get_bible_text(passage, translation='kjv', api_key=None):
         API_URL = 'https://api.esv.org/v3/passage/text/'
         params = {
             'q': passage,
-            'include-headings': False,
-            'include-footnotes': False,
-            'include-verse-numbers': False,
-            'include-short-copyright': False,
-            'include-passage-references': False
+            'include-headings': 'false',
+            'include-footnotes': 'false',
+            'include-verse-numbers': 'false',
+            'include-short-copyright': 'false',
+            'include-passage-references': 'false'
         }
         headers = {'Authorization': f'Token {api_key}'}
         response = await make_api_request(API_URL, headers, params)
@@ -47,7 +48,7 @@ async def get_bible_text(passage, translation='kjv', api_key=None):
         reference = response['canonical'] if response else None
     else:  # Assuming KJV as the default
         API_URL = f"https://bible-api.com/{passage}?translation=kjv"
-        response = make_api_request(API_URL)
+        response = await make_api_request(API_URL)
         passages = [response['text']] if response else None
         reference = response['reference'] if response else None
 
@@ -119,7 +120,7 @@ class BibleBot:
 
     async def handle_scripture_command(self, room_id, passage, translation, event): 
         logging.info(f"Handling scripture command with translation: {translation}")  
-        text, reference = get_bible_text(passage, translation, api_bible_key)
+        text, reference = await get_bible_text(passage, translation, api_bible_key)
         
         # Check if text is None
         if not text:
