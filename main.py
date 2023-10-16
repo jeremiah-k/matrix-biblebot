@@ -11,8 +11,13 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-api_bible_key = os.getenv("API_BIBLE_KEY")
 matrix_access_token = os.getenv("MATRIX_ACCESS_TOKEN")
+
+# Dictionary to hold API keys for different translations
+api_keys = {
+    'esv': os.getenv("ESV_API_KEY"),
+    # Add more translations here
+}
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
@@ -31,27 +36,38 @@ async def make_api_request(url, headers=None, params=None):
 
 
 # Get Bible text
-async def get_bible_text(passage, translation='kjv', api_key=None):
+async def get_bible_text(passage, translation='kjv'):
+    api_key = api_keys.get(translation)
     if translation == 'esv':
-        API_URL = 'https://api.esv.org/v3/passage/text/'
-        params = {
-            'q': passage,
-            'include-headings': 'false',
-            'include-footnotes': 'false',
-            'include-verse-numbers': 'false',
-            'include-short-copyright': 'false',
-            'include-passage-references': 'false'
-        }
-        headers = {'Authorization': f'Token {api_key}'}
-        response = await make_api_request(API_URL, headers, params)
-        passages = response['passages'] if response else None
-        reference = response['canonical'] if response else None
+        return await get_esv_text(passage, api_key)
     else:  # Assuming KJV as the default
-        API_URL = f"https://bible-api.com/{passage}?translation=kjv"
-        response = await make_api_request(API_URL)
-        passages = [response['text']] if response else None
-        reference = response['reference'] if response else None
+        return await get_kjv_text(passage)
 
+async def get_esv_text(passage, api_key):
+    if api_key is None:
+        logging.warning('ESV API key not found')
+        return None
+    API_URL = 'https://api.esv.org/v3/passage/text/'
+    params = {
+        'q': passage,
+        'include-headings': 'false',
+        'include-footnotes': 'false',
+        'include-verse-numbers': 'false',
+        'include-short-copyright': 'false',
+        'include-passage-references': 'false'
+    }
+    headers = {'Authorization': f'Token {api_key}'}
+    response = await make_api_request(API_URL, headers, params)
+    passages = response['passages'] if response else None
+    reference = response['canonical'] if response else None
+    # ESV-specific logic here
+    # ...
+
+async def get_kjv_text(passage):
+    API_URL = f"https://bible-api.com/{passage}?translation=kjv"
+    response = await make_api_request(API_URL)
+    passages = [response['text']] if response else None
+    reference = response['reference'] if response else None
     return (passages[0].strip(), reference) if passages else ('Error: Passage not found', '')
 
 class BibleBot:
@@ -120,7 +136,7 @@ class BibleBot:
 
     async def handle_scripture_command(self, room_id, passage, translation, event): 
         logging.info(f"Handling scripture command with translation: {translation}")  
-        text, reference = await get_bible_text(passage, translation, api_bible_key)
+        text, reference = await get_bible_text(passage, translation)
         
         # Check if text is None
         if not text:
