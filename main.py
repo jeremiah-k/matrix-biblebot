@@ -38,10 +38,12 @@ async def make_api_request(url, headers=None, params=None):
 # Get Bible text
 async def get_bible_text(passage, translation='kjv'):
     api_key = api_keys.get(translation)
+    text, reference = None, None
     if translation == 'esv':
         return await get_esv_text(passage, api_key)
     else:  # Assuming KJV as the default
         return await get_kjv_text(passage)
+    return text, reference
 
 async def get_esv_text(passage, api_key):
     if api_key is None:
@@ -60,8 +62,7 @@ async def get_esv_text(passage, api_key):
     response = await make_api_request(API_URL, headers, params)
     passages = response['passages'] if response else None
     reference = response['canonical'] if response else None
-    # ESV-specific logic here
-    # ...
+    return passages[0].strip(), reference if passages else ('Error: Passage not found', '')
 
 async def get_kjv_text(passage):
     API_URL = f"https://bible-api.com/{passage}?translation=kjv"
@@ -137,9 +138,7 @@ class BibleBot:
     async def handle_scripture_command(self, room_id, passage, translation, event): 
         logging.info(f"Handling scripture command with translation: {translation}")  
         text, reference = await get_bible_text(passage, translation)
-        
-        # Check if text is None
-        if not text:
+        if text is None or reference is None:
             logging.warning(f"Failed to retrieve passage: {passage}")
             await self.client.room_send(
                 room_id,
