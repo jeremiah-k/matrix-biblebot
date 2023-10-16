@@ -1,10 +1,23 @@
 import yaml
 import re
-from nio import AsyncClient, RoomMessageText, MatrixRoom, InviteEvent
 import asyncio
 import requests
 import time
 import logging
+import os
+import aiohttp
+from nio import AsyncClient, RoomMessageText, MatrixRoom, InviteEvent
+from dotenv import load_dotenv
+
+load_dotenv()
+
+matrix_access_token = os.getenv("MATRIX_ACCESS_TOKEN")
+
+# Dictionary to hold API keys for different translations
+api_keys = {
+    'esv': os.getenv("ESV_API_KEY"),
+    # Add more translations here
+}
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
@@ -13,33 +26,50 @@ def load_config(config_file):
     with open(config_file, "r") as f:
         return yaml.safe_load(f)
 
+#Handles headers & parameters for API requests
+async def make_api_request(url, headers=None, params=None):
+    async with aiohttp.ClientSession() as session:
+        async with session.get(url, headers=headers, params=params) as response:
+            if response.status == 200:
+                return await response.json()
+            return None
+
+
 # Get Bible text
-def get_bible_text(passage, translation='kjv', api_key=None):
+async def get_bible_text(passage, translation='kjv'):
+    api_key = api_keys.get(translation)
+    text, reference = None, None
     if translation == 'esv':
-        logging.info("Using ESV API")  # Debug log
-        API_URL = 'https://api.esv.org/v3/passage/text/'
-        params = {
-            'q': passage,
-            'include-headings': False,
-            'include-footnotes': False,
-            'include-verse-numbers': False,
-            'include-short-copyright': False,
-            'include-passage-references': False
-        }
-        headers = {'Authorization': f'Token {api_key}'}
-        response = requests.get(API_URL, params=params, headers=headers)
-        passages = response.json()['passages']
-        reference = response.json()['canonical']
-        return (passages[0].strip(), reference) if passages else ('Error: Passage not found', '')
-    else:
-        logging.info("Using Bible-API for KJV")  # Debug log
-        api_url = f"https://bible-api.com/{passage}?translation={translation}"
-        response = requests.get(api_url)
-        if response.status_code == 200:
-            data = response.json()
-            return data['text'], data['reference']
-        else:
-            return None, None
+        return await get_esv_text(passage, api_key)
+    else:  # Assuming KJV as the default
+        return await get_kjv_text(passage)
+    return text, reference
+
+async def get_esv_text(passage, api_key):
+    if api_key is None:
+        logging.warning('ESV API key not found')
+        return None
+    API_URL = 'https://api.esv.org/v3/passage/text/'
+    params = {
+        'q': passage,
+        'include-headings': 'false',
+        'include-footnotes': 'false',
+        'include-verse-numbers': 'false',
+        'include-short-copyright': 'false',
+        'include-passage-references': 'false'
+    }
+    headers = {'Authorization': f'Token {api_key}'}
+    response = await make_api_request(API_URL, headers, params)
+    passages = response['passages'] if response else None
+    reference = response['canonical'] if response else None
+    return passages[0].strip(), reference if passages else ('Error: Passage not found', '')
+
+async def get_kjv_text(passage):
+    API_URL = f"https://bible-api.com/{passage}?translation=kjv"
+    response = await make_api_request(API_URL)
+    passages = [response['text']] if response else None
+    reference = response['reference'] if response else None
+    return (passages[0].strip(), reference) if passages else ('Error: Passage not found', '')
 
 class BibleBot:
     def __init__(self, config):
@@ -47,7 +77,7 @@ class BibleBot:
         self.client = AsyncClient(config["matrix_homeserver"], config["matrix_user"])
 
     async def start(self):
-        self.client.access_token = self.config["matrix_access_token"]
+        self.client.access_token = matrix_access_token
         self.start_time = int(time.time() * 1000)  # Store bot start time in milliseconds
         logging.info("Starting bot...")
         await self.client.sync_forever(timeout=30000)  # Sync every 30 seconds
@@ -107,10 +137,8 @@ class BibleBot:
 
     async def handle_scripture_command(self, room_id, passage, translation, event): 
         logging.info(f"Handling scripture command with translation: {translation}")  
-        text, reference = get_bible_text(passage, translation, self.config["api_bible_key"])
-        
-        # Check if text is None
-        if not text:
+        text, reference = await get_bible_text(passage, translation)
+        if text is None or reference is None:
             logging.warning(f"Failed to retrieve passage: {passage}")
             await self.client.room_send(
                 room_id,

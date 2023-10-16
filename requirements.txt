@@ -2,3 +2,6 @@ matrix-nio
 requests
 pyaml
 httpx
+python-dotenv
+aiohttp
+asyncio

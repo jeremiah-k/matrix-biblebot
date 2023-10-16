@@ -7,6 +7,7 @@ Simple bot that will fetch Bible verse using APIs from [bible-api.com](https://b
 Supported Translations:
 - King James Version (KJV)
 - English Standard Version (ESV) - requires an API key
+- Easily extensible to support additional translations
 
 ## Installation
 
@@ -31,13 +32,18 @@ source .pyenv/bin/activate
 pip install -r requirements.txt
 ```
 
+Create a .env file and enter your MATRIX_ACCESS_TOKEN (required) & any API Keys:
+  
+```
+MATRIX_ACCESS_TOKEN="your_bots_matrix_access_token_here"
+ESV_API_KEY="your_esv_api_key_here"
+```
+
 Copy the sample_config.yaml to config.yaml and enter your values:
 
 ```
-api_bible_key: "your_api_bible_key_here"
 matrix_homeserver: "https://your_homeserver_url_here"
 matrix_user: "@your_bot_username:your_homeserver_domain"
-matrix_access_token: "your_matrix_access_token_here"
 matrix_room_ids:
   - "!your_room_id:your_homeserver_domain"
   - "!your_other_room_id:your_homeserver_domain"
