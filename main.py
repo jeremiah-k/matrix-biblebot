@@ -6,8 +6,12 @@ import time
 import logging
 import os
 import aiohttp
+import urllib
+import json
 from nio import AsyncClient, RoomMessageText, MatrixRoom, InviteEvent
 from dotenv import load_dotenv
+from biblegateway_api import get_passage, get_verse_of_the_day
+
 
 load_dotenv()
 
@@ -111,7 +115,7 @@ class BibleBot:
         ):
             #Finally the right regex I think!!
             search_patterns = [
-                r"^([\w\s]+?)(\d+[:]\d+[-]?\d*)\s*(kjv|esv)?$",
+                r"^([\w\s]+?)(\d+[:]\d+[-]?\d*)\s*(kjv|esv|nkjv|amp)?$",
             ]
 
             passage = None
@@ -137,43 +141,24 @@ class BibleBot:
 
     async def handle_scripture_command(self, room_id, passage, translation, event): 
         logging.info(f"Handling scripture command with translation: {translation}")  
-        text, reference = await get_bible_text(passage, translation)
-        if text is None or reference is None:
-            logging.warning(f"Failed to retrieve passage: {passage}")
+        text = await get_passage(passage, translation)
+        if text:
             await self.client.room_send(
                 room_id,
                 "m.room.message",
-                {
-                    "msgtype": "m.text",
-                    "body": "Error: Failed to retrieve the specified passage.",
-                },
-            )
-            return
-
-        if text.startswith('Error:'):
-            logging.warning(f"Invalid passage format: {passage}")
-            await self.client.room_send(
-                room_id,
-                "m.room.message",
-                {
-                    "msgtype": "m.text",
-                    "body": "Error: Invalid passage format. Use [Book Chapter:Verse-range (optional)]",
-                },
+                {"msgtype": "m.text", "body": text},
             )
         else:
-            # Formatting KJV text to ensure one space between words
-            text = ' '.join(text.replace('\n', ' ').split())
-            
-            logging.info(f"Scripture search: {passage}")
-            await self.send_reaction(room_id, event.event_id, "✅")
-            message = f"{text} - {reference} 🕊️✝️"
+            logging.warning(f"Failed to retrieve passage: {passage}")
+
+    async def handle_votd_command(self, room_id, version="NKJV"):
+        text, reference = await get_verse_of_the_day(version)
+        if text:
             await self.client.room_send(
                 room_id,
                 "m.room.message",
-                {"msgtype": "m.text", "body": message},
+                {"msgtype": "m.text", "body": f"{text} - {reference}"},
             )
-
-
 
 # Run bot
 async def main():
