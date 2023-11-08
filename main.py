@@ -117,7 +117,7 @@ class BibleBot:
             passage = None
             translation = 'kjv'  # Default translation is KJV
             for pattern in search_patterns:
-                match = re.match(pattern, event.body)
+                match = re.match(pattern, event.body, re.IGNORECASE)
                 if match:
                     book_name = match.group(1).strip()
                     verse_reference = match.group(2).strip()
