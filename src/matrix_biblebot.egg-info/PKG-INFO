@@ -1,3 +1,28 @@
+Metadata-Version: 2.4
+Name: matrix-biblebot
+Version: 0.1.0
+Summary: A simple Matrix bot that fetches Bible verses
+Home-page: https://github.com/jeremiah-k/matrix-biblebot
+Author: Jeremiah K
+Author-email: jeremiahk@gmx.com
+License: MIT
+Classifier: Programming Language :: Python :: 3
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Operating System :: OS Independent
+Classifier: Development Status :: 4 - Beta
+Classifier: Topic :: Communications
+Requires-Python: >=3.8
+Description-Content-Type: text/markdown
+License-File: LICENSE
+Requires-Dist: matrix-nio
+Requires-Dist: requests
+Requires-Dist: pyaml
+Requires-Dist: httpx
+Requires-Dist: python-dotenv
+Requires-Dist: aiohttp
+Requires-Dist: asyncio
+Dynamic: license-file
+
 # Matrix BibleBot
 
 A simple Matrix bot that fetches Bible verses using APIs from [bible-api.com](https://bible-api.com) & [esv.org](https://api.esv.org/)

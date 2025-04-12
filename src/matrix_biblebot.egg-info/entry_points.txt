@@ -1,0 +1,2 @@
+[console_scripts]
+biblebot = biblebot.cli:main

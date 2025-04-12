@@ -1,0 +1,17 @@
+LICENSE
+MANIFEST.in
+README.md
+pyproject.toml
+requirements.txt
+sample_config.yaml
+setup.cfg
+src/biblebot/__init__.py
+src/biblebot/__main__.py
+src/biblebot/bot.py
+src/biblebot/cli.py
+src/matrix_biblebot.egg-info/PKG-INFO
+src/matrix_biblebot.egg-info/SOURCES.txt
+src/matrix_biblebot.egg-info/dependency_links.txt
+src/matrix_biblebot.egg-info/entry_points.txt
+src/matrix_biblebot.egg-info/requires.txt
+src/matrix_biblebot.egg-info/top_level.txt
