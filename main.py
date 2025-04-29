@@ -22,6 +22,7 @@ try:
 
 except ImportError:
     logging.error(
-        "BibleBot package not found. Please install it with 'pip install -e .'"
+        "BibleBot package not found. Please install it with 'pip install matrix-biblebot' "
+        "or 'pipx install matrix-biblebot'"
     )
     sys.exit(1)

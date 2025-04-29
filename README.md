@@ -32,6 +32,12 @@ Clone the repository:
 ```bash
 git clone https://github.com/jeremiah-k/matrix-biblebot.git
 cd matrix-biblebot
+pip install .
+```
+
+For development:
+
+```bash
 pip install -e .
 ```
 
