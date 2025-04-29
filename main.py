@@ -5,11 +5,13 @@ This script is maintained for backward compatibility.
 It's recommended to use the 'biblebot' command instead.
 """
 
-import sys
-import logging
 import asyncio
+import logging
+import sys
 
-logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
+)
 logging.info("Using legacy entry point. Consider using 'biblebot' command instead.")
 
 try:
@@ -19,5 +21,7 @@ try:
         asyncio.run(bot_main())
 
 except ImportError:
-    logging.error("BibleBot package not found. Please install it with 'pip install -e .'")
+    logging.error(
+        "BibleBot package not found. Please install it with 'pip install -e .'"
+    )
     sys.exit(1)

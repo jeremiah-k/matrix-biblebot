@@ -15,9 +15,9 @@ def main():
     """Run the BibleBot CLI."""
     parser = argparse.ArgumentParser(description="BibleBot for Matrix")
     parser.add_argument(
-        "--config", 
-        default="config.yaml", 
-        help="Path to config file (default: config.yaml)"
+        "--config",
+        default="config.yaml",
+        help="Path to config file (default: config.yaml)",
     )
     parser.add_argument(
         "--log-level",
@@ -26,9 +26,7 @@ def main():
         help="Set logging level (default: info)",
     )
     parser.add_argument(
-        "--version", 
-        action="version", 
-        version=f"BibleBot {__version__}"
+        "--version", action="version", version=f"BibleBot {__version__}"
     )
 
     args = parser.parse_args()
@@ -36,8 +34,7 @@ def main():
     # Set up logging
     log_level = getattr(logging, args.log_level.upper())
     logging.basicConfig(
-        level=log_level, 
-        format="%(asctime)s - %(levelname)s - %(message)s"
+        level=log_level, format="%(asctime)s - %(levelname)s - %(message)s"
     )
 
     # Check if config file exists
