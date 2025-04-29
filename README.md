@@ -45,16 +45,24 @@ pip install -e .
 
 ### 1. Create a .env file
 
-Create a `.env` file in your working directory with your Matrix access token and any API keys:
+Create a `.env` file in the same directory as your config file (e.g., `~/.config/matrix-biblebot/.env`) with your Matrix access token and any API keys:
 
 ```env
 MATRIX_ACCESS_TOKEN="your_bots_matrix_access_token_here"
 ESV_API_KEY="your_esv_api_key_here"  # Optional
 ```
 
+The bot will first look for a `.env` file in the same directory as your config file. If not found, it will fall back to looking in the current working directory.
+
 ### 2. Create a config.yaml file
 
-Create a `config.yaml` file in your working directory:
+The bot looks for a configuration file at `~/.config/matrix-biblebot/config.yaml` by default. You can generate a template configuration file with:
+
+```bash
+biblebot --generate-config
+```
+
+This will create a sample config file with the following structure:
 
 ```yaml
 matrix_homeserver: "https://your_homeserver_url_here"
@@ -64,13 +72,25 @@ matrix_room_ids:
   - "!your_other_room_id:your_homeserver_domain"
 ```
 
-You can also copy and modify the included `sample_config.yaml`.
+Edit this file with your Matrix credentials and room IDs.
+
+You can also specify a custom config location:
+
+```bash
+biblebot --config /path/to/your/config.yaml
+```
+
+Or generate a config at a custom location:
+
+```bash
+biblebot --generate-config --config /path/to/your/config.yaml
+```
 
 ## Usage
 
 ### Running the Bot
 
-After installation, you can run the bot with:
+After installation and configuration, you can run the bot with:
 
 ```bash
 biblebot
@@ -85,15 +105,16 @@ biblebot --config /path/to/config.yaml --log-level debug
 ### Command-line Options
 
 ```text
-usage: biblebot [-h] [--config CONFIG] [--log-level {error,warning,info,debug}] [--version]
+usage: biblebot [-h] [--config CONFIG] [--log-level {error,warning,info,debug}] [--generate-config] [--version]
 
 BibleBot for Matrix
 
 options:
   -h, --help            show this help message and exit
-  --config CONFIG       Path to config file (default: config.yaml)
+  --config CONFIG       Path to config file (default: ~/.config/matrix-biblebot/config.yaml)
   --log-level {error,warning,info,debug}
                         Set logging level (default: info)
+  --generate-config     Generate a sample config file at the specified path
   --version             show program's version number and exit
 ```
 
