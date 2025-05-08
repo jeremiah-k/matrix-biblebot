@@ -1,8 +1,14 @@
 """Tools and resources for BibleBot."""
 
-import os
-import pkg_resources
+import importlib.resources
+import pathlib
+
 
 def get_sample_config_path():
     """Get the path to the sample config file."""
-    return pkg_resources.resource_filename('biblebot.tools', 'sample_config.yaml')
+    try:
+        # For Python 3.9+
+        return str(importlib.resources.files("biblebot.tools") / "sample_config.yaml")
+    except AttributeError:
+        # Fallback for older Python versions
+        return str(pathlib.Path(__file__).parent / "sample_config.yaml")

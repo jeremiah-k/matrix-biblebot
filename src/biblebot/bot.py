@@ -2,17 +2,18 @@ import logging
 import os
 import re
 import time
-from pathlib import Path
 
 import aiohttp
 import yaml
 from dotenv import load_dotenv
 from nio import AsyncClient, InviteEvent, MatrixRoom, RoomMessageText
 
+
 # Load config
 def load_config(config_file):
     with open(config_file, "r") as f:
         return yaml.safe_load(f)
+
 
 # Load environment variables
 def load_environment(config_path):
@@ -41,15 +42,10 @@ def load_environment(config_path):
 
     return matrix_access_token, api_keys
 
+
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
 )
-
-
-# Load config
-def load_config(config_file):
-    with open(config_file, "r") as f:
-        return yaml.safe_load(f)
 
 
 # Handles headers & parameters for API requests

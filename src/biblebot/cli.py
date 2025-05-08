@@ -39,7 +39,9 @@ def generate_config(config_path):
         logging.info(f"Copied sample config from {sample_config_path} to {config_path}")
     else:
         # Fallback to hardcoded config if the sample file is not found
-        logging.warning(f"Sample config file not found at {sample_config_path}, using default values")
+        logging.warning(
+            f"Sample config file not found at {sample_config_path}, using default values"
+        )
         sample_config = {
             "matrix_homeserver": "https://your_homeserver_url_here",
             "matrix_user": "@your_bot_username:your_homeserver_domain",
@@ -99,7 +101,9 @@ def main():
     # Check if config file exists
     if not os.path.exists(args.config):
         logging.error(f"Config file not found: {args.config}")
-        logging.info("You can generate a sample config with: biblebot --generate-config")
+        logging.info(
+            "You can generate a sample config with: biblebot --generate-config"
+        )
         sys.exit(1)
 
     # Run the bot
