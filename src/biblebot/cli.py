@@ -5,6 +5,7 @@ import argparse
 import asyncio
 import logging
 import os
+import shutil
 import sys
 from pathlib import Path
 
@@ -12,6 +13,7 @@ import yaml
 
 from . import __version__
 from .bot import main as bot_main
+from .tools import get_sample_config_path
 
 
 def get_default_config_path():
@@ -28,19 +30,27 @@ def generate_config(config_path):
         os.makedirs(config_dir, exist_ok=True)
         logging.info(f"Created directory: {config_dir}")
 
-    # Define the sample config content
-    sample_config = {
-        "matrix_homeserver": "https://your_homeserver_url_here",
-        "matrix_user": "@your_bot_username:your_homeserver_domain",
-        "matrix_room_ids": [
-            "!your_room_id:your_homeserver_domain",
-            "!your_other_room_id:your_homeserver_domain",
-        ],
-    }
+    # Get the sample config file path from the package
+    sample_config_path = get_sample_config_path()
 
-    # Write the config file
-    with open(config_path, "w") as f:
-        yaml.dump(sample_config, f, default_flow_style=False)
+    if os.path.exists(sample_config_path):
+        # Copy the sample config file to the destination
+        shutil.copy2(sample_config_path, config_path)
+        logging.info(f"Copied sample config from {sample_config_path} to {config_path}")
+    else:
+        # Fallback to hardcoded config if the sample file is not found
+        logging.warning(f"Sample config file not found at {sample_config_path}, using default values")
+        sample_config = {
+            "matrix_homeserver": "https://your_homeserver_url_here",
+            "matrix_user": "@your_bot_username:your_homeserver_domain",
+            "matrix_room_ids": [
+                "!your_room_id:your_homeserver_domain",
+                "!your_other_room_id:your_homeserver_domain",
+            ],
+        }
+        # Write the config file
+        with open(config_path, "w") as f:
+            yaml.dump(sample_config, f, default_flow_style=False)
 
     logging.info(f"Generated sample config file at: {config_path}")
     print(f"Generated sample config file at: {config_path}")

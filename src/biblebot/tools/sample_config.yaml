@@ -1,0 +1,5 @@
+matrix_homeserver: https://your_homeserver_url_here
+matrix_user: "@your_bot_username:your_homeserver_domain"
+matrix_room_ids:
+  - "!your_room_id:your_homeserver_domain"
+  - "!your_other_room_id:your_homeserver_domain"
