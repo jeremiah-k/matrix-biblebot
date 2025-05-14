@@ -9,8 +9,6 @@ import shutil
 import sys
 from pathlib import Path
 
-import yaml
-
 from . import __version__
 from .bot import main as bot_main
 from .tools import get_sample_config_path, get_sample_env_path
@@ -24,61 +22,27 @@ def get_default_config_path():
 
 def generate_config(config_path):
     """Generate a sample config file at the specified path."""
-    # Create the directory if it doesn't exist
     config_dir = os.path.dirname(config_path)
-    if not os.path.exists(config_dir):
-        os.makedirs(config_dir, exist_ok=True)
-        logging.info(f"Created directory: {config_dir}")
-
-    # Get the sample config file path from the package
-    sample_config_path = get_sample_config_path()
-
-    # Get the sample env file path from the package
-    sample_env_path = get_sample_env_path()
     env_path = os.path.join(config_dir, ".env")
 
-    # Generate the config file
-    if os.path.exists(sample_config_path):
-        # Copy the sample config file to the destination
-        shutil.copy2(sample_config_path, config_path)
-        logging.info(f"Copied sample config from {sample_config_path} to {config_path}")
-    else:
-        # Fallback to hardcoded config if the sample file is not found
-        logging.warning(
-            f"Sample config file not found at {sample_config_path}, using default values"
-        )
-        sample_config = {
-            "matrix_homeserver": "https://your_homeserver_url_here",
-            "matrix_user": "@your_bot_username:your_homeserver_domain",
-            "matrix_room_ids": [
-                "!your_room_id:your_homeserver_domain",
-                "!your_other_room_id:your_homeserver_domain",
-            ],
-        }
-        # Write the config file
-        with open(config_path, "w") as f:
-            yaml.dump(sample_config, f, default_flow_style=False)
+    if os.path.exists(config_path) or os.path.exists(env_path):
+        print("A config or .env file already exists at:")
+        if os.path.exists(config_path):
+            print(f"  {config_path}")
+        if os.path.exists(env_path):
+            print(f"  {env_path}")
+        print("If you want to regenerate them, delete the existing files first.")
+        print("Otherwise, edit the current files in place.")
+        return False
 
-    # Generate the .env file
-    if os.path.exists(sample_env_path):
-        # Copy the sample .env file to the destination
-        shutil.copy2(sample_env_path, env_path)
-        logging.info(f"Copied sample .env from {sample_env_path} to {env_path}")
-    else:
-        # Fallback to hardcoded .env if the sample file is not found
-        logging.warning(
-            f"Sample .env file not found at {sample_env_path}, using default values"
-        )
-        sample_env_content = (
-            'MATRIX_ACCESS_TOKEN="your_bots_matrix_access_token_here"\n'
-            'ESV_API_KEY="your_esv_api_key_here"  # Optional\n'
-        )
-        # Write the .env file
-        with open(env_path, "w") as f:
-            f.write(sample_env_content)
-        logging.info(f"Created default .env file at {env_path}")
+    os.makedirs(config_dir, exist_ok=True)
 
-    logging.info(f"Generated sample config file at: {config_path}")
+    sample_config_path = get_sample_config_path()
+    sample_env_path = get_sample_env_path()
+
+    shutil.copy2(sample_config_path, config_path)
+    shutil.copy2(sample_env_path, env_path)
+
     print(f"Generated sample config file at: {config_path}")
     print(f"Generated sample .env file at: {env_path}")
     print("Please edit these files with your Matrix credentials and API keys.")
