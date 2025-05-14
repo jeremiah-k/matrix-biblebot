@@ -1,12 +1,11 @@
-# matrix-biblebot
+# Matrix BibleBot
 
-BibleBot for Matrix
+A simple Matrix bot that fetches Bible verses using APIs from [bible-api.com](https://bible-api.com) & [esv.org](https://api.esv.org/)
 
-Simple bot that will fetch Bible verse using APIs from [bible-api.com](https://bible-api.com) & [esv.org](https://api.esv.org/)
+[![PyPI version](https://badge.fury.io/py/matrix-biblebot.svg)](https://badge.fury.io/py/matrix-biblebot)
+[![Python Tests](https://github.com/jeremiah-k/matrix-biblebot/actions/workflows/python-tests.yml/badge.svg)](https://github.com/jeremiah-k/matrix-biblebot/actions/workflows/python-tests.yml)
 
-## Supported Translations:
-
-Supported Translations:
+## Supported Translations
 
 - King James Version (KJV)
 - English Standard Version (ESV) - requires an API key
@@ -14,37 +13,58 @@ Supported Translations:
 
 ## Installation
 
+### Install from PyPI (Recommended)
+
+```bash
+pip install matrix-biblebot
+```
+
+For an isolated installation, you can use [pipx](https://pypa.github.io/pipx/):
+
+```bash
+pipx install matrix-biblebot
+```
+
+### Install from Source
+
 Clone the repository:
 
-```
+```bash
 git clone https://github.com/jeremiah-k/matrix-biblebot.git
+cd matrix-biblebot
+pip install .
 ```
 
-### Setup
+For development:
 
-Create a Python virtual environment in the project directory:
-
-```
-python3 -m venv .pyenv
+```bash
+pip install -e .
 ```
 
-Activate the virtual environment and install dependencies:
+## Configuration
 
-```
-source .pyenv/bin/activate
-pip install -r requirements.txt
-```
+### 1. Create a .env file
 
-Create a .env file and enter your MATRIX_ACCESS_TOKEN (required) & any API Keys:
+Create a `.env` file in the same directory as your config file (e.g., `~/.config/matrix-biblebot/.env`) with your Matrix access token and any API keys:
 
-```
+```env
 MATRIX_ACCESS_TOKEN="your_bots_matrix_access_token_here"
-ESV_API_KEY="your_esv_api_key_here"
+ESV_API_KEY="your_esv_api_key_here"  # Optional
 ```
 
-Copy the sample_config.yaml to config.yaml and enter your values:
+The bot will first look for a `.env` file in the same directory as your config file. If not found, it will fall back to looking in the current working directory.
 
+### 2. Create a config.yaml file
+
+The bot looks for a configuration file at `~/.config/matrix-biblebot/config.yaml` by default. You can generate a template configuration file with:
+
+```bash
+biblebot --generate-config
 ```
+
+This will create a sample config file with the following structure:
+
+```yaml
 matrix_homeserver: "https://your_homeserver_url_here"
 matrix_user: "@your_bot_username:your_homeserver_domain"
 matrix_room_ids:
@@ -52,14 +72,60 @@ matrix_room_ids:
   - "!your_other_room_id:your_homeserver_domain"
 ```
 
-Run the script:
+Edit this file with your Matrix credentials and room IDs.
 
+You can also specify a custom config location:
+
+```bash
+biblebot --config /path/to/your/config.yaml
 ```
-python3 main.py
+
+Or generate a config at a custom location:
+
+```bash
+biblebot --generate-config --config /path/to/your/config.yaml
 ```
 
 ## Usage
 
-Invite the bot to rooms that are listed in the config.yaml file, if they are not joined already. The bot will respond to messages that start with `Book Chapter:Verse-(range)` (e.g. `John 3:16` or `1 Cor 15:1-4`). To search using ESV, use `esv` at the end of the string. (e.g. `John 3:16 esv`))
+### Running the Bot
 
-This is just to get the ball rolling for a BibleBot on Matrix. PRs are welcome so feel free to contribute!
+After installation and configuration, you can run the bot with:
+
+```bash
+biblebot
+```
+
+Or with custom options:
+
+```bash
+biblebot --config /path/to/config.yaml --log-level debug
+```
+
+### Command-line Options
+
+```text
+usage: biblebot [-h] [--config CONFIG] [--log-level {error,warning,info,debug}] [--generate-config] [--version]
+
+BibleBot for Matrix
+
+options:
+  -h, --help            show this help message and exit
+  --config CONFIG       Path to config file (default: ~/.config/matrix-biblebot/config.yaml)
+  --log-level {error,warning,info,debug}
+                        Set logging level (default: info)
+  --generate-config     Generate a sample config file at the specified path
+  --version             show program's version number and exit
+```
+
+### Interacting with the Bot
+
+Invite the bot to rooms that are listed in the config.yaml file. The bot will respond to messages that match Bible verse references:
+
+- Simple reference: `John 3:16`
+- Range reference: `1 Cor 15:1-4`
+- With translation: `John 3:16 esv`
+
+## Development
+
+Contributions are welcome! Feel free to open issues or submit pull requests.
