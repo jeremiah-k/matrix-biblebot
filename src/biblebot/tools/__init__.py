@@ -12,3 +12,13 @@ def get_sample_config_path():
     except AttributeError:
         # Fallback for older Python versions
         return str(pathlib.Path(__file__).parent / "sample_config.yaml")
+
+
+def get_sample_env_path():
+    """Get the path to the sample .env file."""
+    try:
+        # For Python 3.9+
+        return str(importlib.resources.files("biblebot.tools") / "sample.env")
+    except AttributeError:
+        # Fallback for older Python versions
+        return str(pathlib.Path(__file__).parent / "sample.env")

@@ -13,7 +13,7 @@ import yaml
 
 from . import __version__
 from .bot import main as bot_main
-from .tools import get_sample_config_path
+from .tools import get_sample_config_path, get_sample_env_path
 
 
 def get_default_config_path():
@@ -33,6 +33,11 @@ def generate_config(config_path):
     # Get the sample config file path from the package
     sample_config_path = get_sample_config_path()
 
+    # Get the sample env file path from the package
+    sample_env_path = get_sample_env_path()
+    env_path = os.path.join(config_dir, ".env")
+
+    # Generate the config file
     if os.path.exists(sample_config_path):
         # Copy the sample config file to the destination
         shutil.copy2(sample_config_path, config_path)
@@ -54,9 +59,29 @@ def generate_config(config_path):
         with open(config_path, "w") as f:
             yaml.dump(sample_config, f, default_flow_style=False)
 
+    # Generate the .env file
+    if os.path.exists(sample_env_path):
+        # Copy the sample .env file to the destination
+        shutil.copy2(sample_env_path, env_path)
+        logging.info(f"Copied sample .env from {sample_env_path} to {env_path}")
+    else:
+        # Fallback to hardcoded .env if the sample file is not found
+        logging.warning(
+            f"Sample .env file not found at {sample_env_path}, using default values"
+        )
+        sample_env_content = (
+            'MATRIX_ACCESS_TOKEN="your_bots_matrix_access_token_here"\n'
+            'ESV_API_KEY="your_esv_api_key_here"  # Optional\n'
+        )
+        # Write the .env file
+        with open(env_path, "w") as f:
+            f.write(sample_env_content)
+        logging.info(f"Created default .env file at {env_path}")
+
     logging.info(f"Generated sample config file at: {config_path}")
     print(f"Generated sample config file at: {config_path}")
-    print("Please edit this file with your Matrix credentials and room IDs.")
+    print(f"Generated sample .env file at: {env_path}")
+    print("Please edit these files with your Matrix credentials and API keys.")
     return True
 
 
