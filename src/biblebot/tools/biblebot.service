@@ -1,0 +1,18 @@
+[Unit]
+Description=Matrix Bible Bot Service
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+# The biblebot binary can be installed via pipx or pip
+ExecStart=%h/.local/bin/biblebot --config %h/.config/matrix-biblebot/config.yaml
+WorkingDirectory=%h/.config/matrix-biblebot
+Restart=on-failure
+RestartSec=10
+Environment=PYTHONUNBUFFERED=1
+# Ensure both pipx and pip environments are properly loaded
+Environment=PATH=%h/.local/bin:%h/.local/pipx/venvs/matrix-biblebot/bin:/usr/local/bin:/usr/bin:/bin
+
+[Install]
+WantedBy=default.target
