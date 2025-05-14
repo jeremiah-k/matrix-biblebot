@@ -22,3 +22,13 @@ def get_sample_env_path():
     except AttributeError:
         # Fallback for older Python versions
         return str(pathlib.Path(__file__).parent / "sample.env")
+
+
+def get_service_template_path():
+    """Get the path to the service template file."""
+    try:
+        # For Python 3.9+
+        return str(importlib.resources.files("biblebot.tools") / "biblebot.service")
+    except AttributeError:
+        # Fallback for older Python versions
+        return str(pathlib.Path(__file__).parent / "biblebot.service")

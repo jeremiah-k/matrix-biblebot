@@ -71,6 +71,11 @@ def main():
         help="Generate a sample config file at the specified path",
     )
     parser.add_argument(
+        "--install-service",
+        action="store_true",
+        help="Install or update the systemd user service",
+    )
+    parser.add_argument(
         "--version", action="version", version=f"BibleBot {__version__}"
     )
 
@@ -85,6 +90,13 @@ def main():
     # Generate config if requested
     if args.generate_config:
         generate_config(args.config)
+        return
+
+    # Install service if requested
+    if args.install_service:
+        from .setup_utils import install_service
+
+        install_service()
         return
 
     # Check if config file exists
