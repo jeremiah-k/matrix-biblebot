@@ -71,10 +71,13 @@ def load_environment(config_path):
     return matrix_access_token, api_keys
 
 
-# Set up default logging configuration
+# Set up logging configuration
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 )
+
+# Set nio logging to WARNING level to suppress verbose messages
+logging.getLogger("nio").setLevel(logging.WARNING)
 
 
 # Handles headers & parameters for API requests
@@ -102,7 +105,7 @@ async def get_bible_text(passage, translation="kjv", api_keys=None):
 
 async def get_esv_text(passage, api_key):
     if api_key is None:
-        logging.warning("ESV API key not found")
+        logger.warning("ESV API key not found")
         return None
     API_URL = "https://api.esv.org/v3/passage/text/"
     params = {

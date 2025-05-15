@@ -13,6 +13,9 @@ from . import __version__
 from .bot import main as bot_main
 from .tools import get_sample_config_path, get_sample_env_path
 
+# Configure logging
+logger = logging.getLogger("BibleBot")
+
 
 def get_default_config_path():
     """Get the default config path in the user's home directory."""
