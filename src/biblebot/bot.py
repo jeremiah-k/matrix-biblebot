@@ -6,7 +6,13 @@ import time
 import aiohttp
 import yaml
 from dotenv import load_dotenv
-from nio import AsyncClient, InviteEvent, MatrixRoom, RoomMessageText
+from nio import (
+    AsyncClient,
+    InviteEvent,
+    MatrixRoom,
+    RoomMessageText,
+    RoomResolveAliasError,
+)
 
 
 # Load config
@@ -111,10 +117,42 @@ class BibleBot:
         self.client = AsyncClient(config["matrix_homeserver"], config["matrix_user"])
         self.api_keys = {}  # Will be set in main()
 
+    async def resolve_aliases(self):
+        # Allow room IDs or aliases in config; always resolve to room IDs for internal use
+        resolved_ids = []
+        for entry in self.config["matrix_room_ids"]:
+            if entry.startswith("#"):
+                try:
+                    resp = await self.client.room_resolve_alias(entry)
+                    if hasattr(resp, "room_id"):
+                        resolved_ids.append(resp.room_id)
+                        logging.info(
+                            f"Resolved alias {entry} to room ID {resp.room_id}"
+                        )
+                except RoomResolveAliasError:
+                    logging.warning(f"Could not resolve alias: {entry}")
+            else:
+                resolved_ids.append(entry)
+        self.config["matrix_room_ids"] = list(set(resolved_ids))
+
+    async def ensure_joined_rooms(self):
+        # On startup, join all rooms in config if not already joined
+        joined = await self.client.joined_rooms()
+        joined_rooms = set(joined.rooms if hasattr(joined, "rooms") else [])
+        for room_id in self.config["matrix_room_ids"]:
+            if room_id not in joined_rooms:
+                try:
+                    await self.client.join(room_id)
+                    logging.info(f"Joined room: {room_id}")
+                except Exception:
+                    logging.warning(f"Could not join room: {room_id}")
+
     async def start(self):
         self.start_time = int(
             time.time() * 1000
         )  # Store bot start time in milliseconds
+        await self.resolve_aliases()  # New: support for aliases in config
+        await self.ensure_joined_rooms()  # New: ensure bot is in all configured rooms
         logging.info("Starting bot...")
         await self.client.sync_forever(timeout=30000)  # Sync every 30 seconds
 
@@ -203,7 +241,6 @@ class BibleBot:
             # Formatting KJV text to ensure one space between words
             text = " ".join(text.replace("\n", " ").split())
 
-            logging.info(f"Scripture search: {passage}")
             await self.send_reaction(room_id, event.event_id, "✅")
             message = f"{text} - {reference} 🕊️✝️"
             await self.client.room_send(
