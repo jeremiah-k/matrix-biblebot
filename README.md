@@ -3,7 +3,6 @@
 A simple Matrix bot that fetches Bible verses using APIs from [bible-api.com](https://bible-api.com) & [esv.org](https://api.esv.org/)
 
 [![PyPI version](https://badge.fury.io/py/matrix-biblebot.svg)](https://badge.fury.io/py/matrix-biblebot)
-[![Python Tests](https://github.com/jeremiah-k/matrix-biblebot/actions/workflows/python-tests.yml/badge.svg)](https://github.com/jeremiah-k/matrix-biblebot/actions/workflows/python-tests.yml)
 
 ## Supported Translations
 
