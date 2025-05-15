@@ -2,8 +2,6 @@
 
 A simple Matrix bot that fetches Bible verses using APIs from [bible-api.com](https://bible-api.com) & [esv.org](https://api.esv.org/)
 
-[![PyPI version](https://badge.fury.io/py/matrix-biblebot.svg)](https://badge.fury.io/py/matrix-biblebot)
-
 ## Supported Translations
 
 - King James Version (KJV)
@@ -12,16 +10,16 @@ A simple Matrix bot that fetches Bible verses using APIs from [bible-api.com](ht
 
 ## Installation
 
-### Install from PyPI (Recommended)
-
-```bash
-pip install matrix-biblebot
-```
-
-For an isolated installation, you can use [pipx](https://pypa.github.io/pipx/):
+### Install with [pipx](https://pypa.github.io/pipx/) (Recommended):
 
 ```bash
 pipx install matrix-biblebot
+```
+
+If you want, pip should work too:
+
+```bash
+pip install matrix-biblebot
 ```
 
 ### Install from Source
