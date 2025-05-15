@@ -62,17 +62,17 @@ The bot looks for a configuration file at `~/.config/matrix-biblebot/config.yaml
 biblebot --generate-config
 ```
 
-This will create a sample config file with the following structure:
+This will create both a sample config file and a sample .env file in the `~/.config/matrix-biblebot/` directory. The config file has the following structure:
 
 ```yaml
 matrix_homeserver: "https://your_homeserver_url_here"
 matrix_user: "@your_bot_username:your_homeserver_domain"
 matrix_room_ids:
   - "!your_room_id:your_homeserver_domain"
-  - "!your_other_room_id:your_homeserver_domain"
+  - "#room_alias:your_homeserver_domain" # Room aliases are supported
 ```
 
-Edit this file with your Matrix credentials and room IDs.
+Edit this file with your Matrix credentials and room IDs or aliases. The bot will automatically resolve room aliases to room IDs at startup.
 
 You can also specify a custom config location:
 
@@ -105,7 +105,7 @@ biblebot --config /path/to/config.yaml --log-level debug
 ### Command-line Options
 
 ```text
-usage: biblebot [-h] [--config CONFIG] [--log-level {error,warning,info,debug}] [--generate-config] [--version]
+usage: biblebot [-h] [--config CONFIG] [--log-level {error,warning,info,debug}] [--generate-config] [--install-service] [--version]
 
 BibleBot for Matrix
 
@@ -115,7 +115,25 @@ options:
   --log-level {error,warning,info,debug}
                         Set logging level (default: info)
   --generate-config     Generate a sample config file at the specified path
+  --install-service     Install or update the systemd user service
   --version             show program's version number and exit
+```
+
+### Running as a Service
+
+You can install BibleBot as a systemd user service to run automatically at startup:
+
+```bash
+biblebot --install-service
+```
+
+This will create a systemd user service file and guide you through enabling and starting the service. Once installed, you can manage the service with standard systemd commands:
+
+```bash
+systemctl --user start biblebot.service    # Start the service
+systemctl --user stop biblebot.service     # Stop the service
+systemctl --user restart biblebot.service  # Restart the service
+systemctl --user status biblebot.service   # Check service status
 ```
 
 ### Interacting with the Bot
