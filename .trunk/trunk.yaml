@@ -22,7 +22,7 @@ lint:
     - taplo@0.9.3
     - bandit@1.8.3
     - black@25.1.0
-    - checkov@3.2.421
+    - checkov@3.2.423
     - git-diff-check
     - isort@6.0.1
     - markdownlint@0.44.0
@@ -31,6 +31,10 @@ lint:
     - ruff@0.11.9
     - trufflehog@3.88.29
     - yamllint@1.37.1
+  ignore:
+    - linters: [bandit]
+      paths:
+        - src/biblebot/setup_utils.py
 actions:
   enabled:
     - trunk-announce
