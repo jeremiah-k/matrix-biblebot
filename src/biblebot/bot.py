@@ -14,31 +14,46 @@ from nio import (
     RoomResolveAliasError,
 )
 
+# Configure logging
+logger = logging.getLogger("BibleBot")
+
 
 # Load config
 def load_config(config_file):
-    with open(config_file, "r") as f:
-        return yaml.safe_load(f)
+    """Load configuration from YAML file."""
+    try:
+        with open(config_file, "r") as f:
+            config = yaml.safe_load(f)
+            logger.info(f"Loaded configuration from {config_file}")
+            return config
+    except Exception as e:
+        logger.error(f"Error loading config from {config_file}: {e}")
+        return None
 
 
 # Load environment variables
 def load_environment(config_path):
+    """
+    Load environment variables from .env file.
+    First tries to load from the same directory as the config file,
+    then falls back to the current directory.
+    """
     # Try to load .env from the same directory as the config file
     config_dir = os.path.dirname(config_path)
     env_path = os.path.join(config_dir, ".env")
 
     if os.path.exists(env_path):
         load_dotenv(env_path)
-        logging.info(f"Loaded environment variables from {env_path}")
+        logger.info(f"Loaded environment variables from {env_path}")
     else:
         # Fall back to default .env in current directory
         load_dotenv()
-        logging.info("Loaded environment variables from current directory")
+        logger.info("Loaded environment variables from current directory")
 
     # Get access token and API keys
     matrix_access_token = os.getenv("MATRIX_ACCESS_TOKEN")
     if not matrix_access_token:
-        logging.warning("MATRIX_ACCESS_TOKEN not found in environment variables")
+        logger.warning("MATRIX_ACCESS_TOKEN not found in environment variables")
 
     # Dictionary to hold API keys for different translations
     api_keys = {
@@ -46,11 +61,19 @@ def load_environment(config_path):
         # Add more translations here
     }
 
+    # Log which API keys were found (without showing the actual keys)
+    for translation, key in api_keys.items():
+        if key:
+            logger.info(f"Found API key for {translation.upper()} translation")
+        else:
+            logger.debug(f"No API key found for {translation.upper()} translation")
+
     return matrix_access_token, api_keys
 
 
+# Set up default logging configuration
 logging.basicConfig(
-    level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
+    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 )
 
 
@@ -118,7 +141,10 @@ class BibleBot:
         self.api_keys = {}  # Will be set in main()
 
     async def resolve_aliases(self):
-        # Allow room IDs or aliases in config; always resolve to room IDs for internal use
+        """
+        Allow room IDs or aliases in config; always resolve to room IDs for internal use.
+        This method updates the config["matrix_room_ids"] list with resolved room IDs.
+        """
         resolved_ids = []
         for entry in self.config["matrix_room_ids"]:
             if entry.startswith("#"):
@@ -126,42 +152,71 @@ class BibleBot:
                     resp = await self.client.room_resolve_alias(entry)
                     if hasattr(resp, "room_id"):
                         resolved_ids.append(resp.room_id)
-                        logging.info(
-                            f"Resolved alias {entry} to room ID {resp.room_id}"
-                        )
+                        logger.info(f"Resolved alias {entry} to room ID {resp.room_id}")
                 except RoomResolveAliasError:
-                    logging.warning(f"Could not resolve alias: {entry}")
+                    logger.warning(f"Could not resolve alias: {entry}")
             else:
                 resolved_ids.append(entry)
         self.config["matrix_room_ids"] = list(set(resolved_ids))
 
+    async def join_matrix_room(self, room_id_or_alias):
+        """
+        Join a Matrix room by its ID or alias.
+        This method handles both room IDs and aliases, resolving aliases to IDs as needed.
+        """
+        try:
+            if room_id_or_alias.startswith("#"):
+                # If it's a room alias, resolve it to a room ID
+                response = await self.client.room_resolve_alias(room_id_or_alias)
+                if not hasattr(response, "room_id"):
+                    logger.error(
+                        f"Failed to resolve room alias '{room_id_or_alias}': {response.message if hasattr(response, 'message') else 'Unknown error'}"
+                    )
+                    return
+                room_id = response.room_id
+            else:
+                room_id = room_id_or_alias
+
+            # Attempt to join the room if not already joined
+            if room_id not in self.client.rooms:
+                response = await self.client.join(room_id)
+                if response and hasattr(response, "room_id"):
+                    logger.info(f"Joined room '{room_id_or_alias}' successfully")
+                else:
+                    logger.error(
+                        f"Failed to join room '{room_id_or_alias}': {response.message if hasattr(response, 'message') else 'Unknown error'}"
+                    )
+            else:
+                logger.debug(f"Bot is already in room '{room_id_or_alias}'")
+        except Exception as e:
+            logger.error(f"Error joining room '{room_id_or_alias}': {e}")
+
     async def ensure_joined_rooms(self):
-        # On startup, join all rooms in config if not already joined
-        joined = await self.client.joined_rooms()
-        joined_rooms = set(joined.rooms if hasattr(joined, "rooms") else [])
+        """
+        On startup, join all rooms in config if not already joined.
+        Uses the join_matrix_room method for each room.
+        """
         for room_id in self.config["matrix_room_ids"]:
-            if room_id not in joined_rooms:
-                try:
-                    await self.client.join(room_id)
-                    logging.info(f"Joined room: {room_id}")
-                except Exception:
-                    logging.warning(f"Could not join room: {room_id}")
+            await self.join_matrix_room(room_id)
 
     async def start(self):
+        """Start the bot and begin processing events."""
         self.start_time = int(
             time.time() * 1000
         )  # Store bot start time in milliseconds
-        await self.resolve_aliases()  # New: support for aliases in config
-        await self.ensure_joined_rooms()  # New: ensure bot is in all configured rooms
-        logging.info("Starting bot...")
+        logger.info("Initializing BibleBot...")
+        await self.resolve_aliases()  # Support for aliases in config
+        await self.ensure_joined_rooms()  # Ensure bot is in all configured rooms
+        logger.info("Starting bot event processing loop...")
         await self.client.sync_forever(timeout=30000)  # Sync every 30 seconds
 
     async def on_invite(self, room: MatrixRoom, event: InviteEvent):
+        """Handle room invites for the bot."""
         if room.room_id in self.config["matrix_room_ids"]:
-            logging.info(f"Joined room: {room.room_id}")
-            await self.client.join(room.room_id)
+            logger.info(f"Received invite for configured room: {room.room_id}")
+            await self.join_matrix_room(room.room_id)
         else:
-            logging.warning(f"Unexpected room invite: {room.room_id}")
+            logger.warning(f"Received invite for non-configured room: {room.room_id}")
 
     async def send_reaction(self, room_id, event_id, emoji):
         content = {
@@ -178,12 +233,16 @@ class BibleBot:
         )
 
     async def on_room_message(self, room: MatrixRoom, event: RoomMessageText):
+        """
+        Process incoming room messages and look for Bible verse references.
+        Only processes messages in configured rooms, from other users, and after bot start time.
+        """
         if (
             room.room_id in self.config["matrix_room_ids"]
             and event.sender != self.client.user_id
             and event.server_timestamp > self.start_time
         ):
-            # Finally the right regex I think!!
+            # Bible verse reference pattern
             search_patterns = [
                 r"^([\w\s]+?)(\d+[:]\d+[-]?\d*)\s*(kjv|esv)?$",
             ]
@@ -202,8 +261,8 @@ class BibleBot:
                         translation = match.group(3).lower()
                     else:
                         translation = "kjv"  # Default to kjv if not specified
-                    logging.info(
-                        f"Extracted passage: {passage}, Extracted translation: {translation}"
+                    logger.info(
+                        f"Detected Bible reference: {passage} ({translation.upper()})"
                     )
                     break
 
@@ -213,10 +272,15 @@ class BibleBot:
                 )
 
     async def handle_scripture_command(self, room_id, passage, translation, event):
-        logging.info(f"Handling scripture command with translation: {translation}")
+        """
+        Handle a detected Bible verse reference by fetching and posting the text.
+        Sends a reaction to the original message and posts the verse text.
+        """
+        logger.info(f"Fetching scripture passage: {passage} ({translation.upper()})")
         text, reference = await get_bible_text(passage, translation, self.api_keys)
+
         if text is None or reference is None:
-            logging.warning(f"Failed to retrieve passage: {passage}")
+            logger.warning(f"Failed to retrieve passage: {passage}")
             await self.client.room_send(
                 room_id,
                 "m.room.message",
@@ -228,7 +292,7 @@ class BibleBot:
             return
 
         if text.startswith("Error:"):
-            logging.warning(f"Invalid passage format: {passage}")
+            logger.warning(f"Invalid passage format: {passage}")
             await self.client.room_send(
                 room_id,
                 "m.room.message",
@@ -238,11 +302,15 @@ class BibleBot:
                 },
             )
         else:
-            # Formatting KJV text to ensure one space between words
+            # Formatting text to ensure one space between words
             text = " ".join(text.replace("\n", " ").split())
 
+            # Send a checkmark reaction to the original message
             await self.send_reaction(room_id, event.event_id, "✅")
+
+            # Format and send the scripture message
             message = f"{text} - {reference} 🕊️✝️"
+            logger.info(f"Sending scripture: {reference}")
             await self.client.room_send(
                 room_id,
                 "m.room.message",
@@ -252,21 +320,31 @@ class BibleBot:
 
 # Run bot
 async def main(config_path="config.yaml"):
+    """
+    Main entry point for the bot.
+    Loads configuration, sets up the bot, and starts processing events.
+    """
     # Load config and environment variables
     config = load_config(config_path)
+    if not config:
+        logger.error(f"Failed to load configuration from {config_path}")
+        return
+
     matrix_access_token, api_keys = load_environment(config_path)
 
     if not matrix_access_token:
-        logging.error("MATRIX_ACCESS_TOKEN not found in environment variables")
-        logging.error("Please set MATRIX_ACCESS_TOKEN in your .env file")
+        logger.error("MATRIX_ACCESS_TOKEN not found in environment variables")
+        logger.error("Please set MATRIX_ACCESS_TOKEN in your .env file")
         return
 
     # Create bot instance
+    logger.info("Creating BibleBot instance")
     bot = BibleBot(config)
     bot.client.access_token = matrix_access_token
     bot.api_keys = api_keys
 
     # Register event handlers
+    logger.debug("Registering event handlers")
     bot.client.add_event_callback(bot.on_invite, InviteEvent)
     bot.client.add_event_callback(bot.on_room_message, RoomMessageText)
 
