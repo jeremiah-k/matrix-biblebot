@@ -10,56 +10,49 @@ A simple Matrix bot that fetches Bible verses using APIs from [bible-api.com](ht
 
 ## Installation
 
-### Install with [pipx](https://pypa.github.io/pipx/) (Recommended):
+### Option 1: Install with [pipx](https://pypa.github.io/pipx/) (Recommended)
 
 ```bash
 pipx install matrix-biblebot
 ```
 
-If you want, pip should work too:
+### Option 2: Install with pip
 
 ```bash
 pip install matrix-biblebot
 ```
 
-### Install from Source
-
-Clone the repository:
+### Option 3: Install from Source
 
 ```bash
 git clone https://github.com/jeremiah-k/matrix-biblebot.git
 cd matrix-biblebot
-pip install .
-```
-
-For development:
-
-```bash
-pip install -e .
+pip install .  # For normal use
+# OR
+pip install -e .  # For development
 ```
 
 ## Configuration
 
-### 1. Create a .env file
+### Generate Configuration Files
 
-Create a `.env` file in the same directory as your config file (e.g., `~/.config/matrix-biblebot/.env`) with your Matrix access token and any API keys:
-
-```env
-MATRIX_ACCESS_TOKEN="your_bots_matrix_access_token_here"
-ESV_API_KEY="your_esv_api_key_here"  # Optional
-```
-
-The bot will first look for a `.env` file in the same directory as your config file. If not found, it will fall back to looking in the current working directory.
-
-### 2. Create a config.yaml file
-
-The bot looks for a configuration file at `~/.config/matrix-biblebot/config.yaml` by default. You can generate a template configuration file with:
+The easiest way to get started is to generate the configuration files:
 
 ```bash
 biblebot --generate-config
 ```
 
-This will create both a sample config file and a sample .env file in the `~/.config/matrix-biblebot/` directory. The config file has the following structure:
+This will create both a sample config file (`config.yaml`) and a sample `.env` file in the `~/.config/matrix-biblebot/` directory.
+
+You can also specify a custom location:
+
+```bash
+biblebot --generate-config --config /path/to/your/config.yaml
+```
+
+### Edit Configuration Files
+
+1. **Edit the config.yaml file** with your Matrix homeserver and room information:
 
 ```yaml
 matrix_homeserver: "https://your_homeserver_url_here"
@@ -69,62 +62,67 @@ matrix_room_ids:
   - "#room_alias:your_homeserver_domain" # Room aliases are supported
 ```
 
-Edit this file with your Matrix credentials and room IDs or aliases. The bot will automatically resolve room aliases to room IDs at startup.
+2. **Edit the .env file** with your access token and optional API keys:
 
-You can also specify a custom config location:
+```env
+MATRIX_ACCESS_TOKEN="your_bots_matrix_access_token_here"
+ESV_API_KEY="your_esv_api_key_here"  # Optional
+```
+
+The bot will automatically resolve room aliases to room IDs at startup. You can use either room IDs (starting with !) or room aliases (starting with #) in your configuration.
+
+### Configuration File Locations
+
+By default, the bot looks for:
+
+- Configuration file: `~/.config/matrix-biblebot/config.yaml`
+- Environment file: `~/.config/matrix-biblebot/.env`
+
+You can specify a different config location when running the bot:
 
 ```bash
 biblebot --config /path/to/your/config.yaml
 ```
 
-Or generate a config at a custom location:
-
-```bash
-biblebot --generate-config --config /path/to/your/config.yaml
-```
-
 ## Usage
+
+### Quick Start
+
+1. Install the bot: `pipx install matrix-biblebot`
+2. Generate config files: `biblebot --generate-config`
+3. Edit the config files in `~/.config/matrix-biblebot/`
+4. Run the bot: `biblebot`
 
 ### Running the Bot
 
-After installation and configuration, you can run the bot with:
+After configuring the bot, you can run it in several ways:
 
 ```bash
+# Run with default configuration
 biblebot
+
+# Run with custom config location
+biblebot --config /path/to/config.yaml
+
+# Run with debug logging
+biblebot --log-level debug
 ```
 
-Or with custom options:
+### Running as a Service (Recommended)
 
-```bash
-biblebot --config /path/to/config.yaml --log-level debug
-```
-
-### Command-line Options
-
-```text
-usage: biblebot [-h] [--config CONFIG] [--log-level {error,warning,info,debug}] [--generate-config] [--install-service] [--version]
-
-BibleBot for Matrix
-
-options:
-  -h, --help            show this help message and exit
-  --config CONFIG       Path to config file (default: ~/.config/matrix-biblebot/config.yaml)
-  --log-level {error,warning,info,debug}
-                        Set logging level (default: info)
-  --generate-config     Generate a sample config file at the specified path
-  --install-service     Install or update the systemd user service
-  --version             show program's version number and exit
-```
-
-### Running as a Service
-
-You can install BibleBot as a systemd user service to run automatically at startup:
+For a persistent installation, set up BibleBot as a systemd user service:
 
 ```bash
 biblebot --install-service
 ```
 
-This will create a systemd user service file and guide you through enabling and starting the service. Once installed, you can manage the service with standard systemd commands:
+This will:
+
+1. Create a systemd user service file
+2. Guide you through enabling the service to start at boot
+3. Offer to start the service immediately
+
+Once installed, manage the service with standard systemd commands:
 
 ```bash
 systemctl --user start biblebot.service    # Start the service
@@ -133,13 +131,33 @@ systemctl --user restart biblebot.service  # Restart the service
 systemctl --user status biblebot.service   # Check service status
 ```
 
+### Command-line Options
+
+```text
+usage: biblebot [-h] [--config CONFIG] [--log-level {error,warning,info,debug}] [--generate-config] [--install-service] [--version]
+
+options:
+  -h, --help            show this help message and exit
+  --config CONFIG       Path to config file (default: ~/.config/matrix-biblebot/config.yaml)
+  --log-level {error,warning,info,debug}
+                        Set logging level (default: info)
+  --generate-config     Generate sample config files at the specified path
+  --install-service     Install or update the systemd user service
+  --version             show program's version number and exit
+```
+
 ### Interacting with the Bot
 
-Invite the bot to rooms that are listed in the config.yaml file. The bot will respond to messages that match Bible verse references:
+1. **Invite the bot** to the rooms listed in your `config.yaml` file
+2. **Send Bible verse references** in any of these formats:
 
-- Simple reference: `John 3:16`
-- Range reference: `1 Cor 15:1-4`
-- With translation: `John 3:16 esv`
+| Format           | Example         | Description                        |
+| ---------------- | --------------- | ---------------------------------- |
+| Simple reference | `John 3:16`     | Single verse (uses KJV by default) |
+| Range reference  | `1 Cor 15:1-4`  | Multiple verses                    |
+| With translation | `John 3:16 esv` | Specify translation (KJV or ESV)   |
+
+The bot will respond with the requested scripture passage and add a ✅ reaction to your message.
 
 ## Development
 
