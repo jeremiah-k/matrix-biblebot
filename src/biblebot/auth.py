@@ -1,0 +1,224 @@
+"""Authentication helpers for BibleBot.
+
+Provides interactive login to obtain and persist Matrix credentials in
+`~/.config/matrix-biblebot/credentials.json` and helpers to load them.
+Prefers restoring sessions from saved credentials; falls back to legacy
+token-based auth via environment variables for backward compatibility.
+"""
+
+from __future__ import annotations
+
+import asyncio
+import json
+import logging
+import os
+from dataclasses import dataclass
+from pathlib import Path
+from typing import Optional
+
+from nio import (
+    AsyncClient,
+    AsyncClientConfig,
+    DiscoveryInfoError,
+    DiscoveryInfoResponse,
+)
+
+logger = logging.getLogger("BibleBot")
+
+
+CONFIG_DIR = Path.home() / ".config" / "matrix-biblebot"
+CREDENTIALS_FILE = CONFIG_DIR / "credentials.json"
+E2EE_STORE_DIR = CONFIG_DIR / "e2ee-store"
+
+
+@dataclass
+class Credentials:
+    homeserver: str
+    user_id: str
+    access_token: str
+    device_id: Optional[str] = None
+
+    def to_dict(self) -> dict:
+        return {
+            "homeserver": self.homeserver,
+            "user_id": self.user_id,
+            "access_token": self.access_token,
+            "device_id": self.device_id,
+        }
+
+    @staticmethod
+    def from_dict(d: dict) -> "Credentials":
+        return Credentials(
+            homeserver=d.get("homeserver", ""),
+            user_id=d.get("user_id", ""),
+            access_token=d.get("access_token", ""),
+            device_id=d.get("device_id"),
+        )
+
+
+def get_config_dir() -> Path:
+    CONFIG_DIR.mkdir(parents=True, exist_ok=True)
+    return CONFIG_DIR
+
+
+def credentials_path() -> Path:
+    get_config_dir()
+    return CREDENTIALS_FILE
+
+
+def save_credentials(creds: Credentials) -> None:
+    path = credentials_path()
+    path.write_text(json.dumps(creds.to_dict(), indent=2))
+    logger.info(f"Saved credentials to {path}")
+
+
+def load_credentials() -> Optional[Credentials]:
+    path = credentials_path()
+    if not path.exists():
+        return None
+    try:
+        data = json.loads(path.read_text())
+        return Credentials.from_dict(data)
+    except Exception as e:
+        logger.error(f"Failed to read credentials from {path}: {e}")
+        return None
+
+
+def get_store_dir() -> Path:
+    E2EE_STORE_DIR.mkdir(parents=True, exist_ok=True)
+    return E2EE_STORE_DIR
+
+
+async def discover_homeserver(
+    client: AsyncClient, homeserver: str, timeout: float = 10.0
+) -> str:
+    try:
+        info = await asyncio.wait_for(client.discovery_info(), timeout=timeout)
+        if isinstance(info, DiscoveryInfoResponse) and getattr(
+            info, "homeserver_url", None
+        ):
+            return info.homeserver_url
+        if isinstance(info, DiscoveryInfoError):
+            logger.debug("DiscoveryInfoError, using provided homeserver URL")
+    except asyncio.TimeoutError:
+        logger.debug("Server discovery timed out; using provided homeserver URL")
+    except Exception as e:
+        logger.debug(f"Server discovery failed: {e}; using provided homeserver URL")
+    return homeserver
+
+
+async def interactive_login(
+    homeserver: Optional[str] = None,
+    username: Optional[str] = None,
+    password: Optional[str] = None,
+) -> bool:
+    """Interactive login that persists credentials.json for future runs.
+
+    Returns True on success, False otherwise.
+    """
+    import getpass
+
+    hs = homeserver or input("Matrix homeserver (e.g. https://matrix.org): ").strip()
+    if not (hs.startswith("http://") or hs.startswith("https://")):
+        hs = "https://" + hs
+
+    user = username or input("Matrix username (without @): ").strip()
+    if not user.startswith("@"):
+        from urllib.parse import urlparse
+
+        server = urlparse(hs).netloc
+        user = f"@{user}:{server}"
+
+    pwd = password or getpass.getpass("Password: ")
+
+    # Basic (non-E2EE) client config; keep simple for this bot
+    client = AsyncClient(hs, user, config=AsyncClientConfig(store_sync_tokens=True))
+
+    # Attempt server discovery to normalize homeserver URL
+    hs = await discover_homeserver(client, hs)
+    client.homeserver = hs
+
+    logger.info(f"Logging in to {hs} as {user}")
+    try:
+        resp = await client.login(password=pwd, device_name="biblebot")
+    except Exception as e:
+        logger.error(f"Login error: {e}")
+        await client.close()
+        return False
+
+    if hasattr(resp, "access_token"):
+        creds = Credentials(
+            homeserver=hs,
+            user_id=user,
+            access_token=resp.access_token,
+            device_id=resp.device_id,
+        )
+        save_credentials(creds)
+        await client.close()
+        return True
+    else:
+        logger.error(f"Login failed: {resp}")
+        await client.close()
+        return False
+
+
+async def interactive_logout() -> bool:
+    """Attempt to log out and remove local credentials and E2EE store.
+
+    Returns True on successful cleanup, regardless of remote logout outcome.
+    """
+    creds = load_credentials()
+    # Best-effort server logout if we have creds
+    if creds:
+        try:
+            client = AsyncClient(creds.homeserver, creds.user_id)
+            client.restore_login(
+                user_id=creds.user_id,
+                device_id=creds.device_id,
+                access_token=creds.access_token,
+            )
+            await client.logout()
+            await client.close()
+            logger.info("Logged out from Matrix server")
+        except Exception as e:
+            logger.warning(f"Remote logout failed or skipped: {e}")
+
+    # Remove credentials.json
+    try:
+        p = credentials_path()
+        if p.exists():
+            p.unlink()
+            logger.info(f"Removed {p}")
+    except Exception as e:
+        logger.warning(f"Failed to remove credentials.json: {e}")
+
+    # Remove E2EE store dir
+    try:
+        store = get_store_dir()
+        if store.exists():
+            for child in store.glob("**/*"):
+                try:
+                    child.unlink()
+                except IsADirectoryError:
+                    pass
+            # remove empty dirs
+            for root, dirs, files in os.walk(store, topdown=False):
+                for name in files:
+                    try:
+                        (Path(root) / name).unlink()
+                    except Exception:
+                        pass
+                for name in dirs:
+                    try:
+                        (Path(root) / name).rmdir()
+                    except Exception:
+                        pass
+            try:
+                store.rmdir()
+            except Exception:
+                pass
+            logger.info(f"Cleared E2EE store at {store}")
+    except Exception as e:
+        logger.warning(f"Failed cleaning E2EE store: {e}")
+
+    return True

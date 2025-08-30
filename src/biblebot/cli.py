@@ -10,6 +10,7 @@ import sys
 from pathlib import Path
 
 from . import __version__
+from .auth import interactive_login, interactive_logout, load_credentials
 from .bot import main as bot_main
 from .tools import get_sample_config_path, get_sample_env_path
 
@@ -71,12 +72,22 @@ def main():
     parser.add_argument(
         "--generate-config",
         action="store_true",
-        help="Generate a sample config file at the specified path",
+        help="Generate sample config files at the specified path",
     )
     parser.add_argument(
         "--install-service",
         action="store_true",
         help="Install or update the systemd user service",
+    )
+    parser.add_argument(
+        "--auth-login",
+        action="store_true",
+        help="Interactively log in to Matrix and save credentials.json",
+    )
+    parser.add_argument(
+        "--auth-logout",
+        action="store_true",
+        help="Log out and remove credentials.json and E2EE store",
     )
     parser.add_argument(
         "--version", action="version", version=f"BibleBot {__version__}"
@@ -102,13 +113,38 @@ def main():
         install_service()
         return
 
-    # Check if config file exists
-    if not os.path.exists(args.config):
-        logging.error(f"Config file not found: {args.config}")
-        logging.info(
-            "You can generate a sample config with: biblebot --generate-config"
-        )
-        sys.exit(1)
+    # Auth login if requested
+    if args.auth_login:
+        ok = asyncio.run(interactive_login())
+        sys.exit(0 if ok else 1)
+    if args.auth_logout:
+        ok = asyncio.run(interactive_logout())
+        sys.exit(0 if ok else 1)
+
+    # Check if config file exists (unless credentials exist for headless use)
+    creds = load_credentials()
+    if not os.path.exists(args.config) and not creds:
+        logging.warning(f"Config file not found: {args.config}")
+        # Offer to generate at this location
+        try:
+            resp = (
+                input(
+                    "No config found. Generate sample config and .env here now? [y/N]: "
+                )
+                .strip()
+                .lower()
+            )
+        except (EOFError, KeyboardInterrupt):
+            resp = "n"
+        if resp.startswith("y"):
+            created = generate_config(args.config)
+            if not created:
+                sys.exit(1)
+        else:
+            logging.info(
+                "Tip: run 'biblebot --generate-config' to create starter files."
+            )
+            sys.exit(1)
 
     # Run the bot
     try:

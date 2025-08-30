@@ -2,20 +2,37 @@ import logging
 import os
 import re
 import time
+from collections import OrderedDict
+from time import monotonic
 
 import aiohttp
 import yaml
 from dotenv import load_dotenv
 from nio import (
     AsyncClient,
+    AsyncClientConfig,
     InviteEvent,
     MatrixRoom,
+    MegolmEvent,
     RoomMessageText,
     RoomResolveAliasError,
 )
 
+from .auth import Credentials, get_store_dir, load_credentials
+
 # Configure logging
 logger = logging.getLogger("BibleBot")
+
+
+# Constants and defaults
+DEFAULT_TRANSLATION = "kjv"
+ESV_API_URL = "https://api.esv.org/v3/passage/text/"
+KJV_API_URL_TEMPLATE = "https://bible-api.com/{passage}?translation=kjv"
+REFERENCE_PATTERNS = [r"^([\w\s]+?)(\d+[:]\d+[-]?\d*)\s*(kjv|esv)?$"]
+SYNC_TIMEOUT_MS = 30000
+REACTION_OK = "✅"
+MESSAGE_SUFFIX = " 🕊️✝️"
+E2EE_KEY_SHARING_DELAY_SECONDS = 3
 
 
 # Load config
@@ -23,7 +40,21 @@ def load_config(config_file):
     """Load configuration from YAML file."""
     try:
         with open(config_file, "r") as f:
-            config = yaml.safe_load(f)
+            config = yaml.safe_load(f) or {}
+            # Basic validation
+            required = ["matrix_homeserver", "matrix_user", "matrix_room_ids"]
+            missing = [k for k in required if k not in config]
+            if missing:
+                logger.error(
+                    f"Missing required config keys: {', '.join(missing)} in {config_file}"
+                )
+                return None
+            if not isinstance(config.get("matrix_room_ids"), list):
+                logger.error("'matrix_room_ids' must be a list in config")
+                return None
+            # Normalize homeserver URL (avoid trailing slash)
+            if isinstance(config.get("matrix_homeserver"), str):
+                config["matrix_homeserver"] = config["matrix_homeserver"].rstrip("/")
             logger.info(f"Loaded configuration from {config_file}")
             return config
     except Exception as e:
@@ -46,14 +77,22 @@ def load_environment(config_path):
         load_dotenv(env_path)
         logger.info(f"Loaded environment variables from {env_path}")
     else:
-        # Fall back to default .env in current directory
-        load_dotenv()
-        logger.info("Loaded environment variables from current directory")
+        # Fall back to default .env in current directory if present
+        cwd_env = os.path.join(os.getcwd(), ".env")
+        if os.path.exists(cwd_env):
+            load_dotenv(cwd_env)
+            logger.info(f"Loaded environment variables from {cwd_env}")
+        else:
+            # Still call load_dotenv to pick up any env already set or parent dirs
+            load_dotenv()
+            logger.debug("No .env file found; relying on process environment")
 
     # Get access token and API keys
     matrix_access_token = os.getenv("MATRIX_ACCESS_TOKEN")
     if not matrix_access_token:
-        logger.warning("MATRIX_ACCESS_TOKEN not found in environment variables")
+        logger.warning(
+            "MATRIX_ACCESS_TOKEN not found in environment variables; bot cannot start"
+        )
 
     # Dictionary to hold API keys for different translations
     api_keys = {
@@ -71,43 +110,76 @@ def load_environment(config_path):
     return matrix_access_token, api_keys
 
 
-# Set up logging configuration
-logging.basicConfig(
-    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-)
-
-# Set nio logging to WARNING level to suppress verbose messages
+# Set nio logging to WARNING level to suppress verbose messages by default.
 logging.getLogger("nio").setLevel(logging.WARNING)
 
 
 # Handles headers & parameters for API requests
 async def make_api_request(url, headers=None, params=None):
-    async with aiohttp.ClientSession() as session:
-        async with session.get(url, headers=headers, params=params) as response:
-            if response.status == 200:
-                return await response.json()
-            return None
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.get(url, headers=headers, params=params) as response:
+                if response.status == 200:
+                    return await response.json()
+                logger.warning(f"HTTP {response.status} fetching {url}")
+                return None
+    except aiohttp.ClientError as e:
+        logger.error(f"Network error fetching {url}: {e}")
+        return None
 
 
 # Get Bible text
-async def get_bible_text(passage, translation="kjv", api_keys=None):
+_PASSAGE_CACHE_MAX = 128
+_PASSAGE_CACHE_TTL_SECS = 12 * 60 * 60  # 12 hours
+_passage_cache: "OrderedDict[tuple[str, str], tuple[float, tuple[str, str]]]" = (
+    OrderedDict()
+)
+
+
+def _cache_get(passage: str, translation: str):
+    key = (passage.lower(), translation.lower())
+    now = monotonic()
+    if key in _passage_cache:
+        ts, value = _passage_cache.pop(key)
+        # Evict if stale
+        if now - ts <= _PASSAGE_CACHE_TTL_SECS:
+            _passage_cache[key] = (ts, value)  # reinsert to mark recent
+            return value
+    return None
+
+
+def _cache_set(passage: str, translation: str, value: tuple[str, str]):
+    key = (passage.lower(), translation.lower())
+    _passage_cache[key] = (monotonic(), value)
+    # enforce LRU max size
+    while len(_passage_cache) > _PASSAGE_CACHE_MAX:
+        _passage_cache.popitem(last=False)
+
+
+async def get_bible_text(passage, translation=DEFAULT_TRANSLATION, api_keys=None):
+    # Check cache first
+    cached = _cache_get(passage, translation)
+    if cached is not None:
+        return cached
     api_key = None
     if api_keys:
         api_key = api_keys.get(translation)
 
-    text, reference = None, None
+    _text, _reference = None, None
     if translation == "esv":
-        return await get_esv_text(passage, api_key)
+        result = await get_esv_text(passage, api_key)
     else:  # Assuming KJV as the default
-        return await get_kjv_text(passage)
-    return text, reference
+        result = await get_kjv_text(passage)
+    if result is not None:
+        _cache_set(passage, translation, result)
+    return result
 
 
 async def get_esv_text(passage, api_key):
     if api_key is None:
         logger.warning("ESV API key not found")
         return None
-    API_URL = "https://api.esv.org/v3/passage/text/"
+    API_URL = ESV_API_URL
     params = {
         "q": passage,
         "include-headings": "false",
@@ -126,7 +198,7 @@ async def get_esv_text(passage, api_key):
 
 
 async def get_kjv_text(passage):
-    API_URL = f"https://bible-api.com/{passage}?translation=kjv"
+    API_URL = KJV_API_URL_TEMPLATE.format(passage=passage)
     response = await make_api_request(API_URL)
     passages = [response["text"]] if response else None
     reference = response["reference"] if response else None
@@ -211,7 +283,22 @@ class BibleBot:
         await self.resolve_aliases()  # Support for aliases in config
         await self.ensure_joined_rooms()  # Ensure bot is in all configured rooms
         logger.info("Starting bot event processing loop...")
-        await self.client.sync_forever(timeout=30000)  # Sync every 30 seconds
+        await self.client.sync_forever(timeout=SYNC_TIMEOUT_MS)  # Sync every 30 seconds
+
+    async def on_decryption_failure(self, room: MatrixRoom, event: MegolmEvent) -> None:
+        """When decryption fails, request the keys and log."""
+        logger.error(
+            f"Failed to decrypt event '{getattr(event, 'event_id', '?')}' in room '{room.room_id}'. Requesting keys..."
+        )
+        try:
+            event.room_id = room.room_id
+            request = event.as_key_request(
+                self.client.user_id, getattr(self.client, "device_id", None)
+            )
+            await self.client.to_device(request)
+            logger.info("Requested keys for undecryptable event")
+        except Exception as e:
+            logger.warning(f"Key request failed: {e}")
 
     async def on_invite(self, room: MatrixRoom, event: InviteEvent):
         """Handle room invites for the bot."""
@@ -245,13 +332,11 @@ class BibleBot:
             and event.sender != self.client.user_id
             and event.server_timestamp > self.start_time
         ):
-            # Bible verse reference pattern
-            search_patterns = [
-                r"^([\w\s]+?)(\d+[:]\d+[-]?\d*)\s*(kjv|esv)?$",
-            ]
+            # Bible verse reference pattern(s)
+            search_patterns = REFERENCE_PATTERNS
 
             passage = None
-            translation = "kjv"  # Default translation is KJV
+            translation = DEFAULT_TRANSLATION  # Default translation is KJV
             for pattern in search_patterns:
                 match = re.match(pattern, event.body, re.IGNORECASE)
                 if match:
@@ -309,10 +394,10 @@ class BibleBot:
             text = " ".join(text.replace("\n", " ").split())
 
             # Send a checkmark reaction to the original message
-            await self.send_reaction(room_id, event.event_id, "✅")
+            await self.send_reaction(room_id, event.event_id, REACTION_OK)
 
             # Format and send the scripture message
-            message = f"{text} - {reference} 🕊️✝️"
+            message = f"{text} - {reference}{MESSAGE_SUFFIX}"
             logger.info(f"Sending scripture: {reference}")
             await self.client.room_send(
                 room_id,
@@ -334,22 +419,73 @@ async def main(config_path="config.yaml"):
         return
 
     matrix_access_token, api_keys = load_environment(config_path)
+    creds = load_credentials()
 
-    if not matrix_access_token:
-        logger.error("MATRIX_ACCESS_TOKEN not found in environment variables")
-        logger.error("Please set MATRIX_ACCESS_TOKEN in your .env file")
-        return
+    # Determine E2EE configuration from config
+    matrix_section = (
+        config.get("matrix", {}) if isinstance(config.get("matrix"), dict) else {}
+    )
+    e2ee_cfg = matrix_section.get("e2ee") or matrix_section.get("encryption") or {}
+    e2ee_enabled = bool(e2ee_cfg.get("enabled", False))
 
-    # Create bot instance
+    # Create AsyncClient with optional E2EE store
+    client_config = AsyncClientConfig(
+        store_sync_tokens=True, encryption_enabled=e2ee_enabled
+    )
+
     logger.info("Creating BibleBot instance")
     bot = BibleBot(config)
-    bot.client.access_token = matrix_access_token
+    bot.client = AsyncClient(
+        config["matrix_homeserver"],
+        config["matrix_user"],
+        store_path=str(get_store_dir()) if e2ee_enabled else None,
+        config=client_config,
+    )
     bot.api_keys = api_keys
+
+    if creds:
+        logger.info("Using saved credentials.json for Matrix session")
+        bot.client.restore_login(
+            user_id=creds.user_id,
+            device_id=creds.device_id,
+            access_token=creds.access_token,
+        )
+    else:
+        if not matrix_access_token:
+            logger.error("No credentials.json and no MATRIX_ACCESS_TOKEN found.")
+            logger.error(
+                "Run 'biblebot --auth-login' or set MATRIX_ACCESS_TOKEN in .env"
+            )
+            return
+        bot.client.access_token = matrix_access_token
+        try:
+            bot.client.user_id = config.get("matrix_user", bot.client.user_id)
+        except Exception:
+            pass
+
+    # If E2EE is enabled, ensure keys are uploaded
+    if e2ee_enabled:
+        try:
+            if bot.client.should_upload_keys:
+                logger.info("Uploading encryption keys...")
+                await bot.client.keys_upload()
+                logger.info("Encryption keys uploaded")
+        except Exception as e:
+            logger.warning(f"Failed to upload E2EE keys: {e}")
 
     # Register event handlers
     logger.debug("Registering event handlers")
     bot.client.add_event_callback(bot.on_invite, InviteEvent)
     bot.client.add_event_callback(bot.on_room_message, RoomMessageText)
+    # Register decryption failure handler for encrypted rooms
+    try:
+        bot.client.add_event_callback(bot.on_decryption_failure, MegolmEvent)
+    except Exception:
+        pass
 
     # Start the bot
     await bot.start()
+
+
+async def on_decryption_failure(room: MatrixRoom, event: MegolmEvent) -> None:
+    pass  # replaced by BibleBot.on_decryption_failure bound method

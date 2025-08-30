@@ -16,10 +16,18 @@ A simple Matrix bot that fetches Bible verses using APIs from [bible-api.com](ht
 pipx install matrix-biblebot
 ```
 
+To enable Matrix end-to-end encryption (E2EE):
+
+```bash
+pipx install 'matrix-biblebot[e2e]'
+```
+
 ### Option 2: Install with pip
 
 ```bash
 pip install matrix-biblebot
+# or with E2EE support
+pip install 'matrix-biblebot[e2e]'
 ```
 
 ### Option 3: Install from Source
@@ -43,11 +51,26 @@ biblebot --generate-config
 ```
 
 This will create both a sample config file (`config.yaml`) and a sample `.env` file in the `~/.config/matrix-biblebot/` directory.
+If a config file is missing when you run `biblebot`, the CLI will offer to generate these starter files for you.
 
 You can also specify a custom location:
 
 ```bash
 biblebot --generate-config --config /path/to/your/config.yaml
+```
+
+### Authentication (Recommended)
+
+Use the integrated auth flow to create credentials for the bot:
+
+```bash
+biblebot --auth-login
+```
+
+This saves `credentials.json` under `~/.config/matrix-biblebot/` and makes future runs passwordless. To delete credentials and the E2EE store (if any):
+
+```bash
+biblebot --auth-logout
 ```
 
 ### Edit Configuration Files
@@ -106,6 +129,10 @@ biblebot --config /path/to/config.yaml
 
 # Run with debug logging
 biblebot --log-level debug
+
+### Encrypted Rooms (Optional)
+
+To use encrypted Matrix rooms, install with the `e2e` extra and enable E2EE in config. See docs/E2EE.md for a full guide.
 ```
 
 ### Running as a Service (Recommended)

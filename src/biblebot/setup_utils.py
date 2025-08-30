@@ -214,10 +214,15 @@ def is_service_active():
 
 
 def create_service_file():
-    """Create the systemd user service file."""
+    """Create the systemd user service file.
+
+    Detects the correct executable to use. If the `biblebot` binary is not found,
+    falls back to invoking the module via the current Python interpreter.
+    Also injects the resolved ExecStart into the service template.
+    """
     executable_path = get_executable_path()
     if not executable_path:
-        print("Error: Could not find biblebot executable in PATH")
+        print("Error: Could not determine a command to start biblebot")
         return False
 
     # Create service directory if it doesn't exist
@@ -234,9 +239,25 @@ def create_service_file():
         print("Error: Could not find service template file")
         return False
 
+    # Compute ExecStart command
+    # If get_executable_path returned the python interpreter, use module form
+    exec_cmd = executable_path
+    if exec_cmd == sys.executable:
+        exec_cmd = f"{sys.executable} -m biblebot"
+
+    # Replace ExecStart line to use discovered command and default config path
+    default_config = "%h/.config/matrix-biblebot/config.yaml"
+    new_lines = []
+    for line in service_template.splitlines():
+        if line.strip().startswith("ExecStart="):
+            new_lines.append(f"ExecStart={exec_cmd} --config {default_config}")
+        else:
+            new_lines.append(line)
+    service_content = "\n".join(new_lines) + "\n"
+
     # Write service file
     try:
-        get_user_service_path().write_text(service_template)
+        get_user_service_path().write_text(service_content)
         print(f"Service file created at {get_user_service_path()}")
         return True
     except (IOError, OSError) as e:
@@ -278,14 +299,18 @@ def service_needs_update():
     # Get the executable path
     executable_path = get_executable_path()
     if not executable_path:
-        return False, "Could not find biblebot executable"
+        return False, "Could not determine biblebot start command"
 
-    # Check if the ExecStart line in the existing service file contains the correct executable
-    if executable_path not in existing_service:
-        return (
-            True,
-            f"Service file does not use the current executable: {executable_path}",
-        )
+    # Determine acceptable ExecStart patterns
+    acceptable_snippets = []
+    if executable_path == sys.executable:
+        acceptable_snippets.append(f"{sys.executable} -m biblebot")
+    else:
+        acceptable_snippets.append(executable_path)
+
+    # Check if the ExecStart uses a valid command
+    if not any(snippet in existing_service for snippet in acceptable_snippets):
+        return True, "Service file ExecStart does not match the current installation"
 
     # Check if the PATH environment includes pipx paths
     if "%h/.local/pipx/venvs/matrix-biblebot/bin" not in existing_service:
