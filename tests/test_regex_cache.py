@@ -48,8 +48,8 @@ def test_normalize_book_name(abbreviation, full_name):
 
 def test_passage_cache(monkeypatch):
     # Clear cache before test to prevent cross-test contamination
-    if hasattr(botmod, "request_cache"):
-        botmod.request_cache.clear()
+    if hasattr(botmod, "_passage_cache"):
+        botmod._passage_cache.clear()
 
     calls = {"n": 0}
 
@@ -73,5 +73,5 @@ def test_passage_cache(monkeypatch):
     assert text1 == text2 and ref1 == ref2
 
     # Clear cache after test
-    if hasattr(botmod, "request_cache"):
-        botmod.request_cache.clear()
+    if hasattr(botmod, "_passage_cache"):
+        botmod._passage_cache.clear()

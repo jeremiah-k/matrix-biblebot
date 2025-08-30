@@ -197,10 +197,10 @@ Legacy flags (deprecated):
             generate_config(args.config)
             return
         elif args.config_action == "validate":
-            from .bot import validate_config
+            from .bot import load_config
 
             try:
-                config = validate_config(args.config)
+                config = load_config(args.config)
                 print("✓ Configuration file is valid")
                 print(f"  Config file: {args.config}")
                 print(f"  Matrix rooms: {len(config.get('matrix_room_ids', []))}")

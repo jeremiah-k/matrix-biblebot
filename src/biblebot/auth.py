@@ -262,6 +262,8 @@ async def interactive_login(
         await client.close()
         return False
     except Exception as e:
+        # More specific exception handling would be better, but keeping broad catch
+        # for now to handle various nio exceptions and network issues
         logger.error(f"Login error: {e}")
         await client.close()
         return False
