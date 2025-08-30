@@ -1,7 +1,7 @@
 import asyncio
-import types
 
 import pytest
+
 from biblebot import bot as botmod
 
 
@@ -47,6 +47,10 @@ def test_normalize_book_name(abbreviation, full_name):
 
 
 def test_passage_cache(monkeypatch):
+    # Clear cache before test to prevent cross-test contamination
+    if hasattr(botmod, "request_cache"):
+        botmod.request_cache.clear()
+
     calls = {"n": 0}
 
     async def fake_req(url, headers=None, params=None):
@@ -67,3 +71,7 @@ def test_passage_cache(monkeypatch):
 
     assert calls["n"] == 1
     assert text1 == text2 and ref1 == ref2
+
+    # Clear cache after test
+    if hasattr(botmod, "request_cache"):
+        botmod.request_cache.clear()

@@ -58,6 +58,10 @@ class Credentials:
 
 def get_config_dir() -> Path:
     CONFIG_DIR.mkdir(parents=True, exist_ok=True)
+    try:
+        os.chmod(CONFIG_DIR, 0o700)
+    except Exception:
+        logger.debug("Could not set config dir perms to 0700")
     return CONFIG_DIR
 
 
@@ -79,7 +83,7 @@ def load_credentials() -> Optional[Credentials]:
     try:
         data = json.loads(path.read_text())
         return Credentials.from_dict(data)
-    except Exception as e:
+    except (json.JSONDecodeError, FileNotFoundError, PermissionError) as e:
         logger.error(f"Failed to read credentials from {path}: {e}")
         return None
 
@@ -87,6 +91,75 @@ def load_credentials() -> Optional[Credentials]:
 def get_store_dir() -> Path:
     E2EE_STORE_DIR.mkdir(parents=True, exist_ok=True)
     return E2EE_STORE_DIR
+
+
+def check_e2ee_status() -> dict:
+    """Check E2EE availability and status."""
+    status = {
+        "available": False,
+        "dependencies_installed": False,
+        "store_exists": False,
+        "platform_supported": True,
+        "error": None,
+    }
+
+    # Check platform support
+    import platform
+
+    if platform.system() == "Windows":
+        status["platform_supported"] = False
+        status["error"] = (
+            "E2EE is not supported on Windows due to python-olm limitations"
+        )
+        return status
+
+    # Check dependencies
+    try:
+        import importlib.util
+
+        olm_spec = importlib.util.find_spec("olm")
+        nio_spec = importlib.util.find_spec("nio")
+        if olm_spec is not None and nio_spec is not None:
+            status["dependencies_installed"] = True
+        else:
+            raise ImportError("E2EE dependencies not found")
+    except ImportError as e:
+        status["error"] = f"E2EE dependencies not installed: {e}"
+        return status
+
+    # Check store directory
+    store_dir = get_store_dir()
+    status["store_exists"] = store_dir.exists()
+
+    # Check credentials for E2EE info
+    creds = load_credentials()
+    if creds and hasattr(creds, "e2ee_enabled"):
+        status["available"] = creds.e2ee_enabled
+    else:
+        status["available"] = status["dependencies_installed"]
+
+    return status
+
+
+def print_e2ee_status():
+    """Print E2EE status information."""
+    status = check_e2ee_status()
+
+    print("\n🔐 E2EE (End-to-End Encryption) Status:")
+    print(f"  Platform Support: {'✓' if status['platform_supported'] else '✗'}")
+    print(f"  Dependencies: {'✓' if status['dependencies_installed'] else '✗'}")
+    print(f"  Store Directory: {'✓' if status['store_exists'] else '✗'}")
+    print(f"  Overall Status: {'✓ Enabled' if status['available'] else '✗ Disabled'}")
+
+    if status["error"]:
+        print(f"  Error: {status['error']}")
+
+    if not status["available"] and status["platform_supported"]:
+        print("\n  To enable E2EE:")
+        print("    pip install -r requirements-e2e.txt")
+        print("    biblebot auth login  # Re-login to enable E2EE")
+
+    print()
 
 
 async def discover_homeserver(
@@ -150,14 +223,29 @@ async def interactive_login(
 
     # E2EE-aware client config
     try:
-        import olm  # noqa: F401
-        e2ee_available = True
-        logger.debug("E2EE dependencies found, enabling encryption for login.")
+        import importlib.util
+
+        olm_spec = importlib.util.find_spec("olm")
+        e2ee_available = olm_spec is not None
+        if e2ee_available:
+            logger.debug("E2EE dependencies found, enabling encryption for login.")
+        else:
+            logger.debug(
+                "E2EE dependencies not found, proceeding without encryption for login."
+            )
     except ImportError:
         e2ee_available = False
-        logger.debug("E2EE dependencies not found, proceeding without encryption for login.")
+        logger.debug(
+            "E2EE dependencies not found, proceeding without encryption for login."
+        )
 
-    client = AsyncClient(hs, user, config=AsyncClientConfig(store_sync_tokens=True, encryption_enabled=e2ee_available))
+    client = AsyncClient(
+        hs,
+        user,
+        config=AsyncClientConfig(
+            store_sync_tokens=True, encryption_enabled=e2ee_available
+        ),
+    )
 
     # Attempt server discovery to normalize homeserver URL
     hs = await discover_homeserver(client, hs)
@@ -165,7 +253,14 @@ async def interactive_login(
 
     logger.info(f"Logging in to {hs} as {user}")
     try:
-        resp = await client.login(password=pwd, device_name="biblebot")
+        resp = await asyncio.wait_for(
+            client.login(password=pwd, device_name="biblebot"),
+            timeout=30,
+        )
+    except asyncio.TimeoutError:
+        logger.error("Login timed out after 30 seconds")
+        await client.close()
+        return False
     except Exception as e:
         logger.error(f"Login error: {e}")
         await client.close()
@@ -220,29 +315,11 @@ async def interactive_logout() -> bool:
 
     # Remove E2EE store dir
     try:
+        import shutil
+
         store = get_store_dir()
         if store.exists():
-            for child in store.glob("**/*"):
-                try:
-                    child.unlink()
-                except IsADirectoryError:
-                    pass
-            # remove empty dirs
-            for root, dirs, files in os.walk(store, topdown=False):
-                for name in files:
-                    try:
-                        (Path(root) / name).unlink()
-                    except Exception:
-                        pass
-                for name in dirs:
-                    try:
-                        (Path(root) / name).rmdir()
-                    except Exception:
-                        pass
-            try:
-                store.rmdir()
-            except Exception:
-                pass
+            shutil.rmtree(store, ignore_errors=True)
             logger.info(f"Cleared E2EE store at {store}")
     except Exception as e:
         logger.warning(f"Failed cleaning E2EE store: {e}")

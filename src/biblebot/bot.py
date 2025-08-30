@@ -1,3 +1,4 @@
+import asyncio
 import html
 import logging
 import os
@@ -19,7 +20,7 @@ from nio import (
     RoomResolveAliasError,
 )
 
-from .auth import Credentials, get_store_dir, load_credentials
+from .auth import get_store_dir, load_credentials
 
 # Configure logging
 logger = logging.getLogger("BibleBot")
@@ -37,76 +38,161 @@ E2EE_KEY_SHARING_DELAY_SECONDS = 3
 
 
 BOOK_ABBREVIATIONS = {
-    "gen": "Genesis", "ge": "Genesis", "gn": "Genesis",
-    "exo": "Exodus", "ex": "Exodus",
-    "lev": "Leviticus", "le": "Leviticus", "lv": "Leviticus",
-    "num": "Numbers", "nu": "Numbers", "nm": "Numbers",
-    "deut": "Deuteronomy", "de": "Deuteronomy", "dt": "Deuteronomy",
-    "josh": "Joshua", "jos": "Joshua",
-    "judg": "Judges", "jdg": "Judges", "jg": "Judges",
-    "ruth": "Ruth", "ru": "Ruth",
-    "1 sam": "1 Samuel", "1sa": "1 Samuel", "1s": "1 Samuel",
-    "2 sam": "2 Samuel", "2sa": "2 Samuel", "2s": "2 Samuel",
-    "1 kings": "1 Kings", "1ki": "1 Kings", "1k": "1 Kings",
-    "2 kings": "2 Kings", "2ki": "2 Kings", "2k": "2 Kings",
-    "1 chron": "1 Chronicles", "1ch": "1 Chronicles",
-    "2 chron": "2 Chronicles", "2ch": "2 Chronicles",
-    "ezra": "Ezra", "ezr": "Ezra",
-    "neh": "Nehemiah", "ne": "Nehemiah",
-    "est": "Esther", "es": "Esther",
-    "job": "Job", "jb": "Job",
-    "psalm": "Psalms", "psa": "Psalms", "ps": "Psalms",
-    "prov": "Proverbs", "pro": "Proverbs", "pr": "Proverbs",
-    "eccles": "Ecclesiastes", "ecc": "Ecclesiastes", "ec": "Ecclesiastes",
-    "song": "Song of Solomon", "sos": "Song of Solomon", "so": "Song of Solomon",
-    "isa": "Isaiah", "is": "Isaiah",
-    "jer": "Jeremiah", "je": "Jeremiah",
-    "lam": "Lamentations", "la": "Lamentations",
-    "ezek": "Ezekiel", "eze": "Ezekiel", "ez": "Ezekiel",
-    "dan": "Daniel", "da": "Daniel", "dn": "Daniel",
-    "hos": "Hosea", "ho": "Hosea",
-    "joel": "Joel", "joe": "Joel", "jl": "Joel",
-    "amos": "Amos", "am": "Amos",
-
-    "obad": "Obadiah", "ob": "Obadiah",
-    "jonah": "Jonah", "jon": "Jonah",
-    "mic": "Micah", "mi": "Micah",
-    "nah": "Nahum", "na": "Nahum",
-    "hab": "Habakkuk", "ha": "Habakkuk",
-    "zeph": "Zephaniah", "zep": "Zephaniah", "zp": "Zephaniah",
-    "hag": "Haggai", "hg": "Haggai",
-    "zech": "Zechariah", "zec": "Zechariah", "zc": "Zechariah",
-    "mal": "Malachi", "ml": "Malachi",
-
-    "matt": "Matthew", "mt": "Matthew",
-    "mark": "Mark", "mar": "Mark", "mk": "Mark",
-    "luke": "Luke", "lk": "Luke",
-    "john": "John", "jn": "John",
-    "acts": "Acts", "ac": "Acts",
-
-    "rom": "Romans", "ro": "Romans",
-    "1 cor": "1 Corinthians", "1co": "1 Corinthians",
-    "2 cor": "2 Corinthians", "2co": "2 Corinthians",
-    "gal": "Galatians", "ga": "Galatians",
-    "eph": "Ephesians", "ep": "Ephesians",
-    "phil": "Philippians", "phi": "Philippians", "php": "Philippians",
-    "col": "Colossians", "co": "Colossians",
-    "1 thess": "1 Thessalonians", "1th": "1 Thessalonians",
-    "2 thess": "2 Thessalonians", "2th": "2 Thessalonians",
-    "1 tim": "1 Timothy", "1ti": "1 Timothy",
-    "2 tim": "2 Timothy", "2ti": "2 Timothy",
-    "titus": "Titus", "ti": "Titus",
-    "philem": "Philemon", "phm": "Philemon", "pm": "Philemon",
-
-    "heb": "Hebrews", "he": "Hebrews",
-    "james": "James", "jm": "James",
-    "1 pet": "1 Peter", "1pe": "1 Peter", "1pt": "1 Peter",
-    "2 pet": "2 Peter", "2pe": "2 Peter", "2pt": "2 Peter",
-    "1 john": "1 John", "1jn": "1 John",
-    "2 john": "2 John", "2jn": "2 John",
-    "3 john": "3 John", "3jn": "3 John",
-    "jude": "Jude", "jd": "Jude",
-    "rev": "Revelation", "re": "Revelation",
+    "gen": "Genesis",
+    "ge": "Genesis",
+    "gn": "Genesis",
+    "exo": "Exodus",
+    "ex": "Exodus",
+    "lev": "Leviticus",
+    "le": "Leviticus",
+    "lv": "Leviticus",
+    "num": "Numbers",
+    "nu": "Numbers",
+    "nm": "Numbers",
+    "deut": "Deuteronomy",
+    "de": "Deuteronomy",
+    "dt": "Deuteronomy",
+    "josh": "Joshua",
+    "jos": "Joshua",
+    "judg": "Judges",
+    "jdg": "Judges",
+    "jg": "Judges",
+    "ruth": "Ruth",
+    "ru": "Ruth",
+    "1 sam": "1 Samuel",
+    "1sa": "1 Samuel",
+    "1s": "1 Samuel",
+    "2 sam": "2 Samuel",
+    "2sa": "2 Samuel",
+    "2s": "2 Samuel",
+    "1 kings": "1 Kings",
+    "1ki": "1 Kings",
+    "1k": "1 Kings",
+    "2 kings": "2 Kings",
+    "2ki": "2 Kings",
+    "2k": "2 Kings",
+    "1 chron": "1 Chronicles",
+    "1ch": "1 Chronicles",
+    "2 chron": "2 Chronicles",
+    "2ch": "2 Chronicles",
+    "ezra": "Ezra",
+    "ezr": "Ezra",
+    "neh": "Nehemiah",
+    "ne": "Nehemiah",
+    "est": "Esther",
+    "es": "Esther",
+    "job": "Job",
+    "jb": "Job",
+    "psalm": "Psalms",
+    "psa": "Psalms",
+    "ps": "Psalms",
+    "prov": "Proverbs",
+    "pro": "Proverbs",
+    "pr": "Proverbs",
+    "eccles": "Ecclesiastes",
+    "ecc": "Ecclesiastes",
+    "ec": "Ecclesiastes",
+    "song": "Song of Solomon",
+    "sos": "Song of Solomon",
+    "so": "Song of Solomon",
+    "isa": "Isaiah",
+    "is": "Isaiah",
+    "jer": "Jeremiah",
+    "je": "Jeremiah",
+    "lam": "Lamentations",
+    "la": "Lamentations",
+    "ezek": "Ezekiel",
+    "eze": "Ezekiel",
+    "ez": "Ezekiel",
+    "dan": "Daniel",
+    "da": "Daniel",
+    "dn": "Daniel",
+    "hos": "Hosea",
+    "ho": "Hosea",
+    "joel": "Joel",
+    "joe": "Joel",
+    "jl": "Joel",
+    "amos": "Amos",
+    "am": "Amos",
+    "obad": "Obadiah",
+    "ob": "Obadiah",
+    "jonah": "Jonah",
+    "jon": "Jonah",
+    "mic": "Micah",
+    "mi": "Micah",
+    "nah": "Nahum",
+    "na": "Nahum",
+    "hab": "Habakkuk",
+    "ha": "Habakkuk",
+    "zeph": "Zephaniah",
+    "zep": "Zephaniah",
+    "zp": "Zephaniah",
+    "hag": "Haggai",
+    "hg": "Haggai",
+    "zech": "Zechariah",
+    "zec": "Zechariah",
+    "zc": "Zechariah",
+    "mal": "Malachi",
+    "ml": "Malachi",
+    "matt": "Matthew",
+    "mt": "Matthew",
+    "mark": "Mark",
+    "mar": "Mark",
+    "mk": "Mark",
+    "luke": "Luke",
+    "lk": "Luke",
+    "john": "John",
+    "jn": "John",
+    "acts": "Acts",
+    "ac": "Acts",
+    "rom": "Romans",
+    "ro": "Romans",
+    "1 cor": "1 Corinthians",
+    "1co": "1 Corinthians",
+    "2 cor": "2 Corinthians",
+    "2co": "2 Corinthians",
+    "gal": "Galatians",
+    "ga": "Galatians",
+    "eph": "Ephesians",
+    "ep": "Ephesians",
+    "phil": "Philippians",
+    "phi": "Philippians",
+    "php": "Philippians",
+    "col": "Colossians",
+    "co": "Colossians",
+    "1 thess": "1 Thessalonians",
+    "1th": "1 Thessalonians",
+    "2 thess": "2 Thessalonians",
+    "2th": "2 Thessalonians",
+    "1 tim": "1 Timothy",
+    "1ti": "1 Timothy",
+    "2 tim": "2 Timothy",
+    "2ti": "2 Timothy",
+    "titus": "Titus",
+    "ti": "Titus",
+    "philem": "Philemon",
+    "phm": "Philemon",
+    "pm": "Philemon",
+    "heb": "Hebrews",
+    "he": "Hebrews",
+    "james": "James",
+    "jm": "James",
+    "1 pet": "1 Peter",
+    "1pe": "1 Peter",
+    "1pt": "1 Peter",
+    "2 pet": "2 Peter",
+    "2pe": "2 Peter",
+    "2pt": "2 Peter",
+    "1 john": "1 John",
+    "1jn": "1 John",
+    "2 john": "2 John",
+    "2jn": "2 John",
+    "3 john": "3 John",
+    "3jn": "3 John",
+    "jude": "Jude",
+    "jd": "Jude",
+    "rev": "Revelation",
+    "re": "Revelation",
 }
 
 
@@ -172,8 +258,8 @@ def load_environment(config_path):
     # Get access token and API keys
     matrix_access_token = os.getenv("MATRIX_ACCESS_TOKEN")
     if not matrix_access_token:
-        logger.warning(
-            "MATRIX_ACCESS_TOKEN not found in environment variables; bot cannot start"
+        logger.info(
+            "MATRIX_ACCESS_TOKEN not set; will rely on saved credentials.json if available"
         )
 
     # Dictionary to hold API keys for different translations
@@ -199,14 +285,15 @@ logging.getLogger("nio").setLevel(logging.WARNING)
 # Handles headers & parameters for API requests
 async def make_api_request(url, headers=None, params=None):
     try:
-        async with aiohttp.ClientSession() as session:
+        timeout = aiohttp.ClientTimeout(total=10)
+        async with aiohttp.ClientSession(timeout=timeout) as session:
             async with session.get(url, headers=headers, params=params) as response:
                 if response.status == 200:
                     return await response.json()
                 logger.warning(f"HTTP {response.status} fetching {url}")
                 return None
-    except aiohttp.ClientError as e:
-        logger.error(f"Network error fetching {url}: {e}")
+    except (aiohttp.ClientError, asyncio.TimeoutError):
+        logger.exception(f"Network error fetching {url}")
         return None
 
 
@@ -274,8 +361,10 @@ async def get_esv_text(passage, api_key):
     response = await make_api_request(API_URL, headers, params)
     passages = response["passages"] if response else None
     reference = response["canonical"] if response else None
-    return passages[0].strip(), (
-        reference if passages else ("Error: Passage not found", "")
+    return (
+        (passages[0].strip(), reference)
+        if passages
+        else ("Error: Passage not found", "")
     )
 
 
@@ -369,27 +458,43 @@ class BibleBot:
         try:
             await self.client.sync(timeout=SYNC_TIMEOUT_MS, full_state=True)
             logger.info("Initial sync complete.")
-        except Exception as e:
-            logger.error(f"Error during initial sync: {e}")
+        except Exception:
+            logger.exception("Error during initial sync")
             # We'll log and continue, as sync_forever might recover.
 
         logger.info("Starting bot event processing loop...")
         await self.client.sync_forever(timeout=SYNC_TIMEOUT_MS)  # Sync every 30 seconds
 
     async def on_decryption_failure(self, room: MatrixRoom, event: MegolmEvent) -> None:
-        """When decryption fails, request the keys and log."""
+        """Handle a MegolmEvent that failed to decrypt by requesting the needed session keys.
+
+        Based on mmrelay implementation - monkey-patch event.room_id and use client.request_room_key().
+        """
         logger.error(
-            f"Failed to decrypt event '{getattr(event, 'event_id', '?')}' in room '{room.room_id}'. Requesting keys..."
+            f"Failed to decrypt event '{getattr(event, 'event_id', '?')}' in room '{room.room_id}'. "
+            f"This is usually temporary and resolves on its own. "
+            f"If this persists, the bot's session may be corrupt."
         )
         try:
+            # Monkey-patch the event object with the correct room_id from the room object
             event.room_id = room.room_id
-            request = event.as_key_request(
-                self.client.user_id, getattr(self.client, "device_id", None)
+
+            # Use the preferred client.request_room_key method if available
+            if hasattr(self.client, "request_room_key"):
+                await self.client.request_room_key(event)
+            else:
+                # Fallback to manual key request creation
+                request = event.as_key_request(
+                    self.client.user_id, getattr(self.client, "device_id", None)
+                )
+                await self.client.to_device(request)
+            logger.info(
+                f"Requested keys for failed decryption of event {getattr(event, 'event_id', '?')}"
             )
-            await self.client.to_device(request)
-            logger.info("Requested keys for undecryptable event")
-        except Exception as e:
-            logger.warning(f"Key request failed: {e}")
+        except Exception:
+            logger.exception(
+                f"Failed to request keys for event {getattr(event, 'event_id', '?')}"
+            )
 
     async def on_invite(self, room: MatrixRoom, event: InviteEvent):
         """Handle room invites for the bot."""
@@ -461,24 +566,30 @@ class BibleBot:
 
         if text is None or reference is None:
             logger.warning(f"Failed to retrieve passage: {passage}")
+            error_msg = "Error: Failed to retrieve the specified passage."
             await self.client.room_send(
                 room_id,
                 "m.room.message",
                 {
                     "msgtype": "m.text",
-                    "body": "Error: Failed to retrieve the specified passage.",
+                    "body": error_msg,
+                    "format": "org.matrix.custom.html",
+                    "formatted_body": html.escape(error_msg),
                 },
             )
             return
 
         if text.startswith("Error:"):
             logger.warning(f"Invalid passage format: {passage}")
+            error_msg = "Error: Invalid passage format. Use [Book Chapter:Verse-range (optional)]"
             await self.client.room_send(
                 room_id,
                 "m.room.message",
                 {
                     "msgtype": "m.text",
-                    "body": "Error: Invalid passage format. Use [Book Chapter:Verse-range (optional)]",
+                    "body": error_msg,
+                    "format": "org.matrix.custom.html",
+                    "formatted_body": html.escape(error_msg),
                 },
             )
         else:
@@ -558,10 +669,9 @@ async def main(config_path="config.yaml"):
             )
             return
         bot.client.access_token = matrix_access_token
-        try:
-            bot.client.user_id = config.get("matrix_user", bot.client.user_id)
-        except Exception:
-            pass
+        user = config.get("matrix_user")
+        if user:
+            bot.client.user_id = user
 
     # If E2EE is enabled, ensure keys are uploaded
     if e2ee_enabled:
@@ -578,14 +688,14 @@ async def main(config_path="config.yaml"):
     bot.client.add_event_callback(bot.on_invite, InviteEvent)
     bot.client.add_event_callback(bot.on_room_message, RoomMessageText)
     # Register decryption failure handler for encrypted rooms
-    try:
-        bot.client.add_event_callback(bot.on_decryption_failure, MegolmEvent)
-    except Exception:
-        pass
+    if e2ee_enabled:
+        try:
+            bot.client.add_event_callback(bot.on_decryption_failure, MegolmEvent)
+        except Exception:
+            logger.debug(
+                "Decryption-failure callback registration not supported by this nio version",
+                exc_info=True,
+            )
 
     # Start the bot
     await bot.start()
-
-
-async def on_decryption_failure(room: MatrixRoom, event: MegolmEvent) -> None:
-    pass  # replaced by BibleBot.on_decryption_failure bound method
