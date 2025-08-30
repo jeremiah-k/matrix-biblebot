@@ -6,6 +6,7 @@ import re
 import time
 from collections import OrderedDict
 from time import monotonic
+from urllib.parse import quote
 
 import aiohttp
 import yaml
@@ -669,9 +670,10 @@ async def main(config_path="config.yaml"):
             )
             return
         bot.client.access_token = matrix_access_token
-        user = config.get("matrix_user")
-        if user:
-            bot.client.user_id = user
+        try:
+            bot.client.user_id = config["matrix_user"]
+        except Exception as e:
+            logger.warning(f"Could not set user_id from config: {e}")
 
     # If E2EE is enabled, ensure keys are uploaded
     if e2ee_enabled:

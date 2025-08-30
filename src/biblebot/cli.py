@@ -10,7 +10,7 @@ import sys
 from pathlib import Path
 
 from . import __version__
-from .auth import interactive_login, interactive_logout
+from .auth import interactive_login, interactive_logout, load_credentials
 from .bot import main as bot_main
 from .tools import get_sample_config_path, get_sample_env_path
 

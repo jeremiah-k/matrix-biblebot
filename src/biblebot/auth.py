@@ -81,15 +81,20 @@ def load_credentials() -> Optional[Credentials]:
     if not path.exists():
         return None
     try:
-        data = json.loads(path.read_text())
+        text = path.read_text(encoding="utf-8")
+        data = json.loads(text)
         return Credentials.from_dict(data)
-    except (json.JSONDecodeError, FileNotFoundError, PermissionError) as e:
-        logger.error(f"Failed to read credentials from {path}: {e}")
+    except (OSError, json.JSONDecodeError):
+        logger.exception(f"Failed to read credentials from {path}")
         return None
 
 
 def get_store_dir() -> Path:
     E2EE_STORE_DIR.mkdir(parents=True, exist_ok=True)
+    try:
+        os.chmod(E2EE_STORE_DIR, 0o700)
+    except Exception:
+        logger.debug("Could not set E2EE store perms to 0700")
     return E2EE_STORE_DIR
 
 
@@ -127,16 +132,15 @@ def check_e2ee_status() -> dict:
         status["error"] = f"E2EE dependencies not installed: {e}"
         return status
 
-    # Check store directory
-    store_dir = get_store_dir()
+    # Check store directory without creating it
+    store_dir = E2EE_STORE_DIR
     status["store_exists"] = store_dir.exists()
 
-    # Check credentials for E2EE info
     creds = load_credentials()
-    if creds and hasattr(creds, "e2ee_enabled"):
-        status["available"] = creds.e2ee_enabled
-    else:
-        status["available"] = status["dependencies_installed"]
+    # Consider E2EE "available" when deps are present AND creds exist AND a store exists
+    status["available"] = bool(
+        status["dependencies_installed"] and creds and status["store_exists"]
+    )
 
     return status
 
@@ -239,12 +243,16 @@ async def interactive_login(
             "E2EE dependencies not found, proceeding without encryption for login."
         )
 
+    client_kwargs = {}
+    if e2ee_available:
+        client_kwargs["store_path"] = str(get_store_dir())
     client = AsyncClient(
         hs,
         user,
         config=AsyncClientConfig(
             store_sync_tokens=True, encryption_enabled=e2ee_available
         ),
+        **client_kwargs,
     )
 
     # Attempt server discovery to normalize homeserver URL
