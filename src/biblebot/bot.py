@@ -1,3 +1,4 @@
+import html
 import logging
 import os
 import re
@@ -33,6 +34,87 @@ SYNC_TIMEOUT_MS = 30000
 REACTION_OK = "✅"
 MESSAGE_SUFFIX = " 🕊️✝️"
 E2EE_KEY_SHARING_DELAY_SECONDS = 3
+
+
+BOOK_ABBREVIATIONS = {
+    "gen": "Genesis", "ge": "Genesis", "gn": "Genesis",
+    "exo": "Exodus", "ex": "Exodus",
+    "lev": "Leviticus", "le": "Leviticus", "lv": "Leviticus",
+    "num": "Numbers", "nu": "Numbers", "nm": "Numbers",
+    "deut": "Deuteronomy", "de": "Deuteronomy", "dt": "Deuteronomy",
+    "josh": "Joshua", "jos": "Joshua",
+    "judg": "Judges", "jdg": "Judges", "jg": "Judges",
+    "ruth": "Ruth", "ru": "Ruth",
+    "1 sam": "1 Samuel", "1sa": "1 Samuel", "1s": "1 Samuel",
+    "2 sam": "2 Samuel", "2sa": "2 Samuel", "2s": "2 Samuel",
+    "1 kings": "1 Kings", "1ki": "1 Kings", "1k": "1 Kings",
+    "2 kings": "2 Kings", "2ki": "2 Kings", "2k": "2 Kings",
+    "1 chron": "1 Chronicles", "1ch": "1 Chronicles",
+    "2 chron": "2 Chronicles", "2ch": "2 Chronicles",
+    "ezra": "Ezra", "ezr": "Ezra",
+    "neh": "Nehemiah", "ne": "Nehemiah",
+    "est": "Esther", "es": "Esther",
+    "job": "Job", "jb": "Job",
+    "psalm": "Psalms", "psa": "Psalms", "ps": "Psalms",
+    "prov": "Proverbs", "pro": "Proverbs", "pr": "Proverbs",
+    "eccles": "Ecclesiastes", "ecc": "Ecclesiastes", "ec": "Ecclesiastes",
+    "song": "Song of Solomon", "sos": "Song of Solomon", "so": "Song of Solomon",
+    "isa": "Isaiah", "is": "Isaiah",
+    "jer": "Jeremiah", "je": "Jeremiah",
+    "lam": "Lamentations", "la": "Lamentations",
+    "ezek": "Ezekiel", "eze": "Ezekiel", "ez": "Ezekiel",
+    "dan": "Daniel", "da": "Daniel", "dn": "Daniel",
+    "hos": "Hosea", "ho": "Hosea",
+    "joel": "Joel", "joe": "Joel", "jl": "Joel",
+    "amos": "Amos", "am": "Amos",
+
+    "obad": "Obadiah", "ob": "Obadiah",
+    "jonah": "Jonah", "jon": "Jonah",
+    "mic": "Micah", "mi": "Micah",
+    "nah": "Nahum", "na": "Nahum",
+    "hab": "Habakkuk", "ha": "Habakkuk",
+    "zeph": "Zephaniah", "zep": "Zephaniah", "zp": "Zephaniah",
+    "hag": "Haggai", "hg": "Haggai",
+    "zech": "Zechariah", "zec": "Zechariah", "zc": "Zechariah",
+    "mal": "Malachi", "ml": "Malachi",
+
+    "matt": "Matthew", "mt": "Matthew",
+    "mark": "Mark", "mar": "Mark", "mk": "Mark",
+    "luke": "Luke", "lk": "Luke",
+    "john": "John", "jn": "John",
+    "acts": "Acts", "ac": "Acts",
+
+    "rom": "Romans", "ro": "Romans",
+    "1 cor": "1 Corinthians", "1co": "1 Corinthians",
+    "2 cor": "2 Corinthians", "2co": "2 Corinthians",
+    "gal": "Galatians", "ga": "Galatians",
+    "eph": "Ephesians", "ep": "Ephesians",
+    "phil": "Philippians", "phi": "Philippians", "php": "Philippians",
+    "col": "Colossians", "co": "Colossians",
+    "1 thess": "1 Thessalonians", "1th": "1 Thessalonians",
+    "2 thess": "2 Thessalonians", "2th": "2 Thessalonians",
+    "1 tim": "1 Timothy", "1ti": "1 Timothy",
+    "2 tim": "2 Timothy", "2ti": "2 Timothy",
+    "titus": "Titus", "ti": "Titus",
+    "philem": "Philemon", "phm": "Philemon", "pm": "Philemon",
+
+    "heb": "Hebrews", "he": "Hebrews",
+    "james": "James", "jm": "James",
+    "1 pet": "1 Peter", "1pe": "1 Peter", "1pt": "1 Peter",
+    "2 pet": "2 Peter", "2pe": "2 Peter", "2pt": "2 Peter",
+    "1 john": "1 John", "1jn": "1 John",
+    "2 john": "2 John", "2jn": "2 John",
+    "3 john": "3 John", "3jn": "3 John",
+    "jude": "Jude", "jd": "Jude",
+    "rev": "Revelation", "re": "Revelation",
+}
+
+
+def normalize_book_name(book_str: str) -> str:
+    """Normalize common Bible book abbreviations to their full name."""
+    # Clean the input: lowercase, remove dots, and strip whitespace
+    clean_str = book_str.lower().replace(".", "").strip()
+    return BOOK_ABBREVIATIONS.get(clean_str, book_str.title())
 
 
 # Load config
@@ -282,6 +364,15 @@ class BibleBot:
         logger.info("Initializing BibleBot...")
         await self.resolve_aliases()  # Support for aliases in config
         await self.ensure_joined_rooms()  # Ensure bot is in all configured rooms
+
+        logger.info("Performing initial sync...")
+        try:
+            await self.client.sync(timeout=SYNC_TIMEOUT_MS, full_state=True)
+            logger.info("Initial sync complete.")
+        except Exception as e:
+            logger.error(f"Error during initial sync: {e}")
+            # We'll log and continue, as sync_forever might recover.
+
         logger.info("Starting bot event processing loop...")
         await self.client.sync_forever(timeout=SYNC_TIMEOUT_MS)  # Sync every 30 seconds
 
@@ -340,7 +431,8 @@ class BibleBot:
             for pattern in search_patterns:
                 match = re.match(pattern, event.body, re.IGNORECASE)
                 if match:
-                    book_name = match.group(1).strip()
+                    raw_book_name = match.group(1).strip()
+                    book_name = normalize_book_name(raw_book_name)
                     verse_reference = match.group(2).strip()
                     passage = f"{book_name} {verse_reference}"
                     if match.group(
@@ -397,12 +489,20 @@ class BibleBot:
             await self.send_reaction(room_id, event.event_id, REACTION_OK)
 
             # Format and send the scripture message
-            message = f"{text} - {reference}{MESSAGE_SUFFIX}"
+            plain_body = f"{text} - {reference}{MESSAGE_SUFFIX}"
+            formatted_body = f"{html.escape(text)} - {html.escape(reference)}{html.escape(MESSAGE_SUFFIX)}"
             logger.info(f"Sending scripture: {reference}")
+
+            content = {
+                "msgtype": "m.text",
+                "body": plain_body,
+                "format": "org.matrix.custom.html",
+                "formatted_body": formatted_body,
+            }
             await self.client.room_send(
                 room_id,
                 "m.room.message",
-                {"msgtype": "m.text", "body": message},
+                content,
             )
 
 

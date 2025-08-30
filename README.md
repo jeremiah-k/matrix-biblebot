@@ -176,13 +176,14 @@ options:
 ### Interacting with the Bot
 
 1. **Invite the bot** to the rooms listed in your `config.yaml` file
-2. **Send Bible verse references** in any of these formats:
+2. **Send Bible verse references** in any of these formats. The bot understands many common book abbreviations (e.g., `jn` for John, `1co` for 1 Corinthians).
 
 | Format           | Example         | Description                        |
 | ---------------- | --------------- | ---------------------------------- |
 | Simple reference | `John 3:16`     | Single verse (uses KJV by default) |
 | Range reference  | `1 Cor 15:1-4`  | Multiple verses                    |
 | With translation | `John 3:16 esv` | Specify translation (KJV or ESV)   |
+| Abbreviated      | `jn 3:16`       | Book names can be abbreviated      |
 
 The bot will respond with the requested scripture passage and add a ✅ reaction to your message.
 

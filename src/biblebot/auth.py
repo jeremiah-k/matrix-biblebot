@@ -114,25 +114,50 @@ async def interactive_login(
 ) -> bool:
     """Interactive login that persists credentials.json for future runs.
 
+    If credentials already exist, it will confirm with the user before
+    creating a new device session.
+
     Returns True on success, False otherwise.
     """
     import getpass
+
+    existing_creds = load_credentials()
+    if existing_creds:
+        logger.info(f"You are already logged in as {existing_creds.user_id}")
+        try:
+            resp = input(
+                "Do you want to log in again? This will create a new device session. [y/N]: "
+            ).lower()
+            if not resp.startswith("y"):
+                logger.info("Login cancelled.")
+                return True  # User is already logged in, so this is a "success"
+        except (EOFError, KeyboardInterrupt):
+            logger.info("\nLogin cancelled.")
+            return False
 
     hs = homeserver or input("Matrix homeserver (e.g. https://matrix.org): ").strip()
     if not (hs.startswith("http://") or hs.startswith("https://")):
         hs = "https://" + hs
 
-    user = username or input("Matrix username (without @): ").strip()
+    user = username or input("Matrix username (e.g. @user:server.com): ").strip()
     if not user.startswith("@"):
         from urllib.parse import urlparse
 
-        server = urlparse(hs).netloc
-        user = f"@{user}:{server}"
+        server_name = urlparse(hs).netloc
+        user = f"@{user}:{server_name}"
 
     pwd = password or getpass.getpass("Password: ")
 
-    # Basic (non-E2EE) client config; keep simple for this bot
-    client = AsyncClient(hs, user, config=AsyncClientConfig(store_sync_tokens=True))
+    # E2EE-aware client config
+    try:
+        import olm  # noqa: F401
+        e2ee_available = True
+        logger.debug("E2EE dependencies found, enabling encryption for login.")
+    except ImportError:
+        e2ee_available = False
+        logger.debug("E2EE dependencies not found, proceeding without encryption for login.")
+
+    client = AsyncClient(hs, user, config=AsyncClientConfig(store_sync_tokens=True, encryption_enabled=e2ee_available))
 
     # Attempt server discovery to normalize homeserver URL
     hs = await discover_homeserver(client, hs)
@@ -154,6 +179,7 @@ async def interactive_login(
             device_id=resp.device_id,
         )
         save_credentials(creds)
+        logger.info("Login successful! Credentials saved.")
         await client.close()
         return True
     else:

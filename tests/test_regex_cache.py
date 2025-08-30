@@ -1,6 +1,7 @@
 import asyncio
 import types
 
+import pytest
 from biblebot import bot as botmod
 
 
@@ -19,9 +20,30 @@ def test_reference_patterns_basic():
         "1 Cor 15:1-4",
         "Genesis 1:1 kjv",
         "John 3:16 esv",
+        "jn 3:16",
+        "1co 13:1",
+        "rev 22:20 kjv",
     ]
     for s in good:
         assert any(re.match(p, s, re.IGNORECASE) for p in pats)
+
+
+@pytest.mark.parametrize(
+    "abbreviation,full_name",
+    [
+        ("Gen", "Genesis"),
+        ("jn", "John"),
+        ("1 Cor", "1 Corinthians"),
+        ("1co", "1 Corinthians"),
+        ("ps", "Psalms"),
+        ("rev.", "Revelation"),
+        ("  rom  ", "Romans"),
+        ("invalidbook", "Invalidbook"),  # Test fallback to title case
+    ],
+)
+def test_normalize_book_name(abbreviation, full_name):
+    """Tests the normalization of book abbreviations."""
+    assert botmod.normalize_book_name(abbreviation) == full_name
 
 
 def test_passage_cache(monkeypatch):

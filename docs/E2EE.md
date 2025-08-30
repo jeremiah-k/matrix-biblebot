@@ -46,7 +46,9 @@ Use the built-in auth flow (recommended):
 biblebot --auth-login
 ```
 
-This saves credentials to `~/.config/matrix-biblebot/credentials.json` and prepares an encryption store. Subsequent runs will restore the session automatically. To remove credentials and the local store:
+This saves credentials to `~/.config/matrix-biblebot/credentials.json` and prepares an encryption store. If you run the command again, it will detect the existing session and ask for confirmation before creating a new one.
+
+To remove credentials and the local store:
 
 ```bash
 biblebot --auth-logout
