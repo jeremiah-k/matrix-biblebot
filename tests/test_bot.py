@@ -857,3 +857,97 @@ class TestMainFunction:
 
                     # Should start the bot
                     mock_bot.start.assert_called_once()
+
+
+class TestUtilityFunctions:
+    """Test utility functions in the bot module."""
+
+    def test_normalize_book_name_full_names(self):
+        """Test normalizing full book names."""
+        assert bot.normalize_book_name("Genesis") == "Genesis"
+        assert bot.normalize_book_name("Exodus") == "Exodus"
+        assert bot.normalize_book_name("Matthew") == "Matthew"
+
+    def test_normalize_book_name_abbreviations(self):
+        """Test normalizing common abbreviations."""
+        assert bot.normalize_book_name("Gen") == "Genesis"
+        assert bot.normalize_book_name("Ex") == "Exodus"
+        assert bot.normalize_book_name("Matt") == "Matthew"
+        assert bot.normalize_book_name("Mt") == "Matthew"
+
+    def test_normalize_book_name_case_insensitive(self):
+        """Test case insensitive normalization."""
+        assert bot.normalize_book_name("gen") == "Genesis"
+        assert bot.normalize_book_name("GEN") == "Genesis"
+        assert bot.normalize_book_name("GeN") == "Genesis"
+
+    def test_normalize_book_name_unknown(self):
+        """Test normalizing unknown book names."""
+        assert bot.normalize_book_name("Unknown") == "Unknown"
+        assert (
+            bot.normalize_book_name("XYZ") == "Xyz"
+        )  # Function capitalizes first letter
+
+
+class TestCacheFunctions:
+    """Test caching functionality."""
+
+    def test_cache_get_miss(self):
+        """Test cache miss."""
+        # Clear cache first
+        if hasattr(bot, "_passage_cache"):
+            bot._passage_cache.clear()
+
+        result = bot._cache_get("John 3:16", "kjv")
+        assert result is None
+
+    def test_cache_set_and_get(self):
+        """Test cache set and get."""
+        # Clear cache first
+        if hasattr(bot, "_passage_cache"):
+            bot._passage_cache.clear()
+
+        # Set cache
+        bot._cache_set("John 3:16", "kjv", ("For God so loved...", "John 3:16"))
+
+        # Get from cache
+        result = bot._cache_get("John 3:16", "kjv")
+        assert result == ("For God so loved...", "John 3:16")
+
+    def test_cache_case_insensitive(self):
+        """Test cache is case insensitive."""
+        # Clear cache first
+        if hasattr(bot, "_passage_cache"):
+            bot._passage_cache.clear()
+
+        # Set with one case
+        bot._cache_set("John 3:16", "KJV", ("For God so loved...", "John 3:16"))
+
+        # Get with different case
+        result = bot._cache_get("john 3:16", "kjv")
+        assert result == ("For God so loved...", "John 3:16")
+
+
+class TestEnvironmentLoading:
+    """Test environment loading functionality."""
+
+    def test_load_environment_with_env_file(self, temp_env_file):
+        """Test loading environment with .env file."""
+        config_path = str(temp_env_file.parent / "config.yaml")
+
+        env_vars, api_keys = bot.load_environment(config_path)
+
+        assert "MATRIX_ACCESS_TOKEN" in env_vars
+        assert env_vars["MATRIX_ACCESS_TOKEN"] == "test_token"
+        assert "ESV_API_KEY" in api_keys
+        assert api_keys["ESV_API_KEY"] == "test_esv_key"
+
+    def test_load_environment_returns_dicts(self, tmp_path):
+        """Test loading environment returns proper data structures."""
+        config_path = str(tmp_path / "config.yaml")
+
+        env_vars, api_keys = bot.load_environment(config_path)
+
+        # Should return dictionaries
+        assert isinstance(env_vars, dict)
+        assert isinstance(api_keys, dict)
