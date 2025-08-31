@@ -89,3 +89,136 @@ class TestErrorHandling:
             # When only USERNAME is available (Windows)
             username = os.environ.get("USER", os.environ.get("USERNAME"))
             assert username == "testuser"
+
+
+class TestServiceStatusChecks:
+    """Test service status checking functionality."""
+
+    @patch("pathlib.Path.read_text")
+    @patch("pathlib.Path.exists")
+    def test_read_service_file_exists(self, mock_exists, mock_read_text):
+        """Test reading service file when it exists."""
+        mock_exists.return_value = True
+        mock_read_text.return_value = "[Unit]\nDescription=BibleBot"
+
+        content = setup_utils.read_service_file()
+        assert content == "[Unit]\nDescription=BibleBot"
+
+    @patch("pathlib.Path.exists")
+    def test_read_service_file_not_exists(self, mock_exists):
+        """Test reading service file when it doesn't exist."""
+        mock_exists.return_value = False
+
+        content = setup_utils.read_service_file()
+        assert content is None
+
+    @patch("subprocess.run")
+    def test_is_service_enabled_true(self, mock_run):
+        """Test checking if service is enabled - true case."""
+        mock_run.return_value.returncode = 0
+        mock_run.return_value.stdout = "enabled"
+
+        result = setup_utils.is_service_enabled()
+        assert result is True
+
+    @patch("subprocess.run")
+    def test_is_service_enabled_false(self, mock_run):
+        """Test checking if service is enabled - false case."""
+        mock_run.return_value.returncode = 1
+
+        result = setup_utils.is_service_enabled()
+        assert result is False
+
+    @patch("subprocess.run")
+    def test_is_service_active_true(self, mock_run):
+        """Test checking if service is active - true case."""
+        mock_run.return_value.returncode = 0
+        mock_run.return_value.stdout = "active"
+
+        result = setup_utils.is_service_active()
+        assert result is True
+
+    @patch("subprocess.run")
+    def test_is_service_active_false(self, mock_run):
+        """Test checking if service is active - false case."""
+        mock_run.return_value.returncode = 1
+
+        result = setup_utils.is_service_active()
+        assert result is False
+
+    @patch("subprocess.run")
+    def test_reload_daemon_success(self, mock_run):
+        """Test successful daemon reload."""
+        mock_run.return_value = None
+
+        result = setup_utils.reload_daemon()
+        assert result is True
+
+    @patch("subprocess.run")
+    def test_reload_daemon_failure(self, mock_run):
+        """Test daemon reload failure."""
+        mock_run.side_effect = OSError("Command not found")
+
+        result = setup_utils.reload_daemon()
+        assert result is False
+
+    @patch("subprocess.run")
+    def test_start_service_success(self, mock_run):
+        """Test successful service start."""
+        mock_run.return_value = None
+
+        result = setup_utils.start_service()
+        assert result is True
+
+    @patch("subprocess.run")
+    def test_start_service_failure(self, mock_run):
+        """Test service start failure."""
+        mock_run.side_effect = OSError("Command not found")
+
+        result = setup_utils.start_service()
+        assert result is False
+
+
+class TestServiceTemplateHandling:
+    """Test service template handling functionality."""
+
+    def test_get_template_service_content(self):
+        """Test getting template service content."""
+        content = setup_utils.get_template_service_content()
+        assert isinstance(content, str)
+        assert "[Unit]" in content
+        assert "Description=Matrix Bible Bot Service" in content
+
+    @patch("subprocess.run")
+    def test_check_loginctl_available_true(self, mock_run):
+        """Test loginctl availability check - available."""
+        mock_run.return_value.returncode = 0
+
+        result = setup_utils.check_loginctl_available()
+        assert result is True
+
+    @patch("subprocess.run")
+    def test_check_loginctl_available_false(self, mock_run):
+        """Test loginctl availability check - not available."""
+        mock_run.side_effect = Exception("Command not found")
+
+        result = setup_utils.check_loginctl_available()
+        assert result is False
+
+    @patch("subprocess.run")
+    def test_check_lingering_enabled_true(self, mock_run):
+        """Test lingering check - enabled."""
+        mock_run.return_value.returncode = 0
+        mock_run.return_value.stdout = "Linger=yes"
+
+        result = setup_utils.check_lingering_enabled()
+        assert result is True
+
+    @patch("subprocess.run")
+    def test_check_lingering_enabled_false(self, mock_run):
+        """Test lingering check - disabled."""
+        mock_run.return_value.returncode = 0
+        mock_run.return_value.stdout = "Linger=no"
+
+        result = setup_utils.check_lingering_enabled()
+        assert result is False
