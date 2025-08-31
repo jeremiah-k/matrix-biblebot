@@ -256,13 +256,13 @@ class TestModernCommands:
 
     def test_auth_status_command(self, capsys):
         """Test 'biblebot auth status' command."""
-        # Use mmrelay pattern: new_callable=Mock for sync functions
-        with patch(
-            "biblebot.auth.load_credentials", new_callable=Mock
-        ) as mock_load_creds:
-            with patch(
-                "biblebot.auth.print_e2ee_status", new_callable=Mock
-            ) as mock_print_e2ee:
+        # Create explicit Mock objects to completely bypass async detection
+        mock_load_creds = Mock()
+        mock_print_e2ee = Mock()
+
+        # Use direct assignment to avoid any async detection
+        with patch("biblebot.auth.load_credentials", mock_load_creds):
+            with patch("biblebot.auth.print_e2ee_status", mock_print_e2ee):
                 # Test with credentials
                 mock_creds = MagicMock()
                 mock_creds.user_id = "@test:matrix.org"
