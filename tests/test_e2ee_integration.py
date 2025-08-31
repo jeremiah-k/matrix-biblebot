@@ -250,12 +250,17 @@ class TestInteractiveLogin:
         mock_client_instance.close = AsyncMock()
         mock_client.return_value = mock_client_instance
 
-        with patch("biblebot.auth.save_credentials") as mock_save:
-            with patch("biblebot.auth.asyncio.wait_for", return_value=mock_response):
-                result = await interactive_login()
+        # Mock no existing credentials to avoid the early return
+        with patch("biblebot.auth.load_credentials", return_value=None):
+            with patch("biblebot.auth.save_credentials") as mock_save:
+                with patch(
+                    "biblebot.auth.discover_homeserver",
+                    return_value="https://matrix.org",
+                ):
+                    result = await interactive_login()
 
-                assert result is True
-                mock_save.assert_called_once()
+                    assert result is True
+                    mock_save.assert_called_once()
 
     @patch("biblebot.auth.load_credentials")
     @patch("biblebot.auth.input")
