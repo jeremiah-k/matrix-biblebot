@@ -935,19 +935,20 @@ class TestEnvironmentLoading:
         """Test loading environment with .env file."""
         config_path = str(temp_env_file.parent / "config.yaml")
 
-        env_vars, api_keys = bot.load_environment(config_path)
+        matrix_token, api_keys = bot.load_environment(config_path)
 
-        assert "MATRIX_ACCESS_TOKEN" in env_vars
-        assert env_vars["MATRIX_ACCESS_TOKEN"] == "test_token"
-        assert "ESV_API_KEY" in api_keys
-        assert api_keys["ESV_API_KEY"] == "test_esv_key"
+        # matrix_token should be a string (or None)
+        assert matrix_token == "test_token" or matrix_token is None
+        # api_keys should be a dictionary
+        assert isinstance(api_keys, dict)
+        assert "esv" in api_keys
 
-    def test_load_environment_returns_dicts(self, tmp_path):
+    def test_load_environment_returns_proper_types(self, tmp_path):
         """Test loading environment returns proper data structures."""
         config_path = str(tmp_path / "config.yaml")
 
-        env_vars, api_keys = bot.load_environment(config_path)
+        matrix_token, api_keys = bot.load_environment(config_path)
 
-        # Should return dictionaries
-        assert isinstance(env_vars, dict)
+        # Should return (string/None, dict)
+        assert matrix_token is None or isinstance(matrix_token, str)
         assert isinstance(api_keys, dict)

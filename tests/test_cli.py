@@ -568,8 +568,12 @@ class TestCLILegacyFlags:
     @patch("biblebot.cli.asyncio.run")
     @patch("sys.exit")
     @patch("warnings.warn")
-    def test_legacy_auth_login(self, mock_warn, mock_exit, mock_run, mock_login):
+    @patch("os.path.exists")
+    def test_legacy_auth_login(
+        self, mock_exists, mock_warn, mock_exit, mock_run, mock_login
+    ):
         """Test legacy --auth-login flag."""
+        mock_exists.return_value = True  # Config exists to avoid input prompt
         mock_login.return_value = True
         mock_run.return_value = True
 
@@ -583,8 +587,12 @@ class TestCLILegacyFlags:
     @patch("biblebot.cli.asyncio.run")
     @patch("sys.exit")
     @patch("warnings.warn")
-    def test_legacy_auth_logout(self, mock_warn, mock_exit, mock_run, mock_logout):
+    @patch("os.path.exists")
+    def test_legacy_auth_logout(
+        self, mock_exists, mock_warn, mock_exit, mock_run, mock_logout
+    ):
         """Test legacy --auth-logout flag."""
+        mock_exists.return_value = True  # Config exists to avoid input prompt
         mock_logout.return_value = True
         mock_run.return_value = True
 
