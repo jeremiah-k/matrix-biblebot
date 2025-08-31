@@ -712,9 +712,11 @@ class TestMainFunction:
         mock_get_store.return_value = Path("/tmp/store")
 
         with patch("biblebot.bot.AsyncClient") as mock_client_class:
-            mock_client = AsyncMock()
-            mock_client_class.return_value = mock_client
+            mock_client = MagicMock()
+            mock_client.restore_login = MagicMock()  # Sync method
+            mock_client.add_event_callback = MagicMock()  # Sync method
             mock_client.should_upload_keys = False
+            mock_client_class.return_value = mock_client
 
             with patch("biblebot.bot.BibleBot") as mock_bot_class:
                 mock_bot = MagicMock()
@@ -839,7 +841,9 @@ class TestMainFunction:
 
         with patch("biblebot.bot.AsyncClient") as mock_client_class:
             with patch("biblebot.bot.AsyncClientConfig"):
-                mock_client = AsyncMock()
+                mock_client = MagicMock()
+                mock_client.add_event_callback = MagicMock()  # Sync method
+                mock_client.keys_upload = AsyncMock()  # Async method
                 mock_client_class.return_value = mock_client
                 mock_client.should_upload_keys = True
 
