@@ -7,11 +7,11 @@ import asyncio
 import json
 import os
 import tempfile
-from unittest.mock import AsyncMock, MagicMock, call, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from biblebot.auth import Credentials, load_credentials, save_credentials
+from biblebot.auth import load_credentials
 from biblebot.bot import BibleBot
 
 
@@ -232,7 +232,7 @@ class TestIntegrationPatterns:
         ]
 
         for room_id in rooms_to_join:
-            result = await bot.join_matrix_room(room_id)
+            await bot.join_matrix_room(room_id)
             # join_matrix_room returns None on success in our implementation
 
         # Should have attempted to join all rooms

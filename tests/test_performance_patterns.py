@@ -236,7 +236,7 @@ class TestPerformancePatterns:
         """Test cleanup and resource deallocation performance."""
         # Create multiple bot instances to test cleanup
         bots = []
-        for i in range(10):
+        for _i in range(10):
             bot = BibleBot(config=mock_config, client=mock_client)
             bots.append(bot)
 

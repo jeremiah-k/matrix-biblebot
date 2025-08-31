@@ -257,7 +257,6 @@ async def test_bible_api_error_handling(mock_api_request):
 def test_bible_verse_parsing():
     """Test Bible verse reference parsing using existing patterns."""
     # Test with existing REFERENCE_PATTERNS
-    import re
 
     from biblebot.bot import REFERENCE_PATTERNS
 

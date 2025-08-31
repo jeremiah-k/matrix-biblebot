@@ -3,12 +3,11 @@ Security testing patterns following mmrelay's comprehensive approach.
 Tests security features, input validation, and protection mechanisms.
 """
 
-import re
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from biblebot.auth import Credentials, load_credentials, save_credentials
+from biblebot.auth import Credentials, save_credentials
 from biblebot.bot import BibleBot
 
 
@@ -114,7 +113,7 @@ class TestSecurityPatterns:
         )
 
         with patch("biblebot.auth.tempfile.NamedTemporaryFile") as mock_temp:
-            with patch("biblebot.auth.os.replace") as mock_replace:
+            with patch("biblebot.auth.os.replace"):
                 with patch("biblebot.auth.os.chmod") as mock_chmod:
                     with patch("biblebot.auth.os.fsync"):
                         mock_temp_file = MagicMock()
@@ -229,13 +228,13 @@ class TestSecurityPatterns:
 
         # Test joining valid rooms
         for room_id in valid_room_ids:
-            result = await bot.join_matrix_room(room_id)
+            await bot.join_matrix_room(room_id)
             # Should attempt to join valid room IDs
             mock_client.join.assert_called()
 
         # Test with invalid room IDs
         for room_id in invalid_room_ids:
-            result = await bot.join_matrix_room(room_id)
+            await bot.join_matrix_room(room_id)
             # Should handle invalid room IDs gracefully
 
     async def test_message_content_filtering(self, mock_config, mock_client):
@@ -303,7 +302,7 @@ class TestSecurityPatterns:
 
         for config in incomplete_configs:
             # Should handle incomplete configurations gracefully
-            bot = BibleBot(config=config, client=mock_client)
+            BibleBot(config=config, client=mock_client)
             # Bot should be created but may have validation warnings
 
     async def test_api_response_validation(self, mock_config, mock_client):

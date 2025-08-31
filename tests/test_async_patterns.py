@@ -169,7 +169,7 @@ class TestAsyncPatterns:
 
     async def test_async_retry_patterns(self, mock_config, mock_client):
         """Test async retry patterns."""
-        bot = BibleBot(config=mock_config, client=mock_client)
+        BibleBot(config=mock_config, client=mock_client)
 
         # Test that our API calls work with successful response
         with patch("biblebot.bot.make_api_request") as mock_api:
@@ -187,7 +187,7 @@ class TestAsyncPatterns:
 
     async def test_async_rate_limiting_patterns(self, mock_config, mock_client):
         """Test async rate limiting patterns."""
-        bot = BibleBot(config=mock_config, client=mock_client)
+        BibleBot(config=mock_config, client=mock_client)
 
         # Mock rate-limited API
         with patch("asyncio.sleep") as mock_sleep:
@@ -208,7 +208,7 @@ class TestAsyncPatterns:
 
     async def test_async_cancellation_patterns(self, mock_config, mock_client):
         """Test async cancellation patterns."""
-        bot = BibleBot(config=mock_config, client=mock_client)
+        BibleBot(config=mock_config, client=mock_client)
 
         # Test that tasks can be cancelled gracefully
         async def quick_task():
@@ -264,7 +264,7 @@ class TestAsyncPatterns:
     async def test_async_event_loop_integration(self, mock_config, mock_client):
         """Test async event loop integration patterns."""
         with patch("biblebot.bot.AsyncClient", return_value=mock_client):
-            bot = BibleBot(config=mock_config)
+            BibleBot(config=mock_config)
 
             # Test that bot works with different event loop policies
             loop = asyncio.get_event_loop()
@@ -284,7 +284,7 @@ class TestAsyncPatterns:
 
     async def test_async_signal_handling(self, mock_config, mock_client):
         """Test async signal handling patterns."""
-        bot = BibleBot(config=mock_config, client=mock_client)
+        BibleBot(config=mock_config, client=mock_client)
 
         # Test graceful shutdown simulation
         shutdown_called = False
@@ -301,7 +301,7 @@ class TestAsyncPatterns:
     async def test_async_background_tasks(self, mock_config, mock_client):
         """Test async background task patterns."""
         with patch("biblebot.bot.AsyncClient", return_value=mock_client):
-            bot = BibleBot(config=mock_config)
+            BibleBot(config=mock_config)
 
             # Test background task management
             task_completed = False

@@ -10,8 +10,6 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 from biblebot.auth import (
     check_e2ee_status,
     get_store_dir,
-    load_credentials,
-    save_credentials,
 )
 
 
@@ -178,7 +176,6 @@ class TestDiscoverHomeserver:
 
     async def test_discover_homeserver_success(self):
         """Test successful homeserver discovery."""
-        from nio import AsyncClient
 
         from biblebot.auth import discover_homeserver
 

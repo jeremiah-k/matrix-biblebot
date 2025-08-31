@@ -295,7 +295,7 @@ class TestScalabilityPatterns:
             for load_level in [10, 20, 30]:
                 batch_times = []
 
-                for batch in range(3):  # 3 batches per load level
+                for _batch in range(3):  # 3 batches per load level
                     tasks = []
                     start_time = time.time()
 
