@@ -283,9 +283,7 @@ Legacy flags (deprecated):
             if not created:
                 sys.exit(1)
         else:
-            logging.info(
-                "Tip: run 'biblebot --generate-config' to create starter files."
-            )
+            logging.info("Tip: run 'biblebot config generate' to create starter files.")
             sys.exit(1)
 
     # Run the bot

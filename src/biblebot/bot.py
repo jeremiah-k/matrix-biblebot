@@ -35,7 +35,6 @@ REFERENCE_PATTERNS = [r"^([\w\s]+?)(\d+[:]\d+[-]?\d*)\s*(kjv|esv)?$"]
 SYNC_TIMEOUT_MS = 30000
 REACTION_OK = "✅"
 MESSAGE_SUFFIX = " 🕊️✝️"
-E2EE_KEY_SHARING_DELAY_SECONDS = 3
 
 
 BOOK_ABBREVIATIONS = {
@@ -335,7 +334,6 @@ async def get_bible_text(passage, translation=DEFAULT_TRANSLATION, api_keys=None
     if api_keys:
         api_key = api_keys.get(translation)
 
-    _text, _reference = None, None
     if translation == "esv":
         result = await get_esv_text(passage, api_key)
     else:  # Assuming KJV as the default
@@ -360,8 +358,8 @@ async def get_esv_text(passage, api_key):
     }
     headers = {"Authorization": f"Token {api_key}"}
     response = await make_api_request(API_URL, headers, params)
-    passages = response["passages"] if response else None
-    reference = response["canonical"] if response else None
+    passages = response.get("passages") if isinstance(response, dict) else None
+    reference = response.get("canonical") if isinstance(response, dict) else None
     return (
         (passages[0].strip(), reference)
         if passages
@@ -370,12 +368,12 @@ async def get_esv_text(passage, api_key):
 
 
 async def get_kjv_text(passage):
-    # URL encode the passage to handle special characters properly
-    encoded_passage = quote(passage, safe="")
-    API_URL = KJV_API_URL_TEMPLATE.format(passage=encoded_passage)
+    # Preserve ':' in chapter:verse while encoding spaces and punctuation
+    encoded = quote(passage, safe=":")
+    API_URL = KJV_API_URL_TEMPLATE.format(passage=encoded)
     response = await make_api_request(API_URL)
-    passages = [response["text"]] if response else None
-    reference = response["reference"] if response else None
+    passages = [response.get("text")] if response and response.get("text") else None
+    reference = response.get("reference") if response else None
     return (
         (passages[0].strip(), reference)
         if passages
@@ -402,8 +400,10 @@ class BibleBot:
                     if hasattr(resp, "room_id"):
                         resolved_ids.append(resp.room_id)
                         logger.info(f"Resolved alias {entry} to room ID {resp.room_id}")
+                    else:
+                        logger.warning(f"Could not resolve alias: {entry}")
                 except RoomResolveAliasError:
-                    logger.warning(f"Could not resolve alias: {entry}")
+                    logger.warning(f"Could not resolve alias (exception): {entry}")
             else:
                 resolved_ids.append(entry)
         self.config["matrix_room_ids"] = list(set(resolved_ids))
@@ -535,7 +535,7 @@ class BibleBot:
             search_patterns = REFERENCE_PATTERNS
 
             passage = None
-            translation = DEFAULT_TRANSLATION  # Default translation is KJV
+            translation = DEFAULT_TRANSLATION  # Default translation
             for pattern in search_patterns:
                 match = re.match(pattern, event.body, re.IGNORECASE)
                 if match:
@@ -548,7 +548,7 @@ class BibleBot:
                     ):  # Check if the translation (esv or kjv) is specified
                         translation = match.group(3).lower()
                     else:
-                        translation = "kjv"  # Default to kjv if not specified
+                        translation = DEFAULT_TRANSLATION  # Fall back to default
                     logger.info(
                         f"Detected Bible reference: {passage} ({translation.upper()})"
                     )
@@ -672,9 +672,10 @@ async def main(config_path="config.yaml"):
             )
             return
         bot.client.access_token = matrix_access_token
+        # nio exposes `user_id`; set directly. Guard only for unlikely AttributeError.
         try:
             bot.client.user_id = config["matrix_user"]
-        except Exception as e:
+        except AttributeError as e:
             logger.warning(f"Could not set user_id from config: {e}")
 
     # If E2EE is enabled, ensure keys are uploaded
@@ -695,7 +696,7 @@ async def main(config_path="config.yaml"):
     if e2ee_enabled:
         try:
             bot.client.add_event_callback(bot.on_decryption_failure, MegolmEvent)
-        except Exception:
+        except AttributeError:
             logger.debug(
                 "Decryption-failure callback registration not supported by this nio version",
                 exc_info=True,

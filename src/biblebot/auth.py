@@ -22,6 +22,7 @@ from nio import (
     DiscoveryInfoError,
     DiscoveryInfoResponse,
 )
+from nio.exceptions import NioError
 
 logger = logging.getLogger("BibleBot")
 
@@ -72,8 +73,34 @@ def credentials_path() -> Path:
 
 def save_credentials(creds: Credentials) -> None:
     path = credentials_path()
-    path.write_text(json.dumps(creds.to_dict(), indent=2))
-    logger.info(f"Saved credentials to {path}")
+    import tempfile
+
+    data = json.dumps(creds.to_dict(), indent=2)
+    tmp = None
+    try:
+        tmp = tempfile.NamedTemporaryFile(
+            "w", dir=str(path.parent), delete=False, encoding="utf-8"
+        )
+        tmp.write(data)
+        tmp.flush()
+        os.fsync(tmp.fileno())
+        tmp_name = tmp.name
+    finally:
+        if tmp:
+            tmp.close()
+    try:
+        try:
+            os.chmod(tmp_name, 0o600)
+        except Exception:
+            logger.debug("Could not set credentials perms to 0600")
+        os.replace(tmp_name, path)
+        logger.info(f"Saved credentials to {path}")
+    finally:
+        # Best-effort cleanup if replace failed
+        try:
+            os.unlink(tmp_name)
+        except Exception:
+            pass
 
 
 def load_credentials() -> Optional[Credentials]:
@@ -160,7 +187,8 @@ def print_e2ee_status():
 
     if not status["available"] and status["platform_supported"]:
         print("\n  To enable E2EE:")
-        print("    pip install -r requirements-e2e.txt")
+        print('    pip install ".[e2e]"  # preferred')
+        print("    # or: pip install -r requirements-e2e.txt")
         print("    biblebot auth login  # Re-login to enable E2EE")
 
     print()
@@ -266,20 +294,22 @@ async def interactive_login(
             timeout=30,
         )
     except asyncio.TimeoutError:
-        logger.error("Login timed out after 30 seconds")
+        logger.exception("Login timed out after 30 seconds")
         await client.close()
         return False
-    except Exception as e:
-        # More specific exception handling would be better, but keeping broad catch
-        # for now to handle various nio exceptions and network issues
-        logger.error(f"Login error: {e}")
+    except NioError:
+        logger.exception("Login error")
+        await client.close()
+        return False
+    except Exception:
+        logger.exception("Unexpected login error")
         await client.close()
         return False
 
     if hasattr(resp, "access_token"):
         creds = Credentials(
             homeserver=hs,
-            user_id=user,
+            user_id=getattr(resp, "user_id", user),
             access_token=resp.access_token,
             device_id=resp.device_id,
         )
@@ -327,7 +357,7 @@ async def interactive_logout() -> bool:
     try:
         import shutil
 
-        store = get_store_dir()
+        store = E2EE_STORE_DIR
         if store.exists():
             shutil.rmtree(store, ignore_errors=True)
             logger.info(f"Cleared E2EE store at {store}")
