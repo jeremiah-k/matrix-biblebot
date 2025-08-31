@@ -67,18 +67,19 @@ def test_passage_cache(monkeypatch):
 
     monkeypatch.setattr(botmod, "make_api_request", fake_req)
 
-    # First call populates cache
-    text1, ref1 = asyncio.run(
-        botmod.get_bible_text("John 3:16", translation="kjv", api_keys=None)
-    )
-    # Second call should be served from cache, no new request
-    text2, ref2 = asyncio.run(
-        botmod.get_bible_text("John 3:16", translation="kjv", api_keys=None)
-    )
+    try:
+        # First call populates cache
+        text1, ref1 = asyncio.run(
+            botmod.get_bible_text("John 3:16", translation="kjv", api_keys=None)
+        )
+        # Second call should be served from cache, no new request
+        text2, ref2 = asyncio.run(
+            botmod.get_bible_text("John 3:16", translation="kjv", api_keys=None)
+        )
 
-    assert calls["n"] == 1
-    assert text1 == text2 and ref1 == ref2
-
-    # Clear cache after test
-    if hasattr(botmod, "_passage_cache"):
-        botmod._passage_cache.clear()
+        assert calls["n"] == 1
+        assert text1 == text2 and ref1 == ref2
+    finally:
+        # Clear cache after test
+        if hasattr(botmod, "_passage_cache"):
+            botmod._passage_cache.clear()

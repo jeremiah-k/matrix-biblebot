@@ -63,8 +63,8 @@ def get_config_dir() -> Path:
     CONFIG_DIR.mkdir(parents=True, exist_ok=True)
     try:
         os.chmod(CONFIG_DIR, 0o700)
-    except Exception:
-        logger.debug("Could not set config dir perms to 0700")
+    except OSError:
+        logger.debug("Could not set config dir perms to 0700", exc_info=True)
     return CONFIG_DIR
 
 
@@ -100,7 +100,7 @@ def save_credentials(creds: Credentials) -> None:
         os.chmod(tmp_name, 0o600)
         os.replace(tmp_name, path)
         logger.info(f"Saved credentials to {path}")
-    except Exception:
+    except OSError:
         logger.exception(f"Failed to save credentials to {path}")
         # On failure, clean up the temporary file.
         try:
@@ -126,8 +126,8 @@ def get_store_dir() -> Path:
     E2EE_STORE_DIR.mkdir(parents=True, exist_ok=True)
     try:
         os.chmod(E2EE_STORE_DIR, 0o700)
-    except Exception:
-        logger.debug("Could not set E2EE store perms to 0700")
+    except OSError:
+        logger.debug("Could not set E2EE store perms to 0700", exc_info=True)
     return E2EE_STORE_DIR
 
 
@@ -213,8 +213,11 @@ async def discover_homeserver(
             logger.debug("DiscoveryInfoError, using provided homeserver URL")
     except asyncio.TimeoutError:
         logger.debug("Server discovery timed out; using provided homeserver URL")
-    except Exception as e:
-        logger.debug(f"Server discovery failed: {e}; using provided homeserver URL")
+    except Exception:
+        logger.debug(
+            "Server discovery failed; using provided homeserver URL",
+            exc_info=True,
+        )
     return homeserver
 
 
@@ -342,8 +345,8 @@ async def interactive_logout() -> bool:
             await client.logout()
             await client.close()
             logger.info("Logged out from Matrix server")
-        except Exception as e:
-            logger.warning(f"Remote logout failed or skipped: {e}")
+        except Exception:
+            logger.warning("Remote logout failed or skipped", exc_info=True)
 
     # Remove credentials.json
     try:
@@ -351,8 +354,8 @@ async def interactive_logout() -> bool:
         if p.exists():
             p.unlink()
             logger.info(f"Removed {p}")
-    except Exception as e:
-        logger.warning(f"Failed to remove credentials.json: {e}")
+    except OSError:
+        logger.warning("Failed to remove credentials.json", exc_info=True)
 
     # Remove E2EE store dir
     try:
@@ -360,7 +363,7 @@ async def interactive_logout() -> bool:
         if store.exists():
             shutil.rmtree(store, ignore_errors=True)
             logger.info(f"Cleared E2EE store at {store}")
-    except Exception as e:
-        logger.warning(f"Failed cleaning E2EE store: {e}")
+    except OSError:
+        logger.warning("Failed cleaning E2EE store", exc_info=True)
 
     return True

@@ -398,6 +398,10 @@ class BibleBot:
         self.client = client  # Injected AsyncClient instance
         self.api_keys = {}  # Will be set in main()
 
+    def __repr__(self):
+        keys = list(self.config.keys()) if isinstance(self.config, dict) else []
+        return f"BibleBot(config_keys={keys}, client_set={self.client is not None})"
+
     async def resolve_aliases(self):
         """
         Allow room IDs or aliases in config; always resolve to room IDs for internal use.
@@ -681,7 +685,7 @@ async def main(config_path="config.yaml"):
         if not matrix_access_token:
             logger.error("No credentials.json and no MATRIX_ACCESS_TOKEN found.")
             logger.error(
-                "Run 'biblebot --auth-login' or set MATRIX_ACCESS_TOKEN in .env"
+                "Run 'biblebot auth login' (preferred) or set MATRIX_ACCESS_TOKEN in .env"
             )
             return
         client.access_token = matrix_access_token

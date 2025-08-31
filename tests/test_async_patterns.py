@@ -1,25 +1,13 @@
 import asyncio
-import os
-import sys
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-
-# Add src to path for imports
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
 from biblebot.bot import BibleBot
 
 
 class TestAsyncPatterns:
     """Test async patterns following mmrelay's proven approach."""
-
-    @pytest.fixture
-    def event_loop(self):
-        """Create event loop for async tests."""
-        loop = asyncio.new_event_loop()
-        yield loop
-        loop.close()
 
     @pytest.fixture
     def mock_config(self):

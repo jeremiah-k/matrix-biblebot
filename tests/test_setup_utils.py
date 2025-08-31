@@ -63,6 +63,8 @@ class TestServiceInstallation:
             assert service_path.exists()
             content = service_path.read_text()
             assert "/usr/bin/biblebot" in content
+            assert "ExecStart=" in content
+            assert "%h/.config/matrix-biblebot/config.yaml" in content
 
     @patch("biblebot.setup_utils.get_executable_path", return_value=None)
     def test_create_service_file_no_executable(self, mock_get_exec):

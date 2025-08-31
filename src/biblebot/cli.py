@@ -27,7 +27,7 @@ def get_default_config_path():
 
 def generate_config(config_path):
     """Generate a sample config file at the specified path."""
-    config_dir = os.path.dirname(config_path)
+    config_dir = os.path.dirname(config_path) or os.getcwd()
     env_path = os.path.join(config_dir, ".env")
 
     if os.path.exists(config_path) or os.path.exists(env_path):
@@ -89,6 +89,12 @@ Legacy flags (deprecated):
     )
     parser.add_argument(
         "--version", action="version", version=f"BibleBot {__version__}"
+    )
+    parser.add_argument(
+        "-y",
+        "--yes",
+        action="store_true",
+        help="Automatically agree to prompts (useful in CI/non-interactive environments)",
     )
 
     # Legacy flags for backward compatibility (deprecated)
@@ -158,6 +164,9 @@ Legacy flags (deprecated):
             DeprecationWarning,
             stacklevel=2,
         )
+        logging.warning(
+            "--generate-config is deprecated. Use 'biblebot config generate' instead."
+        )
         generate_config(args.config)
         return
 
@@ -166,6 +175,9 @@ Legacy flags (deprecated):
             "--install-service is deprecated. Use 'biblebot service install' instead.",
             DeprecationWarning,
             stacklevel=2,
+        )
+        logging.warning(
+            "--install-service is deprecated. Use 'biblebot service install' instead."
         )
         from .setup_utils import install_service
 
@@ -178,6 +190,9 @@ Legacy flags (deprecated):
             DeprecationWarning,
             stacklevel=2,
         )
+        logging.warning(
+            "--auth-login is deprecated. Use 'biblebot auth login' instead."
+        )
         ok = asyncio.run(interactive_login())
         sys.exit(0 if ok else 1)
 
@@ -186,6 +201,9 @@ Legacy flags (deprecated):
             "--auth-logout is deprecated. Use 'biblebot auth logout' instead.",
             DeprecationWarning,
             stacklevel=2,
+        )
+        logging.warning(
+            "--auth-logout is deprecated. Use 'biblebot auth logout' instead."
         )
         ok = asyncio.run(interactive_logout())
         sys.exit(0 if ok else 1)
@@ -270,16 +288,19 @@ Legacy flags (deprecated):
     if not os.path.exists(args.config):
         logging.warning(f"Config file not found: {args.config}")
         # Offer to generate at this location
-        try:
-            resp = (
-                input(
-                    "No config found. Generate sample config and .env here now? [y/N]: "
+        if args.yes:
+            resp = "y"
+        else:
+            try:
+                resp = (
+                    input(
+                        "No config found. Generate sample config and .env here now? [y/N]: "
+                    )
+                    .strip()
+                    .lower()
                 )
-                .strip()
-                .lower()
-            )
-        except (EOFError, KeyboardInterrupt):
-            resp = "n"
+            except (EOFError, KeyboardInterrupt):
+                resp = "n"
         if resp.startswith("y"):
             created = generate_config(args.config)
             if created:

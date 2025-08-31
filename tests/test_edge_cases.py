@@ -74,7 +74,9 @@ class TestEdgeCases:
             # Test with message that has valid reference format
             # The regex requires the entire message to match: ^([\w\s]+?)(\d+[:]\d+[-]?\d*)\s*(kjv|esv)?$
             # So we need a long book name that still matches the pattern
-            long_book_name = "A" * 100000  # Very long book name
+            long_book_name = (
+                "A" * 10000
+            )  # Sufficiently long for stress without slowing CI
             long_message = f"{long_book_name} 3:16"  # This will match the regex pattern
 
             event = MagicMock()
@@ -340,14 +342,7 @@ class TestEdgeCases:
         bot.api_keys = {}
 
         # Test various timeout scenarios (optimized for faster testing)
-        timeout_scenarios = [
-            0.001,  # Very short timeout
-            0.01,  # Short timeout (reduced from 0.1)
-            0.05,  # Medium timeout (reduced from 0.5)
-            0.1,  # Long timeout (reduced from 1.0)
-        ]
-
-        for _timeout_duration in timeout_scenarios:
+        for _ in range(4):
 
             async def timeout_api(*args, **kwargs):
                 # Simulate timeout without actual delay for faster testing

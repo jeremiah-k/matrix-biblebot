@@ -1,7 +1,6 @@
 """Tests for the bot module."""
 
 import asyncio
-from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -673,6 +672,7 @@ class TestMainFunction:
         mock_get_store,
         mock_load_creds,
         sample_config,
+        tmp_path,
     ):
         """Test main function with access token from environment."""
         # Setup mocks - ensure credentials are found
@@ -684,7 +684,7 @@ class TestMainFunction:
 
         mock_load_creds.return_value = None  # No saved credentials
 
-        mock_get_store.return_value = Path("/tmp/store")
+        mock_get_store.return_value = tmp_path / "store"
 
         with patch("biblebot.bot.AsyncClient") as mock_client_class:
             mock_client = AsyncMock()
@@ -798,6 +798,7 @@ class TestMainFunction:
         mock_get_store,
         mock_load_creds,
         sample_config,
+        tmp_path,
     ):
         """Test main function with E2EE enabled."""
         # Enable E2EE in config
@@ -807,7 +808,7 @@ class TestMainFunction:
         mock_load_config.return_value = e2ee_config
         mock_load_env.return_value = ("test_token", {"esv": "test_key"})
         mock_load_creds.return_value = None
-        mock_get_store.return_value = Path("/tmp/store")
+        mock_get_store.return_value = tmp_path / "store"
 
         with patch("biblebot.bot.AsyncClient") as mock_client_class:
             with patch("biblebot.bot.AsyncClientConfig"):
@@ -905,7 +906,7 @@ class TestCacheFunctions:
         assert result == ("For God so loved...", "John 3:16")
 
 
-class TestEnvironmentLoading:
+class TestEnvironmentLoadingExtra:
     """Test environment loading functionality."""
 
     def test_load_environment_with_env_file(self, temp_env_file):
