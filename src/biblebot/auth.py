@@ -22,7 +22,6 @@ from nio import (
     DiscoveryInfoError,
     DiscoveryInfoResponse,
 )
-from nio.exceptions import NioError
 
 logger = logging.getLogger("BibleBot")
 
@@ -297,7 +296,7 @@ async def interactive_login(
         logger.exception("Login timed out after 30 seconds")
         await client.close()
         return False
-    except NioError:
+    except (OSError, ValueError, RuntimeError):
         logger.exception("Login error")
         await client.close()
         return False

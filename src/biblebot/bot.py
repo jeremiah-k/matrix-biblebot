@@ -672,11 +672,6 @@ async def main(config_path="config.yaml"):
             )
             return
         bot.client.access_token = matrix_access_token
-        # nio exposes `user_id`; set directly. Guard only for unlikely AttributeError.
-        try:
-            bot.client.user_id = config["matrix_user"]
-        except AttributeError as e:
-            logger.warning(f"Could not set user_id from config: {e}")
 
     # If E2EE is enabled, ensure keys are uploaded
     if e2ee_enabled:
