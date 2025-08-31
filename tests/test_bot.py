@@ -686,6 +686,7 @@ class TestMainFunction:
     """Test the main bot function."""
 
     @pytest.mark.asyncio
+    @patch.dict("os.environ", {}, clear=True)  # Clear environment variables
     @patch("biblebot.auth.load_credentials")
     @patch("biblebot.auth.get_store_dir")
     @patch("biblebot.bot.load_config")
@@ -699,15 +700,18 @@ class TestMainFunction:
         sample_config,
     ):
         """Test main function with saved credentials."""
-        # Setup mocks
+        # Setup mocks - ensure credentials are found
         mock_load_config.return_value = sample_config
-        mock_load_env.return_value = (None, {"esv": "test_key"})
+        mock_load_env.return_value = (
+            None,
+            {"esv": "test_key"},
+        )  # No access token from env
 
         mock_creds = MagicMock()
-        mock_creds.user_id = "@test:matrix.org"  # Match what's in the test
-        mock_creds.device_id = None  # Match actual behavior
+        mock_creds.user_id = "@test:matrix.org"
+        mock_creds.device_id = None
         mock_creds.access_token = "test_token"
-        mock_load_creds.return_value = mock_creds
+        mock_load_creds.return_value = mock_creds  # Return valid credentials
 
         mock_get_store.return_value = Path("/tmp/store")
 
