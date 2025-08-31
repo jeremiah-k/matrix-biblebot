@@ -414,6 +414,270 @@ class TestCLIArgumentParsing:
         assert callable(cli.generate_config)
 
 
+class TestCLIMainFunction:
+    """Test the main CLI function with comprehensive coverage."""
+
+    @patch("sys.argv", ["biblebot", "--version"])
+    def test_version_flag(self):
+        """Test version flag."""
+        with pytest.raises(SystemExit):
+            cli.main()
+
+    @patch("sys.argv", ["biblebot", "--log-level", "debug"])
+    @patch("os.path.exists")
+    @patch("biblebot.auth.load_credentials")
+    @patch("biblebot.cli.asyncio.run")
+    def test_log_level_setting(self, mock_run, mock_load_creds, mock_exists):
+        """Test log level setting."""
+        mock_exists.return_value = True
+        mock_load_creds.return_value = Mock()
+        mock_run.return_value = None
+
+        # Should not raise exception
+        cli.main()
+
+    @patch("sys.argv", ["biblebot", "config", "generate"])
+    @patch("biblebot.cli.generate_config")
+    def test_config_generate_command(self, mock_generate):
+        """Test config generate command."""
+        mock_generate.return_value = True
+
+        cli.main()
+        mock_generate.assert_called_once()
+
+    @patch("sys.argv", ["biblebot", "config", "validate"])
+    @patch("biblebot.bot.load_config")
+    @patch("biblebot.bot.load_environment")
+    @patch("biblebot.auth.check_e2ee_status")
+    @patch("builtins.print")
+    def test_config_validate_command(
+        self, mock_print, mock_e2ee, mock_load_env, mock_load_config
+    ):
+        """Test config validate command."""
+        mock_load_config.return_value = {"matrix_room_ids": ["!room1", "!room2"]}
+        mock_load_env.return_value = (None, {"api_key1": "value1", "api_key2": ""})
+        mock_e2ee.return_value = {"available": True}
+
+        cli.main()
+        mock_load_config.assert_called_once()
+        mock_print.assert_called()
+
+    @patch("sys.argv", ["biblebot", "config", "validate"])
+    @patch("biblebot.bot.load_config")
+    @patch("sys.exit")
+    def test_config_validate_invalid(self, mock_exit, mock_load_config):
+        """Test config validate with invalid config."""
+        mock_load_config.return_value = None  # Invalid config
+
+        cli.main()
+        mock_exit.assert_called_with(1)
+
+    @patch("sys.argv", ["biblebot", "auth", "login"])
+    @patch("biblebot.auth.interactive_login")
+    @patch("biblebot.cli.asyncio.run")
+    @patch("sys.exit")
+    def test_auth_login_command(self, mock_exit, mock_run, mock_login):
+        """Test auth login command."""
+        mock_login.return_value = True
+        mock_run.return_value = True
+
+        cli.main()
+        mock_run.assert_called_once()
+        mock_exit.assert_called_with(0)
+
+    @patch("sys.argv", ["biblebot", "auth", "logout"])
+    @patch("biblebot.auth.interactive_logout")
+    @patch("biblebot.cli.asyncio.run")
+    @patch("sys.exit")
+    def test_auth_logout_command(self, mock_exit, mock_run, mock_logout):
+        """Test auth logout command."""
+        mock_logout.return_value = True
+        mock_run.return_value = True
+
+        cli.main()
+        mock_run.assert_called_once()
+        mock_exit.assert_called_with(0)
+
+    @patch("sys.argv", ["biblebot", "auth", "status"])
+    @patch("biblebot.auth.load_credentials")
+    @patch("biblebot.auth.print_e2ee_status")
+    @patch("builtins.print")
+    def test_auth_status_logged_in(self, mock_print, mock_print_e2ee, mock_load_creds):
+        """Test auth status when logged in."""
+        mock_creds = Mock()
+        mock_creds.user_id = "@test:matrix.org"
+        mock_creds.homeserver = "https://matrix.org"
+        mock_creds.device_id = "DEVICE123"
+        mock_load_creds.return_value = mock_creds
+
+        cli.main()
+        mock_print.assert_called()
+        mock_print_e2ee.assert_called_once()
+
+    @patch("sys.argv", ["biblebot", "auth", "status"])
+    @patch("biblebot.auth.load_credentials")
+    @patch("biblebot.auth.print_e2ee_status")
+    @patch("builtins.print")
+    def test_auth_status_not_logged_in(
+        self, mock_print, mock_print_e2ee, mock_load_creds
+    ):
+        """Test auth status when not logged in."""
+        mock_load_creds.return_value = None
+
+        cli.main()
+        mock_print.assert_called()
+        mock_print_e2ee.assert_called_once()
+
+    @patch("sys.argv", ["biblebot", "service", "install"])
+    @patch("biblebot.setup_utils.install_service")
+    def test_service_install_command(self, mock_install):
+        """Test service install command."""
+        mock_install.return_value = True
+
+        cli.main()
+        mock_install.assert_called_once()
+
+
+class TestCLILegacyFlags:
+    """Test legacy CLI flags with deprecation warnings."""
+
+    @patch("sys.argv", ["biblebot", "--generate-config"])
+    @patch("biblebot.cli.generate_config")
+    @patch("warnings.warn")
+    def test_legacy_generate_config(self, mock_warn, mock_generate):
+        """Test legacy --generate-config flag."""
+        mock_generate.return_value = True
+
+        cli.main()
+        mock_warn.assert_called_once()
+        mock_generate.assert_called_once()
+
+    @patch("sys.argv", ["biblebot", "--install-service"])
+    @patch("biblebot.setup_utils.install_service")
+    @patch("warnings.warn")
+    def test_legacy_install_service(self, mock_warn, mock_install):
+        """Test legacy --install-service flag."""
+        mock_install.return_value = True
+
+        cli.main()
+        mock_warn.assert_called_once()
+        mock_install.assert_called_once()
+
+    @patch("sys.argv", ["biblebot", "--auth-login"])
+    @patch("biblebot.auth.interactive_login")
+    @patch("biblebot.cli.asyncio.run")
+    @patch("sys.exit")
+    @patch("warnings.warn")
+    def test_legacy_auth_login(self, mock_warn, mock_exit, mock_run, mock_login):
+        """Test legacy --auth-login flag."""
+        mock_login.return_value = True
+        mock_run.return_value = True
+
+        cli.main()
+        mock_warn.assert_called_once()
+        # Should call sys.exit, which prevents further execution
+        mock_exit.assert_called_with(0)
+
+    @patch("sys.argv", ["biblebot", "--auth-logout"])
+    @patch("biblebot.auth.interactive_logout")
+    @patch("biblebot.cli.asyncio.run")
+    @patch("sys.exit")
+    @patch("warnings.warn")
+    def test_legacy_auth_logout(self, mock_warn, mock_exit, mock_run, mock_logout):
+        """Test legacy --auth-logout flag."""
+        mock_logout.return_value = True
+        mock_run.return_value = True
+
+        cli.main()
+        mock_warn.assert_called_once()
+        # Should call sys.exit, which prevents further execution
+        mock_exit.assert_called_with(0)
+
+
+class TestCLIBotOperation:
+    """Test CLI bot operation scenarios."""
+
+    @patch("sys.argv", ["biblebot"])
+    @patch("os.path.exists")
+    @patch("biblebot.auth.load_credentials")
+    @patch("biblebot.cli.asyncio.run")
+    def test_bot_run_with_config(self, mock_run, mock_load_creds, mock_exists):
+        """Test running bot with existing config."""
+        mock_exists.return_value = True
+        mock_load_creds.return_value = Mock()
+        mock_run.return_value = None
+
+        cli.main()
+        mock_run.assert_called_once()
+
+    @patch("sys.argv", ["biblebot"])
+    @patch("os.path.exists")
+    @patch("builtins.input")
+    @patch("biblebot.cli.generate_config")
+    @patch("sys.exit")
+    def test_bot_no_config_generate_yes(
+        self, mock_exit, mock_generate, mock_input, mock_exists
+    ):
+        """Test bot operation when no config exists and user chooses to generate."""
+        mock_exists.return_value = False
+        mock_input.return_value = "y"
+        mock_generate.return_value = True
+
+        cli.main()
+        mock_generate.assert_called_once()
+
+    @patch("sys.argv", ["biblebot"])
+    @patch("os.path.exists")
+    @patch("builtins.input")
+    @patch("sys.exit")
+    def test_bot_no_config_generate_no(self, mock_exit, mock_input, mock_exists):
+        """Test bot operation when no config exists and user chooses not to generate."""
+        mock_exists.return_value = False
+        mock_input.return_value = "n"
+
+        cli.main()
+        mock_exit.assert_called_with(1)
+
+    @patch("sys.argv", ["biblebot"])
+    @patch("os.path.exists")
+    @patch("builtins.input")
+    @patch("sys.exit")
+    def test_bot_no_config_keyboard_interrupt(self, mock_exit, mock_input, mock_exists):
+        """Test bot operation when no config exists and user interrupts."""
+        mock_exists.return_value = False
+        mock_input.side_effect = KeyboardInterrupt()
+
+        cli.main()
+        mock_exit.assert_called_with(1)
+
+    @patch("sys.argv", ["biblebot"])
+    @patch("os.path.exists")
+    @patch("biblebot.auth.load_credentials")
+    @patch("biblebot.cli.asyncio.run")
+    def test_bot_keyboard_interrupt(self, mock_run, mock_load_creds, mock_exists):
+        """Test bot operation with keyboard interrupt."""
+        mock_exists.return_value = True
+        mock_load_creds.return_value = Mock()
+        mock_run.side_effect = KeyboardInterrupt()
+
+        # Should not raise exception
+        cli.main()
+
+    @patch("sys.argv", ["biblebot"])
+    @patch("os.path.exists")
+    @patch("biblebot.auth.load_credentials")
+    @patch("biblebot.cli.asyncio.run")
+    @patch("sys.exit")
+    def test_bot_runtime_error(self, mock_exit, mock_run, mock_load_creds, mock_exists):
+        """Test bot operation with runtime error."""
+        mock_exists.return_value = True
+        mock_load_creds.return_value = Mock()
+        mock_run.side_effect = Exception("Runtime error")
+
+        cli.main()
+        mock_exit.assert_called_with(1)
+
+
 class TestCLIUtilityFunctions:
     """Test CLI utility functions."""
 
