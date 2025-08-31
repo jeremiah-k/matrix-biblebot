@@ -381,7 +381,7 @@ class TestMessageHandling:
 
             bot_instance = bot.BibleBot(sample_config)
             bot_instance.client = mock_client
-            bot_instance.start_time = 1000  # Set start time
+            bot_instance.start_time = 1000000  # Set start time (milliseconds)
 
             # Mock room and event
             mock_room = MagicMock()
@@ -389,7 +389,7 @@ class TestMessageHandling:
 
             mock_event = MagicMock()
             mock_event.sender = "@user:matrix.org"  # Different from bot
-            mock_event.server_timestamp = 2000  # After start time
+            mock_event.server_timestamp = 2000000  # After start time (milliseconds)
             mock_event.body = "John 3:16"
             mock_event.event_id = "$event:matrix.org"
 

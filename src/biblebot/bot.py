@@ -288,9 +288,16 @@ logging.getLogger("nio").setLevel(logging.WARNING)
 async def make_api_request(url, headers=None, params=None, session=None, timeout=10):
     """Make an API request and return the JSON response."""
 
+    # Normalize timeout to ClientTimeout
+    req_timeout = (
+        timeout
+        if isinstance(timeout, aiohttp.ClientTimeout)
+        else aiohttp.ClientTimeout(total=timeout)
+    )
+
     async def _request(sess):
         async with sess.get(
-            url, headers=headers, params=params, timeout=timeout
+            url, headers=headers, params=params, timeout=req_timeout
         ) as response:
             if response.status == 200:
                 return await response.json()
@@ -301,7 +308,7 @@ async def make_api_request(url, headers=None, params=None, session=None, timeout
         if session:
             return await _request(session)
         else:
-            async with aiohttp.ClientSession() as new_session:
+            async with aiohttp.ClientSession(timeout=req_timeout) as new_session:
                 return await _request(new_session)
     except (aiohttp.ClientError, asyncio.TimeoutError):
         logger.exception(f"Network error fetching {url}")

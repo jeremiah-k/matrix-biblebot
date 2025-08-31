@@ -1,12 +1,24 @@
 """Tests for the CLI module."""
 
 import argparse
+import asyncio
 import warnings
 from unittest.mock import Mock, patch
 
 import pytest
 
 from biblebot import cli
+
+
+def _consume_coroutine(coro):
+    """Helper to properly consume a coroutine in tests."""
+    if asyncio.iscoroutine(coro):
+        loop = asyncio.new_event_loop()
+        try:
+            return loop.run_until_complete(coro)
+        finally:
+            loop.close()
+    return coro
 
 
 @pytest.fixture
@@ -471,12 +483,13 @@ class TestCLIMainFunction:
     @patch("sys.argv", ["biblebot", "--log-level", "debug"])
     @patch("os.path.exists")
     @patch("biblebot.auth.load_credentials")
+    @patch("biblebot.bot.main", new=lambda *a, **k: asyncio.sleep(0))  # async no-op
     @patch("biblebot.cli.asyncio.run")
     def test_log_level_setting(self, mock_run, mock_load_creds, mock_exists):
         """Test log level setting."""
         mock_exists.return_value = True
         mock_load_creds.return_value = Mock()
-        mock_run.return_value = None
+        mock_run.side_effect = _consume_coroutine
 
         # Should not raise exception
         cli.main()
@@ -532,8 +545,11 @@ class TestCLIMainFunction:
     @patch("sys.exit")
     def test_auth_logout_command(self, mock_exit, mock_run, mock_logout, mock_exists):
         """Test auth logout command."""
-        mock_logout.return_value = True
-        mock_run.return_value = True
+        # Create a proper awaitable future
+        future = asyncio.Future()
+        future.set_result(True)
+        mock_logout.return_value = future
+        mock_run.side_effect = _consume_coroutine
         mock_exit.side_effect = SystemExit(0)
 
         with pytest.raises(SystemExit) as e:
@@ -688,12 +704,13 @@ class TestCLIBotOperation:
     @patch("sys.argv", ["biblebot"])
     @patch("os.path.exists")
     @patch("biblebot.auth.load_credentials")
+    @patch("biblebot.bot.main", new=lambda *a, **k: asyncio.sleep(0))  # async no-op
     @patch("biblebot.cli.asyncio.run")
     def test_bot_run_with_config(self, mock_run, mock_load_creds, mock_exists):
         """Test running bot with existing config."""
         mock_exists.return_value = True
         mock_load_creds.return_value = Mock()
-        mock_run.return_value = None
+        mock_run.side_effect = _consume_coroutine
 
         cli.main()
         mock_run.assert_called_once()
@@ -702,41 +719,34 @@ class TestCLIBotOperation:
     @patch("os.path.exists")
     @patch("builtins.input")
     @patch("biblebot.cli.generate_config")
-    @patch("biblebot.cli.asyncio.run")
     @patch("sys.exit")
     def test_bot_no_config_generate_yes(
-        self, mock_exit, mock_run, mock_generate, mock_input, mock_exists
+        self, mock_exit, mock_generate, mock_input, mock_exists
     ):
         """Test bot operation when no config exists and user chooses to generate."""
         mock_exists.return_value = False
         mock_input.return_value = "y"
         mock_generate.return_value = True
-        mock_run.side_effect = SystemExit(1)  # Prevent actual async execution
+        mock_exit.side_effect = SystemExit(0)
 
-        try:
+        with pytest.raises(SystemExit):
             cli.main()
-        except SystemExit:
-            pass  # Expected due to mock_run side effect
 
         mock_generate.assert_called_once()
+        mock_exit.assert_called_with(0)
 
     @patch("sys.argv", ["biblebot"])
     @patch("os.path.exists")
     @patch("builtins.input")
-    @patch("biblebot.cli.asyncio.run")
     @patch("sys.exit")
-    def test_bot_no_config_generate_no(
-        self, mock_exit, mock_run, mock_input, mock_exists
-    ):
+    def test_bot_no_config_generate_no(self, mock_exit, mock_input, mock_exists):
         """Test bot operation when no config exists and user chooses not to generate."""
         mock_exists.return_value = False
         mock_input.return_value = "n"
-        mock_run.side_effect = SystemExit(1)  # Prevent actual async execution
+        mock_exit.side_effect = SystemExit(1)
 
-        try:
+        with pytest.raises(SystemExit):
             cli.main()
-        except SystemExit:
-            pass  # Expected due to mock_exit or mock_run
 
         mock_exit.assert_called_with(1)
 
@@ -767,29 +777,41 @@ class TestCLIBotOperation:
     @patch("sys.argv", ["biblebot"])
     @patch("os.path.exists")
     @patch("biblebot.auth.load_credentials")
+    @patch("biblebot.bot.main", new=lambda *a, **k: asyncio.sleep(0))  # async no-op
     @patch("biblebot.cli.asyncio.run")
     def test_bot_keyboard_interrupt(self, mock_run, mock_load_creds, mock_exists):
         """Test bot operation with keyboard interrupt."""
         mock_exists.return_value = True
         mock_load_creds.return_value = Mock()
-        mock_run.side_effect = KeyboardInterrupt()
 
-        # Should not raise exception
-        cli.main()
+        def _consume_then_interrupt(coro):
+            _consume_coroutine(coro)
+            raise KeyboardInterrupt()
+
+        mock_run.side_effect = _consume_then_interrupt
+
+        with pytest.raises(KeyboardInterrupt):
+            cli.main()
 
     @patch("sys.argv", ["biblebot"])
     @patch("os.path.exists")
     @patch("biblebot.auth.load_credentials")
+    @patch("biblebot.bot.main", new=lambda *a, **k: asyncio.sleep(0))  # async no-op
     @patch("biblebot.cli.asyncio.run")
     @patch("sys.exit")
     def test_bot_runtime_error(self, mock_exit, mock_run, mock_load_creds, mock_exists):
         """Test bot operation with runtime error."""
         mock_exists.return_value = True
         mock_load_creds.return_value = Mock()
-        mock_run.side_effect = Exception("Runtime error")
 
-        cli.main()
-        mock_exit.assert_called_with(1)
+        def _consume_then_error(coro):
+            _consume_coroutine(coro)
+            raise Exception("Runtime error")
+
+        mock_run.side_effect = _consume_then_error
+
+        with pytest.raises(Exception, match="Runtime error"):
+            cli.main()
 
 
 class TestCLIUtilityFunctions:

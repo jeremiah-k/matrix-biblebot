@@ -222,7 +222,7 @@ class TestPerformancePatterns:
             call_count += 1
             if call_count <= 3:
                 raise Exception("API Error")
-            return {"text": "Recovered verse", "reference": "John 3:16"}
+            return ("Recovered verse", "John 3:16")
 
         with patch("biblebot.bot.get_bible_text", side_effect=failing_api):
             # Send multiple requests during failure and recovery
