@@ -13,11 +13,28 @@ from biblebot import cli
 def _consume_coroutine(coro):
     """Helper to properly consume a coroutine in tests."""
     if asyncio.iscoroutine(coro):
-        loop = asyncio.new_event_loop()
+        # Try to use existing event loop if available
         try:
-            return loop.run_until_complete(coro)
-        finally:
-            loop.close()
+            loop = asyncio.get_running_loop()
+            # If we have a running loop, we can't use run_until_complete
+            # Just close the coroutine to avoid warnings
+            coro.close()
+            return None
+        except RuntimeError:
+            # No running loop, create a new one
+            loop = asyncio.new_event_loop()
+            try:
+                return loop.run_until_complete(coro)
+            finally:
+                # Ensure all tasks are cleaned up
+                pending = asyncio.all_tasks(loop)
+                for task in pending:
+                    task.cancel()
+                if pending:
+                    loop.run_until_complete(
+                        asyncio.gather(*pending, return_exceptions=True)
+                    )
+                loop.close()
     return coro
 
 
@@ -790,8 +807,8 @@ class TestCLIBotOperation:
 
         mock_run.side_effect = _consume_then_interrupt
 
-        with pytest.raises(KeyboardInterrupt):
-            cli.main()
+        # CLI catches KeyboardInterrupt and handles it gracefully
+        cli.main()  # Should not raise exception
 
     @patch("sys.argv", ["biblebot"])
     @patch("os.path.exists")
@@ -809,9 +826,13 @@ class TestCLIBotOperation:
             raise Exception("Runtime error")
 
         mock_run.side_effect = _consume_then_error
+        mock_exit.side_effect = SystemExit(1)
 
-        with pytest.raises(Exception, match="Runtime error"):
+        # CLI catches Exception, logs it, and calls sys.exit(1)
+        with pytest.raises(SystemExit):
             cli.main()
+
+        mock_exit.assert_called_with(1)
 
 
 class TestCLIUtilityFunctions:

@@ -107,7 +107,7 @@ class TestE2EEStoreManagement:
     @patch("biblebot.auth.os.chmod")
     @patch("biblebot.auth.os.makedirs")
     @patch("biblebot.auth.os.path.exists", return_value=False)
-    @patch("biblebot.auth.sys.platform", "linux")
+    @patch("sys.platform", "linux")
     def test_get_store_dir_sets_permissions(
         self, mock_exists, mock_makedirs, mock_chmod
     ):

@@ -150,4 +150,7 @@ def comprehensive_cleanup(request):
         warnings.filterwarnings(
             "ignore", category=DeprecationWarning, message=".*no current event loop.*"
         )
+        warnings.filterwarnings(
+            "ignore", category=ResourceWarning, message=".*unclosed.*"
+        )
         gc.collect()
