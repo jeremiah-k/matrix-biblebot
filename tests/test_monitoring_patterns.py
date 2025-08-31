@@ -131,7 +131,7 @@ class TestMonitoringPatterns:
     async def test_health_check_patterns(self, mock_config, mock_client):
         """Test health check functionality."""
         bot = BibleBot(config=mock_config, client=mock_client)
-        bot.start_time = int(time.time() * 1000)  # Set start time in milliseconds
+        bot.start_time = 1234567880000  # Use fixed start time in milliseconds
         bot.api_keys = {}
 
         # Test basic health indicators
@@ -147,7 +147,9 @@ class TestMonitoringPatterns:
             event = MagicMock()
             event.body = "John 3:16"
             event.sender = "@healthcheck:matrix.org"
-            event.server_timestamp = int(time.time() * 1000)
+            event.server_timestamp = (
+                1234567890000  # Use fixed timestamp after start_time
+            )
 
             room = MagicMock()
             room.room_id = mock_config["matrix_room_ids"][0]  # Use configured room
