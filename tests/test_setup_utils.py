@@ -42,6 +42,42 @@ class TestServiceUtilities:
 class TestServiceInstallation:
     """Test service installation functionality."""
 
+    @patch("biblebot.setup_utils.get_executable_path")
+    @patch("biblebot.setup_utils.get_template_service_content")
+    def test_create_service_file_success(
+        self, mock_get_template, mock_get_exec, tmp_path
+    ):
+        """Test successful creation of the service file."""
+        mock_get_exec.return_value = "/usr/bin/biblebot"
+        mock_get_template.return_value = "[Unit]\nExecStart="
+
+        with patch("biblebot.setup_utils.get_user_service_path") as mock_get_service_path:
+            service_path = tmp_path / "biblebot.service"
+            mock_get_service_path.return_value = service_path
+
+            result = setup_utils.create_service_file()
+
+            assert result is True
+            assert service_path.exists()
+            content = service_path.read_text()
+            assert "/usr/bin/biblebot" in content
+
+    @patch("biblebot.setup_utils.get_executable_path", return_value=None)
+    def test_create_service_file_no_executable(self, mock_get_exec):
+        """Test service file creation when executable is not found."""
+        result = setup_utils.create_service_file()
+        assert result is False
+
+    @patch("biblebot.setup_utils.get_executable_path")
+    @patch("biblebot.setup_utils.get_template_service_content", return_value=None)
+    def test_create_service_file_no_template(
+        self, mock_get_template, mock_get_exec
+    ):
+        """Test service file creation when template is not found."""
+        mock_get_exec.return_value = "/usr/bin/biblebot"
+        result = setup_utils.create_service_file()
+        assert result is False
+
     @patch("builtins.print")
     def test_print_service_commands(self, mock_print):
         """Test printing service commands."""
@@ -222,3 +258,18 @@ class TestServiceTemplateHandling:
 
         result = setup_utils.check_lingering_enabled()
         assert result is False
+
+    @patch("biblebot.setup_utils.read_service_file", return_value=None)
+    def test_service_needs_update_no_existing_service(self, mock_read):
+        """Test service_needs_update when no service file exists."""
+        needs_update, reason = setup_utils.service_needs_update()
+        assert needs_update is True
+        assert "No existing service file found" in reason
+
+    @patch("biblebot.setup_utils.read_service_file", return_value="ExecStart=/wrong/path")
+    @patch("biblebot.setup_utils.get_executable_path", return_value="/usr/bin/biblebot")
+    def test_service_needs_update_wrong_path(self, mock_get_exec, mock_read):
+        """Test service_needs_update when ExecStart has wrong path."""
+        needs_update, reason = setup_utils.service_needs_update()
+        assert needs_update is True
+        assert "does not match" in reason

@@ -285,15 +285,22 @@ logging.getLogger("nio").setLevel(logging.WARNING)
 
 
 # Handles headers & parameters for API requests
-async def make_api_request(url, headers=None, params=None):
+async def make_api_request(url, headers=None, params=None, session=None, timeout=10):
+    """Make an API request and return the JSON response."""
+
+    async def _request(sess):
+        async with sess.get(url, headers=headers, params=params, timeout=timeout) as response:
+            if response.status == 200:
+                return await response.json()
+            logger.warning(f"HTTP {response.status} fetching {url}")
+            return None
+
     try:
-        timeout = aiohttp.ClientTimeout(total=10)
-        async with aiohttp.ClientSession(timeout=timeout) as session:
-            async with session.get(url, headers=headers, params=params) as response:
-                if response.status == 200:
-                    return await response.json()
-                logger.warning(f"HTTP {response.status} fetching {url}")
-                return None
+        if session:
+            return await _request(session)
+        else:
+            async with aiohttp.ClientSession() as new_session:
+                return await _request(new_session)
     except (aiohttp.ClientError, asyncio.TimeoutError):
         logger.exception(f"Network error fetching {url}")
         return None
@@ -702,4 +709,8 @@ async def main(config_path="config.yaml"):
             )
 
     # Start the bot
-    await bot.start()
+    try:
+        await bot.start()
+    finally:
+        if client:
+            await client.close()

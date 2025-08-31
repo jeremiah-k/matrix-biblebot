@@ -140,80 +140,52 @@ class TestBookNameNormalization:
         assert result == expected
 
 
+from aiohttp import web
+
 class TestAPIRequests:
     """Test API request functionality."""
 
     @pytest.mark.asyncio
-    async def test_make_api_request_success(self):
+    async def test_make_api_request_success(self, aiohttp_client):
         """Test successful API request."""
         mock_response_data = {"text": "Test verse", "reference": "Test 1:1"}
 
-        with patch("aiohttp.ClientSession") as mock_session_class:
-            # Create mock response
-            mock_response = MagicMock()
-            mock_response.status = 200
-            mock_response.json = AsyncMock(return_value=mock_response_data)
+        async def handler(request):
+            return web.json_response(mock_response_data)
 
-            # Create mock session context manager
-            mock_session = MagicMock()
-            mock_session.__aenter__ = AsyncMock(return_value=mock_session)
-            mock_session.__aexit__ = AsyncMock(return_value=None)
+        app = web.Application()
+        app.router.add_get("/", handler)
+        client = await aiohttp_client(app)
 
-            # Create mock get context manager
-            mock_get = MagicMock()
-            mock_get.__aenter__ = AsyncMock(return_value=mock_response)
-            mock_get.__aexit__ = AsyncMock(return_value=None)
-            mock_session.get.return_value = mock_get
-
-            mock_session_class.return_value = mock_session
-
-            result = await bot.make_api_request("https://test.api/verse")
-
-            assert result == mock_response_data
+        result = await bot.make_api_request("/", session=client)
+        assert result == mock_response_data
 
     @pytest.mark.asyncio
-    async def test_make_api_request_http_error(self):
+    async def test_make_api_request_http_error(self, aiohttp_client):
         """Test API request with HTTP error."""
-        with patch("aiohttp.ClientSession") as mock_session_class:
-            # Create mock response with error status
-            mock_response = MagicMock()
-            mock_response.status = 404
+        async def handler(request):
+            return web.Response(status=404)
 
-            # Create mock session context manager
-            mock_session = MagicMock()
-            mock_session.__aenter__ = AsyncMock(return_value=mock_session)
-            mock_session.__aexit__ = AsyncMock(return_value=None)
+        app = web.Application()
+        app.router.add_get("/", handler)
+        client = await aiohttp_client(app)
 
-            # Create mock get context manager
-            mock_get = MagicMock()
-            mock_get.__aenter__ = AsyncMock(return_value=mock_response)
-            mock_get.__aexit__ = AsyncMock(return_value=None)
-            mock_session.get.return_value = mock_get
-
-            mock_session_class.return_value = mock_session
-
-            result = await bot.make_api_request("https://test.api/verse")
-
-            assert result is None
+        result = await bot.make_api_request("/", session=client)
+        assert result is None
 
     @pytest.mark.asyncio
-    async def test_make_api_request_timeout(self):
+    async def test_make_api_request_timeout(self, aiohttp_client):
         """Test API request with timeout."""
+        async def handler(request):
+            await asyncio.sleep(0.2)
+            return web.Response(text="ok")
 
-        with patch("aiohttp.ClientSession") as mock_session_class:
-            # Create mock session context manager
-            mock_session = MagicMock()
-            mock_session.__aenter__ = AsyncMock(return_value=mock_session)
-            mock_session.__aexit__ = AsyncMock(return_value=None)
+        app = web.Application()
+        app.router.add_get("/", handler)
+        client = await aiohttp_client(app)
 
-            # Make get() raise timeout error
-            mock_session.get.side_effect = asyncio.TimeoutError()
-
-            mock_session_class.return_value = mock_session
-
-            result = await bot.make_api_request("https://test.api/verse")
-
-            assert result is None
+        result = await bot.make_api_request("/", timeout=0.1, session=client)
+        assert result is None
 
 
 class TestBibleTextRetrieval:
@@ -712,9 +684,9 @@ class TestMainFunction:
         mock_get_store.return_value = Path("/tmp/store")
 
         with patch("biblebot.bot.AsyncClient") as mock_client_class:
-            mock_client = MagicMock()
-            mock_client.restore_login = MagicMock()  # Sync method
-            mock_client.add_event_callback = MagicMock()  # Sync method
+            mock_client = AsyncMock()
+            mock_client.restore_login = MagicMock()
+            mock_client.add_event_callback = MagicMock()
             mock_client.should_upload_keys = False
             mock_client_class.return_value = mock_client
 
@@ -752,8 +724,9 @@ class TestMainFunction:
         mock_load_creds.return_value = None  # No saved credentials
 
         with patch("biblebot.bot.AsyncClient") as mock_client_class:
-            mock_client = MagicMock()
-            mock_client.restore_login = MagicMock()  # Sync method
+            mock_client = AsyncMock()
+            mock_client.restore_login = MagicMock()
+            mock_client.add_event_callback = MagicMock()
             mock_client_class.return_value = mock_client
 
             with patch("biblebot.bot.BibleBot") as mock_bot_class:
@@ -835,9 +808,10 @@ class TestMainFunction:
 
         with patch("biblebot.bot.AsyncClient") as mock_client_class:
             with patch("biblebot.bot.AsyncClientConfig"):
-                mock_client = MagicMock()
-                mock_client.add_event_callback = MagicMock()  # Sync method
-                mock_client.keys_upload = AsyncMock()  # Async method
+                mock_client = AsyncMock()
+                mock_client.restore_login = MagicMock()
+                mock_client.add_event_callback = MagicMock()
+                mock_client.keys_upload = AsyncMock()
                 mock_client_class.return_value = mock_client
                 mock_client.should_upload_keys = True
 

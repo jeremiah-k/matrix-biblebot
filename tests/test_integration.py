@@ -121,9 +121,9 @@ matrix:
             mock_load_creds.return_value = None  # No saved credentials
 
             with patch("biblebot.bot.AsyncClient") as mock_client_class:
-                mock_client = MagicMock()
-                mock_client.restore_login = MagicMock()  # Sync method
-                mock_client.add_event_callback = MagicMock()  # Sync method
+                mock_client = AsyncMock()
+                mock_client.restore_login = MagicMock()
+                mock_client.add_event_callback = MagicMock()
                 mock_client_class.return_value = mock_client
 
                 with patch("biblebot.bot.BibleBot") as mock_bot_class:
