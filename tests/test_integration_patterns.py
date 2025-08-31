@@ -376,7 +376,8 @@ class TestIntegrationPatterns:
     async def test_stress_integration(self, mock_config, mock_client):
         """Test system under stress conditions."""
         bot = BibleBot(config=mock_config, client=mock_client)
-        bot.start_time = 1234567880
+        bot.start_time = 1234567880000  # Use milliseconds
+        bot.api_keys = {}
 
         with patch("biblebot.bot.get_bible_text") as mock_get_bible:
             mock_get_bible.return_value = ("Test verse", "John 3:16")
@@ -387,10 +388,13 @@ class TestIntegrationPatterns:
                 event = MagicMock()
                 event.body = f"John 3:{i+1}"
                 event.sender = f"@user{i % 10}:matrix.org"  # 10 different users
-                event.server_timestamp = 1234567890 + i
+                event.server_timestamp = 1234567890000 + i * 1000  # Use milliseconds
 
                 room = MagicMock()
-                room.room_id = f"!room{i % 5}:matrix.org"  # 5 different rooms
+                # Use configured room IDs only
+                room.room_id = mock_config["matrix_room_ids"][
+                    i % len(mock_config["matrix_room_ids"])
+                ]
 
                 task = bot.on_room_message(room, event)
                 tasks.append(task)
@@ -404,7 +408,8 @@ class TestIntegrationPatterns:
     async def test_real_world_scenarios(self, mock_config, mock_client):
         """Test realistic real-world usage scenarios."""
         bot = BibleBot(config=mock_config, client=mock_client)
-        bot.start_time = 1234567880
+        bot.start_time = 1234567880000  # Use milliseconds
+        bot.api_keys = {}
 
         # Scenario 1: Bible study group
         with patch("biblebot.bot.get_bible_text") as mock_get_bible:
@@ -414,20 +419,21 @@ class TestIntegrationPatterns:
                 ("I can do all things through Christ", "Philippians 4:13"),
             ]
 
+            # Use exact format that matches REFERENCE_PATTERNS regex
             study_requests = [
-                "Let's start with John 1:1",
-                "Now show us John 3:16",
-                "What about Philippians 4:13?",
+                "John 1:1",
+                "John 3:16",
+                "Philippians 4:13",
             ]
 
             room = MagicMock()
-            room.room_id = "!biblestudy:matrix.org"
+            room.room_id = mock_config["matrix_room_ids"][0]  # Use configured room
 
             for i, request in enumerate(study_requests):
                 event = MagicMock()
                 event.body = request
                 event.sender = f"@student{i}:matrix.org"
-                event.server_timestamp = 1234567890 + i * 60  # 1 minute apart
+                event.server_timestamp = 1234567890000 + i * 60000  # Use milliseconds
 
                 await bot.on_room_message(room, event)
 
@@ -446,7 +452,7 @@ class TestIntegrationPatterns:
             event = MagicMock()
             event.body = "1 Corinthians 13:4"
             event.sender = "@quicklookup:matrix.org"
-            event.server_timestamp = 1234567890
+            event.server_timestamp = 1234567890000  # Use milliseconds
 
             await bot.on_room_message(room, event)
 
