@@ -292,34 +292,31 @@ async def interactive_login(
             client.login(password=pwd, device_name="biblebot"),
             timeout=30,
         )
+
+        if hasattr(resp, "access_token"):
+            creds = Credentials(
+                homeserver=hs,
+                user_id=getattr(resp, "user_id", user),
+                access_token=resp.access_token,
+                device_id=resp.device_id,
+            )
+            save_credentials(creds)
+            logger.info("Login successful! Credentials saved.")
+            return True
+        else:
+            logger.error(f"Login failed: {resp}")
+            return False
     except asyncio.TimeoutError:
         logger.exception("Login timed out after 30 seconds")
-        await client.close()
         return False
     except (OSError, ValueError, RuntimeError):
         logger.exception("Login error")
-        await client.close()
         return False
     except Exception:
         logger.exception("Unexpected login error")
-        await client.close()
         return False
-
-    if hasattr(resp, "access_token"):
-        creds = Credentials(
-            homeserver=hs,
-            user_id=getattr(resp, "user_id", user),
-            access_token=resp.access_token,
-            device_id=resp.device_id,
-        )
-        save_credentials(creds)
-        logger.info("Login successful! Credentials saved.")
+    finally:
         await client.close()
-        return True
-    else:
-        logger.error(f"Login failed: {resp}")
-        await client.close()
-        return False
 
 
 async def interactive_logout() -> bool:
