@@ -25,7 +25,14 @@ def test_reference_patterns_basic():
         "rev 22:20 kjv",
     ]
     for s in good:
-        assert any(re.match(p, s, re.IGNORECASE) for p in pats)
+        # Handle both compiled patterns and string patterns
+        matches = []
+        for p in pats:
+            if hasattr(p, "match"):  # Compiled pattern
+                matches.append(p.match(s))
+            else:  # String pattern
+                matches.append(re.match(p, s, re.IGNORECASE))
+        assert any(matches)
 
 
 @pytest.mark.parametrize(

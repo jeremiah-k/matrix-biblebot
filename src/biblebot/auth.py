@@ -105,8 +105,8 @@ def save_credentials(creds: Credentials) -> None:
         # On failure, clean up the temporary file.
         try:
             os.unlink(tmp_name)
-        except OSError:
-            pass
+        except OSError as e:
+            logger.debug(f"Failed to clean up temp file: {e}")
 
 
 def load_credentials() -> Optional[Credentials]:
@@ -317,8 +317,8 @@ async def interactive_login(
     except (OSError, ValueError, RuntimeError):
         logger.exception("Login error")
         return False
-    except Exception:
-        logger.exception("Unexpected login error")
+    except Exception as e:
+        logger.exception(f"Unexpected login error: {type(e).__name__}")
         return False
     finally:
         await client.close()

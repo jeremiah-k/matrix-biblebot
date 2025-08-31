@@ -220,7 +220,7 @@ Legacy flags (deprecated):
                 e2ee_status = check_e2ee_status()
                 print(f"  E2EE support: {'✓' if e2ee_status['available'] else '✗'}")
 
-            except Exception as e:
+            except (KeyError, ValueError, TypeError) as e:
                 print(f"✗ Configuration validation failed: {e}")
                 sys.exit(1)
             return
@@ -266,8 +266,7 @@ Legacy flags (deprecated):
             service_parser.print_help()
             return
 
-    # Check if config file exists (unless credentials exist for headless use)
-    creds = load_credentials()
+    # Check if config file exists - always required for bot operation
     if not os.path.exists(args.config):
         logging.warning(f"Config file not found: {args.config}")
         # Offer to generate at this location

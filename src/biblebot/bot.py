@@ -31,7 +31,9 @@ logger = logging.getLogger("BibleBot")
 DEFAULT_TRANSLATION = "kjv"
 ESV_API_URL = "https://api.esv.org/v3/passage/text/"
 KJV_API_URL_TEMPLATE = "https://bible-api.com/{passage}?translation=kjv"
-REFERENCE_PATTERNS = [r"^([\w\s]+?)(\d+[:]\d+[-]?\d*)\s*(kjv|esv)?$"]
+REFERENCE_PATTERNS = [
+    re.compile(r"^([\w\s]+?)(\d+[:]\d+[-]?\d*)\s*(kjv|esv)?$", re.IGNORECASE)
+]
 SYNC_TIMEOUT_MS = 30000
 REACTION_OK = "✅"
 MESSAGE_SUFFIX = " 🕊️✝️"
@@ -384,7 +386,7 @@ async def get_kjv_text(passage):
 class BibleBot:
     def __init__(self, config, client=None):
         self.config = config
-        self.client = client  # Will be set properly in main()
+        self.client = client  # Injected AsyncClient instance
         self.api_keys = {}  # Will be set in main()
 
     async def resolve_aliases(self):
@@ -406,7 +408,7 @@ class BibleBot:
                     logger.warning(f"Could not resolve alias (exception): {entry}")
             else:
                 resolved_ids.append(entry)
-        self.config["matrix_room_ids"] = list(set(resolved_ids))
+        self.config["matrix_room_ids"] = list(dict.fromkeys(resolved_ids))
 
     async def join_matrix_room(self, room_id_or_alias):
         """
@@ -537,7 +539,7 @@ class BibleBot:
             passage = None
             translation = DEFAULT_TRANSLATION  # Default translation
             for pattern in search_patterns:
-                match = re.match(pattern, event.body, re.IGNORECASE)
+                match = pattern.match(event.body)
                 if match:
                     raw_book_name = match.group(1).strip()
                     book_name = normalize_book_name(raw_book_name)
