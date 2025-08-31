@@ -771,7 +771,6 @@ class TestMainFunction:
                 # Should start the bot
                 mock_bot.start.assert_called_once()
 
-    @pytest.mark.skip(reason="Test logic needs review - main function behavior unclear")
     @pytest.mark.asyncio
     @patch.dict("os.environ", {}, clear=True)  # Clear all environment variables
     @patch("biblebot.auth.load_credentials")
@@ -781,27 +780,20 @@ class TestMainFunction:
         self, mock_load_env, mock_load_config, mock_load_creds, sample_config
     ):
         """Test main function with no authentication."""
-        # Setup mocks
+        # Setup mocks to simulate no authentication available
         mock_load_config.return_value = sample_config
         mock_load_env.return_value = (None, {"esv": "test_key"})  # No access token
         mock_load_creds.return_value = None  # No saved credentials
 
-        with patch("biblebot.bot.AsyncClient") as mock_client_class:
-            mock_client = MagicMock()
-            mock_client_class.return_value = mock_client
+        # The main function should return early without creating client/bot
+        result = await bot.main("test_config.yaml")
 
-            with patch("biblebot.bot.BibleBot") as mock_bot_class:
-                mock_bot = MagicMock()
-                mock_bot.start = AsyncMock()  # Must be AsyncMock since it's awaited
-                mock_bot_class.return_value = mock_bot
+        # Should return None (early return due to no auth)
+        assert result is None
 
-                result = await bot.main("test_config.yaml")
-
-                # Should return None (early return due to no auth)
-                assert result is None
-
-                # Should not start the bot due to no auth
-                mock_bot.start.assert_not_called()
+        # Verify the mocks were called to check for auth
+        mock_load_env.assert_called_once()
+        mock_load_creds.assert_called_once()
 
     @pytest.mark.asyncio
     @patch("biblebot.bot.load_config")

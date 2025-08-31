@@ -344,11 +344,12 @@ class TestCLIIntegration:
         self, mock_load_config, mock_load_env, mock_e2ee_status
     ):
         """Test config validate command with real module integration."""
-        # Setup mocks
+        # Setup mocks - check_e2ee_status is a sync function, use regular Mock
         mock_load_config.return_value = {
             "matrix_room_ids": ["!room1:matrix.org", "!room2:matrix.org"]
         }
         mock_load_env.return_value = (None, {"esv": "test_key", "bible": None})
+        # Ensure this is a regular Mock, not AsyncMock
         mock_e2ee_status.return_value = {"available": True}
 
         # Test the validation logic
