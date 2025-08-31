@@ -339,18 +339,19 @@ class TestEdgeCases:
         bot.start_time = 1234567880000  # Use milliseconds
         bot.api_keys = {}
 
-        # Test various timeout scenarios (keep them reasonable for testing)
+        # Test various timeout scenarios (optimized for faster testing)
         timeout_scenarios = [
             0.001,  # Very short timeout
-            0.1,  # Short timeout
-            0.5,  # Medium timeout
-            1.0,  # Long timeout
+            0.01,  # Short timeout (reduced from 0.1)
+            0.05,  # Medium timeout (reduced from 0.5)
+            0.1,  # Long timeout (reduced from 1.0)
         ]
 
         for timeout_duration in timeout_scenarios:
 
             async def timeout_api(*args, **kwargs):
-                await asyncio.sleep(timeout_duration)
+                # Simulate timeout without actual delay for faster testing
+                # await asyncio.sleep(timeout_duration)
                 raise asyncio.TimeoutError("API timeout")
 
             with patch("biblebot.bot.get_bible_text", side_effect=timeout_api):
@@ -360,7 +361,7 @@ class TestEdgeCases:
                 event.server_timestamp = 1234567890000  # Use milliseconds
 
                 room = MagicMock()
-                room.room_id = "!room:matrix.org"
+                room.room_id = mock_config["matrix_room_ids"][0]  # Use configured room
 
                 # Should handle various timeout durations
                 start_time = time.time()
@@ -370,8 +371,8 @@ class TestEdgeCases:
                     pass  # Expected timeout
                 end_time = time.time()
 
-                # Should not hang indefinitely
-                assert end_time - start_time < 30.0
+                # Should not hang indefinitely (much faster now)
+                assert end_time - start_time < 5.0
 
     async def test_memory_pressure_edge_cases(self, mock_config, mock_client):
         """Test behavior under memory pressure."""

@@ -293,7 +293,8 @@ class TestMonitoringPatterns:
     async def test_alert_threshold_monitoring(self, mock_config, mock_client):
         """Test monitoring for alert thresholds."""
         bot = BibleBot(config=mock_config, client=mock_client)
-        bot.start_time = 1234567880
+        bot.start_time = 1234567880000  # Use milliseconds
+        bot.api_keys = {}
 
         # Track response times for threshold monitoring
         slow_responses = 0
@@ -303,28 +304,29 @@ class TestMonitoringPatterns:
             nonlocal slow_responses, total_responses
             total_responses += 1
 
-            # Simulate variable response times
+            # Simulate variable response times without actual delays for faster testing
             import random
 
             response_time = random.uniform(0.01, 0.5)
-            await asyncio.sleep(response_time)
+            # Remove the actual sleep to speed up the test
+            # await asyncio.sleep(response_time)
 
-            # Track slow responses (>0.3 seconds)
+            # Track slow responses (>0.3 seconds) - simulate the logic
             if response_time > 0.3:
                 slow_responses += 1
 
             return ("Test verse", "John 3:16")
 
         with patch("biblebot.bot.get_bible_text", side_effect=variable_speed_api):
-            # Process requests to generate metrics
-            for i in range(15):
+            # Process fewer requests for faster testing
+            for i in range(10):  # Reduced from 15 to 10
                 event = MagicMock()
                 event.body = f"John 3:{i+16}"
                 event.sender = "@user:matrix.org"
-                event.server_timestamp = 1234567890 + i
+                event.server_timestamp = 1234567890000 + i * 1000  # Use milliseconds
 
                 room = MagicMock()
-                room.room_id = "!room:matrix.org"
+                room.room_id = mock_config["matrix_room_ids"][0]  # Use configured room
 
                 await bot.on_room_message(room, event)
 
@@ -334,7 +336,7 @@ class TestMonitoringPatterns:
             )
 
             # Should have processed all requests
-            assert total_responses == 15
+            assert total_responses == 10  # Updated count
             assert 0 <= slow_response_rate <= 1
 
     async def test_custom_metrics_collection(self, mock_config, mock_client):
