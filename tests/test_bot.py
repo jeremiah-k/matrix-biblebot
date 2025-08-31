@@ -707,11 +707,15 @@ class TestMainFunction:
             {"esv": "test_key"},
         )  # No access token from env
 
+        # Create a proper credentials mock that evaluates as truthy
         mock_creds = MagicMock()
         mock_creds.user_id = "@test:matrix.org"
         mock_creds.device_id = None
         mock_creds.access_token = "test_token"
-        mock_load_creds.return_value = mock_creds  # Return valid credentials
+        # Ensure the mock evaluates as truthy
+        mock_creds.__bool__ = MagicMock(return_value=True)
+        mock_creds.__nonzero__ = MagicMock(return_value=True)  # Python 2 compatibility
+        mock_load_creds.return_value = mock_creds
 
         mock_get_store.return_value = Path("/tmp/store")
 
