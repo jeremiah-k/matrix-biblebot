@@ -51,7 +51,9 @@ class TestServiceInstallation:
         mock_get_exec.return_value = "/usr/bin/biblebot"
         mock_get_template.return_value = "[Unit]\nExecStart="
 
-        with patch("biblebot.setup_utils.get_user_service_path") as mock_get_service_path:
+        with patch(
+            "biblebot.setup_utils.get_user_service_path"
+        ) as mock_get_service_path:
             service_path = tmp_path / "biblebot.service"
             mock_get_service_path.return_value = service_path
 
@@ -70,9 +72,7 @@ class TestServiceInstallation:
 
     @patch("biblebot.setup_utils.get_executable_path")
     @patch("biblebot.setup_utils.get_template_service_content", return_value=None)
-    def test_create_service_file_no_template(
-        self, mock_get_template, mock_get_exec
-    ):
+    def test_create_service_file_no_template(self, mock_get_template, mock_get_exec):
         """Test service file creation when template is not found."""
         mock_get_exec.return_value = "/usr/bin/biblebot"
         result = setup_utils.create_service_file()
@@ -266,7 +266,9 @@ class TestServiceTemplateHandling:
         assert needs_update is True
         assert "No existing service file found" in reason
 
-    @patch("biblebot.setup_utils.read_service_file", return_value="ExecStart=/wrong/path")
+    @patch(
+        "biblebot.setup_utils.read_service_file", return_value="ExecStart=/wrong/path"
+    )
     @patch("biblebot.setup_utils.get_executable_path", return_value="/usr/bin/biblebot")
     def test_service_needs_update_wrong_path(self, mock_get_exec, mock_read):
         """Test service_needs_update when ExecStart has wrong path."""

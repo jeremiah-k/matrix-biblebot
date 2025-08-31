@@ -618,8 +618,6 @@ class TestCLIMainFunction:
         mock_exit.assert_called_with(1)
 
 
-
-
 class TestCLILegacyFlags:
     """Test legacy CLI flags with deprecation warnings."""
 
@@ -834,5 +832,3 @@ class TestCLIUtilityFunctions:
 
         assert result is False
         mock_print.assert_called()
-
-

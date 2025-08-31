@@ -289,7 +289,9 @@ async def make_api_request(url, headers=None, params=None, session=None, timeout
     """Make an API request and return the JSON response."""
 
     async def _request(sess):
-        async with sess.get(url, headers=headers, params=params, timeout=timeout) as response:
+        async with sess.get(
+            url, headers=headers, params=params, timeout=timeout
+        ) as response:
             if response.status == 200:
                 return await response.json()
             logger.warning(f"HTTP {response.status} fetching {url}")

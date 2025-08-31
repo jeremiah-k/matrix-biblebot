@@ -2,9 +2,7 @@
 
 import asyncio
 import time
-from unittest.mock import AsyncMock, MagicMock, patch
-
-import pytest
+from unittest.mock import patch
 
 from biblebot import bot
 
@@ -352,7 +350,7 @@ class TestStressPerformance:
 
         def normalize_worker():
             try:
-                for i in range(100):
+                for _i in range(100):
                     book_names = [
                         "Genesis",
                         "gen",

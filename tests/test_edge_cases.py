@@ -347,7 +347,7 @@ class TestEdgeCases:
             0.1,  # Long timeout (reduced from 1.0)
         ]
 
-        for timeout_duration in timeout_scenarios:
+        for _timeout_duration in timeout_scenarios:
 
             async def timeout_api(*args, **kwargs):
                 # Simulate timeout without actual delay for faster testing
@@ -387,7 +387,7 @@ class TestEdgeCases:
 
             try:
                 # Create some memory pressure
-                for i in range(10):
+                for _i in range(10):
                     large_objects.append("X" * 1000000)  # 1MB strings
 
                 event = MagicMock()

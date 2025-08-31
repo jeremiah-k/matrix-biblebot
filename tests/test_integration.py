@@ -392,7 +392,7 @@ class TestCrossModuleIntegration:
         with patch("biblebot.auth.get_config_dir") as mock_get_dir:
             mock_get_dir.return_value = "/test/path"
 
-            path = auth.credentials_path()
+            auth.credentials_path()
 
             # Should integrate properly
             mock_get_dir.assert_called_once()
@@ -548,7 +548,7 @@ class TestComponentInteractionIntegration:
     def test_auth_directory_interaction(self):
         """Test auth and directory component interaction."""
         with patch("biblebot.auth.CONFIG_DIR") as mock_dir:
-            with patch("os.chmod") as mock_chmod:
+            with patch("os.chmod"):
                 mock_dir.mkdir = MagicMock()
 
                 # Test interaction

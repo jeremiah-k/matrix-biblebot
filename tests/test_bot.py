@@ -142,6 +142,7 @@ class TestBookNameNormalization:
 
 from aiohttp import web
 
+
 class TestAPIRequests:
     """Test API request functionality."""
 
@@ -163,6 +164,7 @@ class TestAPIRequests:
     @pytest.mark.asyncio
     async def test_make_api_request_http_error(self, aiohttp_client):
         """Test API request with HTTP error."""
+
         async def handler(request):
             return web.Response(status=404)
 
@@ -176,6 +178,7 @@ class TestAPIRequests:
     @pytest.mark.asyncio
     async def test_make_api_request_timeout(self, aiohttp_client):
         """Test API request with timeout."""
+
         async def handler(request):
             await asyncio.sleep(0.2)
             return web.Response(text="ok")
