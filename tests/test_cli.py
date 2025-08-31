@@ -2,7 +2,7 @@
 
 import argparse
 import warnings
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 import pytest
 
@@ -355,21 +355,20 @@ class TestMainFunction:
         def mock_load_credentials():
             return None  # No credentials
 
-        def mock_bot_main():
-            return None
+        # ✅ CORRECT: Mock result object to be returned by bot.main
+        mock_bot_main_result = Mock()
 
-        def mock_asyncio_run(coro):
-            return None  # Mock asyncio.run without creating AsyncMock
-
-        # ✅ CORRECT: Use side_effect to avoid AsyncMock detection
+        # ✅ CORRECT: Use new_callable=Mock to prevent AsyncMock auto-detection
         with patch("os.path.exists", side_effect=mock_exists):
             with patch(
                 "biblebot.auth.load_credentials", side_effect=mock_load_credentials
             ):
-                with patch("biblebot.bot.main", side_effect=mock_bot_main):
+                with patch(
+                    "biblebot.bot.main", spec=[], return_value=mock_bot_main_result
+                ) as mock_bot_main_patch:
                     with patch(
-                        "biblebot.cli.asyncio.run", side_effect=mock_asyncio_run
-                    ):
+                        "biblebot.cli.asyncio.run", spec=[], return_value=None
+                    ) as mock_asyncio_run_patch:
                         with patch("sys.argv", ["biblebot"]):
                             with patch("biblebot.cli.main"):
                                 # We can't easily test the full main() function due to argument parsing
