@@ -3,7 +3,6 @@ import contextlib
 import gc
 import os
 import sys
-import threading
 import warnings
 from concurrent.futures import Future
 from pathlib import Path

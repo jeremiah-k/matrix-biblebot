@@ -682,8 +682,8 @@ async def main(config_path="config.yaml"):
                 logger.info("Uploading encryption keys...")
                 await client.keys_upload()
                 logger.info("Encryption keys uploaded")
-        except Exception as e:
-            logger.warning(f"Failed to upload E2EE keys: {e}")
+        except Exception:
+            logger.exception("Failed to upload E2EE keys")
 
     # Register event handlers
     logger.debug("Registering event handlers")

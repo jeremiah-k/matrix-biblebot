@@ -7,6 +7,7 @@ import logging
 import os
 import shutil
 import sys
+import warnings
 from pathlib import Path
 
 from . import __version__
@@ -151,8 +152,6 @@ Legacy flags (deprecated):
     )
 
     # Handle legacy flags with deprecation warnings
-    import warnings
-
     if args.generate_config:
         warnings.warn(
             "--generate-config is deprecated. Use 'biblebot config generate' instead.",

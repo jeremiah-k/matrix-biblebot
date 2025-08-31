@@ -365,10 +365,8 @@ class TestMainFunction:
             ):
                 with patch(
                     "biblebot.bot.main", spec=[], return_value=mock_bot_main_result
-                ) as mock_bot_main_patch:
-                    with patch(
-                        "biblebot.cli.asyncio.run", spec=[], return_value=None
-                    ) as mock_asyncio_run_patch:
+                ):
+                    with patch("biblebot.cli.asyncio.run", spec=[], return_value=None):
                         with patch("sys.argv", ["biblebot"]):
                             with patch("biblebot.cli.main"):
                                 # We can't easily test the full main() function due to argument parsing

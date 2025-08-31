@@ -9,9 +9,12 @@ token-based auth via environment variables for backward compatibility.
 from __future__ import annotations
 
 import asyncio
+import getpass
 import json
 import logging
 import os
+import shutil
+import tempfile
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Optional
@@ -72,7 +75,6 @@ def credentials_path() -> Path:
 
 def save_credentials(creds: Credentials) -> None:
     path = credentials_path()
-    import tempfile
 
     data = json.dumps(creds.to_dict(), indent=2)
     tmp = None
@@ -228,8 +230,6 @@ async def interactive_login(
 
     Returns True on success, False otherwise.
     """
-    import getpass
-
     existing_creds = load_credentials()
     if existing_creds:
         logger.info(f"You are already logged in as {existing_creds.user_id}")
@@ -356,8 +356,6 @@ async def interactive_logout() -> bool:
 
     # Remove E2EE store dir
     try:
-        import shutil
-
         store = E2EE_STORE_DIR
         if store.exists():
             shutil.rmtree(store, ignore_errors=True)
