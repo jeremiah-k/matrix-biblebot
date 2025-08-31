@@ -282,7 +282,12 @@ Legacy flags (deprecated):
             resp = "n"
         if resp.startswith("y"):
             created = generate_config(args.config)
-            if not created:
+            if created:
+                # Exit after successful generation so the user can edit the new files.
+                sys.exit(0)
+            else:
+                # Generation failed (e.g., permissions error).
+                # generate_config() already printed a message.
                 sys.exit(1)
         else:
             logging.info("Tip: run 'biblebot config generate' to create starter files.")
