@@ -1,0 +1,302 @@
+"""
+Performance testing patterns following mmrelay's comprehensive approach.
+Tests performance characteristics, memory usage, and scalability patterns.
+"""
+
+import asyncio
+import gc
+import resource
+import time
+from unittest.mock import AsyncMock, MagicMock, patch
+
+import pytest
+
+from biblebot.bot import BibleBot
+
+
+class TestPerformancePatterns:
+    """Test performance characteristics and optimization patterns."""
+
+    @pytest.fixture
+    def mock_config(self):
+        """Mock configuration for performance tests."""
+        return {
+            "homeserver": "https://matrix.org",
+            "user_id": "@test:matrix.org",
+            "access_token": "test_token",
+            "device_id": "TEST_DEVICE",
+            "matrix_room_ids": ["!room:matrix.org"],
+        }
+
+    @pytest.fixture
+    def mock_client(self):
+        """Mock Matrix client for performance tests."""
+        client = MagicMock()
+        client.room_send = AsyncMock()
+        client.join = AsyncMock()
+        client.sync = AsyncMock()
+        return client
+
+    async def test_message_processing_performance(self, mock_config, mock_client):
+        """Test message processing performance under load."""
+        bot = BibleBot(config=mock_config, client=mock_client)
+        bot.start_time = time.time() - 100
+
+        # Mock Bible API response
+        with patch("biblebot.bot.get_bible_text") as mock_get_bible:
+            mock_get_bible.return_value = ("Test verse", "John 3:16")
+
+            # Create multiple mock events
+            events = []
+            for i in range(100):
+                event = MagicMock()
+                event.body = f"John 3:{i+1}"
+                event.sender = f"@user{i}:matrix.org"
+                event.server_timestamp = int(time.time() * 1000)
+                events.append(event)
+
+            # Measure processing time
+            start_time = time.time()
+
+            # Process events concurrently
+            tasks = [
+                bot.on_room_message(MagicMock(), event)
+                for event in events[:10]  # Test with 10 concurrent messages
+            ]
+            await asyncio.gather(*tasks)
+
+            end_time = time.time()
+            processing_time = end_time - start_time
+
+            # Performance assertions
+            assert (
+                processing_time < 5.0
+            )  # Should process 10 messages in under 5 seconds
+            assert (
+                mock_client.room_send.call_count >= 10
+            )  # At least one response per message
+
+    async def test_memory_usage_patterns(self, mock_config, mock_client):
+        """Test memory usage patterns and garbage collection."""
+        # Get initial memory usage using resource module
+        initial_memory = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
+
+        bot = BibleBot(config=mock_config, client=mock_client)
+
+        # Create and process many events to test memory management
+        with patch("biblebot.bot.get_bible_text") as mock_get_bible:
+            mock_get_bible.return_value = ("Test verse", "John 3:16")
+
+            for i in range(50):
+                event = MagicMock()
+                event.body = f"John 3:{i+1}"
+                event.sender = f"@user{i}:matrix.org"
+                event.server_timestamp = int(time.time() * 1000)
+
+                await bot.on_room_message(MagicMock(), event)
+
+        # Force garbage collection
+        gc.collect()
+
+        # Check memory usage hasn't grown excessively
+        final_memory = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
+        memory_growth = final_memory - initial_memory
+
+        # Memory growth should be reasonable (less than 50MB for 50 messages)
+        # Note: ru_maxrss is in KB on Linux, bytes on macOS
+        max_growth = 50 * 1024  # 50MB in KB
+        assert memory_growth < max_growth
+
+    async def test_concurrent_request_handling(self, mock_config, mock_client):
+        """Test handling of concurrent API requests."""
+        bot = BibleBot(config=mock_config, client=mock_client)
+
+        # Mock API with varying response times
+        call_count = 0
+
+        async def mock_api_call(*args, **kwargs):
+            nonlocal call_count
+            call_count += 1
+            # Simulate varying API response times
+            await asyncio.sleep(0.1 + (call_count % 3) * 0.05)
+            return {"text": f"Verse {call_count}", "reference": f"John 3:{call_count}"}
+
+        with patch("biblebot.bot.make_api_request", side_effect=mock_api_call):
+            # Create concurrent requests
+            tasks = []
+            for i in range(20):
+                event = MagicMock()
+                event.body = f"John 3:{i+1}"
+                event.sender = f"@user{i}:matrix.org"
+                event.server_timestamp = int(time.time() * 1000)
+
+                task = bot.on_room_message(MagicMock(), event)
+                tasks.append(task)
+
+            # Measure concurrent processing time
+            start_time = time.time()
+            await asyncio.gather(*tasks)
+            end_time = time.time()
+
+            processing_time = end_time - start_time
+
+            # Should handle 20 concurrent requests efficiently
+            assert processing_time < 10.0  # Should complete in under 10 seconds
+            assert call_count == 20  # All requests should be processed
+
+    async def test_rate_limiting_performance(self, mock_config, mock_client):
+        """Test performance under rate limiting conditions."""
+        bot = BibleBot(config=mock_config, client=mock_client)
+
+        # Mock rate-limited API
+        request_times = []
+
+        async def rate_limited_api(*args, **kwargs):
+            request_times.append(time.time())
+            # Simulate rate limiting delay
+            await asyncio.sleep(0.1)
+            return {"text": "Rate limited verse", "reference": "John 3:16"}
+
+        with patch("biblebot.bot.make_api_request", side_effect=rate_limited_api):
+            # Send requests rapidly
+            tasks = []
+            for i in range(5):
+                event = MagicMock()
+                event.body = f"John 3:{i+1}"
+                event.sender = f"@user{i}:matrix.org"
+                event.server_timestamp = int(time.time() * 1000)
+
+                task = bot.on_room_message(MagicMock(), event)
+                tasks.append(task)
+
+            await asyncio.gather(*tasks)
+
+            # Verify requests were spaced appropriately
+            assert len(request_times) == 5
+            # Check that requests weren't all sent simultaneously
+            time_spread = max(request_times) - min(request_times)
+            assert time_spread > 0.1  # Some spacing due to rate limiting
+
+    async def test_large_message_handling(self, mock_config, mock_client):
+        """Test handling of large message content."""
+        bot = BibleBot(config=mock_config, client=mock_client)
+
+        # Create event with large message content
+        event = MagicMock()
+        event.body = "John 1:1 " * 1000  # Very long message
+        event.sender = "@user:matrix.org"
+        event.server_timestamp = int(time.time() * 1000)
+
+        with patch("biblebot.bot.get_bible_text") as mock_get_bible:
+            mock_get_bible.return_value = ("In the beginning was the Word", "John 1:1")
+
+            # Should handle large messages without issues
+            start_time = time.time()
+            await bot.on_room_message(MagicMock(), event)
+            end_time = time.time()
+
+            processing_time = end_time - start_time
+            assert processing_time < 1.0  # Should process quickly even with large input
+
+    async def test_error_recovery_performance(self, mock_config, mock_client):
+        """Test performance during error conditions and recovery."""
+        bot = BibleBot(config=mock_config, client=mock_client)
+
+        # Mock API that fails then recovers
+        call_count = 0
+
+        async def failing_api(*args, **kwargs):
+            nonlocal call_count
+            call_count += 1
+            if call_count <= 3:
+                raise Exception("API Error")
+            return {"text": "Recovered verse", "reference": "John 3:16"}
+
+        with patch("biblebot.bot.get_bible_text", side_effect=failing_api):
+            # Send multiple requests during failure and recovery
+            tasks = []
+            for i in range(6):
+                event = MagicMock()
+                event.body = f"John 3:{i+1}"
+                event.sender = f"@user{i}:matrix.org"
+                event.server_timestamp = int(time.time() * 1000)
+
+                task = bot.on_room_message(MagicMock(), event)
+                tasks.append(task)
+
+            # Should handle errors gracefully without hanging
+            start_time = time.time()
+            await asyncio.gather(*tasks, return_exceptions=True)
+            end_time = time.time()
+
+            processing_time = end_time - start_time
+            assert processing_time < 5.0  # Should complete quickly even with errors
+
+    async def test_cleanup_performance(self, mock_config, mock_client):
+        """Test cleanup and resource deallocation performance."""
+        # Create multiple bot instances to test cleanup
+        bots = []
+        for i in range(10):
+            bot = BibleBot(config=mock_config, client=mock_client)
+            bots.append(bot)
+
+        # Simulate cleanup
+        start_time = time.time()
+        for bot in bots:
+            # Simulate cleanup operations
+            bot.client = None
+            bot.config = None
+
+        # Force garbage collection
+        gc.collect()
+        end_time = time.time()
+
+        cleanup_time = end_time - start_time
+        assert cleanup_time < 1.0  # Cleanup should be fast
+
+    async def test_startup_performance(self, mock_config, mock_client):
+        """Test bot startup and initialization performance."""
+        # Measure bot initialization time
+        start_time = time.time()
+
+        bot = BibleBot(config=mock_config, client=mock_client)
+
+        end_time = time.time()
+        initialization_time = end_time - start_time
+
+        # Initialization should be fast
+        assert initialization_time < 0.1  # Should initialize in under 100ms
+        assert bot.client is not None
+        assert bot.config is not None
+
+    async def test_background_task_performance(self, mock_config, mock_client):
+        """Test background task performance and resource usage."""
+        bot = BibleBot(config=mock_config, client=mock_client)
+
+        # Create a background task
+        task_completed = False
+
+        async def background_task():
+            nonlocal task_completed
+            await asyncio.sleep(0.1)
+            task_completed = True
+
+        # Start background task
+        task = asyncio.create_task(background_task())
+
+        # Continue with other operations
+        event = MagicMock()
+        event.body = "John 3:16"
+        event.sender = "@user:matrix.org"
+        event.server_timestamp = int(time.time() * 1000)
+
+        with patch("biblebot.bot.get_bible_text") as mock_get_bible:
+            mock_get_bible.return_value = ("Test verse", "John 3:16")
+
+            await bot.on_room_message(MagicMock(), event)
+
+        # Wait for background task
+        await task
+
+        assert task_completed is True
+        assert mock_client.room_send.called
