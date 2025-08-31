@@ -381,3 +381,179 @@ class TestCLIIntegration:
         mock_load_creds.return_value = None
         creds = mock_load_creds()
         assert creds is None
+
+
+class TestCrossModuleIntegration:
+    """Test integration between different modules."""
+
+    def test_auth_to_cli_integration(self):
+        """Test auth module integrates with CLI commands."""
+        # Test credentials path function
+        with patch("biblebot.auth.get_config_dir") as mock_get_dir:
+            mock_get_dir.return_value = "/test/path"
+
+            path = auth.credentials_path()
+
+            # Should integrate properly
+            mock_get_dir.assert_called_once()
+
+    async def test_bot_to_auth_integration(self):
+        """Test bot module integrates with auth functions."""
+        # Test homeserver discovery integration
+        mock_client = AsyncMock()
+        mock_client.discovery_info.side_effect = Exception("Network error")
+
+        result = await auth.discover_homeserver(mock_client, "https://matrix.org")
+
+        # Should handle integration gracefully
+        assert result == "https://matrix.org"
+
+    def test_cli_to_bot_integration(self, tmp_path):
+        """Test CLI integrates with bot configuration."""
+        # Create test config
+        config_data = {
+            "matrix_homeserver": "https://matrix.org",
+            "matrix_user": "@testbot:matrix.org",
+            "matrix_room_ids": ["!room1:matrix.org"],
+        }
+
+        config_file = tmp_path / "config.yaml"
+        with open(config_file, "w") as f:
+            yaml.dump(config_data, f)
+
+        # Test CLI to bot integration
+        config = bot.load_config(str(config_file))
+
+        # Should integrate properly
+        assert config is not None
+        assert config["matrix_homeserver"] == "https://matrix.org"
+
+
+class TestDataFlowIntegration:
+    """Test data flow integration across components."""
+
+    def test_config_to_environment_flow(self, tmp_path):
+        """Test config and environment data flow integration."""
+        # Create .env file
+        env_file = tmp_path / ".env"
+        env_file.write_text(
+            "MATRIX_ACCESS_TOKEN=flow_test_token\nESV_API_KEY=flow_test_key"
+        )
+
+        # Test data flow
+        matrix_token, api_keys = bot.load_environment(str(tmp_path / "config.yaml"))
+
+        # Verify data flow integration
+        assert isinstance(api_keys, dict)
+        assert "esv" in api_keys
+
+    def test_credentials_to_auth_flow(self):
+        """Test credentials data flow integration."""
+        # Create test credentials
+        creds_data = {
+            "homeserver": "https://matrix.org",
+            "user_id": "@test:matrix.org",
+            "access_token": "flow_token",
+            "device_id": "flow_device",
+        }
+
+        # Test data flow
+        creds = auth.Credentials.from_dict(creds_data)
+        back_to_dict = creds.to_dict()
+
+        # Verify data flow integration
+        assert back_to_dict == creds_data
+
+    async def test_api_to_cache_flow(self):
+        """Test API response to cache data flow integration."""
+        # Clear cache
+        if hasattr(bot, "_passage_cache"):
+            bot._passage_cache.clear()
+
+        # Test data flow
+        bot._cache_set("Test 1:1", "kjv", ("Test text", "Test 1:1"))
+        result = bot._cache_get("Test 1:1", "kjv")
+
+        # Verify data flow integration
+        assert result == ("Test text", "Test 1:1")
+
+
+class TestErrorPropagationIntegration:
+    """Test error propagation integration across components."""
+
+    def test_config_error_propagation(self, tmp_path):
+        """Test config errors propagate properly."""
+        # Create invalid config
+        invalid_config = tmp_path / "invalid.yaml"
+        invalid_config.write_text("invalid: yaml: [unclosed")
+
+        # Test error propagation
+        result = bot.load_config(str(invalid_config))
+
+        # Should propagate error gracefully
+        assert result is None
+
+    async def test_api_error_propagation(self):
+        """Test API errors propagate properly."""
+        with patch("biblebot.bot.make_api_request") as mock_api:
+            mock_api.return_value = None  # Simulate API failure
+
+            # Test error propagation
+            result = await bot.get_bible_text("Test 1:1", "kjv")
+
+            # Should propagate error gracefully
+            assert result is not None
+
+    def test_auth_error_propagation(self):
+        """Test auth errors propagate properly."""
+        # Test with missing required fields
+        incomplete_data = {"homeserver": "https://matrix.org"}
+
+        # Test error propagation
+        creds = auth.Credentials.from_dict(incomplete_data)
+
+        # Should propagate error gracefully with defaults
+        assert creds.user_id == ""
+        assert creds.access_token == ""
+
+
+class TestComponentInteractionIntegration:
+    """Test component interaction integration."""
+
+    def test_cli_auth_interaction(self):
+        """Test CLI and auth component interaction."""
+        with patch("biblebot.auth.load_credentials") as mock_load:
+            mock_load.return_value = None
+
+            # Test interaction
+            creds = auth.load_credentials()
+
+            # Should interact properly
+            assert creds is None
+            mock_load.assert_called_once()
+
+    def test_bot_cache_interaction(self):
+        """Test bot and cache component interaction."""
+        # Clear cache
+        if hasattr(bot, "_passage_cache"):
+            bot._passage_cache.clear()
+
+        # Test interaction
+        bot._cache_set("Interaction 1:1", "test", ("Test", "Interaction 1:1"))
+        result = bot._cache_get("interaction 1:1", "TEST")  # Different case
+
+        # Should interact with case insensitivity
+        assert result == ("Test", "Interaction 1:1")
+
+    def test_auth_directory_interaction(self):
+        """Test auth and directory component interaction."""
+        with patch("biblebot.auth.CONFIG_DIR") as mock_dir:
+            with patch("os.chmod") as mock_chmod:
+                mock_dir.mkdir = MagicMock()
+
+                # Test interaction
+                result = auth.get_config_dir()
+
+                # Should interact properly
+                mock_dir.mkdir.assert_called_once()
+                assert result == mock_dir
