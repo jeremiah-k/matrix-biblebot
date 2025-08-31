@@ -68,11 +68,11 @@ def test_passage_cache(monkeypatch):
     monkeypatch.setattr(botmod, "make_api_request", fake_req)
 
     # First call populates cache
-    text1, ref1 = asyncio.get_event_loop().run_until_complete(
+    text1, ref1 = asyncio.run(
         botmod.get_bible_text("John 3:16", translation="kjv", api_keys=None)
     )
     # Second call should be served from cache, no new request
-    text2, ref2 = asyncio.get_event_loop().run_until_complete(
+    text2, ref2 = asyncio.run(
         botmod.get_bible_text("John 3:16", translation="kjv", api_keys=None)
     )
 
