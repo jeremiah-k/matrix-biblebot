@@ -522,3 +522,127 @@ class TestInteractiveLogout:
 
             assert result is True  # Should still succeed despite server error
             # Note: close() may not be called on server error
+
+
+class TestE2EEStatusFunctions:
+    """Test E2EE status checking functions."""
+
+    @patch("biblebot.auth.E2EE_STORE_DIR")
+    @patch("platform.system")
+    def test_check_e2ee_status_linux_available(self, mock_system, mock_store_dir):
+        """Test E2EE status check on Linux with dependencies."""
+        mock_system.return_value = "Linux"
+        mock_store_dir.exists.return_value = True
+
+        with patch("importlib.util.find_spec") as mock_find_spec:
+            mock_find_spec.return_value = MagicMock()  # Dependencies available
+
+            status = auth.check_e2ee_status()
+
+            assert status["platform_supported"] is True
+            assert status["dependencies_installed"] is True
+            assert status["store_exists"] is True
+            assert status["available"] is True
+
+    @patch("biblebot.auth.E2EE_STORE_DIR")
+    @patch("platform.system")
+    def test_check_e2ee_status_windows_unavailable(self, mock_system, mock_store_dir):
+        """Test E2EE status check on Windows (unsupported)."""
+        mock_system.return_value = "Windows"
+        mock_store_dir.exists.return_value = False
+
+        status = auth.check_e2ee_status()
+
+        assert status["platform_supported"] is False
+        assert status["available"] is False
+
+    @patch("biblebot.auth.E2EE_STORE_DIR")
+    @patch("platform.system")
+    def test_check_e2ee_status_missing_dependencies(self, mock_system, mock_store_dir):
+        """Test E2EE status check with missing dependencies."""
+        mock_system.return_value = "Linux"
+        mock_store_dir.exists.return_value = False
+
+        with patch("importlib.util.find_spec") as mock_find_spec:
+            mock_find_spec.return_value = None  # Dependencies missing
+
+            status = auth.check_e2ee_status()
+
+            assert status["platform_supported"] is True
+            assert status["dependencies_installed"] is False
+            assert status["store_exists"] is False
+            assert status["available"] is False
+
+
+class TestDirectoryManagement:
+    """Test directory management functions."""
+
+    @patch("biblebot.auth.CONFIG_DIR")
+    @patch("os.chmod")
+    def test_get_config_dir_success(self, mock_chmod, mock_config_dir):
+        """Test successful config directory creation."""
+        mock_config_dir.mkdir = MagicMock()
+
+        result = auth.get_config_dir()
+
+        mock_config_dir.mkdir.assert_called_once_with(parents=True, exist_ok=True)
+        mock_chmod.assert_called_once_with(mock_config_dir, 0o700)
+        assert result == mock_config_dir
+
+    @patch("biblebot.auth.CONFIG_DIR")
+    @patch("os.chmod")
+    def test_get_config_dir_chmod_failure(self, mock_chmod, mock_config_dir):
+        """Test config directory creation with chmod failure."""
+        mock_config_dir.mkdir = MagicMock()
+        mock_chmod.side_effect = OSError("Permission denied")
+
+        result = auth.get_config_dir()
+
+        mock_config_dir.mkdir.assert_called_once_with(parents=True, exist_ok=True)
+        assert result == mock_config_dir
+
+    @patch("biblebot.auth.E2EE_STORE_DIR")
+    @patch("os.chmod")
+    def test_get_store_dir_success(self, mock_chmod, mock_store_dir):
+        """Test successful E2EE store directory creation."""
+        mock_store_dir.mkdir = MagicMock()
+
+        result = auth.get_store_dir()
+
+        mock_store_dir.mkdir.assert_called_once_with(parents=True, exist_ok=True)
+        mock_chmod.assert_called_once_with(mock_store_dir, 0o700)
+        assert result == mock_store_dir
+
+    @patch("biblebot.auth.E2EE_STORE_DIR")
+    @patch("os.chmod")
+    def test_get_store_dir_chmod_failure(self, mock_chmod, mock_store_dir):
+        """Test E2EE store directory creation with chmod failure."""
+        mock_store_dir.mkdir = MagicMock()
+        mock_chmod.side_effect = OSError("Permission denied")
+
+        result = auth.get_store_dir()
+
+        mock_store_dir.mkdir.assert_called_once_with(parents=True, exist_ok=True)
+        assert result == mock_store_dir
+
+    @patch("biblebot.auth.get_config_dir")
+    @patch("biblebot.auth.CREDENTIALS_FILE")
+    def test_credentials_path(self, mock_creds_file, mock_get_config_dir):
+        """Test credentials path function."""
+        result = auth.credentials_path()
+
+        mock_get_config_dir.assert_called_once()
+        assert result == mock_creds_file
+
+
+class TestDiscoverHomeserver:
+    """Test homeserver discovery functionality."""
+
+    async def test_discover_homeserver_exception(self):
+        """Test homeserver discovery with exception."""
+        mock_client = AsyncMock()
+        mock_client.discovery_info.side_effect = Exception("Network error")
+
+        result = await auth.discover_homeserver(mock_client, "https://matrix.org")
+
+        assert result == "https://matrix.org"  # Falls back to provided
