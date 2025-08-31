@@ -98,7 +98,7 @@ def mock_submit_coro(monkeypatch):
 
 
 @pytest.fixture(autouse=True)
-def comprehensive_cleanup():
+def comprehensive_cleanup(request):
     """
     Comprehensive resource cleanup fixture for tests that create async resources.
 
@@ -106,37 +106,49 @@ def comprehensive_cleanup():
     """
     yield
 
-    # Force cleanup of all async tasks and event loops
-    try:
+    # Only perform async cleanup for tests that might need it
+    test_file = request.node.fspath.basename
+    test_name = request.node.name
+
+    # List of test files/patterns that use async resources
+    async_patterns = ["test_bot", "test_integration", "async", "main_function"]
+
+    needs_async_cleanup = any(
+        pattern in test_file.lower() or pattern in test_name.lower()
+        for pattern in async_patterns
+    )
+
+    if needs_async_cleanup:
+        # Force cleanup of all async tasks and event loops
         try:
-            loop = asyncio.get_running_loop()
-        except RuntimeError:
             try:
-                loop = asyncio.get_event_loop()
+                loop = asyncio.get_running_loop()
+                if loop and not loop.is_closed():
+                    # Cancel all pending tasks
+                    pending_tasks = [
+                        task for task in asyncio.all_tasks(loop) if not task.done()
+                    ]
+                    for task in pending_tasks:
+                        task.cancel()
+
+                    # Wait for cancelled tasks to complete
+                    if pending_tasks:
+                        with contextlib.suppress(Exception):
+                            loop.run_until_complete(
+                                asyncio.gather(*pending_tasks, return_exceptions=True)
+                            )
             except RuntimeError:
-                loop = None
+                pass  # No running event loop
 
-        if loop and not loop.is_closed():
-            # Cancel all pending tasks
-            pending_tasks = [
-                task for task in asyncio.all_tasks(loop) if not task.done()
-            ]
-            for task in pending_tasks:
-                task.cancel()
-
-            # Wait for cancelled tasks to complete
-            if pending_tasks:
-                with contextlib.suppress(Exception):
-                    loop.run_until_complete(
-                        asyncio.gather(*pending_tasks, return_exceptions=True)
-                    )
-
-    except RuntimeError:
-        pass  # No event loop available
+        except Exception:
+            pass  # Ignore any cleanup errors
 
     # Force garbage collection to clean up any remaining resources
     with warnings.catch_warnings():
         warnings.filterwarnings(
             "ignore", category=RuntimeWarning, message=".*never awaited.*"
+        )
+        warnings.filterwarnings(
+            "ignore", category=DeprecationWarning, message=".*no current event loop.*"
         )
         gc.collect()
