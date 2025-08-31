@@ -204,8 +204,11 @@ Legacy flags (deprecated):
                 print("✓ Configuration file is valid")
                 print(f"  Config file: {args.config}")
                 print(f"  Matrix rooms: {len(config.get('matrix_room_ids', []))}")
+                from .bot import load_environment
+
+                _, api_keys = load_environment(args.config)
                 print(
-                    f"  API keys configured: {len([k for k in ['esv_api_key', 'bible_api_key'] if config.get(k)])}"
+                    f"  API keys configured: {len([k for k, v in api_keys.items() if v])}"
                 )
 
                 # Check E2EE status
