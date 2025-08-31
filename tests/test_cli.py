@@ -2,7 +2,7 @@
 
 import argparse
 import warnings
-from unittest.mock import MagicMock, Mock, patch
+from unittest.mock import patch
 
 import pytest
 
