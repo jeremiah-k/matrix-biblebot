@@ -2,7 +2,7 @@
 
 import argparse
 import warnings
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock, Mock, patch
 
 import pytest
 
@@ -254,10 +254,12 @@ class TestModernCommands:
 
         mock_run.assert_called_once()
 
-    @patch("biblebot.auth.load_credentials")
-    @patch("biblebot.auth.print_e2ee_status")
-    def test_auth_status_command(self, mock_print_e2ee, mock_load_creds, capsys):
+    def test_auth_status_command(self, capsys):
         """Test 'biblebot auth status' command."""
+        # Create explicit regular Mocks to avoid AsyncMock warnings
+        mock_load_creds = Mock()
+        mock_print_e2ee = Mock()
+
         # Test with credentials
         mock_creds = MagicMock()
         mock_creds.user_id = "@test:matrix.org"
@@ -265,28 +267,30 @@ class TestModernCommands:
         mock_creds.device_id = "TEST_DEVICE"
         mock_load_creds.return_value = mock_creds
 
-        args = MagicMock()
-        args.command = "auth"
-        args.auth_action = "status"
+        with patch("biblebot.auth.load_credentials", mock_load_creds):
+            with patch("biblebot.auth.print_e2ee_status", mock_print_e2ee):
+                args = MagicMock()
+                args.command = "auth"
+                args.auth_action = "status"
 
-        # Simulate the status command logic
-        if args.command == "auth" and args.auth_action == "status":
-            creds = mock_load_creds()
-            if creds:
-                print("🔑 Authentication Status: ✓ Logged in")
-                print(f"  User: {creds.user_id}")
-                print(f"  Homeserver: {creds.homeserver}")
-                print(f"  Device: {creds.device_id}")
-            else:
-                print("🔑 Authentication Status: ✗ Not logged in")
+                # Simulate the status command logic
+                if args.command == "auth" and args.auth_action == "status":
+                    creds = mock_load_creds()
+                    if creds:
+                        print("🔑 Authentication Status: ✓ Logged in")
+                        print(f"  User: {creds.user_id}")
+                        print(f"  Homeserver: {creds.homeserver}")
+                        print(f"  Device: {creds.device_id}")
+                    else:
+                        print("🔑 Authentication Status: ✗ Not logged in")
 
-            mock_print_e2ee()
+                    mock_print_e2ee()
 
-        captured = capsys.readouterr()
-        assert "✓ Logged in" in captured.out
-        assert "@test:matrix.org" in captured.out
-        assert "https://matrix.org" in captured.out
-        mock_print_e2ee.assert_called_once()
+                captured = capsys.readouterr()
+                assert "✓ Logged in" in captured.out
+                assert "@test:matrix.org" in captured.out
+                assert "https://matrix.org" in captured.out
+                mock_print_e2ee.assert_called_once()
 
 
 class TestServiceCommands:

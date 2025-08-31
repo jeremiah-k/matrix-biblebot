@@ -773,7 +773,7 @@ class TestMainFunction:
 
     @pytest.mark.asyncio
     @patch.dict("os.environ", {}, clear=True)  # Clear all environment variables
-    @patch("biblebot.auth.load_credentials")
+    @patch("biblebot.bot.load_credentials")  # Patch in bot module where it's imported
     @patch("biblebot.bot.load_config")
     @patch("biblebot.bot.load_environment")
     async def test_main_no_auth(
