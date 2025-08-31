@@ -587,7 +587,12 @@ class BibleBot:
         Sends a reaction to the original message and posts the verse text.
         """
         logger.info(f"Fetching scripture passage: {passage} ({translation.upper()})")
-        text, reference = await get_bible_text(passage, translation, self.api_keys)
+        result = await get_bible_text(passage, translation, self.api_keys)
+
+        if result is None:
+            text, reference = None, None
+        else:
+            text, reference = result
 
         if text is None or reference is None:
             logger.warning(f"Failed to retrieve passage: {passage}")
