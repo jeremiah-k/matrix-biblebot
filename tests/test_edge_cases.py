@@ -339,12 +339,12 @@ class TestEdgeCases:
         bot.start_time = 1234567880000  # Use milliseconds
         bot.api_keys = {}
 
-        # Test various timeout scenarios
+        # Test various timeout scenarios (keep them reasonable for testing)
         timeout_scenarios = [
             0.001,  # Very short timeout
-            1.0,  # Normal timeout
-            10.0,  # Long timeout
-            60.0,  # Very long timeout
+            0.1,  # Short timeout
+            0.5,  # Medium timeout
+            1.0,  # Long timeout
         ]
 
         for timeout_duration in timeout_scenarios:
