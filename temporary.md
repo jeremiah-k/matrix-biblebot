@@ -3,7 +3,7 @@
 ## Current Status
 
 - **Branch**: `modernize-bot`
-- **Latest Commit**: `5250ce7` - "fix: Address Gemini code review feedback"
+- **Latest Commit**: `088fa3b` - "fix: Address latest code review feedback - high priority fixes"
 - **PR**: #8 (open) - Substantial modernization with E2EE support
 
 ## ✅ COMPLETED WORK
@@ -33,21 +33,17 @@
 - [x] Fixed cache clearing in tests (\_passage_cache)
 - [x] Removed temporary.md file
 
-## 🔄 NEW ISSUES FROM LATEST REVIEW
+### Phase 4: Latest Review Fixes (COMPLETED)
 
-### HIGH PRIORITY (Must Fix)
+- [x] User ID assignment with proper error handling
+- [x] Load credentials with UTF-8 encoding and specific exceptions
+- [x] E2EE client initialization using store_path parameter correctly
+- [x] E2EE status detection requiring deps + creds + store
+- [x] E2EE store directory permissions (0700)
+- [x] Added missing imports (load_credentials, urllib.parse.quote)
+- [x] Updated requirements-e2e.txt to prefer package extras
 
-1. **User ID Assignment Logic** - Improve error handling when setting user_id from config
-2. **Load Credentials Error Handling** - Use specific exceptions and proper encoding
-3. **E2EE Client Initialization** - Use store_path parameter correctly in AsyncClient
-4. **E2EE Status Logic** - Fix availability detection to require deps + creds + store
-
-### MEDIUM PRIORITY (Should Fix)
-
-5. **Requirements Structure** - Prefer package extras over separate requirements-e2e.txt
-6. **Store Directory Permissions** - Add 0700 permissions to E2EE store directory
-7. **URL Encoding** - Add proper URL encoding for Bible API requests
-8. **Import Organization** - Add missing imports (urllib.parse.quote, load_credentials)
+## 🔄 POTENTIAL REMAINING IMPROVEMENTS
 
 ### LOW PRIORITY (Nice to Have)
 

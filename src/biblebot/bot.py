@@ -370,7 +370,9 @@ async def get_esv_text(passage, api_key):
 
 
 async def get_kjv_text(passage):
-    API_URL = KJV_API_URL_TEMPLATE.format(passage=passage)
+    # URL encode the passage to handle special characters properly
+    encoded_passage = quote(passage, safe="")
+    API_URL = KJV_API_URL_TEMPLATE.format(passage=encoded_passage)
     response = await make_api_request(API_URL)
     passages = [response["text"]] if response else None
     reference = response["reference"] if response else None
