@@ -27,6 +27,10 @@ matrix_room_ids:
 
 
 def test_load_environment_prefers_config_dir_env(tmp_path: Path, monkeypatch):
+    # Clear all environment variables to ensure clean test
+    monkeypatch.delenv("MATRIX_ACCESS_TOKEN", raising=False)
+    monkeypatch.delenv("ESV_API_KEY", raising=False)
+
     cfg = tmp_path / "config.yaml"
     cfg.write_text("matrix_homeserver: https://example.org\n")
 

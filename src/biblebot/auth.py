@@ -76,7 +76,9 @@ def save_credentials(creds: Credentials) -> None:
 
     data = json.dumps(creds.to_dict(), indent=2)
     tmp = None
+    tmp_name = None
     try:
+        # Create a temporary file in the same directory to ensure `os.replace` is atomic.
         tmp = tempfile.NamedTemporaryFile(
             "w", dir=str(path.parent), delete=False, encoding="utf-8"
         )
@@ -87,18 +89,21 @@ def save_credentials(creds: Credentials) -> None:
     finally:
         if tmp:
             tmp.close()
+
+    if not tmp_name:
+        logger.error("Failed to create temporary file for credentials.")
+        return
+
     try:
-        try:
-            os.chmod(tmp_name, 0o600)
-        except Exception:
-            logger.debug("Could not set credentials perms to 0600")
+        os.chmod(tmp_name, 0o600)
         os.replace(tmp_name, path)
         logger.info(f"Saved credentials to {path}")
-    finally:
-        # Best-effort cleanup if replace failed
+    except Exception:
+        logger.exception(f"Failed to save credentials to {path}")
+        # On failure, clean up the temporary file.
         try:
             os.unlink(tmp_name)
-        except Exception:
+        except OSError:
             pass
 
 

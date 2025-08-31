@@ -10,7 +10,7 @@ import sys
 from pathlib import Path
 
 from . import __version__
-from .auth import interactive_login, interactive_logout
+from .auth import interactive_login, interactive_logout, load_credentials
 from .bot import main as bot_main
 from .tools import get_sample_config_path, get_sample_env_path
 
@@ -237,7 +237,7 @@ Legacy flags (deprecated):
             ok = asyncio.run(interactive_logout())
             sys.exit(0 if ok else 1)
         elif args.auth_action == "status":
-            from .auth import load_credentials, print_e2ee_status
+            from .auth import print_e2ee_status
 
             # Show authentication status
             creds = load_credentials()
@@ -269,7 +269,7 @@ Legacy flags (deprecated):
 
     # Check if config file exists (unless credentials exist for headless use)
     creds = load_credentials()
-    if not os.path.exists(args.config) and not creds:
+    if not os.path.exists(args.config):
         logging.warning(f"Config file not found: {args.config}")
         # Offer to generate at this location
         try:

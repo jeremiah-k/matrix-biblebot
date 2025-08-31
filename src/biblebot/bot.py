@@ -382,9 +382,9 @@ async def get_kjv_text(passage):
 
 
 class BibleBot:
-    def __init__(self, config):
+    def __init__(self, config, client=None):
         self.config = config
-        self.client = AsyncClient(config["matrix_homeserver"], config["matrix_user"])
+        self.client = client  # Will be set properly in main()
         self.api_keys = {}  # Will be set in main()
 
     async def resolve_aliases(self):
@@ -647,19 +647,21 @@ async def main(config_path="config.yaml"):
         store_sync_tokens=True, encryption_enabled=e2ee_enabled
     )
 
-    logger.info("Creating BibleBot instance")
-    bot = BibleBot(config)
-    bot.client = AsyncClient(
+    logger.info("Creating AsyncClient")
+    client = AsyncClient(
         config["matrix_homeserver"],
         config["matrix_user"],
         store_path=str(get_store_dir()) if e2ee_enabled else None,
         config=client_config,
     )
+
+    logger.info("Creating BibleBot instance")
+    bot = BibleBot(config, client)
     bot.api_keys = api_keys
 
     if creds:
         logger.info("Using saved credentials.json for Matrix session")
-        bot.client.restore_login(
+        client.restore_login(
             user_id=creds.user_id,
             device_id=creds.device_id,
             access_token=creds.access_token,
@@ -671,26 +673,26 @@ async def main(config_path="config.yaml"):
                 "Run 'biblebot --auth-login' or set MATRIX_ACCESS_TOKEN in .env"
             )
             return
-        bot.client.access_token = matrix_access_token
+        client.access_token = matrix_access_token
 
     # If E2EE is enabled, ensure keys are uploaded
     if e2ee_enabled:
         try:
-            if bot.client.should_upload_keys:
+            if client.should_upload_keys:
                 logger.info("Uploading encryption keys...")
-                await bot.client.keys_upload()
+                await client.keys_upload()
                 logger.info("Encryption keys uploaded")
         except Exception as e:
             logger.warning(f"Failed to upload E2EE keys: {e}")
 
     # Register event handlers
     logger.debug("Registering event handlers")
-    bot.client.add_event_callback(bot.on_invite, InviteEvent)
-    bot.client.add_event_callback(bot.on_room_message, RoomMessageText)
+    client.add_event_callback(bot.on_invite, InviteEvent)
+    client.add_event_callback(bot.on_room_message, RoomMessageText)
     # Register decryption failure handler for encrypted rooms
     if e2ee_enabled:
         try:
-            bot.client.add_event_callback(bot.on_decryption_failure, MegolmEvent)
+            client.add_event_callback(bot.on_decryption_failure, MegolmEvent)
         except AttributeError:
             logger.debug(
                 "Decryption-failure callback registration not supported by this nio version",
