@@ -622,16 +622,22 @@ class TestCLIBotOperation:
     @patch("os.path.exists")
     @patch("builtins.input")
     @patch("biblebot.cli.generate_config")
+    @patch("biblebot.cli.asyncio.run")
     @patch("sys.exit")
     def test_bot_no_config_generate_yes(
-        self, mock_exit, mock_generate, mock_input, mock_exists
+        self, mock_exit, mock_run, mock_generate, mock_input, mock_exists
     ):
         """Test bot operation when no config exists and user chooses to generate."""
         mock_exists.return_value = False
         mock_input.return_value = "y"
         mock_generate.return_value = True
+        mock_run.side_effect = SystemExit(1)  # Prevent actual async execution
 
-        cli.main()
+        try:
+            cli.main()
+        except SystemExit:
+            pass  # Expected due to mock_run side effect
+
         mock_generate.assert_called_once()
 
     @patch("sys.argv", ["biblebot"])
