@@ -129,13 +129,15 @@ class TestLegacyFlags:
             with warnings.catch_warnings(record=True) as w:
                 warnings.simplefilter("always")
 
-                # Mock the argument parsing
-                args = MagicMock()
-                args.generate_config = True
-                args.config = "test.yaml"
-                args.install_service = False
-                args.auth_login = False
-                args.auth_logout = False
+                # ✅ CORRECT: Use simple object instead of MagicMock (mmrelay pattern)
+                class MockArgs:
+                    generate_config = True
+                    config = "test.yaml"
+                    install_service = False
+                    auth_login = False
+                    auth_logout = False
+
+                args = MockArgs()
 
                 # Test the legacy flag handling logic
                 if args.generate_config:
@@ -161,12 +163,14 @@ class TestLegacyFlags:
         with warnings.catch_warnings(record=True) as w:
             warnings.simplefilter("always")
 
-            # Mock the argument parsing
-            args = MagicMock()
-            args.generate_config = False
-            args.install_service = False
-            args.auth_login = True
-            args.auth_logout = False
+            # ✅ CORRECT: Use simple object instead of MagicMock (mmrelay pattern)
+            class MockArgs:
+                generate_config = False
+                install_service = False
+                auth_login = True
+                auth_logout = False
+
+            args = MockArgs()
 
             # Test the legacy flag handling logic
             if args.auth_login:
@@ -186,10 +190,14 @@ class TestModernCommands:
     @patch("biblebot.cli.generate_config")
     def test_config_generate_command(self, mock_generate):
         """Test 'biblebot config generate' command."""
-        args = MagicMock()
-        args.command = "config"
-        args.config_action = "generate"
-        args.config = "test.yaml"
+
+        # ✅ CORRECT: Use simple object instead of MagicMock (mmrelay pattern)
+        class MockArgs:
+            command = "config"
+            config_action = "generate"
+            config = "test.yaml"
+
+        args = MockArgs()
 
         # Simulate the command handling logic
         if args.command == "config" and args.config_action == "generate":
@@ -211,10 +219,13 @@ class TestModernCommands:
         mock_load_env.return_value = (None, {"esv": "key1", "bible": None})
         mock_e2ee_status.return_value = {"available": True}
 
-        args = MagicMock()
-        args.command = "config"
-        args.config_action = "validate"
-        args.config = "test.yaml"
+        # ✅ CORRECT: Use simple object instead of MagicMock (mmrelay pattern)
+        class MockArgs:
+            command = "config"
+            config_action = "validate"
+            config = "test.yaml"
+
+        args = MockArgs()
 
         # Simulate the validation logic
         if args.command == "config" and args.config_action == "validate":
@@ -241,12 +252,16 @@ class TestModernCommands:
     @patch("asyncio.run")
     def test_auth_login_command(self, mock_run, mock_login):
         """Test 'biblebot auth login' command."""
+        # ✅ CORRECT: Direct return value for sync function (mmrelay pattern)
         mock_login.return_value = True
         mock_run.return_value = True
 
-        args = MagicMock()
-        args.command = "auth"
-        args.auth_action = "login"
+        # ✅ CORRECT: Use simple object instead of MagicMock
+        class MockArgs:
+            command = "auth"
+            auth_action = "login"
+
+        args = MockArgs()
 
         # Simulate the command handling logic
         if args.command == "auth" and args.auth_action == "login":
@@ -256,77 +271,110 @@ class TestModernCommands:
 
     def test_auth_status_command(self, capsys):
         """Test 'biblebot auth status' command."""
-        # Create explicit Mock objects to completely bypass async detection
-        mock_load_creds = Mock()
-        mock_print_e2ee = Mock()
 
-        # Use direct assignment to avoid any async detection
-        with patch("biblebot.auth.load_credentials", mock_load_creds):
-            with patch("biblebot.auth.print_e2ee_status", mock_print_e2ee):
-                # Test with credentials
-                mock_creds = MagicMock()
-                mock_creds.user_id = "@test:matrix.org"
-                mock_creds.homeserver = "https://matrix.org"
-                mock_creds.device_id = "TEST_DEVICE"
-                mock_load_creds.return_value = mock_creds
-                args = MagicMock()
-                args.command = "auth"
-                args.auth_action = "status"
+        # ✅ CORRECT: Use explicit function replacement (mmrelay pattern)
+        # Create simple object with attributes (no Mock inheritance)
+        class MockCredentials:
+            user_id = "@test:matrix.org"
+            homeserver = "https://matrix.org"
+            device_id = "TEST_DEVICE"
 
-                # Simulate the status command logic
-                if args.command == "auth" and args.auth_action == "status":
-                    creds = mock_load_creds()
-                    if creds:
-                        print("🔑 Authentication Status: ✓ Logged in")
-                        print(f"  User: {creds.user_id}")
-                        print(f"  Homeserver: {creds.homeserver}")
-                        print(f"  Device: {creds.device_id}")
-                    else:
-                        print("🔑 Authentication Status: ✗ Not logged in")
+        # ✅ CORRECT: Create simple replacement functions
+        def mock_load_credentials():
+            return MockCredentials()
 
-                    mock_print_e2ee()
+        print_e2ee_called = []
+
+        def mock_print_e2ee_status():
+            print_e2ee_called.append(True)
+
+        # ✅ CORRECT: Use patch with explicit function replacement
+        with patch("biblebot.auth.load_credentials", side_effect=mock_load_credentials):
+            with patch(
+                "biblebot.auth.print_e2ee_status", side_effect=mock_print_e2ee_status
+            ):
+                # Simulate the status command logic directly
+                creds = mock_load_credentials()
+                if creds:
+                    print("🔑 Authentication Status: ✓ Logged in")
+                    print(f"  User: {creds.user_id}")
+                    print(f"  Homeserver: {creds.homeserver}")
+                    print(f"  Device: {creds.device_id}")
+                else:
+                    print("🔑 Authentication Status: ✗ Not logged in")
+
+                mock_print_e2ee_status()
 
                 captured = capsys.readouterr()
                 assert "✓ Logged in" in captured.out
                 assert "@test:matrix.org" in captured.out
                 assert "https://matrix.org" in captured.out
-                mock_print_e2ee.assert_called_once()
+                assert len(print_e2ee_called) == 1
 
 
 class TestServiceCommands:
     """Test service management commands."""
 
-    @patch("biblebot.setup_utils.install_service")
-    def test_service_install_command(self, mock_install):
+    def test_service_install_command(self):
         """Test 'biblebot service install' command."""
-        args = MagicMock()
-        args.command = "service"
-        args.service_action = "install"
 
-        # Simulate the command handling logic
-        if args.command == "service" and args.service_action == "install":
-            mock_install()
+        # ✅ CORRECT: Use simple object instead of MagicMock (mmrelay pattern)
+        class MockArgs:
+            command = "service"
+            service_action = "install"
 
-        mock_install.assert_called_once()
+        args = MockArgs()
+
+        # ✅ CORRECT: Track function calls without Mock
+        install_called = []
+
+        def mock_install_service():
+            install_called.append(True)
+
+        # ✅ CORRECT: Use patch with explicit function replacement
+        with patch(
+            "biblebot.setup_utils.install_service", side_effect=mock_install_service
+        ):
+            # Simulate the command handling logic
+            if args.command == "service" and args.service_action == "install":
+                mock_install_service()
+
+            assert len(install_called) == 1
 
 
 class TestMainFunction:
     """Test the main CLI function."""
 
-    @patch("biblebot.cli.asyncio.run")
-    @patch("biblebot.bot.main")
-    @patch("biblebot.auth.load_credentials")
-    @patch("os.path.exists")
-    def test_main_run_bot(self, mock_exists, mock_load_creds, mock_bot_main, mock_run):
+    def test_main_run_bot(self):
         """Test running the bot when config exists."""
-        mock_exists.return_value = True  # Config file exists
-        mock_load_creds.return_value = None
 
-        with patch("sys.argv", ["biblebot"]):
-            with patch("biblebot.cli.main"):
-                # We can't easily test the full main() function due to argument parsing
-                # but we can test the logic components
-                pass
+        # ✅ CORRECT: Use explicit function replacement (mmrelay pattern)
+        def mock_exists(path):
+            return True  # Config file exists
+
+        def mock_load_credentials():
+            return None  # No credentials
+
+        def mock_bot_main():
+            return None
+
+        def mock_asyncio_run(coro):
+            return None  # Mock asyncio.run without creating AsyncMock
+
+        # ✅ CORRECT: Use side_effect to avoid AsyncMock detection
+        with patch("os.path.exists", side_effect=mock_exists):
+            with patch(
+                "biblebot.auth.load_credentials", side_effect=mock_load_credentials
+            ):
+                with patch("biblebot.bot.main", side_effect=mock_bot_main):
+                    with patch(
+                        "biblebot.cli.asyncio.run", side_effect=mock_asyncio_run
+                    ):
+                        with patch("sys.argv", ["biblebot"]):
+                            with patch("biblebot.cli.main"):
+                                # We can't easily test the full main() function due to argument parsing
+                                # but we can test the logic components
+                                pass
 
     @patch("builtins.input")
     @patch("biblebot.cli.generate_config")
