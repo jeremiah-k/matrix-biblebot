@@ -602,12 +602,12 @@ async def main(config_path=DEFAULT_CONFIG_FILENAME_MAIN):
             return
 
         # For legacy mode, we need homeserver and user from environment or config
-        homeserver = os.getenv("MATRIX_HOMESERVER")
-        user_id = os.getenv("MATRIX_USER_ID")
+        homeserver = os.getenv("MATRIX_HOMESERVER") or config.get("matrix_homeserver")
+        user_id = os.getenv("MATRIX_USER_ID") or config.get("matrix_user")
 
         if not homeserver or not user_id:
             logger.error(
-                "Legacy mode requires MATRIX_HOMESERVER and MATRIX_USER_ID environment variables"
+                "Legacy mode requires MATRIX_HOMESERVER and MATRIX_USER_ID set as environment variables or in config.yaml"
             )
             logger.error(
                 "Please run 'biblebot auth login' for the modern authentication flow"
