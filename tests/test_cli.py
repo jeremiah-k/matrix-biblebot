@@ -105,7 +105,7 @@ class TestGenerateConfig:
 
         assert result is False
         captured = capsys.readouterr()
-        assert "A config or .env file already exists at:" in captured.out
+        assert "A config file already exists at:" in captured.out
 
     @patch.object(cli, "get_sample_config_path")
     def test_generate_config_config_exists(
@@ -124,7 +124,7 @@ class TestGenerateConfig:
 
         assert result is False
         captured = capsys.readouterr()
-        assert "A config or .env file already exists at:" in captured.out
+        assert "A config file already exists at:" in captured.out
         assert str(config_path) in captured.out
 
     @patch.object(cli, "get_sample_config_path")
