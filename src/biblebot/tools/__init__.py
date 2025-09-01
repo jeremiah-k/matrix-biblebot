@@ -16,16 +16,6 @@ def get_sample_config_path():
         return str(pathlib.Path(__file__).parent / SAMPLE_CONFIG_FILENAME)
 
 
-def get_sample_env_path():
-    """Get the path to the sample .env file."""
-    try:
-        # For Python 3.9+
-        return str(importlib.resources.files("biblebot.tools") / "sample.env")
-    except AttributeError:
-        # Fallback for older Python versions
-        return str(pathlib.Path(__file__).parent / "sample.env")
-
-
 def get_service_template_path():
     """Get the path to the service template file."""
     try:

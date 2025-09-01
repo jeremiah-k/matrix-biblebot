@@ -53,7 +53,12 @@ CREDENTIALS_FILE_PERMISSIONS = 0o600
 
 # Regular expression patterns
 REFERENCE_PATTERNS = [
-    re.compile(r"^([\w\s]+?)(\d+[:]\d+[-]?\d*)\s*(kjv|esv)?$", re.IGNORECASE)
+    # Book + chapter:verse[-–verse] [translation]
+    re.compile(
+        r"^([\w\s]+?)\s+(\d+:\d+(?:[-\u2013]\d+)?)\s*(kjv|esv)?$", re.IGNORECASE
+    ),
+    # Book + chapter [translation]
+    re.compile(r"^([\w\s]+?)\s+(\d+)\s*(kjv|esv)?$", re.IGNORECASE),
 ]
 
 # Required configuration keys
@@ -275,9 +280,9 @@ WARN_E2EE_DEPS_NOT_FOUND_LOGIN = (
 URL_PREFIX_HTTP = "http://"
 URL_PREFIX_HTTPS = "https://"
 PROMPT_PASSWORD = "Password: "  # nosec B105
-STATUS_KEY_ERROR = "error"
-STATUS_KEY_AVAILABLE = "available"
-STATUS_KEY_PLATFORM_SUPPORTED = "platform_supported"
+STATUS_KEY_ERROR = E2EE_KEY_ERROR
+STATUS_KEY_AVAILABLE = E2EE_KEY_AVAILABLE
+STATUS_KEY_PLATFORM_SUPPORTED = E2EE_KEY_PLATFORM_SUPPORTED
 
 # CLI Messages for interactive mode
 MSG_CONFIG_EXISTS = "Configuration files already exist:"

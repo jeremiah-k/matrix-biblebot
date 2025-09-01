@@ -87,14 +87,12 @@ class TestGenerateConfig:
     """Test config file generation."""
 
     @patch.object(cli, "get_sample_config_path")
-    @patch.object(cli, "get_sample_env_path")
     def test_generate_config_success(
-        self, mock_get_env, mock_get_config, temp_config_dir, mock_sample_files
+        self, mock_get_config, temp_config_dir, mock_sample_files
     ):
         """Test successful config generation."""
-        sample_config, sample_env = mock_sample_files
+        sample_config, _ = mock_sample_files
         mock_get_config.return_value = sample_config
-        mock_get_env.return_value = sample_env
 
         config_path = temp_config_dir / "config.yaml"
 
@@ -102,24 +100,21 @@ class TestGenerateConfig:
 
         assert result is True
         assert config_path.exists()
-        assert (temp_config_dir / ".env").exists()
+        # No longer generates .env file
+        assert not (temp_config_dir / ".env").exists()
 
     @patch.object(cli, "get_sample_config_path")
-    @patch.object(cli, "get_sample_env_path")
     def test_generate_config_files_exist(
-        self, mock_get_env, mock_get_config, temp_config_dir, mock_sample_files, capsys
+        self, mock_get_config, temp_config_dir, mock_sample_files, capsys
     ):
         """Test config generation when files already exist."""
-        sample_config, sample_env = mock_sample_files
+        sample_config, _ = mock_sample_files
         mock_get_config.return_value = sample_config
-        mock_get_env.return_value = sample_env
 
         config_path = temp_config_dir / "config.yaml"
-        env_path = temp_config_dir / ".env"
 
-        # Create existing files
+        # Create existing config file
         config_path.write_text("existing config")
-        env_path.write_text("existing env")
 
         result = cli.generate_config(str(config_path))
 
@@ -128,14 +123,12 @@ class TestGenerateConfig:
         assert "already exists" in captured.out
 
     @patch.object(cli, "get_sample_config_path")
-    @patch.object(cli, "get_sample_env_path")
     def test_generate_config_config_exists(
-        self, mock_get_env, mock_get_config, temp_config_dir, mock_sample_files, capsys
+        self, mock_get_config, temp_config_dir, mock_sample_files, capsys
     ):
-        """Test config generation when only config.yaml already exists."""
-        sample_config, sample_env = mock_sample_files
+        """Test config generation when config.yaml already exists."""
+        sample_config, _ = mock_sample_files
         mock_get_config.return_value = sample_config
-        mock_get_env.return_value = sample_env
 
         config_path = temp_config_dir / "config.yaml"
 
@@ -150,27 +143,21 @@ class TestGenerateConfig:
         assert str(config_path) in captured.out
 
     @patch.object(cli, "get_sample_config_path")
-    @patch.object(cli, "get_sample_env_path")
     def test_generate_config_env_exists(
-        self, mock_get_env, mock_get_config, temp_config_dir, mock_sample_files, capsys
+        self, mock_get_config, temp_config_dir, mock_sample_files, capsys
     ):
-        """Test config generation when only .env already exists."""
-        sample_config, sample_env = mock_sample_files
+        """Test config generation when config doesn't exist (no longer checks .env)."""
+        sample_config, _ = mock_sample_files
         mock_get_config.return_value = sample_config
-        mock_get_env.return_value = sample_env
 
         config_path = temp_config_dir / "config.yaml"
-        env_path = temp_config_dir / ".env"
 
-        # Create existing file
-        env_path.write_text("existing env")
-
+        # No existing config file - should succeed
         result = cli.generate_config(str(config_path))
 
-        assert result is False
+        assert result is True
         captured = capsys.readouterr()
-        assert "already exists" in captured.out
-        assert str(env_path) in captured.out
+        assert "Generated config file" in captured.out
 
 
 class TestArgumentParsing:

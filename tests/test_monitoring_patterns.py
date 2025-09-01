@@ -45,7 +45,9 @@ class TestMonitoringPatterns:
         bot._room_id_set = set(mock_config["matrix_room_ids"])
         bot.start_time = 1234567880000  # Converted to milliseconds
 
-        with patch("biblebot.bot.get_bible_text") as mock_get_bible:
+        with patch(
+            "biblebot.bot.get_bible_text", new_callable=AsyncMock
+        ) as mock_get_bible:
             mock_get_bible.return_value = ("Test verse", "John 3:16")
 
             # Enable debug logging
@@ -76,7 +78,9 @@ class TestMonitoringPatterns:
         bot.start_time = 1234567880000  # Use milliseconds
         bot.api_keys = {}
 
-        with patch("biblebot.bot.get_bible_text") as mock_get_bible:
+        with patch(
+            "biblebot.bot.get_bible_text", new_callable=AsyncMock
+        ) as mock_get_bible:
             mock_get_bible.side_effect = Exception("Test API error")
 
             with caplog.at_level(logging.ERROR):
@@ -495,5 +499,5 @@ class TestMonitoringPatterns:
 
                 # Should have generated structured logs
                 log_records = caplog.records
-                # Implementation may vary, but should have some logging
-                assert len(log_records) >= 0
+                assert log_records, "Expected at least one structured log record"
+                assert any(r.levelno >= logging.INFO for r in log_records)

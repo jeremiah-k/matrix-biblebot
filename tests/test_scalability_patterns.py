@@ -327,7 +327,9 @@ class TestScalabilityPatterns:
 
         response_times = []
 
-        with patch("biblebot.bot.get_bible_text") as mock_get_bible:
+        with patch(
+            "biblebot.bot.get_bible_text", new_callable=AsyncMock
+        ) as mock_get_bible:
             mock_get_bible.return_value = ("Test verse", "John 3:16")
 
             # Measure response times under increasing load

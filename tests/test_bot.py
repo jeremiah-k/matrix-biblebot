@@ -213,7 +213,7 @@ class TestBibleTextRetrieval:
     @pytest.mark.asyncio
     async def test_get_kjv_text_not_found(self):
         """Test KJV text retrieval when verse not found."""
-        with patch.object(bot, "make_api_request", return_value=None):
+        with patch.object(bot, "make_api_request", new=AsyncMock(return_value=None)):
             result = await bot.get_kjv_text("Invalid 99:99")
 
             assert result is not None

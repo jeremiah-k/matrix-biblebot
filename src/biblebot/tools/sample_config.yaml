@@ -1,4 +1,4 @@
-# Matrix Bot Configuration
+# Matrix BibleBot Configuration
 # Edit this file with your Matrix server details and room IDs
 
 # Matrix Server Settings
@@ -10,7 +10,8 @@ matrix_room_ids:
 
 # End-to-End Encryption (E2EE) Settings
 # Requires: pip install matrix-nio[e2e]
-# Note: E2EE requires additional dependencies and setup
+# Note: E2EE requires proper authentication via 'biblebot auth login'
+# Manual access tokens do NOT support E2EE
 e2ee:
   enabled: false # Set to true to enable E2EE support
   store_path: null # Optional: custom path for E2EE store (defaults to ~/.local/share/matrix-biblebot)
@@ -21,3 +22,8 @@ bot:
   default_translation: esv # Default Bible translation (esv, kjv)
   cache_enabled: true # Enable verse caching for better performance
   max_message_length: 4000 # Maximum message length before truncation
+
+# API Keys (Optional)
+# You can also set these as environment variables: ESV_API_KEY
+api_keys:
+  esv: null # Optional: ESV API key for enhanced ESV support (get from https://api.esv.org/)

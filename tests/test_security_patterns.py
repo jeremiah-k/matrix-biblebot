@@ -484,14 +484,6 @@ class TestSecurityPatterns:
                 # Should treat as normal message, not admin command
                 await bot.on_room_message(room, event)
 
-                # Verify that the bot doesn't execute admin functions
-                # Admin commands should either be ignored or treated as normal Bible references
-                # The bot should not have any special admin command handling
-
-                # If the message looks like a Bible reference, it might call get_bible_text
-                # If not, it should be ignored (no room_send calls)
-                # Either way, no admin functions should be executed
-
-                # Verify that no dangerous operations were performed
-                # (In a real implementation, you'd check that admin methods weren't called)
-                assert True  # Bot completed without executing admin functions
+                # No scripture lookup nor outbound send for non-matching admin-like inputs
+                assert not mock_get_bible.called
+                assert not mock_client.room_send.called

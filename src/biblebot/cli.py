@@ -28,19 +28,16 @@ from .constants import (
     CLI_HELP_YES,
     CONFIG_DIR,
     DEFAULT_CONFIG_FILENAME,
-    DEFAULT_ENV_FILENAME,
     DEFAULT_LOG_LEVEL,
     LOG_LEVELS,
     LOGGER_NAME,
     MSG_CONFIG_EXISTS,
     MSG_DELETE_EXISTING,
-    MSG_EDIT_FILES,
     MSG_GENERATED_CONFIG,
-    MSG_GENERATED_ENV,
     MSG_NO_CONFIG_PROMPT,
     SUCCESS_CONFIG_GENERATED,
 )
-from .tools import get_sample_config_path, get_sample_env_path
+from .tools import get_sample_config_path
 
 # Configure logging
 logger = logging.getLogger(LOGGER_NAME)
@@ -54,17 +51,11 @@ def get_default_config_path():
 def detect_configuration_state():
     """Detect the current configuration state and return appropriate action."""
     config_path = get_default_config_path()
-    env_path = CONFIG_DIR / DEFAULT_ENV_FILENAME
+    credentials_path = CONFIG_DIR / "credentials.json"
 
-    # Check if config files exist
-    config_exists = config_path.exists()
-    env_exists = env_path.exists()
-
-    if not config_exists and not env_exists:
+    # Check if config file exists
+    if not config_path.exists():
         return "setup", "No configuration found. Setup is required."
-
-    if not config_exists:
-        return "setup", "Config file missing. Setup is required."
 
     # Try to load and validate config
     try:
@@ -76,24 +67,30 @@ def detect_configuration_state():
     except Exception as e:
         return "setup", f"Configuration error: {e}"
 
-    # Check for credentials
-    if not env_exists:
+    # Check for proper authentication (credentials.json from auth flow)
+    if not credentials_path.exists():
+        # Check for legacy environment token (deprecated)
+        import os
+
+        if os.getenv("MATRIX_ACCESS_TOKEN"):
+            return (
+                "ready_legacy",
+                "Bot configured with legacy access token (E2EE not supported). Consider migrating to 'biblebot auth login'.",
+            )
         return (
             "auth",
-            "Configuration found but credentials missing. Authentication required.",
+            "Configuration found but authentication required. Use 'biblebot auth login'.",
         )
 
-    # Check if credentials are placeholder values
+    # Verify credentials are valid
     try:
-        with open(env_path, "r") as f:
-            env_content = f.read()
-            if "your_bots_matrix_access_token_here" in env_content:
-                return (
-                    "auth",
-                    "Configuration found but credentials are placeholder values. Authentication required.",
-                )
+        from .auth import load_credentials
+
+        creds = load_credentials()
+        if not creds:
+            return "auth", "Invalid credentials found. Re-authentication required."
     except Exception:
-        return "auth", "Cannot read credentials file. Authentication required."
+        return "auth", "Cannot load credentials. Re-authentication required."
 
     return "ready", "Bot is configured and ready to start."
 
@@ -101,29 +98,27 @@ def detect_configuration_state():
 def generate_config(config_path):
     """Generate a sample config file at the specified path."""
     config_dir = os.path.dirname(config_path) or os.getcwd()
-    env_path = os.path.join(config_dir, DEFAULT_ENV_FILENAME)
 
-    if os.path.exists(config_path) or os.path.exists(env_path):
+    if os.path.exists(config_path):
         print(MSG_CONFIG_EXISTS)
-        if os.path.exists(config_path):
-            print(f"  {config_path}")
-        if os.path.exists(env_path):
-            print(f"  {env_path}")
+        print(f"  {config_path}")
         print(MSG_DELETE_EXISTING)
-        print("Otherwise, edit the current files in place.")
+        print("Otherwise, edit the current file in place.")
         return False
 
     os.makedirs(config_dir, exist_ok=True)
 
     sample_config_path = get_sample_config_path()
-    sample_env_path = get_sample_env_path()
 
     shutil.copy2(sample_config_path, config_path)
-    shutil.copy2(sample_env_path, env_path)
+
+    # Set restrictive permissions (readable/writable by owner only)
+    os.chmod(config_path, 0o600)
 
     print(MSG_GENERATED_CONFIG.format(config_path))
-    print(MSG_GENERATED_ENV.format(env_path))
-    print(MSG_EDIT_FILES)
+    print()
+    print("📝 Please edit the configuration file with your Matrix server details.")
+    print("🔑 Then run 'biblebot auth login' to authenticate.")
     print(SUCCESS_CONFIG_GENERATED)
     return True
 
@@ -141,7 +136,7 @@ def interactive_main():
         print("The bot needs to be configured before it can run.")
         print()
         response = (
-            input("Would you like to generate sample configuration files now? [Y/n]: ")
+            input("Would you like to generate sample configuration now? [Y/n]: ")
             .strip()
             .lower()
         )
@@ -149,11 +144,10 @@ def interactive_main():
             config_path = get_default_config_path()
             if generate_config(str(config_path)):
                 print()
-                print("✅ Configuration files generated!")
+                print("✅ Configuration file generated!")
                 print("📝 Next steps:")
                 print(f"   1. Edit {config_path}")
-                print(f"   2. Edit {CONFIG_DIR / DEFAULT_ENV_FILENAME}")
-                print("   3. Run 'biblebot' again to continue setup")
+                print("   2. Run 'biblebot' again to authenticate")
             return
         else:
             print("Setup cancelled. Run 'biblebot config generate' when ready.")
@@ -161,19 +155,13 @@ def interactive_main():
 
     elif state == "auth":
         print("🔐 Authentication Required")
-        print("Configuration found but Matrix credentials are missing or invalid.")
+        print("Configuration found but Matrix credentials are missing.")
         print()
-        print("Options:")
-        print("  1. Use existing Matrix access token (add to .env file)")
-        print("  2. Login interactively to generate credentials")
+        print("The bot uses secure session-based authentication that supports E2EE.")
+        print("Manual access tokens are deprecated and don't support E2EE.")
         print()
-        response = input("Choose option [1/2] or 'q' to quit: ").strip()
-        if response == "1":
-            env_path = CONFIG_DIR / DEFAULT_ENV_FILENAME
-            print(f"📝 Please edit {env_path}")
-            print("   Add your MATRIX_ACCESS_TOKEN and optionally ESV_API_KEY")
-            return
-        elif response == "2":
+        response = input("Would you like to login now? [Y/n]: ").strip().lower()
+        if response in ("", "y", "yes"):
             print("🔑 Starting interactive login...")
             try:
                 ok = asyncio.run(interactive_login())
@@ -185,8 +173,30 @@ def interactive_main():
                 print("\n❌ Login cancelled.")
             return
         else:
-            print("Authentication cancelled.")
+            print("Authentication cancelled. Use 'biblebot auth login' when ready.")
             return
+
+    elif state == "ready_legacy":
+        print("⚠️  Legacy Configuration Detected")
+        print("Bot is configured with a manual access token.")
+        print("This method is deprecated and does NOT support E2EE.")
+        print()
+        print("Consider migrating to modern authentication:")
+        print("  1. Run 'biblebot auth login' to use secure session-based auth")
+        print("  2. This enables E2EE support and better security")
+        print()
+        response = input("Start with legacy token anyway? [y/N]: ").strip().lower()
+        if response in ("y", "yes"):
+            print("🚀 Starting Matrix BibleBot (legacy mode)...")
+            try:
+                config_path = get_default_config_path()
+                asyncio.run(bot_main(str(config_path)))
+            except KeyboardInterrupt:
+                print("\n🛑 Bot stopped by user.")
+        else:
+            print(
+                "Consider running 'biblebot auth login' to upgrade to modern authentication."
+            )
 
     elif state == "ready":
         print("✅ Bot Ready")

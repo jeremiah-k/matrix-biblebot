@@ -108,45 +108,63 @@ def load_config(config_file):
 # Load environment variables
 def load_environment(config_path):
     """
-    Load environment variables from .env file.
-    First tries to load from the same directory as the config file,
-    then falls back to the current directory.
+    Load environment variables and API keys from config file and environment.
+    Supports both new config-based API keys and legacy .env files.
     """
-    # Try to load .env from the same directory as the config file
+    # Load the config to get API keys
+    config = load_config(config_path)
+    api_keys = {}
+
+    # Get API keys from config file first (new method)
+    if config and "api_keys" in config:
+        config_api_keys = config["api_keys"] or {}
+        if config_api_keys.get("esv"):
+            api_keys[TRANSLATION_ESV] = config_api_keys["esv"]
+            logger.info(INFO_API_KEY_FOUND.format(TRANSLATION_ESV.upper()))
+
+    # Try to load .env from the same directory as the config file (legacy support)
     config_dir = os.path.dirname(config_path)
     env_path = os.path.join(config_dir, DEFAULT_ENV_FILENAME)
 
     if os.path.exists(env_path):
         load_dotenv(env_path)
+        logger.warning(
+            "⚠️  .env file detected - this is deprecated. Consider moving API keys to config.yaml"
+        )
         logger.info(f"{INFO_LOADING_ENV} {env_path}")
     else:
         # Fall back to default .env in current directory if present
         cwd_env = os.path.join(os.getcwd(), DEFAULT_ENV_FILENAME)
         if os.path.exists(cwd_env):
             load_dotenv(cwd_env)
+            logger.warning(
+                "⚠️  .env file detected - this is deprecated. Consider moving API keys to config.yaml"
+            )
             logger.info(f"{INFO_LOADING_ENV} {cwd_env}")
         else:
             # Still call load_dotenv to pick up any env already set or parent dirs
             load_dotenv()
             logger.debug(INFO_NO_ENV_FILE)
 
-    # Get access token and API keys
+    # Get access token from environment (legacy support with deprecation warning)
     matrix_access_token = os.getenv(ENV_MATRIX_ACCESS_TOKEN)
-    if not matrix_access_token:
+    if matrix_access_token:
+        logger.warning(
+            "⚠️  MATRIX_ACCESS_TOKEN environment variable detected - this is deprecated and does NOT support E2EE."
+        )
+        logger.warning(
+            "⚠️  Consider using 'biblebot auth login' for secure session-based authentication with E2EE support."
+        )
+    else:
         logger.warning(WARN_MATRIX_ACCESS_TOKEN_NOT_SET)
 
-    # Dictionary to hold API keys for different translations
-    api_keys = {
-        TRANSLATION_ESV: os.getenv(ENV_ESV_API_KEY),
-        # Add more translations here
-    }
-
-    # Log which API keys were found (without showing the actual keys)
-    for translation, key in api_keys.items():
-        if key:
-            logger.info(INFO_API_KEY_FOUND.format(translation.upper()))
-        else:
-            logger.debug(INFO_NO_API_KEY.format(translation.upper()))
+    # Override API keys from environment if present (environment takes precedence)
+    esv_key = os.getenv(ENV_ESV_API_KEY)
+    if esv_key:
+        api_keys[TRANSLATION_ESV] = esv_key
+        logger.info(INFO_API_KEY_FOUND.format(TRANSLATION_ESV.upper()))
+    elif TRANSLATION_ESV not in api_keys:
+        logger.debug(INFO_NO_API_KEY.format(TRANSLATION_ESV.upper()))
 
     return matrix_access_token, api_keys
 

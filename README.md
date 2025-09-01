@@ -59,19 +59,35 @@ You can also specify a custom location:
 biblebot --generate-config --config /path/to/your/config.yaml
 ```
 
-### Authentication (Recommended)
+### Authentication
 
-Use the integrated auth flow to create credentials for the bot:
+The bot uses secure session-based authentication that supports E2EE:
 
 ```bash
 biblebot auth login
 ```
 
-This saves `credentials.json` under `~/.config/matrix-biblebot/` and makes future runs passwordless. To delete credentials and the E2EE store (if any):
+This will:
+
+1. Prompt for your Matrix homeserver, username, and password
+2. Log in and save encrypted credentials locally (`credentials.json`)
+3. Enable E2EE support if dependencies are installed
+
+**Benefits of proper authentication:**
+
+- ✅ Supports End-to-End Encryption (E2EE)
+- ✅ Secure credential storage
+- ✅ Automatic session management
+- ✅ Device verification support
+
+To delete credentials and the E2EE store:
 
 ```bash
 biblebot auth logout
 ```
+
+**Legacy Token Setup (Deprecated):**
+⚠️ Manual access tokens are deprecated and do NOT support E2EE. If you have existing `MATRIX_ACCESS_TOKEN` environment variables, consider migrating to `biblebot auth login` for E2EE support.
 
 ### Edit Configuration Files
 
@@ -144,9 +160,12 @@ The bot supports End-to-End Encryption for secure communication in encrypted roo
 ### Quick Start
 
 1. Install the bot: `pipx install matrix-biblebot`
-2. Generate config files: `biblebot --generate-config`
-3. Edit the config files in `~/.config/matrix-biblebot/`
-4. Run the bot: `biblebot`
+2. Run the bot: `biblebot` (it will guide you through setup)
+3. Follow the interactive prompts to:
+   - Generate configuration file
+   - Edit your Matrix server details
+   - Authenticate with your Matrix account
+4. The bot will start automatically once configured
 
 ### Running the Bot
 
