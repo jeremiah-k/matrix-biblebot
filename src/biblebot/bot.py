@@ -264,6 +264,7 @@ class BibleBot:
         self.config = config
         self.client = client  # Injected AsyncClient instance
         self.api_keys = {}  # Will be set in main()
+        self._room_id_set: set[str] = set()
 
     def __repr__(self):
         keys = list(self.config.keys()) if isinstance(self.config, dict) else []
@@ -339,6 +340,7 @@ class BibleBot:
         )  # Store bot start time in milliseconds
         logger.info("Initializing BibleBot...")
         await self.resolve_aliases()  # Support for aliases in config
+        self._room_id_set = set(self.config[CONFIG_MATRIX_ROOM_IDS])
         await self.ensure_joined_rooms()  # Ensure bot is in all configured rooms
 
         logger.info("Performing initial sync...")
@@ -411,7 +413,7 @@ class BibleBot:
         Only processes messages in configured rooms, from other users, and after bot start time.
         """
         if (
-            room.room_id in self.config[CONFIG_MATRIX_ROOM_IDS]
+            room.room_id in self._room_id_set
             and event.sender != self.client.user_id
             and event.server_timestamp > self.start_time
         ):

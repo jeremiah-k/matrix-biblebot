@@ -29,14 +29,26 @@ from nio import (
 from .constants import (
     CONFIG_DIR,
     CONFIG_DIR_PERMISSIONS,
+    CRED_KEY_ACCESS_TOKEN,
+    CRED_KEY_DEVICE_ID,
+    CRED_KEY_HOMESERVER,
+    CRED_KEY_USER_ID,
     CREDENTIALS_FILE,
     CREDENTIALS_FILE_PERMISSIONS,
+    E2EE_KEY_AVAILABLE,
+    E2EE_KEY_DEPENDENCIES_INSTALLED,
+    E2EE_KEY_ERROR,
+    E2EE_KEY_PLATFORM_SUPPORTED,
+    E2EE_KEY_READY,
+    E2EE_KEY_STORE_EXISTS,
     E2EE_STORE_DIR,
     ERROR_E2EE_DEPS_MISSING,
     ERROR_E2EE_NOT_SUPPORTED,
+    FILE_ENCODING_UTF8,
     LOGGER_NAME,
     LOGIN_TIMEOUT_SEC,
     MATRIX_DEVICE_NAME,
+    PLATFORM_WINDOWS,
     PROMPT_HOMESERVER,
     PROMPT_USERNAME,
 )
@@ -53,19 +65,19 @@ class Credentials:
 
     def to_dict(self) -> dict:
         return {
-            "homeserver": self.homeserver,
-            "user_id": self.user_id,
-            "access_token": self.access_token,
-            "device_id": self.device_id,
+            CRED_KEY_HOMESERVER: self.homeserver,
+            CRED_KEY_USER_ID: self.user_id,
+            CRED_KEY_ACCESS_TOKEN: self.access_token,
+            CRED_KEY_DEVICE_ID: self.device_id,
         }
 
     @staticmethod
     def from_dict(d: dict) -> "Credentials":
         return Credentials(
-            homeserver=d.get("homeserver", ""),
-            user_id=d.get("user_id", ""),
-            access_token=d.get("access_token", ""),
-            device_id=d.get("device_id"),
+            homeserver=d.get(CRED_KEY_HOMESERVER, ""),
+            user_id=d.get(CRED_KEY_USER_ID, ""),
+            access_token=d.get(CRED_KEY_ACCESS_TOKEN, ""),
+            device_id=d.get(CRED_KEY_DEVICE_ID),
         )
 
 
@@ -92,7 +104,7 @@ def save_credentials(creds: Credentials) -> None:
     try:
         # Create a temporary file in the same directory to ensure `os.replace` is atomic.
         tmp = tempfile.NamedTemporaryFile(
-            "w", dir=str(path.parent), delete=False, encoding="utf-8"
+            "w", dir=str(path.parent), delete=False, encoding=FILE_ENCODING_UTF8
         )
         tmp.write(data)
         tmp.flush()
@@ -124,7 +136,7 @@ def load_credentials() -> Optional[Credentials]:
     if not path.exists():
         return None
     try:
-        text = path.read_text(encoding="utf-8")
+        text = path.read_text(encoding=FILE_ENCODING_UTF8)
         data = json.loads(text)
         return Credentials.from_dict(data)
     except (OSError, json.JSONDecodeError):
@@ -144,20 +156,20 @@ def get_store_dir() -> Path:
 def check_e2ee_status() -> dict:
     """Check E2EE availability and status."""
     status = {
-        "available": False,
-        "dependencies_installed": False,
-        "store_exists": False,
-        "platform_supported": True,
-        "error": None,
-        "ready": False,
+        E2EE_KEY_AVAILABLE: False,
+        E2EE_KEY_DEPENDENCIES_INSTALLED: False,
+        E2EE_KEY_STORE_EXISTS: False,
+        E2EE_KEY_PLATFORM_SUPPORTED: True,
+        E2EE_KEY_ERROR: None,
+        E2EE_KEY_READY: False,
     }
 
     # Check platform support
     import platform
 
-    if platform.system() == "Windows":
-        status["platform_supported"] = False
-        status["error"] = ERROR_E2EE_NOT_SUPPORTED
+    if platform.system() == PLATFORM_WINDOWS:
+        status[E2EE_KEY_PLATFORM_SUPPORTED] = False
+        status[E2EE_KEY_ERROR] = ERROR_E2EE_NOT_SUPPORTED
         return status
 
     # Check dependencies
@@ -167,23 +179,23 @@ def check_e2ee_status() -> dict:
         olm_spec = importlib.util.find_spec("olm")
         nio_spec = importlib.util.find_spec("nio")
         if olm_spec is not None and nio_spec is not None:
-            status["dependencies_installed"] = True
+            status[E2EE_KEY_DEPENDENCIES_INSTALLED] = True
         else:
             raise ImportError("E2EE dependencies not found")
     except ImportError as e:
-        status["error"] = f"{ERROR_E2EE_DEPS_MISSING}: {e}"
+        status[E2EE_KEY_ERROR] = f"{ERROR_E2EE_DEPS_MISSING}: {e}"
         return status
 
     # Check store directory without creating it
     store_dir = E2EE_STORE_DIR
-    status["store_exists"] = store_dir.exists()
+    status[E2EE_KEY_STORE_EXISTS] = store_dir.exists()
 
     creds = load_credentials()
     # Consider E2EE "available" when deps are present AND creds exist AND a store exists
-    status["available"] = bool(
-        status["dependencies_installed"] and status["platform_supported"]
+    status[E2EE_KEY_AVAILABLE] = bool(
+        status[E2EE_KEY_DEPENDENCIES_INSTALLED] and status[E2EE_KEY_PLATFORM_SUPPORTED]
     )
-    status["ready"] = bool(creds and status["store_exists"])
+    status[E2EE_KEY_READY] = bool(creds and status[E2EE_KEY_STORE_EXISTS])
 
     return status
 

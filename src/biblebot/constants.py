@@ -131,6 +131,26 @@ ENV_USERNAME = "USERNAME"
 
 # File names
 SAMPLE_CONFIG_FILENAME = "sample_config.yaml"
+
+# JSON/Dict keys for credentials
+CRED_KEY_HOMESERVER = "homeserver"
+CRED_KEY_USER_ID = "user_id"
+CRED_KEY_ACCESS_TOKEN = "access_token"  # nosec B105
+CRED_KEY_DEVICE_ID = "device_id"
+
+# E2EE status keys
+E2EE_KEY_AVAILABLE = "available"
+E2EE_KEY_DEPENDENCIES_INSTALLED = "dependencies_installed"
+E2EE_KEY_STORE_EXISTS = "store_exists"
+E2EE_KEY_PLATFORM_SUPPORTED = "platform_supported"
+E2EE_KEY_ERROR = "error"
+E2EE_KEY_READY = "ready"
+
+# Platform names
+PLATFORM_WINDOWS = "Windows"
+
+# File encoding
+FILE_ENCODING_UTF8 = "utf-8"
 SUCCESS_SERVICE_INSTALLED = "Service installed successfully"
 
 # Info messages
