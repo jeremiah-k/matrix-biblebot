@@ -47,7 +47,9 @@ class TestPerformancePatterns:
         # Populate room ID set for testing (normally done in initialize())
 
         bot._room_id_set = set(mock_config["matrix_room_ids"])
-        bot.start_time = int((time.time() - 100) * 1000)  # Use milliseconds
+        bot.start_time = int(
+            (time.perf_counter() - 100) * 1000
+        )  # Use milliseconds (monotonic)
         bot.api_keys = {}
 
         # Mock Bible API response
@@ -60,7 +62,7 @@ class TestPerformancePatterns:
                 event = MagicMock()
                 event.body = f"John 3:{i+1}"
                 event.sender = f"@user{i}:matrix.org"
-                event.server_timestamp = int(time.time() * 1000)
+                event.server_timestamp = int(time.perf_counter() * 1000)
                 events.append(event)
 
             # Measure processing time
@@ -99,8 +101,8 @@ class TestPerformancePatterns:
 
         bot._room_id_set = set(mock_config["matrix_room_ids"])
         bot.start_time = int(
-            (time.time() - 100) * 1000
-        )  # Set start_time for message filtering
+            (time.perf_counter() - 100) * 1000
+        )  # Set start_time for message filtering (monotonic)
 
         # Create and process many events to test memory management
         with patch("biblebot.bot.get_bible_text") as mock_get_bible:
@@ -110,7 +112,7 @@ class TestPerformancePatterns:
                 event = MagicMock()
                 event.body = f"John 3:{i+1}"
                 event.sender = f"@user{i}:matrix.org"
-                event.server_timestamp = int(time.time() * 1000)
+                event.server_timestamp = int(time.perf_counter() * 1000)
 
                 room = MagicMock()
                 room.room_id = mock_config["matrix_room_ids"][0]
@@ -137,7 +139,9 @@ class TestPerformancePatterns:
         # Populate room ID set for testing (normally done in initialize())
 
         bot._room_id_set = set(mock_config["matrix_room_ids"])
-        bot.start_time = int((time.time() - 100) * 1000)  # Use milliseconds
+        bot.start_time = int(
+            (time.perf_counter() - 100) * 1000
+        )  # Use milliseconds (monotonic)
         bot.api_keys = {}
 
         # Mock API with varying response times
@@ -165,7 +169,7 @@ class TestPerformancePatterns:
                 event = MagicMock()
                 event.body = f"John 3:{i+1}"
                 event.sender = f"@user{i}:matrix.org"
-                event.server_timestamp = int(time.time() * 1000)
+                event.server_timestamp = int(time.perf_counter() * 1000)
 
                 room = MagicMock()
                 room.room_id = mock_config["matrix_room_ids"][0]  # Use configured room
@@ -190,7 +194,9 @@ class TestPerformancePatterns:
         # Populate room ID set for testing (normally done in initialize())
 
         bot._room_id_set = set(mock_config["matrix_room_ids"])
-        bot.start_time = int((time.time() - 100) * 1000)  # Use milliseconds
+        bot.start_time = int(
+            (time.perf_counter() - 100) * 1000
+        )  # Use milliseconds (monotonic)
         bot.api_keys = {}
 
         # Mock rate-limited API
@@ -214,7 +220,7 @@ class TestPerformancePatterns:
                 event = MagicMock()
                 event.body = f"John 3:{i+1}"
                 event.sender = f"@user{i}:matrix.org"
-                event.server_timestamp = int(time.time() * 1000)
+                event.server_timestamp = int(time.perf_counter() * 1000)
 
                 room = MagicMock()
                 room.room_id = mock_config["matrix_room_ids"][0]  # Use configured room
@@ -242,7 +248,7 @@ class TestPerformancePatterns:
         event = MagicMock()
         event.body = "John 1:1 " * 1000  # Very long message
         event.sender = "@user:matrix.org"
-        event.server_timestamp = int(time.time() * 1000)
+        event.server_timestamp = int(time.perf_counter() * 1000)
 
         # Create room mock with room_id to ensure events are processed
         room = MagicMock()
@@ -293,7 +299,7 @@ class TestPerformancePatterns:
                 event = MagicMock()
                 event.body = f"John 3:{i+1}"
                 event.sender = f"@user{i}:matrix.org"
-                event.server_timestamp = int(time.time() * 1000)
+                event.server_timestamp = int(time.perf_counter() * 1000)
 
                 task = bot.on_room_message(MagicMock(), event)
                 tasks.append(task)
@@ -358,7 +364,9 @@ class TestPerformancePatterns:
         # Populate room ID set for testing (normally done in initialize())
 
         bot._room_id_set = set(mock_config["matrix_room_ids"])
-        bot.start_time = int((time.time() - 100) * 1000)  # Use milliseconds
+        bot.start_time = int(
+            (time.perf_counter() - 100) * 1000
+        )  # Use milliseconds (monotonic)
         bot.api_keys = {}
 
         # Create a background task
@@ -382,7 +390,7 @@ class TestPerformancePatterns:
         event = MagicMock()
         event.body = "John 3:16"
         event.sender = "@user:matrix.org"
-        event.server_timestamp = int(time.time() * 1000)
+        event.server_timestamp = int(time.perf_counter() * 1000)
 
         room = MagicMock()
         room.room_id = mock_config["matrix_room_ids"][0]  # Use configured room

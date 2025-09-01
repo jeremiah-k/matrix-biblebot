@@ -623,8 +623,8 @@ class BibleBot:
         This method is asynchronous and does not return; it only returns when the client's sync loop ends or raises.
         """
         self.start_time = int(
-            time.time() * 1000
-        )  # Store bot start time in milliseconds
+            time.perf_counter() * 1000
+        )  # Store bot start time in milliseconds (monotonic)
         logger.info("Initializing BibleBot...")
         await self.resolve_aliases()  # Support for aliases in config
         self._room_id_set = set(self.config[CONFIG_MATRIX_ROOM_IDS])
