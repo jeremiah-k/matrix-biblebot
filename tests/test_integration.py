@@ -111,6 +111,14 @@ api_keys:
                         assert not (temp_workspace / "credentials.json").exists()
 
     @pytest.mark.asyncio
+    @patch.dict(
+        "os.environ",
+        {
+            "MATRIX_HOMESERVER": "https://matrix.org",
+            "MATRIX_USER_ID": "@testbot:matrix.org",
+            "MATRIX_ACCESS_TOKEN": "test_token",
+        },
+    )  # Set required environment variables for legacy mode
     async def test_bot_initialization_workflow(self, temp_workspace):
         """Test bot initialization with real config files."""
         config_file = temp_workspace / "config.yaml"

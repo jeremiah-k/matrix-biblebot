@@ -685,7 +685,13 @@ class TestMainFunction:
     """Test the main bot function."""
 
     @pytest.mark.asyncio
-    @patch.dict("os.environ", {}, clear=True)  # Clear environment variables
+    @patch.dict(
+        "os.environ",
+        {
+            "MATRIX_HOMESERVER": "https://matrix.org",
+            "MATRIX_USER_ID": "@testbot:matrix.org",
+        },
+    )  # Set required environment variables for legacy mode
     @patch("biblebot.bot.load_credentials")
     @patch("biblebot.bot.get_store_dir")
     @patch("biblebot.bot.load_config")
@@ -734,6 +740,13 @@ class TestMainFunction:
                 mock_bot.start.assert_called_once()
 
     @pytest.mark.asyncio
+    @patch.dict(
+        "os.environ",
+        {
+            "MATRIX_HOMESERVER": "https://matrix.org",
+            "MATRIX_USER_ID": "@testbot:matrix.org",
+        },
+    )  # Set required environment variables for legacy mode
     @patch("biblebot.bot.load_credentials")
     @patch("biblebot.bot.load_config")
     @patch("biblebot.bot.load_environment")
@@ -807,6 +820,13 @@ class TestMainFunction:
             mock_bot_class.assert_not_called()
 
     @pytest.mark.asyncio
+    @patch.dict(
+        "os.environ",
+        {
+            "MATRIX_HOMESERVER": "https://matrix.org",
+            "MATRIX_USER_ID": "@testbot:matrix.org",
+        },
+    )  # Set required environment variables for legacy mode
     @patch("biblebot.bot.load_credentials")
     @patch("biblebot.bot.get_store_dir")
     @patch("biblebot.bot.load_config")

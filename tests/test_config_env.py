@@ -15,15 +15,13 @@ def test_load_config_ok_and_normalization(tmp_path: Path):
     cfg = tmp_path / "config.yaml"
     cfg.write_text(
         """
-matrix_homeserver: https://example.org/
-matrix_user: "@bot:example.org"
 matrix_room_ids:
   - "!abc:example.org"
         """.strip()
     )
     conf = botmod.load_config(str(cfg))
     assert conf is not None
-    assert conf["matrix_homeserver"] == "https://example.org"
+    assert conf["matrix_room_ids"] == ["!abc:example.org"]
 
 
 def test_load_environment_prefers_config_dir_env(tmp_path: Path, monkeypatch):

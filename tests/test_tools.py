@@ -28,9 +28,8 @@ class TestSampleFilePaths:
         content = path.read_text()
 
         # Check for key configuration sections
-        assert "matrix_homeserver" in content
-        assert "matrix_user" in content
         assert "matrix_room_ids" in content
+        assert "biblebot auth login" in content  # Should mention auth flow
 
         # Check for API keys section
         assert "api_keys" in content
@@ -117,8 +116,8 @@ class TestSampleConfigValidation:
         with open(config_path_str, "r") as f:
             config = yaml.safe_load(f)
 
-        # Check required top-level fields
-        required_fields = ["matrix_homeserver", "matrix_user", "matrix_room_ids"]
+        # Check required top-level fields (matrix_homeserver and matrix_user now handled by auth)
+        required_fields = ["matrix_room_ids"]
 
         for field in required_fields:
             assert (
@@ -139,17 +138,16 @@ class TestSampleConfigValidation:
             config = yaml.safe_load(f)
 
         # Should contain placeholder values that users need to replace
-        homeserver = config.get("matrix_homeserver", "")
-        user = config.get("matrix_user", "")
+        room_ids = config.get("matrix_room_ids", [])
 
-        # These should be example values, not real ones
-        assert (
-            "example" in homeserver.lower()
-            or "your" in homeserver.lower()
-            or "matrix.org" in homeserver
-        )
-        assert "@" in user  # Should be a Matrix user ID format
-        assert ":" in user  # Should have server part
+        # Room IDs should be example values, not real ones
+        assert len(room_ids) > 0, "Should have example room IDs"
+        for room_id in room_ids:
+            assert (
+                "your" in room_id.lower()
+                or "example" in room_id.lower()
+                or room_id.startswith("!")
+            ), f"Room ID '{room_id}' should be a placeholder value"
 
 
 class TestErrorHandling:
