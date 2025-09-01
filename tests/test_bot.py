@@ -582,6 +582,8 @@ class TestInviteHandling:
 
             bot_instance = bot.BibleBot(sample_config)
             bot_instance.client = mock_client
+            # Initialize room ID set for membership checks
+            bot_instance._room_id_set = set(sample_config["matrix_room_ids"])
 
             mock_room = MagicMock()
             mock_room.room_id = TEST_ROOM_IDS[0]  # In config

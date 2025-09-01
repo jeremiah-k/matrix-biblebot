@@ -105,7 +105,7 @@ class TestGenerateConfig:
 
         assert result is False
         captured = capsys.readouterr()
-        assert "Configuration files already exist" in captured.out
+        assert "A config or .env file already exists at:" in captured.out
 
     @patch.object(cli, "get_sample_config_path")
     def test_generate_config_config_exists(
@@ -124,7 +124,7 @@ class TestGenerateConfig:
 
         assert result is False
         captured = capsys.readouterr()
-        assert "Configuration files already exist" in captured.out
+        assert "A config or .env file already exists at:" in captured.out
         assert str(config_path) in captured.out
 
     @patch.object(cli, "get_sample_config_path")
@@ -142,7 +142,7 @@ class TestGenerateConfig:
 
         assert result is True
         captured = capsys.readouterr()
-        assert "Generated config file" in captured.out
+        assert "Generated sample config file at:" in captured.out
 
 
 class TestArgumentParsing:
@@ -511,13 +511,17 @@ class TestCLIMainFunction:
 
     @patch("os.path.exists", return_value=True)
     @patch("sys.argv", ["biblebot", "auth", "login"])
-    @patch("biblebot.auth.interactive_login")
+    @patch("builtins.input", return_value="https://matrix.org")
+    @patch("getpass.getpass", return_value="password")
+    @patch("biblebot.auth.interactive_login", return_value=True)
     @patch("biblebot.cli.asyncio.run")
     @patch("sys.exit")
-    def test_auth_login_command(self, mock_exit, mock_run, mock_login, mock_exists):
+    def test_auth_login_command(
+        self, mock_exit, mock_run, mock_login, mock_getpass, mock_input, mock_exists
+    ):
         """Test auth login command."""
-        mock_login.return_value = True
-        mock_run.side_effect = _consume_coroutine
+        # Mock asyncio.run to return the login result directly
+        mock_run.return_value = True
         mock_exit.side_effect = SystemExit(0)
 
         with pytest.raises(SystemExit) as e:
@@ -649,18 +653,27 @@ class TestCLILegacyFlags:
         mock_install.assert_called_once()
 
     @patch("sys.argv", ["biblebot", "--auth-login"])
-    @patch("biblebot.auth.interactive_login")
+    @patch("builtins.input", return_value="https://matrix.org")
+    @patch("getpass.getpass", return_value="password")
+    @patch("biblebot.auth.interactive_login", return_value=True)
     @patch("biblebot.cli.asyncio.run")
     @patch("sys.exit")
     @patch("warnings.warn")
     @patch("os.path.exists")
     def test_legacy_auth_login(
-        self, mock_exists, mock_warn, mock_exit, mock_run, mock_login
+        self,
+        mock_exists,
+        mock_warn,
+        mock_exit,
+        mock_run,
+        mock_login,
+        mock_getpass,
+        mock_input,
     ):
         """Test legacy --auth-login flag."""
         mock_exists.return_value = True  # Config exists to avoid input prompt
-        mock_login.return_value = True
-        mock_run.side_effect = _consume_coroutine
+        # Mock asyncio.run to return the login result directly
+        mock_run.return_value = True
 
         cli.main()
         mock_warn.assert_called_once()
