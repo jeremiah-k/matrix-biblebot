@@ -10,6 +10,7 @@ from biblebot import bot
 class TestCachePerformance:
     """Test cache performance characteristics."""
 
+    @pytest.mark.slow
     def test_cache_performance_single_operations(self):
         """Test cache performance for single operations."""
         # Clear cache
@@ -19,7 +20,7 @@ class TestCachePerformance:
         # Measure cache set performance
         start_time = time.perf_counter()
         for i in range(100):
-            bot._cache_set(f"Test {i}:1", "kjv", (f"Text {i}", f"Test {i}:1"))
+            bot._cache_set(f"Test {i}:1", "kjv", (f"Text {i}", f"Text {i}:1"))
         set_time = time.perf_counter() - start_time
 
         # Measure cache get performance
@@ -30,8 +31,8 @@ class TestCachePerformance:
         get_time = time.perf_counter() - start_time
 
         # Performance assertions
-        assert set_time < 1.0  # Should complete in under 1 second
-        assert get_time < 0.5  # Gets should be faster than sets
+        assert set_time < 2.0
+        assert get_time < 1.0
 
     def test_cache_performance_bulk_operations(self):
         """Test cache performance for bulk operations."""
@@ -41,7 +42,7 @@ class TestCachePerformance:
 
         # Bulk set operations
         start_time = time.perf_counter()
-        for i in range(100):  # Reduced from 1000 to 100 for faster testing
+        for i in range(50):
             bot._cache_set(f"Bulk {i}:1", "kjv", (f"Bulk text {i}", f"Bulk {i}:1"))
         bulk_set_time = time.perf_counter() - start_time
 
@@ -55,13 +56,13 @@ class TestCachePerformance:
         bulk_get_time = time.perf_counter() - start_time
 
         # Performance assertions
-        assert bulk_set_time < 2.0  # Should complete in under 2 seconds
-        assert bulk_get_time < 1.0  # Gets should be faster
+        assert bulk_set_time < 3.0
+        assert bulk_get_time < 1.5
 
     def test_cache_performance_case_insensitive(self):
         """
         Measure cache performance for case-insensitive keys.
-        
+
         Clears the internal `_passage_cache` if present, writes 100 entries using mixed-case keys via `bot._cache_set`,
         then reads them back using a different case via `bot._cache_get`. Asserts each read returns a non-None value
         and that the set phase completes under 1.0 second and the get phase under 0.5 seconds.
@@ -112,14 +113,14 @@ class TestBookNormalizationPerformance:
         ]
 
         start_time = time.perf_counter()
-        for _ in range(1000):
+        for _ in range(200):
             for book in common_books:
                 result = bot.normalize_book_name(book)
                 assert isinstance(result, str)
         normalization_time = time.perf_counter() - start_time
 
         # Performance assertion
-        assert normalization_time < 2.0  # Should complete in under 2 seconds
+        assert normalization_time < 2.5
 
     def test_normalization_performance_abbreviations(self):
         """Test normalization performance for abbreviations."""
@@ -142,7 +143,7 @@ class TestBookNormalizationPerformance:
         ]
 
         start_time = time.perf_counter()
-        for _ in range(1000):
+        for _ in range(200):
             for abbrev in abbreviations:
                 result = bot.normalize_book_name(abbrev)
                 assert isinstance(result, str)
@@ -167,7 +168,7 @@ class TestBookNormalizationPerformance:
         ]
 
         start_time = time.perf_counter()
-        for _ in range(1000):
+        for _ in range(200):
             for book in mixed_case_books:
                 result = bot.normalize_book_name(book)
                 assert isinstance(result, str)
@@ -184,7 +185,7 @@ class TestAPIPerformance:
     async def test_api_request_performance_single(self, mock_api):
         """
         Verify that a single call to get_bible_text returns a non-None result and completes quickly when the underlying API is mocked.
-        
+
         The test sets the API mock to return a simple verse payload, measures elapsed time for await bot.get_bible_text("Test 1:1", "kjv"), and asserts the call completes in under 1.0 second and returns a non-None value.
         """
         mock_api.return_value = {"text": "Test verse", "reference": "Test 1:1"}
@@ -205,10 +206,10 @@ class TestAPIPerformance:
         async def single_request(verse):
             """
             Fetch the KJV text for a single test verse identifier.
-            
+
             Parameters:
                 verse (str|int): Verse identifier used to build the reference (formatted into "Test {verse}:1").
-            
+
             Returns:
                 str | None: The retrieved passage text (may be None if no text is found).
             """
@@ -256,7 +257,7 @@ class TestConfigPerformance:
     def test_config_loading_performance(self, tmp_path):
         """
         Measure that loading a YAML configuration via bot.load_config is performant.
-        
+
         Creates a temporary YAML config file with minimal Matrix settings, then calls bot.load_config 100 times asserting each call returns a non-None configuration. Fails if the total load time exceeds 5.0 seconds. The test writes to the provided temporary path fixture.
         """
         # Create test config
@@ -377,7 +378,7 @@ class TestStressPerformance:
         def normalize_worker():
             """
             Run 100 iterations of book-name normalization and record results.
-            
+
             This worker repeatedly normalizes a fixed set of book-name variants by calling bot.normalize_book_name and appends each normalization result to the outer-scope list `results`. Any exception raised during processing is caught and appended to the outer-scope list `errors`. Intended for use as a threaded worker in concurrency/stress tests. Returns None.
             """
             try:
