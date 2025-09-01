@@ -232,7 +232,7 @@ class TestIntegrationPatterns:
                     "user_id": credentials.user_id,
                     "access_token": credentials.access_token,
                     "device_id": credentials.device_id,
-                    "rooms": ["!room:matrix.org"],
+                    "matrix_room_ids": ["!room:matrix.org"],
                 }
 
                 bot = BibleBot(config=config, client=mock_client)
@@ -355,6 +355,7 @@ class TestIntegrationPatterns:
                 "user_id": "@test:matrix.org",
                 "access_token": "token",
                 "device_id": "device",
+                "matrix_room_ids": ["!room:matrix.org"],
             },
             # Full config
             {
@@ -362,7 +363,7 @@ class TestIntegrationPatterns:
                 "user_id": "@test:matrix.org",
                 "access_token": "token",
                 "device_id": "device",
-                "rooms": ["!room1:matrix.org", "!room2:matrix.org"],
+                "matrix_room_ids": ["!room1:matrix.org", "!room2:matrix.org"],
                 "bible_version": "NIV",
                 "response_format": "html",
             },

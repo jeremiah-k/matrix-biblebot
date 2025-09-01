@@ -493,6 +493,7 @@ class TestEdgeCases:
             "user_id": "@test:matrix.org",
             "access_token": "test_token",
             "device_id": "TEST_DEVICE",
+            "matrix_room_ids": ["!room:matrix.org"],
         }
 
         bot = BibleBot(config=minimal_config, client=mock_client)
@@ -516,7 +517,7 @@ class TestEdgeCases:
 
         # Populate room ID set for testing (normally done in initialize())
 
-        bot._room_id_set = set(none_config["matrix_room_ids"])
+        bot._room_id_set = set(none_config["matrix_room_ids"] or [])
         assert bot.config is not None
 
         # Test with configuration containing empty values
