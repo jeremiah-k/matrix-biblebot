@@ -191,7 +191,8 @@ class TestE2EEStatus:
 
         status = auth.check_e2ee_status()
 
-        assert status["available"] is False
+        assert status["available"] is True  # Dependencies available
+        assert status["ready"] is False  # But not ready (no creds)
         assert status["dependencies_installed"] is True
         assert status["platform_supported"] is True
         assert status["store_exists"] is False
