@@ -30,22 +30,17 @@ def test_load_environment_prefers_config_dir_env(tmp_path: Path, monkeypatch):
     monkeypatch.delenv("ESV_API_KEY", raising=False)
 
     cfg = tmp_path / "config.yaml"
-    cfg.write_text("matrix_homeserver: https://example.org\n")
+    cfg.write_text("matrix_room_ids:\n" '  - "!ignored:example.org"\n')
 
     # Put a .env in same dir
     envp = tmp_path / ".env"
     envp.write_text("MATRIX_ACCESS_TOKEN=from_config_dir\n")
 
     # Also set CWD .env which should be ignored if config dir env exists
-    cwd = os.getcwd()
-    try:
-        with tempfile.TemporaryDirectory() as d:
-            os.chdir(d)
-            Path(".env").write_text("MATRIX_ACCESS_TOKEN=from_cwd\n")
-
-            # Load config first, then pass to load_environment
-            config = botmod.load_config(str(cfg))
-            token, _ = botmod.load_environment(config, str(cfg))
-            assert token == "from_config_dir"
-    finally:
-        os.chdir(cwd)
+    with tempfile.TemporaryDirectory() as d:
+        monkeypatch.chdir(d)
+        Path(".env").write_text("MATRIX_ACCESS_TOKEN=from_cwd\n")
+        # Load config first, then pass to load_environment
+        config = botmod.load_config(str(cfg))
+        token, _ = botmod.load_environment(config, str(cfg))
+        assert token == "from_config_dir"

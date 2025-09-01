@@ -396,6 +396,7 @@ class TestCrossModuleIntegration:
             # Should integrate properly
             mock_get_dir.assert_called_once()
 
+    @pytest.mark.asyncio
     async def test_bot_to_auth_integration(self):
         """Test bot module integrates with auth functions."""
         # Test homeserver discovery integration
@@ -467,6 +468,7 @@ class TestDataFlowIntegration:
         # Verify data flow integration
         assert back_to_dict == creds_data
 
+    @pytest.mark.asyncio
     async def test_api_to_cache_flow(self):
         """Test API response to cache data flow integration."""
         # Clear cache

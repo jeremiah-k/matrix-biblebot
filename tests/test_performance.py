@@ -2,7 +2,7 @@
 
 import asyncio
 import time
-from unittest.mock import patch
+from unittest.mock import AsyncMock, patch
 
 from biblebot import bot
 
@@ -17,17 +17,17 @@ class TestCachePerformance:
             bot._passage_cache.clear()
 
         # Measure cache set performance
-        start_time = time.time()
+        start_time = time.perf_counter()
         for i in range(100):
             bot._cache_set(f"Test {i}:1", "kjv", (f"Text {i}", f"Test {i}:1"))
-        set_time = time.time() - start_time
+        set_time = time.perf_counter() - start_time
 
         # Measure cache get performance
-        start_time = time.time()
+        start_time = time.perf_counter()
         for i in range(100):
             result = bot._cache_get(f"Test {i}:1", "kjv")
             assert result is not None
-        get_time = time.time() - start_time
+        get_time = time.perf_counter() - start_time
 
         # Performance assertions
         assert set_time < 1.0  # Should complete in under 1 second
@@ -40,19 +40,19 @@ class TestCachePerformance:
             bot._passage_cache.clear()
 
         # Bulk set operations
-        start_time = time.time()
+        start_time = time.perf_counter()
         for i in range(100):  # Reduced from 1000 to 100 for faster testing
             bot._cache_set(f"Bulk {i}:1", "kjv", (f"Bulk text {i}", f"Bulk {i}:1"))
-        bulk_set_time = time.time() - start_time
+        bulk_set_time = time.perf_counter() - start_time
 
         # Bulk get operations
-        start_time = time.time()
+        start_time = time.perf_counter()
         for i in range(100):  # Reduced from 1000 to 100
             result = bot._cache_get(f"Bulk {i}:1", "kjv")
             # Only assert if cache is working, otherwise skip
             if hasattr(bot, "_passage_cache") and bot._passage_cache:
                 assert result is not None
-        bulk_get_time = time.time() - start_time
+        bulk_get_time = time.perf_counter() - start_time
 
         # Performance assertions
         assert bulk_set_time < 2.0  # Should complete in under 2 seconds
@@ -65,17 +65,17 @@ class TestCachePerformance:
             bot._passage_cache.clear()
 
         # Set with mixed case
-        start_time = time.time()
+        start_time = time.perf_counter()
         for i in range(100):
             bot._cache_set(f"CaSe {i}:1", "KJV", (f"Case text {i}", f"CaSe {i}:1"))
-        case_set_time = time.time() - start_time
+        case_set_time = time.perf_counter() - start_time
 
         # Get with different case
-        start_time = time.time()
+        start_time = time.perf_counter()
         for i in range(100):
             result = bot._cache_get(f"case {i}:1", "kjv")
             assert result is not None
-        case_get_time = time.time() - start_time
+        case_get_time = time.perf_counter() - start_time
 
         # Performance assertions
         assert case_set_time < 1.0
@@ -105,12 +105,12 @@ class TestBookNormalizationPerformance:
             "Ephesians",
         ]
 
-        start_time = time.time()
+        start_time = time.perf_counter()
         for _ in range(1000):
             for book in common_books:
                 result = bot.normalize_book_name(book)
                 assert isinstance(result, str)
-        normalization_time = time.time() - start_time
+        normalization_time = time.perf_counter() - start_time
 
         # Performance assertion
         assert normalization_time < 2.0  # Should complete in under 2 seconds
@@ -135,12 +135,12 @@ class TestBookNormalizationPerformance:
             "Eph",
         ]
 
-        start_time = time.time()
+        start_time = time.perf_counter()
         for _ in range(1000):
             for abbrev in abbreviations:
                 result = bot.normalize_book_name(abbrev)
                 assert isinstance(result, str)
-        abbrev_time = time.time() - start_time
+        abbrev_time = time.perf_counter() - start_time
 
         # Performance assertion
         assert abbrev_time < 2.0
@@ -160,12 +160,12 @@ class TestBookNormalizationPerformance:
             "ACTS",
         ]
 
-        start_time = time.time()
+        start_time = time.perf_counter()
         for _ in range(1000):
             for book in mixed_case_books:
                 result = bot.normalize_book_name(book)
                 assert isinstance(result, str)
-        mixed_case_time = time.time() - start_time
+        mixed_case_time = time.perf_counter() - start_time
 
         # Performance assertion
         assert mixed_case_time < 2.0
@@ -174,20 +174,20 @@ class TestBookNormalizationPerformance:
 class TestAPIPerformance:
     """Test API performance characteristics."""
 
-    @patch("biblebot.bot.make_api_request")
+    @patch("biblebot.bot.make_api_request", new_callable=AsyncMock)
     async def test_api_request_performance_single(self, mock_api):
         """Test single API request performance."""
         mock_api.return_value = {"text": "Test verse", "reference": "Test 1:1"}
 
-        start_time = time.time()
+        start_time = time.perf_counter()
         result = await bot.get_bible_text("Test 1:1", "kjv")
-        request_time = time.time() - start_time
+        request_time = time.perf_counter() - start_time
 
         # Performance assertion
         assert request_time < 1.0  # Should complete quickly with mocked API
         assert result is not None
 
-    @patch("biblebot.bot.make_api_request")
+    @patch("biblebot.bot.make_api_request", new_callable=AsyncMock)
     async def test_api_request_performance_concurrent(self, mock_api):
         """Test concurrent API request performance."""
         mock_api.return_value = {"text": "Test verse", "reference": "Test 1:1"}
@@ -195,17 +195,17 @@ class TestAPIPerformance:
         async def single_request(verse):
             return await bot.get_bible_text(f"Test {verse}:1", "kjv")
 
-        start_time = time.time()
+        start_time = time.perf_counter()
         tasks = [single_request(i) for i in range(10)]
         results = await asyncio.gather(*tasks)
-        concurrent_time = time.time() - start_time
+        concurrent_time = time.perf_counter() - start_time
 
         # Performance assertions
         assert concurrent_time < 2.0  # Should complete quickly with mocked API
         assert len(results) == 10
         assert all(result is not None for result in results)
 
-    @patch("biblebot.bot.make_api_request")
+    @patch("biblebot.bot.make_api_request", new_callable=AsyncMock)
     async def test_api_request_performance_with_cache(self, mock_api):
         """Test API request performance with caching."""
         mock_api.return_value = {"text": "Cached verse", "reference": "Cache 1:1"}
@@ -215,14 +215,14 @@ class TestAPIPerformance:
             bot._passage_cache.clear()
 
         # First request (should hit API)
-        start_time = time.time()
+        start_time = time.perf_counter()
         result1 = await bot.get_bible_text("Cache 1:1", "kjv")
-        first_request_time = time.time() - start_time
+        first_request_time = time.perf_counter() - start_time
 
         # Second request (should use cache)
-        start_time = time.time()
+        start_time = time.perf_counter()
         result2 = await bot.get_bible_text("Cache 1:1", "kjv")
-        cached_request_time = time.time() - start_time
+        cached_request_time = time.perf_counter() - start_time
 
         # Performance assertions
         assert first_request_time < 1.0
@@ -251,11 +251,11 @@ class TestConfigPerformance:
             yaml.dump(config_data, f)
 
         # Measure config loading performance
-        start_time = time.time()
+        start_time = time.perf_counter()
         for _ in range(100):
             config = bot.load_config(str(config_file))
             assert config is not None
-        loading_time = time.time() - start_time
+        loading_time = time.perf_counter() - start_time
 
         # Performance assertion
         assert loading_time < 5.0  # Should complete in under 5 seconds
@@ -269,13 +269,13 @@ class TestConfigPerformance:
         # Measure environment loading performance
         # Create a minimal config for testing
         config = {"matrix_room_ids": ["!test:matrix.org"]}
-        start_time = time.time()
+        start_time = time.perf_counter()
         for _ in range(100):
             matrix_token, api_keys = bot.load_environment(
                 config, str(tmp_path / "config.yaml")
             )
             assert isinstance(api_keys, dict)
-        env_loading_time = time.time() - start_time
+        env_loading_time = time.perf_counter() - start_time
 
         # Performance assertion
         assert env_loading_time < 3.0  # Should complete in under 3 seconds
@@ -310,8 +310,7 @@ class TestMemoryPerformance:
             result = bot.normalize_book_name(book_name)
             assert isinstance(result, str)
 
-        # If we get here without memory issues, test passes
-        assert True
+        # If we get here without memory issues, test passes implicitly
 
 
 class TestStressPerformance:
@@ -323,7 +322,7 @@ class TestStressPerformance:
         if hasattr(bot, "_passage_cache"):
             bot._passage_cache.clear()
 
-        start_time = time.time()
+        start_time = time.perf_counter()
 
         # Rapid mixed operations
         for i in range(500):
@@ -340,7 +339,7 @@ class TestStressPerformance:
             result2 = bot._cache_get(f"stress {i}:1", "KJV")
             assert result2 == result
 
-        stress_time = time.time() - start_time
+        stress_time = time.perf_counter() - start_time
 
         # Performance assertion
         assert stress_time < 10.0  # Should complete in under 10 seconds
@@ -371,7 +370,7 @@ class TestStressPerformance:
 
         # Create multiple threads
         threads = []
-        start_time = time.time()
+        start_time = time.perf_counter()
 
         for _ in range(5):
             thread = threading.Thread(target=normalize_worker)
@@ -382,7 +381,7 @@ class TestStressPerformance:
         for thread in threads:
             thread.join()
 
-        concurrent_time = time.time() - start_time
+        concurrent_time = time.perf_counter() - start_time
 
         # Performance and correctness assertions
         assert concurrent_time < 5.0  # Should complete in under 5 seconds

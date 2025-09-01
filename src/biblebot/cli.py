@@ -70,14 +70,12 @@ def detect_configuration_state():
         config = bot.load_config(str(config_path))
         if not config:
             return "setup", "Invalid configuration. Setup is required."
-    except Exception as e:
+    except (ValueError, KeyError, TypeError, OSError) as e:
         return "setup", f"Configuration error: {e}"
 
     # Check for proper authentication (credentials.json from auth flow)
     if not credentials_path.exists():
         # Check for legacy environment token (deprecated)
-        import os
-
         if os.getenv("MATRIX_ACCESS_TOKEN"):
             return (
                 "ready_legacy",
@@ -90,8 +88,6 @@ def detect_configuration_state():
 
     # Verify credentials are valid
     try:
-        from .auth import load_credentials
-
         creds = load_credentials()
         if not creds:
             return "auth", "Invalid credentials found. Re-authentication required."

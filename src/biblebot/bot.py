@@ -71,8 +71,8 @@ logger = logging.getLogger(LOGGER_NAME)
 
 # Patchable cache constants for backward compatibility and testing
 # These can be patched in tests to control cache behavior
-CACHE_SIZE = CACHE_MAX_SIZE
-CACHE_TTL = CACHE_TTL_SECONDS
+_PASSAGE_CACHE_MAX = CACHE_MAX_SIZE
+_PASSAGE_CACHE_TTL_SECS = CACHE_TTL_SECONDS
 
 
 def normalize_book_name(book_str: str) -> str:
@@ -226,7 +226,7 @@ def _cache_get(passage: str, translation: str):
     if key in _passage_cache:
         ts, value = _passage_cache.pop(key)
         # Evict if stale
-        if now - ts <= CACHE_TTL_SECONDS:
+        if now - ts <= _PASSAGE_CACHE_TTL_SECS:
             _passage_cache[key] = (ts, value)  # reinsert to mark recent
             return value
     return None
@@ -236,7 +236,7 @@ def _cache_set(passage: str, translation: str, value: tuple[str, str]):
     key = (passage.lower(), translation.lower())
     _passage_cache[key] = (monotonic(), value)
     # enforce LRU max size
-    while len(_passage_cache) > CACHE_MAX_SIZE:
+    while len(_passage_cache) > _PASSAGE_CACHE_MAX:
         _passage_cache.popitem(last=False)
 
 
