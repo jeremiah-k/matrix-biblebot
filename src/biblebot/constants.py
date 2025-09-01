@@ -151,6 +151,19 @@ PLATFORM_WINDOWS = "Windows"
 
 # File encoding
 FILE_ENCODING_UTF8 = "utf-8"
+
+# Auth messages and prompts
+MSG_E2EE_DEPS_NOT_FOUND = "E2EE dependencies not found"
+MSG_SERVER_DISCOVERY_FAILED = "Server discovery failed; using provided homeserver URL"
+PROMPT_LOGIN_AGAIN = (
+    "Do you want to log in again? This will create a new device session. [y/N]: "
+)
+
+# Response prefixes
+RESPONSE_YES_PREFIX = "y"
+
+# Discovery API attribute
+DISCOVERY_ATTR_HOMESERVER_URL = "homeserver_url"
 SUCCESS_SERVICE_INSTALLED = "Service installed successfully"
 
 # Info messages

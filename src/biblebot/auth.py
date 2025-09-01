@@ -35,6 +35,7 @@ from .constants import (
     CRED_KEY_USER_ID,
     CREDENTIALS_FILE,
     CREDENTIALS_FILE_PERMISSIONS,
+    DISCOVERY_ATTR_HOMESERVER_URL,
     E2EE_KEY_AVAILABLE,
     E2EE_KEY_DEPENDENCIES_INSTALLED,
     E2EE_KEY_ERROR,
@@ -48,9 +49,13 @@ from .constants import (
     LOGGER_NAME,
     LOGIN_TIMEOUT_SEC,
     MATRIX_DEVICE_NAME,
+    MSG_E2EE_DEPS_NOT_FOUND,
+    MSG_SERVER_DISCOVERY_FAILED,
     PLATFORM_WINDOWS,
     PROMPT_HOMESERVER,
+    PROMPT_LOGIN_AGAIN,
     PROMPT_USERNAME,
+    RESPONSE_YES_PREFIX,
 )
 
 logger = logging.getLogger(LOGGER_NAME)
@@ -181,7 +186,7 @@ def check_e2ee_status() -> dict:
         if olm_spec is not None and nio_spec is not None:
             status[E2EE_KEY_DEPENDENCIES_INSTALLED] = True
         else:
-            raise ImportError("E2EE dependencies not found")
+            raise ImportError(MSG_E2EE_DEPS_NOT_FOUND)
     except ImportError as e:
         status[E2EE_KEY_ERROR] = f"{ERROR_E2EE_DEPS_MISSING}: {e}"
         return status
@@ -228,7 +233,7 @@ async def discover_homeserver(
     try:
         info = await asyncio.wait_for(client.discovery_info(), timeout=timeout)
         if isinstance(info, DiscoveryInfoResponse) and getattr(
-            info, "homeserver_url", None
+            info, DISCOVERY_ATTR_HOMESERVER_URL, None
         ):
             return info.homeserver_url
         if isinstance(info, DiscoveryInfoError):
@@ -237,7 +242,7 @@ async def discover_homeserver(
         logger.debug("Server discovery timed out; using provided homeserver URL")
     except Exception:
         logger.debug(
-            "Server discovery failed; using provided homeserver URL",
+            MSG_SERVER_DISCOVERY_FAILED,
             exc_info=True,
         )
     return homeserver
@@ -259,10 +264,8 @@ async def interactive_login(
     if existing_creds:
         logger.info(f"You are already logged in as {existing_creds.user_id}")
         try:
-            resp = input(
-                "Do you want to log in again? This will create a new device session. [y/N]: "
-            ).lower()
-            if not resp.startswith("y"):
+            resp = input(PROMPT_LOGIN_AGAIN).lower()
+            if not resp.startswith(RESPONSE_YES_PREFIX):
                 logger.info("Login cancelled.")
                 return True  # User is already logged in, so this is a "success"
         except (EOFError, KeyboardInterrupt):
