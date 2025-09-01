@@ -247,27 +247,20 @@ class TestErrorScenarios:
 
     def test_file_permission_errors(self, tmp_path):
         """Test handling of file permission errors."""
-        # Create a directory where we can't write
-        restricted_dir = tmp_path / "restricted"
-        restricted_dir.mkdir(mode=0o444)  # Read-only, no write or execute
+        # Mock tempfile.NamedTemporaryFile to raise PermissionError
+        with patch("tempfile.NamedTemporaryFile") as mock_temp:
+            mock_temp.side_effect = PermissionError("Permission denied")
 
-        try:
-            # This should handle permission errors gracefully
-            with patch.object(auth, "CONFIG_DIR", restricted_dir):
-                # Attempting to save credentials should handle the error
-                creds = auth.Credentials(
-                    homeserver="https://matrix.org",
-                    user_id="@test:matrix.org",
-                    access_token="test_token",
-                )
+            # Attempting to save credentials should raise permission error
+            creds = auth.Credentials(
+                homeserver="https://matrix.org",
+                user_id="@test:matrix.org",
+                access_token="test_token",
+            )
 
-                # Should raise permission error on read-only directory
-                # The save_credentials function tries to create a temp file which should fail
-                with pytest.raises((PermissionError, OSError)):
-                    auth.save_credentials(creds)
-        finally:
-            # Restore permissions for cleanup
-            restricted_dir.chmod(0o755)
+            # Should raise permission error when trying to create temp file
+            with pytest.raises(PermissionError):
+                auth.save_credentials(creds)
 
     @pytest.mark.asyncio
     async def test_matrix_client_errors(self):

@@ -708,7 +708,7 @@ class TestCLIBotOperation:
     @patch("biblebot.cli.detect_configuration_state")
     @patch("builtins.input")
     @patch("biblebot.auth.load_credentials")
-    @patch("biblebot.bot.main", new=lambda *a, **k: asyncio.sleep(0))  # async no-op
+    @patch("biblebot.cli.bot_main", new=lambda *a, **k: asyncio.sleep(0))  # async no-op
     @patch("biblebot.cli.asyncio.run")
     def test_bot_run_with_config(
         self, mock_run, mock_load_creds, mock_input, mock_detect_state
@@ -800,7 +800,7 @@ class TestCLIBotOperation:
     @patch("biblebot.cli.detect_configuration_state")
     @patch("builtins.input")
     @patch("biblebot.auth.load_credentials")
-    @patch("biblebot.bot.main", new=lambda *a, **k: asyncio.sleep(0))  # async no-op
+    @patch("biblebot.cli.bot_main", new=lambda *a, **k: asyncio.sleep(0))  # async no-op
     @patch("biblebot.cli.asyncio.run")
     def test_bot_keyboard_interrupt(
         self, mock_run, mock_load_creds, mock_input, mock_detect_state
@@ -827,7 +827,7 @@ class TestCLIBotOperation:
     @patch("biblebot.cli.detect_configuration_state")
     @patch("builtins.input")
     @patch("biblebot.auth.load_credentials")
-    @patch("biblebot.bot.main", new=lambda *a, **k: asyncio.sleep(0))  # async no-op
+    @patch("biblebot.cli.bot_main", new=lambda *a, **k: asyncio.sleep(0))  # async no-op
     @patch("biblebot.cli.asyncio.run")
     def test_bot_runtime_error(
         self, mock_run, mock_load_creds, mock_input, mock_detect_state
@@ -847,8 +847,10 @@ class TestCLIBotOperation:
         mock_run.side_effect = _consume_then_error
         mock_input.return_value = "y"  # User chooses to start bot
 
-        # CLI should handle the exception gracefully
-        cli.main()
+        # CLI should handle the exception gracefully and exit with code 1
+        with pytest.raises(SystemExit) as exc_info:
+            cli.main()
+        assert exc_info.value.code == 1
 
         # Exception should be caught and handled gracefully
         # No assertion needed - test passes if no exception is raised
