@@ -537,9 +537,12 @@ class TestCLIMainFunction:
     async def _stub_bot_main_log_level(*_a, **_k):
         return 0
 
+    @patch("sys.argv", ["biblebot"])
+    @patch("builtins.input", return_value="y")
+    @patch("os.path.exists", return_value=True)
     @patch("biblebot.auth.load_credentials")
     @patch("biblebot.cli.bot_main", new=_stub_bot_main_log_level)
-    def test_log_level_setting(self, mock_load_creds, mock_exists):
+    def test_log_level_setting(self, mock_load_creds, mock_exists, mock_input):
         """Test log level setting."""
         mock_exists.return_value = True
         mock_load_creds.return_value = Mock()
@@ -573,12 +576,12 @@ class TestCLIMainFunction:
         mock_load_config.assert_called_once()
         mock_print.assert_called()
 
-    @patch("os.path.exists", return_value=True)
-    @patch("sys.argv", ["biblebot", "auth", "login"])
-    @patch("builtins.input", return_value="https://matrix.org")
     async def _stub_interactive_login_success(*_a, **_k):
         return True
 
+    @patch("os.path.exists", return_value=True)
+    @patch("sys.argv", ["biblebot", "auth", "login"])
+    @patch("builtins.input", return_value="https://matrix.org")
     @patch("getpass.getpass", return_value="password")
     @patch("biblebot.auth.interactive_login", new=_stub_interactive_login_success)
     @patch("sys.exit")
@@ -596,6 +599,7 @@ class TestCLIMainFunction:
     async def _stub_interactive_logout_success(*_a, **_k):
         return True
 
+    @patch("os.path.exists", return_value=True)
     @patch("sys.argv", ["biblebot", "auth", "logout"])
     @patch("biblebot.auth.interactive_logout", new=_stub_interactive_logout_success)
     @patch("sys.exit")
@@ -715,6 +719,8 @@ class TestCLILegacyFlags:
     async def _stub_legacy_interactive_login(*_a, **_k):
         return True
 
+    @patch("sys.argv", ["biblebot", "--auth-login"])
+    @patch("builtins.input", return_value="https://matrix.org")
     @patch("getpass.getpass", return_value="password")
     @patch("biblebot.auth.interactive_login", new=_stub_legacy_interactive_login)
     @patch("sys.exit")
@@ -758,11 +764,12 @@ class TestCLIBotOperation:
     """Test CLI bot operation scenarios."""
 
     @patch("sys.argv", ["biblebot"])
-    @patch("biblebot.cli.detect_configuration_state")
-    @patch("builtins.input")
     async def _stub_bot_main_with_config(*_a, **_k):
         return 0
 
+    @patch("sys.argv", ["biblebot"])
+    @patch("biblebot.cli.detect_configuration_state")
+    @patch("builtins.input")
     @patch("biblebot.auth.load_credentials")
     @patch("biblebot.cli.bot_main", new=_stub_bot_main_with_config)
     def test_bot_run_with_config(self, mock_load_creds, mock_input, mock_detect_state):
@@ -852,12 +859,12 @@ class TestCLIBotOperation:
         # Should handle KeyboardInterrupt gracefully
         cli.main()
 
-    @patch("sys.argv", ["biblebot"])
-    @patch("biblebot.cli.detect_configuration_state")
-    @patch("builtins.input")
     async def _stub_bot_main_keyboard_interrupt(*_a, **_k):
         raise KeyboardInterrupt()
 
+    @patch("sys.argv", ["biblebot"])
+    @patch("biblebot.cli.detect_configuration_state")
+    @patch("builtins.input")
     @patch("biblebot.auth.load_credentials")
     @patch("biblebot.cli.bot_main", new=_stub_bot_main_keyboard_interrupt)
     def test_bot_keyboard_interrupt(
@@ -875,12 +882,12 @@ class TestCLIBotOperation:
         # CLI catches KeyboardInterrupt and handles it gracefully
         cli.main()  # Should not raise exception
 
-    @patch("sys.argv", ["biblebot"])
-    @patch("biblebot.cli.detect_configuration_state")
-    @patch("builtins.input")
     async def _stub_bot_main_runtime_error(*_a, **_k):
         raise RuntimeError("Runtime error")
 
+    @patch("sys.argv", ["biblebot"])
+    @patch("biblebot.cli.detect_configuration_state")
+    @patch("builtins.input")
     @patch("biblebot.auth.load_credentials")
     @patch("biblebot.cli.bot_main", new=_stub_bot_main_runtime_error)
     def test_bot_runtime_error(self, mock_load_creds, mock_input, mock_detect_state):

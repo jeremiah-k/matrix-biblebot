@@ -413,7 +413,9 @@ class TestCrossModuleIntegration:
         """Test bot module integrates with auth functions."""
         # Test homeserver discovery integration
         mock_client = AsyncMock()
-        mock_client.discovery_info.side_effect = Exception("Network error")
+        mock_client.discovery_info.side_effect = nio.exceptions.RemoteTransportError(
+            "Network error"
+        )
 
         result = await auth.discover_homeserver(mock_client, "https://matrix.org")
 
