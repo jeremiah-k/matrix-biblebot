@@ -59,7 +59,6 @@ from .constants import (
     RESPONSE_YES_PREFIX,
     URL_PREFIX_HTTP,
     URL_PREFIX_HTTPS,
-    WARN_E2EE_DEPS_NOT_FOUND_LOGIN,
 )
 
 logger = logging.getLogger(LOGGER_NAME)

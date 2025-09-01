@@ -402,7 +402,7 @@ class TestMainFunction:
             return None  # No credentials
 
         # ✅ CORRECT: Mock result object to be returned by bot.main
-        mock_bot_main_result = Mock()
+        Mock()
 
         with patch("os.path.exists", return_value=True):  # Config exists
             # Credentials present => CLI should start the bot
@@ -412,7 +412,7 @@ class TestMainFunction:
                     # make asyncio.run execute the coroutine
                     with patch(
                         "biblebot.cli.asyncio.run", side_effect=_consume_coroutine
-                    ) as run_patch:
+                    ):
                         with patch("sys.argv", ["biblebot"]):
                             with patch(
                                 "builtins.input", return_value="n"

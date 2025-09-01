@@ -504,9 +504,7 @@ class TestErrorPropagationIntegration:
         # Clear cache to ensure we hit the API
         bot._passage_cache.clear()
 
-        with patch(
-            "biblebot.bot.make_api_request", new=AsyncMock(return_value=None)
-        ) as mock_api:
+        with patch("biblebot.bot.make_api_request", new=AsyncMock(return_value=None)):
 
             # Test error propagation - should raise PassageNotFound
             from biblebot.bot import PassageNotFound
