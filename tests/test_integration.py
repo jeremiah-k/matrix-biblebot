@@ -323,7 +323,7 @@ class TestCacheManagement:
         # Test cache size management
 
         # Temporarily set a small cache size for testing
-        with patch("biblebot.bot.CACHE_MAX_SIZE", 2):
+        with patch("biblebot.bot._PASSAGE_CACHE_MAX", 2):
             # Add items to cache
             bot._cache_set("passage1", "kjv", ("text1", "ref1"))
             bot._cache_set("passage2", "kjv", ("text2", "ref2"))
