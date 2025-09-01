@@ -64,13 +64,13 @@ biblebot --generate-config --config /path/to/your/config.yaml
 Use the integrated auth flow to create credentials for the bot:
 
 ```bash
-biblebot --auth-login
+biblebot auth login
 ```
 
 This saves `credentials.json` under `~/.config/matrix-biblebot/` and makes future runs passwordless. To delete credentials and the E2EE store (if any):
 
 ```bash
-biblebot --auth-logout
+biblebot auth logout
 ```
 
 ### Edit Configuration Files
