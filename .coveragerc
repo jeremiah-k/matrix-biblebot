@@ -25,7 +25,7 @@ exclude_lines =
     if __name__ == "__main__":
     class .*\bProtocol\):
     @(abc\.)?abstractmethod
-ignore_errors = True
+ignore_errors = False
 
 [html]
 directory = htmlcov

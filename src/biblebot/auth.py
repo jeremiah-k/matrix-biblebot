@@ -57,9 +57,6 @@ from .constants import (
     PROMPT_PASSWORD,
     PROMPT_USERNAME,
     RESPONSE_YES_PREFIX,
-    STATUS_KEY_AVAILABLE,
-    STATUS_KEY_ERROR,
-    STATUS_KEY_PLATFORM_SUPPORTED,
     URL_PREFIX_HTTP,
     URL_PREFIX_HTTPS,
     WARN_E2EE_DEPS_NOT_FOUND_LOGIN,
@@ -217,15 +214,17 @@ def print_e2ee_status():
     status = check_e2ee_status()
 
     print("\n🔐 E2EE (End-to-End Encryption) Status:")
-    print(f"  Platform Support: {'✓' if status['platform_supported'] else '✗'}")
-    print(f"  Dependencies: {'✓' if status['dependencies_installed'] else '✗'}")
-    print(f"  Store Directory: {'✓' if status['store_exists'] else '✗'}")
-    print(f"  Overall Status: {'✓ Enabled' if status['available'] else '✗ Disabled'}")
+    print(f"  Platform Support: {'✓' if status[E2EE_KEY_PLATFORM_SUPPORTED] else '✗'}")
+    print(f"  Dependencies: {'✓' if status[E2EE_KEY_DEPENDENCIES_INSTALLED] else '✗'}")
+    print(f"  Store Directory: {'✓' if status[E2EE_KEY_STORE_EXISTS] else '✗'}")
+    print(
+        f"  Overall Status: {'✓ Enabled' if status[E2EE_KEY_AVAILABLE] else '✗ Disabled'}"
+    )
 
-    if status[STATUS_KEY_ERROR]:
-        print(f"  Error: {status['error']}")
+    if status[E2EE_KEY_ERROR]:
+        print(f"  Error: {status[E2EE_KEY_ERROR]}")
 
-    if not status[STATUS_KEY_AVAILABLE] and status[STATUS_KEY_PLATFORM_SUPPORTED]:
+    if not status[E2EE_KEY_AVAILABLE] and status[E2EE_KEY_PLATFORM_SUPPORTED]:
         print("\n  To enable E2EE:")
         print('    pip install ".[e2e]"  # preferred')
         print("    # or: pip install -r requirements-e2e.txt")

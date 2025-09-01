@@ -63,6 +63,7 @@ from .constants import (
     SYNC_TIMEOUT_MS,
     TRANSLATION_ESV,
     WARN_COULD_NOT_RESOLVE_ALIAS,
+    WARN_MATRIX_ACCESS_TOKEN_NOT_SET,
 )
 
 # Configure logging
@@ -132,7 +133,7 @@ def load_environment(config_path):
     # Get access token and API keys
     matrix_access_token = os.getenv(ENV_MATRIX_ACCESS_TOKEN)
     if not matrix_access_token:
-        logger.info("            WARN_MATRIX_ACCESS_TOKEN_NOT_SET")
+        logger.warning(WARN_MATRIX_ACCESS_TOKEN_NOT_SET)
 
     # Dictionary to hold API keys for different translations
     api_keys = {
