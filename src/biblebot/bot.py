@@ -26,6 +26,8 @@ from .constants import (
     API_REQUEST_TIMEOUT_SEC,
     CACHE_MAX_SIZE,
     CACHE_TTL_SECONDS,
+    CONFIG_MATRIX_HOMESERVER,
+    CONFIG_MATRIX_ROOM_IDS,
     DEFAULT_TRANSLATION,
     ENV_ESV_API_KEY,
     ENV_MATRIX_ACCESS_TOKEN,
@@ -70,12 +72,14 @@ def load_config(config_file):
                     f"{ERROR_MISSING_CONFIG_KEYS}: {', '.join(missing)} in {config_file}"
                 )
                 return None
-            if not isinstance(config.get("matrix_room_ids"), list):
+            if not isinstance(config.get(CONFIG_MATRIX_ROOM_IDS), list):
                 logger.error("'matrix_room_ids' must be a list in config")
                 return None
             # Normalize homeserver URL (avoid trailing slash)
-            if isinstance(config.get("matrix_homeserver"), str):
-                config["matrix_homeserver"] = config["matrix_homeserver"].rstrip("/")
+            if isinstance(config.get(CONFIG_MATRIX_HOMESERVER), str):
+                config[CONFIG_MATRIX_HOMESERVER] = config[
+                    CONFIG_MATRIX_HOMESERVER
+                ].rstrip("/")
             logger.info(f"Loaded configuration from {config_file}")
             return config
     except (OSError, yaml.YAMLError):
@@ -266,7 +270,7 @@ class BibleBot:
         This method updates the config["matrix_room_ids"] list with resolved room IDs.
         """
         resolved_ids = []
-        for entry in self.config["matrix_room_ids"]:
+        for entry in self.config[CONFIG_MATRIX_ROOM_IDS]:
             if entry.startswith("#"):
                 try:
                     resp = await self.client.room_resolve_alias(entry)
@@ -281,7 +285,7 @@ class BibleBot:
                     )
             else:
                 resolved_ids.append(entry)
-        self.config["matrix_room_ids"] = list(dict.fromkeys(resolved_ids))
+        self.config[CONFIG_MATRIX_ROOM_IDS] = list(dict.fromkeys(resolved_ids))
 
     async def join_matrix_room(self, room_id_or_alias):
         """
@@ -320,7 +324,7 @@ class BibleBot:
         On startup, join all rooms in config if not already joined.
         Uses the join_matrix_room method for each room.
         """
-        for room_id in self.config["matrix_room_ids"]:
+        for room_id in self.config[CONFIG_MATRIX_ROOM_IDS]:
             await self.join_matrix_room(room_id)
 
     async def start(self):
@@ -376,7 +380,7 @@ class BibleBot:
 
     async def on_invite(self, room: MatrixRoom, event: InviteEvent):
         """Handle room invites for the bot."""
-        if room.room_id in self.config["matrix_room_ids"]:
+        if room.room_id in self.config[CONFIG_MATRIX_ROOM_IDS]:
             logger.info(f"Received invite for configured room: {room.room_id}")
             await self.join_matrix_room(room.room_id)
         else:
@@ -402,7 +406,7 @@ class BibleBot:
         Only processes messages in configured rooms, from other users, and after bot start time.
         """
         if (
-            room.room_id in self.config["matrix_room_ids"]
+            room.room_id in self.config[CONFIG_MATRIX_ROOM_IDS]
             and event.sender != self.client.user_id
             and event.server_timestamp > self.start_time
         ):
@@ -535,8 +539,8 @@ async def main(config_path="config.yaml"):
 
     logger.info("Creating AsyncClient")
     client = AsyncClient(
-        config["matrix_homeserver"],
-        config["matrix_user"],
+        config[CONFIG_MATRIX_HOMESERVER],
+        config[CONFIG_MATRIX_USER],
         store_path=str(get_store_dir()) if e2ee_enabled else None,
         config=client_config,
     )

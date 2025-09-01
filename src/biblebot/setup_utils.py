@@ -13,6 +13,7 @@ import sys
 from pathlib import Path
 
 from .constants import (
+    APP_NAME,
     SERVICE_NAME,
     SYSTEMCTL_COMMANDS,
     SYSTEMD_USER_DIR,
@@ -75,12 +76,12 @@ def get_template_service_path():
     # Try to find the service template file in various locations
     template_paths = [
         # Check in the package directory (where it should be after installation)
-        os.path.join(package_dir, "biblebot.service"),
+        os.path.join(package_dir, SERVICE_NAME),
         # Check in a tools subdirectory of the package
-        os.path.join(package_dir, "tools", "biblebot.service"),
+        os.path.join(package_dir, "tools", SERVICE_NAME),
         # Check in the data files location (where it should be after installation)
-        os.path.join(sys.prefix, "share", "biblebot", "biblebot.service"),
-        os.path.join(sys.prefix, "share", "biblebot", "tools", "biblebot.service"),
+        os.path.join(sys.prefix, "share", APP_NAME, SERVICE_NAME),
+        os.path.join(sys.prefix, "share", APP_NAME, "tools", SERVICE_NAME),
         # Check in the user site-packages location
         os.path.join(
             os.path.expanduser("~"), ".local", "share", "biblebot", "biblebot.service"
@@ -161,7 +162,7 @@ def get_template_service_content():
     # If we couldn't find or read the template file, use a default template
     print("Using default service template")
     return """[Unit]
-Description=Matrix Bible Bot Service
+Description={SERVICE_DESCRIPTION}
 After=network-online.target
 Wants=network-online.target
 

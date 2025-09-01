@@ -9,9 +9,13 @@ import yaml
 from biblebot import bot
 from tests.test_constants import (
     TEST_ACCESS_TOKEN,
+    TEST_BIBLE_REFERENCE,
     TEST_CONFIG_YAML,
     TEST_DEVICE_ID,
     TEST_HOMESERVER,
+    TEST_MESSAGE_BODY,
+    TEST_MESSAGE_SENDER,
+    TEST_ROOM_ID,
     TEST_ROOM_IDS,
     TEST_USER_ID,
 )
@@ -190,16 +194,16 @@ class TestBibleTextRetrieval:
         """Test successful KJV text retrieval."""
         mock_response = {
             "text": "For God so loved the world...",
-            "reference": "John 3:16",
+            "reference": TEST_BIBLE_REFERENCE,
         }
 
         with patch.object(bot, "make_api_request", return_value=mock_response):
-            result = await bot.get_kjv_text("John 3:16")
+            result = await bot.get_kjv_text(TEST_BIBLE_REFERENCE)
 
             assert result is not None
             text, reference = result
             assert text == "For God so loved the world..."
-            assert reference == "John 3:16"
+            assert reference == TEST_BIBLE_REFERENCE
 
     @pytest.mark.asyncio
     async def test_get_kjv_text_not_found(self):
@@ -217,21 +221,21 @@ class TestBibleTextRetrieval:
         """Test successful ESV text retrieval."""
         mock_response = {
             "passages": ["For God so loved the world..."],
-            "canonical": "John 3:16",
+            "canonical": TEST_BIBLE_REFERENCE,
         }
 
         with patch.object(bot, "make_api_request", return_value=mock_response):
-            result = await bot.get_esv_text("John 3:16", "test_api_key")
+            result = await bot.get_esv_text(TEST_BIBLE_REFERENCE, "test_api_key")
 
             assert result is not None
             text, reference = result
             assert text == "For God so loved the world..."
-            assert reference == "John 3:16"
+            assert reference == TEST_BIBLE_REFERENCE
 
     @pytest.mark.asyncio
     async def test_get_esv_text_no_api_key(self):
         """Test ESV text retrieval without API key."""
-        result = await bot.get_esv_text("John 3:16", None)
+        result = await bot.get_esv_text(TEST_BIBLE_REFERENCE, None)
         assert result is None
 
     @pytest.mark.asyncio
@@ -243,17 +247,17 @@ class TestBibleTextRetrieval:
 
         mock_response = {
             "text": "For God so loved the world...",
-            "reference": "John 3:16",
+            "reference": TEST_BIBLE_REFERENCE,
         }
 
         with patch.object(
             bot, "make_api_request", return_value=mock_response
         ) as mock_request:
             # First call should hit the API
-            result1 = await bot.get_bible_text("John 3:16", "kjv")
+            result1 = await bot.get_bible_text(TEST_BIBLE_REFERENCE, "kjv")
 
             # Second call should use cache
-            result2 = await bot.get_bible_text("John 3:16", "kjv")
+            result2 = await bot.get_bible_text(TEST_BIBLE_REFERENCE, "kjv")
 
             assert result1 == result2
             # API should only be called once due to caching
@@ -277,7 +281,7 @@ class TestBibleBot:
         """Test room alias resolution."""
         config_with_alias = sample_config.copy()
         config_with_alias["matrix_room_ids"] = [
-            "!room1:matrix.org",
+            TEST_ROOM_IDS[0],
             "#alias:matrix.org",
         ]
 
@@ -309,15 +313,15 @@ class TestBibleBot:
 
             # Mock successful join response
             mock_response = MagicMock()
-            mock_response.room_id = "!room1:matrix.org"
+            mock_response.room_id = TEST_ROOM_IDS[0]
             mock_client.join.return_value = mock_response
 
             bot_instance = bot.BibleBot(sample_config)
             bot_instance.client = mock_client
 
-            await bot_instance.join_matrix_room("!room1:matrix.org")
+            await bot_instance.join_matrix_room(TEST_ROOM_IDS[0])
 
-            mock_client.join.assert_called_once_with("!room1:matrix.org")
+            mock_client.join.assert_called_once_with(TEST_ROOM_IDS[0])
 
     @pytest.mark.asyncio
     async def test_join_matrix_room_already_joined(self, sample_config):
@@ -325,12 +329,12 @@ class TestBibleBot:
         with patch("biblebot.bot.AsyncClient") as mock_client_class:
             mock_client = AsyncMock()
             mock_client_class.return_value = mock_client
-            mock_client.rooms = {"!room1:matrix.org": MagicMock()}  # Already in room
+            mock_client.rooms = {TEST_ROOM_IDS[0]: MagicMock()}  # Already in room
 
             bot_instance = bot.BibleBot(sample_config)
             bot_instance.client = mock_client
 
-            await bot_instance.join_matrix_room("!room1:matrix.org")
+            await bot_instance.join_matrix_room(TEST_ROOM_IDS[0])
 
             # Should not attempt to join
             mock_client.join.assert_not_called()
@@ -345,15 +349,13 @@ class TestBibleBot:
             bot_instance = bot.BibleBot(sample_config)
             bot_instance.client = mock_client
 
-            await bot_instance.send_reaction(
-                "!room:matrix.org", "$event:matrix.org", "✅"
-            )
+            await bot_instance.send_reaction(TEST_ROOM_ID, "$event:matrix.org", "✅")
 
             # Check that room_send was called with correct reaction content
             mock_client.room_send.assert_called_once()
             call_args = mock_client.room_send.call_args
 
-            assert call_args[0][0] == "!room:matrix.org"
+            assert call_args[0][0] == TEST_ROOM_ID
             assert call_args[0][1] == "m.reaction"
             content = call_args[0][2]
             assert content["m.relates_to"]["event_id"] == "$event:matrix.org"
@@ -377,12 +379,12 @@ class TestMessageHandling:
 
             # Mock room and event
             mock_room = MagicMock()
-            mock_room.room_id = "!room1:matrix.org"
+            mock_room.room_id = TEST_ROOM_IDS[0]
 
             mock_event = MagicMock()
-            mock_event.sender = "@user:matrix.org"  # Different from bot
+            mock_event.sender = TEST_MESSAGE_SENDER  # Different from bot
             mock_event.server_timestamp = 2000000  # After start time (milliseconds)
-            mock_event.body = "John 3:16"
+            mock_event.body = TEST_MESSAGE_BODY
             mock_event.event_id = "$event:matrix.org"
 
             # Mock the scripture handling
@@ -391,8 +393,8 @@ class TestMessageHandling:
 
                 mock_handle.assert_called_once()
                 call_args = mock_handle.call_args[0]
-                assert call_args[0] == "!room1:matrix.org"
-                assert "John 3:16" in call_args[1]
+                assert call_args[0] == TEST_ROOM_IDS[0]
+                assert TEST_MESSAGE_BODY in call_args[1]
                 assert call_args[2] == "kjv"  # Default translation
 
     @pytest.mark.asyncio
@@ -413,7 +415,7 @@ class TestMessageHandling:
             mock_event = MagicMock()
             mock_event.sender = TEST_USER_ID  # Same as bot
             mock_event.server_timestamp = 2000
-            mock_event.body = "John 3:16"
+            mock_event.body = TEST_MESSAGE_BODY
 
             with patch.object(bot_instance, "handle_scripture_command") as mock_handle:
                 await bot_instance.on_room_message(mock_room, mock_event)
@@ -434,12 +436,12 @@ class TestMessageHandling:
             bot_instance.start_time = 2000
 
             mock_room = MagicMock()
-            mock_room.room_id = "!room1:matrix.org"
+            mock_room.room_id = TEST_ROOM_IDS[0]
 
             mock_event = MagicMock()
-            mock_event.sender = "@user:matrix.org"
+            mock_event.sender = TEST_MESSAGE_SENDER
             mock_event.server_timestamp = 1000  # Before start time
-            mock_event.body = "John 3:16"
+            mock_event.body = TEST_MESSAGE_BODY
 
             with patch.object(bot_instance, "handle_scripture_command") as mock_handle:
                 await bot_instance.on_room_message(mock_room, mock_event)
@@ -463,9 +465,9 @@ class TestMessageHandling:
             mock_room.room_id = "!wrong_room:matrix.org"  # Not in config
 
             mock_event = MagicMock()
-            mock_event.sender = "@user:matrix.org"
+            mock_event.sender = TEST_MESSAGE_SENDER
             mock_event.server_timestamp = 2000
-            mock_event.body = "John 3:16"
+            mock_event.body = TEST_MESSAGE_BODY
 
             with patch.object(bot_instance, "handle_scripture_command") as mock_handle:
                 await bot_instance.on_room_message(mock_room, mock_event)
@@ -493,12 +495,12 @@ class TestMessageHandling:
             ):
                 with patch.object(bot_instance, "send_reaction") as mock_reaction:
                     await bot_instance.handle_scripture_command(
-                        "!room:matrix.org", "Test 1:1", "kjv", mock_event
+                        TEST_ROOM_ID, "Test 1:1", "kjv", mock_event
                     )
 
                     # Should send reaction
                     mock_reaction.assert_called_once_with(
-                        "!room:matrix.org", "$event:matrix.org", "✅"
+                        TEST_ROOM_ID, "$event:matrix.org", "✅"
                     )
 
                     # Should send scripture message
@@ -793,7 +795,7 @@ class TestMainFunction:
         e2ee_config["matrix"]["e2ee"]["enabled"] = True
 
         mock_load_config.return_value = e2ee_config
-        mock_load_env.return_value = ("test_token", {"esv": "test_key"})
+        mock_load_env.return_value = (TEST_ACCESS_TOKEN, {"esv": "test_key"})
         mock_load_creds.return_value = None
         mock_get_store.return_value = tmp_path / "store"
 
@@ -863,7 +865,7 @@ class TestCacheFunctions:
         if hasattr(bot, "_passage_cache"):
             bot._passage_cache.clear()
 
-        result = bot._cache_get("John 3:16", "kjv")
+        result = bot._cache_get(TEST_BIBLE_REFERENCE, "kjv")
         assert result is None
 
     def test_cache_set_and_get(self):
@@ -873,11 +875,13 @@ class TestCacheFunctions:
             bot._passage_cache.clear()
 
         # Set cache
-        bot._cache_set("John 3:16", "kjv", ("For God so loved...", "John 3:16"))
+        bot._cache_set(
+            TEST_BIBLE_REFERENCE, "kjv", ("For God so loved...", TEST_BIBLE_REFERENCE)
+        )
 
         # Get from cache
-        result = bot._cache_get("John 3:16", "kjv")
-        assert result == ("For God so loved...", "John 3:16")
+        result = bot._cache_get(TEST_BIBLE_REFERENCE, "kjv")
+        assert result == ("For God so loved...", TEST_BIBLE_REFERENCE)
 
     def test_cache_case_insensitive(self):
         """Test cache is case insensitive."""
@@ -886,11 +890,13 @@ class TestCacheFunctions:
             bot._passage_cache.clear()
 
         # Set with one case
-        bot._cache_set("John 3:16", "KJV", ("For God so loved...", "John 3:16"))
+        bot._cache_set(
+            TEST_BIBLE_REFERENCE, "KJV", ("For God so loved...", TEST_BIBLE_REFERENCE)
+        )
 
         # Get with different case
-        result = bot._cache_get("john 3:16", "kjv")
-        assert result == ("For God so loved...", "John 3:16")
+        result = bot._cache_get(TEST_BIBLE_REFERENCE.lower(), "kjv")
+        assert result == ("For God so loved...", TEST_BIBLE_REFERENCE)
 
 
 class TestEnvironmentLoadingExtra:

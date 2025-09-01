@@ -16,6 +16,8 @@ from .constants import (
     CONFIG_DIR,
     DEFAULT_CONFIG_FILENAME,
     DEFAULT_ENV_FILENAME,
+    DEFAULT_LOG_LEVEL,
+    LOG_LEVELS,
     LOGGER_NAME,
     SUCCESS_CONFIG_GENERATED,
 )
@@ -89,9 +91,9 @@ Legacy flags (deprecated):
     )
     parser.add_argument(
         "--log-level",
-        choices=["error", "warning", "info", "debug"],
-        default="info",
-        help="Set logging level (default: info)",
+        choices=LOG_LEVELS,
+        default=DEFAULT_LOG_LEVEL,
+        help=f"Set logging level (default: {DEFAULT_LOG_LEVEL})",
     )
     parser.add_argument(
         "--version", action="version", version=f"BibleBot {__version__}"
