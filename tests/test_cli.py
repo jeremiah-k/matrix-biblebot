@@ -3,7 +3,7 @@
 import argparse
 import asyncio
 import warnings
-from unittest.mock import Mock, patch
+from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
 
@@ -324,13 +324,13 @@ class TestModernCommands:
         assert "API keys configured: 1" in captured.out
         assert "E2EE support: ✓" in captured.out
 
-    @patch("biblebot.auth.interactive_login")
-    @patch("asyncio.run")
-    def test_auth_login_command(self, mock_run, mock_login):
+    @patch("biblebot.auth.interactive_login", new_callable=AsyncMock)
+    @patch("biblebot.cli.run_async")
+    def test_auth_login_command(self, mock_run_async, mock_login):
         """Test 'biblebot auth login' command."""
         # ✅ CORRECT: Direct return value for sync function (mmrelay pattern)
         mock_login.return_value = True
-        mock_run.return_value = True
+        mock_run_async.return_value = True
 
         # ✅ CORRECT: Use simple object instead of MagicMock
         class MockArgs:
@@ -341,9 +341,9 @@ class TestModernCommands:
 
         # Simulate the command handling logic
         if args.command == "auth" and args.auth_action == "login":
-            mock_run(mock_login())
+            mock_run_async(mock_login())
 
-        mock_run.assert_called_once()
+        mock_run_async.assert_called_once()
 
     def test_auth_status_command(self, capsys):
         """Test 'biblebot auth status' command."""
@@ -581,19 +581,17 @@ class TestCLIMainFunction:
     @patch("sys.argv", ["biblebot", "auth", "login"])
     @patch("builtins.input", return_value="https://matrix.org")
     @patch("getpass.getpass", return_value="password")
-    @patch("biblebot.auth.interactive_login")
-    @patch("biblebot.cli.asyncio.run")
+    @patch("biblebot.auth.interactive_login", new_callable=AsyncMock)
+    @patch("biblebot.cli.run_async")
     @patch("sys.exit")
     def test_auth_login_command(
         self, mock_exit, mock_run, mock_login, mock_getpass, mock_input, mock_exists
     ):
         """Test auth login command."""
         mock_exit.side_effect = SystemExit(0)
-        # Return an awaitable that resolves to True (successful login)
-        future = asyncio.Future()
-        future.set_result(True)
-        mock_login.return_value = future
-        mock_run.side_effect = _consume_coroutine
+        # Return True for successful login
+        mock_login.return_value = True
+        mock_run.side_effect = lambda coro: asyncio.run(coro)
 
         with pytest.raises(SystemExit) as e:
             cli.main()
@@ -604,16 +602,14 @@ class TestCLIMainFunction:
 
     @patch("os.path.exists", return_value=True)
     @patch("sys.argv", ["biblebot", "auth", "logout"])
-    @patch("biblebot.auth.interactive_logout")
-    @patch("biblebot.cli.asyncio.run")
+    @patch("biblebot.auth.interactive_logout", new_callable=AsyncMock)
+    @patch("biblebot.cli.run_async")
     @patch("sys.exit")
     def test_auth_logout_command(self, mock_exit, mock_run, mock_logout, mock_exists):
         """Test auth logout command."""
-        # Create a proper awaitable future
-        future = asyncio.Future()
-        future.set_result(True)
-        mock_logout.return_value = future
-        mock_run.side_effect = _consume_coroutine
+        # Return True for successful logout
+        mock_logout.return_value = True
+        mock_run.side_effect = lambda coro: asyncio.run(coro)
         mock_exit.side_effect = SystemExit(0)
 
         with pytest.raises(SystemExit) as e:
@@ -726,8 +722,8 @@ class TestCLILegacyFlags:
     @patch("sys.argv", ["biblebot", "--auth-login"])
     @patch("builtins.input", return_value="https://matrix.org")
     @patch("getpass.getpass", return_value="password")
-    @patch("biblebot.auth.interactive_login")
-    @patch("biblebot.cli.asyncio.run")
+    @patch("biblebot.auth.interactive_login", new_callable=AsyncMock)
+    @patch("biblebot.cli.run_async")
     @patch("sys.exit")
     @patch("warnings.warn")
     @patch("os.path.exists")
@@ -743,11 +739,9 @@ class TestCLILegacyFlags:
     ):
         """Test legacy --auth-login flag."""
         mock_exists.return_value = True  # Config exists to avoid input prompt
-        # Mock successful login (awaitable resolving to True)
-        future = asyncio.Future()
-        future.set_result(True)
-        mock_login.return_value = future
-        mock_run.side_effect = _consume_coroutine
+        # Mock successful login
+        mock_login.return_value = True
+        mock_run.side_effect = lambda coro: asyncio.run(coro)
 
         cli.main()
         mock_warn.assert_called_once()
@@ -755,8 +749,8 @@ class TestCLILegacyFlags:
         mock_exit.assert_called_with(0)
 
     @patch("sys.argv", ["biblebot", "--auth-logout"])
-    @patch("biblebot.auth.interactive_logout")
-    @patch("biblebot.cli.asyncio.run")
+    @patch("biblebot.auth.interactive_logout", new_callable=AsyncMock)
+    @patch("biblebot.cli.run_async")
     @patch("sys.exit")
     @patch("warnings.warn")
     @patch("os.path.exists")
@@ -765,10 +759,8 @@ class TestCLILegacyFlags:
     ):
         """Test legacy --auth-logout flag."""
         mock_exists.return_value = True  # Config exists to avoid input prompt
-        future = asyncio.Future()
-        future.set_result(True)
-        mock_logout.return_value = future
-        mock_run.side_effect = _consume_coroutine
+        mock_logout.return_value = True
+        mock_run.side_effect = lambda coro: asyncio.run(coro)
 
         cli.main()
         mock_warn.assert_called_once()
