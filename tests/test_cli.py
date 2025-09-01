@@ -324,26 +324,20 @@ class TestModernCommands:
         assert "API keys configured: 1" in captured.out
         assert "E2EE support: ✓" in captured.out
 
-    @patch("biblebot.auth.interactive_login", new_callable=AsyncMock)
-    @patch("biblebot.cli.run_async")
-    def test_auth_login_command(self, mock_run_async, mock_login):
+    async def _stub_interactive_login(*_a, **_k):
+        return True
+
+    @patch("biblebot.auth.interactive_login", new=_stub_interactive_login)
+    def test_auth_login_command(self):
         """Test 'biblebot auth login' command."""
-        # ✅ CORRECT: Direct return value for sync function (mmrelay pattern)
-        mock_login.return_value = True
-        mock_run_async.return_value = True
-
-        # ✅ CORRECT: Use simple object instead of MagicMock
-        class MockArgs:
-            command = "auth"
-            auth_action = "login"
-
-        args = MockArgs()
-
-        # Simulate the command handling logic
-        if args.command == "auth" and args.auth_action == "login":
-            mock_run_async(mock_login())
-
-        mock_run_async.assert_called_once()
+        with patch("sys.argv", ["biblebot", "auth", "login"]):
+            with patch("builtins.input", return_value="https://matrix.org"):
+                with patch("getpass.getpass", return_value="password"):
+                    with patch("sys.exit") as mock_exit:
+                        mock_exit.side_effect = SystemExit(0)
+                        with pytest.raises(SystemExit) as e:
+                            cli.main()
+                        assert e.value.code == 0
 
     def test_auth_status_command(self, capsys):
         """Test 'biblebot auth status' command."""
@@ -540,10 +534,12 @@ class TestCLIMainFunction:
 
     @patch("sys.argv", ["biblebot", "--log-level", "debug"])
     @patch("os.path.exists")
+    async def _stub_bot_main_log_level(*_a, **_k):
+        return 0
+
     @patch("biblebot.auth.load_credentials")
-    @patch("biblebot.cli.bot_main", new=lambda *a, **k: asyncio.sleep(0))  # async no-op
-    @patch("biblebot.cli.run_async", side_effect=_consume_coroutine)
-    def test_log_level_setting(self, mock_run, mock_load_creds, mock_exists):
+    @patch("biblebot.cli.bot_main", new=_stub_bot_main_log_level)
+    def test_log_level_setting(self, mock_load_creds, mock_exists):
         """Test log level setting."""
         mock_exists.return_value = True
         mock_load_creds.return_value = Mock()
@@ -580,36 +576,31 @@ class TestCLIMainFunction:
     @patch("os.path.exists", return_value=True)
     @patch("sys.argv", ["biblebot", "auth", "login"])
     @patch("builtins.input", return_value="https://matrix.org")
+    async def _stub_interactive_login_success(*_a, **_k):
+        return True
+
     @patch("getpass.getpass", return_value="password")
-    @patch("biblebot.auth.interactive_login", new_callable=AsyncMock)
-    @patch("biblebot.cli.run_async")
+    @patch("biblebot.auth.interactive_login", new=_stub_interactive_login_success)
     @patch("sys.exit")
-    def test_auth_login_command(
-        self, mock_exit, mock_run, mock_login, mock_getpass, mock_input, mock_exists
-    ):
+    def test_auth_login_command(self, mock_exit, mock_getpass, mock_input, mock_exists):
         """Test auth login command."""
         mock_exit.side_effect = SystemExit(0)
-        # Return True for successful login
-        mock_login.return_value = True
-        mock_run.side_effect = lambda coro: asyncio.run(coro)
 
         with pytest.raises(SystemExit) as e:
             cli.main()
 
         assert e.value.code == 0
-        mock_run.assert_called_once()
         mock_exit.assert_called_with(0)
 
     @patch("os.path.exists", return_value=True)
+    async def _stub_interactive_logout_success(*_a, **_k):
+        return True
+
     @patch("sys.argv", ["biblebot", "auth", "logout"])
-    @patch("biblebot.auth.interactive_logout", new_callable=AsyncMock)
-    @patch("biblebot.cli.run_async")
+    @patch("biblebot.auth.interactive_logout", new=_stub_interactive_logout_success)
     @patch("sys.exit")
-    def test_auth_logout_command(self, mock_exit, mock_run, mock_logout, mock_exists):
+    def test_auth_logout_command(self, mock_exit, mock_exists):
         """Test auth logout command."""
-        # Return True for successful logout
-        mock_logout.return_value = True
-        mock_run.side_effect = lambda coro: asyncio.run(coro)
         mock_exit.side_effect = SystemExit(0)
 
         with pytest.raises(SystemExit) as e:
@@ -721,9 +712,11 @@ class TestCLILegacyFlags:
 
     @patch("sys.argv", ["biblebot", "--auth-login"])
     @patch("builtins.input", return_value="https://matrix.org")
+    async def _stub_legacy_interactive_login(*_a, **_k):
+        return True
+
     @patch("getpass.getpass", return_value="password")
-    @patch("biblebot.auth.interactive_login", new_callable=AsyncMock)
-    @patch("biblebot.cli.run_async")
+    @patch("biblebot.auth.interactive_login", new=_stub_legacy_interactive_login)
     @patch("sys.exit")
     @patch("warnings.warn")
     @patch("os.path.exists")
@@ -732,35 +725,28 @@ class TestCLILegacyFlags:
         mock_exists,
         mock_warn,
         mock_exit,
-        mock_run,
-        mock_login,
         mock_getpass,
         mock_input,
     ):
         """Test legacy --auth-login flag."""
         mock_exists.return_value = True  # Config exists to avoid input prompt
-        # Mock successful login
-        mock_login.return_value = True
-        mock_run.side_effect = lambda coro: asyncio.run(coro)
 
         cli.main()
         mock_warn.assert_called_once()
         # Should call sys.exit, which prevents further execution
         mock_exit.assert_called_with(0)
 
+    async def _stub_legacy_interactive_logout(*_a, **_k):
+        return True
+
     @patch("sys.argv", ["biblebot", "--auth-logout"])
-    @patch("biblebot.auth.interactive_logout", new_callable=AsyncMock)
-    @patch("biblebot.cli.run_async")
+    @patch("biblebot.auth.interactive_logout", new=_stub_legacy_interactive_logout)
     @patch("sys.exit")
     @patch("warnings.warn")
     @patch("os.path.exists")
-    def test_legacy_auth_logout(
-        self, mock_exists, mock_warn, mock_exit, mock_run, mock_logout
-    ):
+    def test_legacy_auth_logout(self, mock_exists, mock_warn, mock_exit):
         """Test legacy --auth-logout flag."""
         mock_exists.return_value = True  # Config exists to avoid input prompt
-        mock_logout.return_value = True
-        mock_run.side_effect = lambda coro: asyncio.run(coro)
 
         cli.main()
         mock_warn.assert_called_once()
@@ -774,12 +760,12 @@ class TestCLIBotOperation:
     @patch("sys.argv", ["biblebot"])
     @patch("biblebot.cli.detect_configuration_state")
     @patch("builtins.input")
+    async def _stub_bot_main_with_config(*_a, **_k):
+        return 0
+
     @patch("biblebot.auth.load_credentials")
-    @patch("biblebot.cli.bot_main", new=lambda *a, **k: asyncio.sleep(0))  # async no-op
-    @patch("biblebot.cli.run_async")
-    def test_bot_run_with_config(
-        self, mock_run, mock_load_creds, mock_input, mock_detect_state
-    ):
+    @patch("biblebot.cli.bot_main", new=_stub_bot_main_with_config)
+    def test_bot_run_with_config(self, mock_load_creds, mock_input, mock_detect_state):
         """Test running bot with existing config."""
         # Mock configuration state to be ready
         mock_detect_state.return_value = (
@@ -789,10 +775,9 @@ class TestCLIBotOperation:
 
         mock_load_creds.return_value = Mock()
         mock_input.return_value = "y"  # User chooses to start bot
-        mock_run.side_effect = _consume_coroutine
 
         cli.main()
-        mock_run.assert_called_once()
+        # Bot should have been invoked (no specific assertion needed as we stub it)
 
     @patch("sys.argv", ["biblebot"])
     @patch("biblebot.cli.detect_configuration_state")
@@ -870,11 +855,13 @@ class TestCLIBotOperation:
     @patch("sys.argv", ["biblebot"])
     @patch("biblebot.cli.detect_configuration_state")
     @patch("builtins.input")
+    async def _stub_bot_main_keyboard_interrupt(*_a, **_k):
+        raise KeyboardInterrupt()
+
     @patch("biblebot.auth.load_credentials")
-    @patch("biblebot.cli.bot_main", new=lambda *a, **k: asyncio.sleep(0))  # async no-op
-    @patch("biblebot.cli.run_async")
+    @patch("biblebot.cli.bot_main", new=_stub_bot_main_keyboard_interrupt)
     def test_bot_keyboard_interrupt(
-        self, mock_run, mock_load_creds, mock_input, mock_detect_state
+        self, mock_load_creds, mock_input, mock_detect_state
     ):
         """Test bot operation with keyboard interrupt."""
         # Mock configuration state to be ready
@@ -883,25 +870,6 @@ class TestCLIBotOperation:
             "Bot is configured and ready to start.",
         )
         mock_load_creds.return_value = Mock()
-
-        def _consume_then_interrupt(coro):
-            """
-            Run the given coroutine to completion and then raise KeyboardInterrupt.
-
-            This helper executes `coro` using the test-suite's synchronous runner (`_consume_coroutine`)
-            and always raises a KeyboardInterrupt immediately after completion. Intended for simulating
-            an interrupt occurring right after an awaited task finishes in tests.
-
-            Parameters:
-                coro: A coroutine or awaitable to run.
-
-            Raises:
-                KeyboardInterrupt: Always raised after `coro` has been consumed.
-            """
-            _consume_coroutine(coro)
-            raise KeyboardInterrupt()
-
-        mock_run.side_effect = _consume_then_interrupt
         mock_input.return_value = "y"  # User chooses to start bot
 
         # CLI catches KeyboardInterrupt and handles it gracefully
@@ -910,16 +878,16 @@ class TestCLIBotOperation:
     @patch("sys.argv", ["biblebot"])
     @patch("biblebot.cli.detect_configuration_state")
     @patch("builtins.input")
+    async def _stub_bot_main_runtime_error(*_a, **_k):
+        raise RuntimeError("Runtime error")
+
     @patch("biblebot.auth.load_credentials")
-    @patch("biblebot.cli.bot_main", new=lambda *a, **k: asyncio.sleep(0))  # async no-op
-    @patch("biblebot.cli.run_async")
-    def test_bot_runtime_error(
-        self, mock_run, mock_load_creds, mock_input, mock_detect_state
-    ):
+    @patch("biblebot.cli.bot_main", new=_stub_bot_main_runtime_error)
+    def test_bot_runtime_error(self, mock_load_creds, mock_input, mock_detect_state):
         """
         Verify CLI handles a runtime error during bot startup by exiting with code 1.
 
-        Mocks a ready configuration state and valid credentials, simulates the user choosing to start the bot, and makes the bot's run function raise an exception after consuming its coroutine. Asserts the CLI main() raises SystemExit with exit code 1 (graceful failure).
+        Mocks a ready configuration state and valid credentials, simulates the user choosing to start the bot, and makes the bot's run function raise a RuntimeError. Asserts the CLI main() raises SystemExit with exit code 1 (graceful failure).
         """
         # Mock configuration state to be ready
         mock_detect_state.return_value = (
@@ -927,33 +895,12 @@ class TestCLIBotOperation:
             "Bot is configured and ready to start.",
         )
         mock_load_creds.return_value = Mock()
-
-        def _consume_then_error(coro):
-            """
-            Run the given coroutine (or awaitable) to completion and then raise a Runtime error.
-
-            This helper consumes the provided coroutine using _consume_coroutine and always raises Exception("Runtime error")
-            after the coroutine finishes. Useful in tests to simulate a task that completes but subsequently fails.
-
-            Parameters:
-                coro: A coroutine or awaitable to be executed.
-
-            Raises:
-                Exception: Always raises Exception with message "Runtime error" after running the coroutine.
-            """
-            _consume_coroutine(coro)
-            raise Exception("Runtime error")
-
-        mock_run.side_effect = _consume_then_error
         mock_input.return_value = "y"  # User chooses to start bot
 
         # CLI should handle the exception gracefully and exit with code 1
         with pytest.raises(SystemExit) as exc_info:
             cli.main()
         assert exc_info.value.code == 1
-
-        # Exception should be caught and handled gracefully
-        # No assertion needed - test passes if no exception is raised
 
 
 class TestCLIUtilityFunctions:

@@ -39,7 +39,7 @@ class TestPerformancePatterns:
     async def test_message_processing_performance(self, mock_config, mock_client):
         """
         Measure concurrent message-processing performance of BibleBot.
-        
+
         Creates a BibleBot using the provided fixtures, patches the external Bible API to return a fixed verse, and processes 10 messages concurrently (from a generated set of 100). Asserts that processing completes within 5 seconds and that the client's room_send was invoked at least once per processed message.
         """
         bot = BibleBot(config=mock_config, client=mock_client)
@@ -146,9 +146,9 @@ class TestPerformancePatterns:
         async def mock_api_call(*_args, **_kwargs):
             """
             Async test helper that simulates an external Bible API call.
-            
+
             Increments the enclosing `call_count` nonlocal counter each invocation, waits for a short, variable delay to emulate network latency, and returns a tuple of (verse_text, verse_reference). The delay pattern is 0.1s plus (call_count % 3) * 0.05s.
-            
+
             Returns:
                 tuple[str, str]: (verse_text, verse_reference), where `verse_text` is "Verse {n}" and `verse_reference` is "John 3:{n}" with `n` equal to the current call count.
             """
@@ -199,7 +199,7 @@ class TestPerformancePatterns:
         async def rate_limited_api(*_args, **_kwargs):
             """
             Async test helper that simulates a rate-limited Bible API call.
-            
+
             Appends the current high-resolution timestamp to the external list `request_times`, waits ~0.1 seconds to mimic rate-limit delay, and returns a fixed (verse_text, verse_reference) tuple.
             """
             request_times.append(time.perf_counter())
@@ -244,12 +244,16 @@ class TestPerformancePatterns:
         event.sender = "@user:matrix.org"
         event.server_timestamp = int(time.time() * 1000)
 
+        # Create room mock with room_id to ensure events are processed
+        room = MagicMock()
+        room.room_id = "!test:matrix.org"
+
         with patch("biblebot.bot.get_bible_text") as mock_get_bible:
             mock_get_bible.return_value = ("In the beginning was the Word", "John 1:1")
 
             # Should handle large messages without issues
             start_time = time.perf_counter()
-            await bot.on_room_message(MagicMock(), event)
+            await bot.on_room_message(room, event)
             end_time = time.perf_counter()
 
             processing_time = end_time - start_time
@@ -269,10 +273,10 @@ class TestPerformancePatterns:
         async def failing_api(*_args, **_kwargs):
             """
             Async test helper that simulates an unstable API: increments an external call counter, raises RuntimeError on the first three invocations, and returns a fixed Bible verse thereafter.
-            
+
             Returns:
                 tuple: (verse_text, verse_reference) — e.g., ("Recovered verse", "John 3:16")
-            
+
             Raises:
                 RuntimeError: for the first three calls to simulate transient failures.
             """
@@ -363,7 +367,7 @@ class TestPerformancePatterns:
         async def background_task():
             """
             Background task that waits briefly and then marks completion.
-            
+
             Sleeps for 0.1 seconds asynchronously and sets the enclosing scope's `task_completed`
             flag to True to signal that the background work finished.
             """
