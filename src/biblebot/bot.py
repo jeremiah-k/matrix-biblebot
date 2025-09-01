@@ -93,11 +93,6 @@ def load_config(config_file):
             if not isinstance(config.get(CONFIG_MATRIX_ROOM_IDS), list):
                 logger.error("'matrix_room_ids' must be a list in config")
                 return None
-            # Normalize homeserver URL (avoid trailing slash)
-            if isinstance(config.get(CONFIG_MATRIX_HOMESERVER), str):
-                config[CONFIG_MATRIX_HOMESERVER] = config[
-                    CONFIG_MATRIX_HOMESERVER
-                ].rstrip(CHAR_SLASH)
             logger.info(f"Loaded configuration from {config_file}")
             return config
     except (OSError, yaml.YAMLError):
@@ -590,12 +585,44 @@ async def main(config_path=DEFAULT_CONFIG_FILENAME_MAIN):
     )
 
     logger.info("Creating AsyncClient")
-    client = AsyncClient(
-        config[CONFIG_MATRIX_HOMESERVER],
-        config[CONFIG_MATRIX_USER],
-        store_path=str(get_store_dir()) if e2ee_enabled else None,
-        config=client_config,
-    )
+    if creds:
+        # Modern auth flow - use credentials
+        client = AsyncClient(
+            creds.homeserver,
+            creds.user_id,
+            store_path=str(get_store_dir()) if e2ee_enabled else None,
+            config=client_config,
+        )
+    else:
+        # Legacy fallback - requires homeserver and user in config
+        if not matrix_access_token:
+            logger.error(
+                "No credentials found. Please run 'biblebot auth login' first."
+            )
+            logger.error(
+                "Legacy MATRIX_ACCESS_TOKEN is deprecated and does not support E2EE."
+            )
+            return
+
+        # For legacy mode, we need homeserver and user from environment or config
+        homeserver = os.getenv("MATRIX_HOMESERVER")
+        user_id = os.getenv("MATRIX_USER_ID")
+
+        if not homeserver or not user_id:
+            logger.error(
+                "Legacy mode requires MATRIX_HOMESERVER and MATRIX_USER_ID environment variables"
+            )
+            logger.error(
+                "Please run 'biblebot auth login' for the modern authentication flow"
+            )
+            return
+
+        client = AsyncClient(
+            homeserver,
+            user_id,
+            store_path=str(get_store_dir()) if e2ee_enabled else None,
+            config=client_config,
+        )
 
     logger.info("Creating BibleBot instance")
     bot = BibleBot(config, client)

@@ -1,9 +1,8 @@
 # Matrix BibleBot Configuration
-# Edit this file with your Matrix server details and room IDs
+# Matrix server and user details are handled by 'biblebot auth login'
+# Only configure room IDs and bot behavior here
 
-# Matrix Server Settings
-matrix_homeserver: https://your_homeserver_url_here
-matrix_user: "@your_bot_username:your_homeserver_domain"
+# Matrix Room Settings
 matrix_room_ids:
   - "!your_room_id:your_homeserver_domain"
   - "!your_other_room_id:your_homeserver_domain"

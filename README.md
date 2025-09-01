@@ -50,8 +50,8 @@ The easiest way to get started is to generate the configuration files:
 biblebot --generate-config
 ```
 
-This will create both a sample config file (`config.yaml`) and a sample `.env` file in the `~/.config/matrix-biblebot/` directory.
-If a config file is missing when you run `biblebot`, the CLI will offer to generate these starter files for you.
+This will create a sample config file (`config.yaml`) in the `~/.config/matrix-biblebot/` directory.
+If a config file is missing when you run `biblebot`, the CLI will offer to generate this starter file for you.
 
 You can also specify a custom location:
 
@@ -91,11 +91,10 @@ biblebot auth logout
 
 ### Edit Configuration Files
 
-1. **Edit the config.yaml file** with your Matrix homeserver and room information:
+1. **Edit the config.yaml file** with your Matrix room information:
 
 ```yaml
-matrix_homeserver: "https://your_homeserver_url_here"
-matrix_user: "@your_bot_username:your_homeserver_domain"
+# Matrix server and user details are handled by 'biblebot auth login'
 matrix_room_ids:
   - "!your_room_id:your_homeserver_domain"
   - "#room_alias:your_homeserver_domain" # Room aliases are supported
@@ -115,7 +114,7 @@ The bot will automatically resolve room aliases to room IDs at startup. You can 
 By default, the bot looks for:
 
 - Configuration file: `~/.config/matrix-biblebot/config.yaml`
-- Environment file: `~/.config/matrix-biblebot/.env`
+- Credentials file: `~/.config/matrix-biblebot/credentials.json` (created by `biblebot auth login`)
 
 You can specify a different config location when running the bot:
 
