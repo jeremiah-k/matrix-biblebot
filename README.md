@@ -107,6 +107,38 @@ You can specify a different config location when running the bot:
 biblebot --config /path/to/your/config.yaml
 ```
 
+### End-to-End Encryption (E2EE) Configuration
+
+The bot supports End-to-End Encryption for secure communication in encrypted rooms. To enable E2EE:
+
+1. **Install E2EE dependencies** (if not already installed):
+
+   ```bash
+   pip install 'matrix-biblebot[e2e]'
+   ```
+
+2. **Enable E2EE in your config.yaml**:
+
+   ```yaml
+   # E2EE Configuration
+   e2ee:
+     enabled: true # Enable E2EE support
+     store_path: null # Optional: custom path for E2EE store
+     trust_on_first_use: true # Trust new devices automatically
+   ```
+
+3. **First-time E2EE setup**:
+   - The bot will create an E2EE store at `~/.local/share/matrix-biblebot/`
+   - On first run, the bot will generate and upload encryption keys
+   - You may need to verify the bot's device in your Matrix client
+
+**E2EE Notes:**
+
+- E2EE requires additional system dependencies (libolm)
+- The bot can work in both encrypted and unencrypted rooms simultaneously
+- E2EE store contains sensitive cryptographic keys - keep it secure
+- If you lose the E2EE store, the bot won't be able to decrypt old messages
+
 ## Usage
 
 ### Quick Start

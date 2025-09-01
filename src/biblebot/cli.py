@@ -51,6 +51,53 @@ def get_default_config_path():
     return CONFIG_DIR / DEFAULT_CONFIG_FILENAME
 
 
+def detect_configuration_state():
+    """Detect the current configuration state and return appropriate action."""
+    config_path = get_default_config_path()
+    env_path = CONFIG_DIR / DEFAULT_ENV_FILENAME
+
+    # Check if config files exist
+    config_exists = config_path.exists()
+    env_exists = env_path.exists()
+
+    if not config_exists and not env_exists:
+        return "setup", "No configuration found. Setup is required."
+
+    if not config_exists:
+        return "setup", "Config file missing. Setup is required."
+
+    # Try to load and validate config
+    try:
+        from . import bot
+
+        config = bot.load_config(str(config_path))
+        if not config:
+            return "setup", "Invalid configuration. Setup is required."
+    except Exception as e:
+        return "setup", f"Configuration error: {e}"
+
+    # Check for credentials
+    if not env_exists:
+        return (
+            "auth",
+            "Configuration found but credentials missing. Authentication required.",
+        )
+
+    # Check if credentials are placeholder values
+    try:
+        with open(env_path, "r") as f:
+            env_content = f.read()
+            if "your_bots_matrix_access_token_here" in env_content:
+                return (
+                    "auth",
+                    "Configuration found but credentials are placeholder values. Authentication required.",
+                )
+    except Exception:
+        return "auth", "Cannot read credentials file. Authentication required."
+
+    return "ready", "Bot is configured and ready to start."
+
+
 def generate_config(config_path):
     """Generate a sample config file at the specified path."""
     config_dir = os.path.dirname(config_path) or os.getcwd()
@@ -81,8 +128,91 @@ def generate_config(config_path):
     return True
 
 
+def interactive_main():
+    """Interactive main function that guides users through setup/auth/start."""
+    state, message = detect_configuration_state()
+
+    print("🤖 Matrix BibleBot")
+    print(f"Status: {message}")
+    print()
+
+    if state == "setup":
+        print("🔧 Setup Required")
+        print("The bot needs to be configured before it can run.")
+        print()
+        response = (
+            input("Would you like to generate sample configuration files now? [Y/n]: ")
+            .strip()
+            .lower()
+        )
+        if response in ("", "y", "yes"):
+            config_path = get_default_config_path()
+            if generate_config(str(config_path)):
+                print()
+                print("✅ Configuration files generated!")
+                print("📝 Next steps:")
+                print(f"   1. Edit {config_path}")
+                print(f"   2. Edit {CONFIG_DIR / DEFAULT_ENV_FILENAME}")
+                print("   3. Run 'biblebot' again to continue setup")
+            return
+        else:
+            print("Setup cancelled. Run 'biblebot config generate' when ready.")
+            return
+
+    elif state == "auth":
+        print("🔐 Authentication Required")
+        print("Configuration found but Matrix credentials are missing or invalid.")
+        print()
+        print("Options:")
+        print("  1. Use existing Matrix access token (add to .env file)")
+        print("  2. Login interactively to generate credentials")
+        print()
+        response = input("Choose option [1/2] or 'q' to quit: ").strip()
+        if response == "1":
+            env_path = CONFIG_DIR / DEFAULT_ENV_FILENAME
+            print(f"📝 Please edit {env_path}")
+            print("   Add your MATRIX_ACCESS_TOKEN and optionally ESV_API_KEY")
+            return
+        elif response == "2":
+            print("🔑 Starting interactive login...")
+            try:
+                ok = asyncio.run(interactive_login())
+                if ok:
+                    print("✅ Login completed! Run 'biblebot' again to start the bot.")
+                else:
+                    print("❌ Login failed.")
+            except KeyboardInterrupt:
+                print("\n❌ Login cancelled.")
+            return
+        else:
+            print("Authentication cancelled.")
+            return
+
+    elif state == "ready":
+        print("✅ Bot Ready")
+        print("Configuration and credentials are valid.")
+        print()
+        response = input("Would you like to start the bot now? [Y/n]: ").strip().lower()
+        if response in ("", "y", "yes"):
+            print("🚀 Starting Matrix BibleBot...")
+            try:
+                config_path = get_default_config_path()
+                asyncio.run(bot_main(str(config_path)))
+            except KeyboardInterrupt:
+                print("\n🛑 Bot stopped by user.")
+        else:
+            print(
+                "Bot not started. Use 'biblebot' to start or 'biblebot --help' for options."
+            )
+
+
 def main():
     """Run the BibleBot CLI with modern grouped commands."""
+    # If no arguments provided, use interactive mode
+    if len(sys.argv) == 1:
+        interactive_main()
+        return
+
     default_config_path = get_default_config_path()
 
     # Main parser

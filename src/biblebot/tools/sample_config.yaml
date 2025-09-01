@@ -1,5 +1,23 @@
+# Matrix Bot Configuration
+# Edit this file with your Matrix server details and room IDs
+
+# Matrix Server Settings
 matrix_homeserver: https://your_homeserver_url_here
 matrix_user: "@your_bot_username:your_homeserver_domain"
 matrix_room_ids:
   - "!your_room_id:your_homeserver_domain"
   - "!your_other_room_id:your_homeserver_domain"
+
+# End-to-End Encryption (E2EE) Settings
+# Requires: pip install matrix-nio[e2e]
+# Note: E2EE requires additional dependencies and setup
+e2ee:
+  enabled: false # Set to true to enable E2EE support
+  store_path: null # Optional: custom path for E2EE store (defaults to ~/.local/share/matrix-biblebot)
+  trust_on_first_use: true # Whether to trust new devices automatically
+
+# Bot Behavior Settings
+bot:
+  default_translation: esv # Default Bible translation (esv, kjv)
+  cache_enabled: true # Enable verse caching for better performance
+  max_message_length: 4000 # Maximum message length before truncation

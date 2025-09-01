@@ -278,3 +278,13 @@ PROMPT_PASSWORD = "Password: "  # nosec B105
 STATUS_KEY_ERROR = "error"
 STATUS_KEY_AVAILABLE = "available"
 STATUS_KEY_PLATFORM_SUPPORTED = "platform_supported"
+
+# CLI Messages for interactive mode
+MSG_CONFIG_EXISTS = "Configuration files already exist:"
+MSG_DELETE_EXISTING = "Delete existing files to regenerate them."
+MSG_GENERATED_CONFIG = "Generated config file: {}"
+MSG_GENERATED_ENV = "Generated .env file: {}"
+MSG_EDIT_FILES = (
+    "Please edit these files with your Matrix server details and credentials."
+)
+SUCCESS_CONFIG_GENERATED = "Configuration files generated successfully!"
