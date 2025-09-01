@@ -34,12 +34,12 @@ def sample_config():
 def temp_config_file(tmp_path, sample_config):
     """
     Create a temporary YAML config file from the given sample configuration and return its path.
-    
+
     The fixture writes `sample_config` to a file named `config.yaml` under `tmp_path` using YAML serialization.
-    
+
     Parameters:
         sample_config (Mapping): Data to serialize into the YAML config file.
-    
+
     Returns:
         pathlib.Path: Path to the created `config.yaml`.
     """
@@ -53,11 +53,11 @@ def temp_config_file(tmp_path, sample_config):
 def temp_env_file(tmp_path):
     """
     Create a temporary `.env` file for tests containing MATRIX_ACCESS_TOKEN and ESV_API_KEY.
-    
+
     The file is written to the provided temporary path and contains:
     - MATRIX_ACCESS_TOKEN set to the test constant `TEST_ACCESS_TOKEN`
     - ESV_API_KEY set to "test_esv_key"
-    
+
     Returns:
         pathlib.Path: Path to the created `.env` file.
     """
@@ -688,13 +688,15 @@ class TestE2EEFunctionality:
     async def test_on_decryption_failure_fallback(self, sample_config):
         """Test decryption failure fallback when request_room_key not available."""
         with patch("biblebot.bot.AsyncClient") as mock_client_class:
-            mock_client = AsyncMock()
-            mock_client_class.return_value = mock_client
+            # Only provide the attributes used in this test; no request_room_key present.
+            from unittest.mock import AsyncMock as _AsyncMock
+            from unittest.mock import MagicMock
+
+            mock_client = MagicMock(spec_set=["user_id", "device_id", "to_device"])
             mock_client.user_id = TEST_USER_ID
             mock_client.device_id = TEST_DEVICE_ID
-
-            # No request_room_key method available
-            del mock_client.request_room_key
+            mock_client.to_device = _AsyncMock()
+            mock_client_class.return_value = mock_client
 
             bot_instance = bot.BibleBot(sample_config)
             bot_instance.client = mock_client

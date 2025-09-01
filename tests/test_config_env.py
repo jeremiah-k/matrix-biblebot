@@ -1,3 +1,4 @@
+# ruff: noqa: S101, S105
 import tempfile
 from pathlib import Path
 

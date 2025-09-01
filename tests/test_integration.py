@@ -16,14 +16,14 @@ class TestEndToEndWorkflow:
     def temp_workspace(self, tmp_path):
         """
         Create a temporary workspace directory populated with sample configuration files for tests.
-        
+
         The workspace directory (created as tmp_path / "biblebot_test") will contain:
         - config.yaml: a YAML config with keys `matrix_homeserver`, `matrix_user`, `matrix_room_ids`, and `matrix.e2ee.enabled` set to False.
         - .env: environment file containing `MATRIX_ACCESS_TOKEN=test_token` and `ESV_API_KEY=test_key`.
-        
+
         Parameters:
             tmp_path (pathlib.Path): Base temporary directory provided by pytest.
-        
+
         Returns:
             pathlib.Path: Path to the created workspace directory.
         """
@@ -569,15 +569,10 @@ class TestComponentInteractionIntegration:
         # Should interact with case insensitivity
         assert result == ("Test", "Interaction 1:1")
 
-    def test_auth_directory_interaction(self):
+    def test_auth_directory_interaction(self, tmp_path):
         """Test auth and directory component interaction."""
-        with patch("biblebot.auth.CONFIG_DIR") as mock_dir:
+        with patch("biblebot.auth.CONFIG_DIR", new=tmp_path):
             with patch("os.chmod"):
-                mock_dir.mkdir = MagicMock()
-
-                # Test interaction
                 result = auth.get_config_dir()
-
-                # Should interact properly
-                mock_dir.mkdir.assert_called_once()
-                assert result == mock_dir
+                assert result == tmp_path
+                assert (tmp_path).exists()

@@ -232,12 +232,9 @@ class TestLegacyFlags:
                 assert "deprecated" in str(w[0].message)
                 mock_generate.assert_called_once_with("test.yaml")
 
-    @patch("biblebot.cli.asyncio.run")
-    @patch("biblebot.auth.interactive_login")
-    def test_legacy_auth_login_flag(self, mock_login, mock_run):
+    def test_legacy_auth_login_flag(self):
         """Test legacy --auth-login flag."""
-        mock_login.return_value = asyncio.sleep(0)
-        mock_run.side_effect = _consume_coroutine
+        # No-op: this test only verifies the warning emission path
 
         with warnings.catch_warnings(record=True) as w:
             warnings.simplefilter("always")
@@ -487,8 +484,9 @@ class TestMainFunction:
                                 with patch("getpass.getpass", return_value="password"):
                                     # exercise the real cli.main
                                     cli.main()
-                        # The test should verify that the CLI attempted to run the bot
-                        # but since we're mocking input to say "n", it won't actually call asyncio.run
+        mock_run.assert_called_once()
+        # The test should verify that the CLI attempted to run the bot
+        # but since we're mocking input to say "n", it won't actually call asyncio.run
 
     @patch("builtins.input")
     @patch("biblebot.cli.generate_config")

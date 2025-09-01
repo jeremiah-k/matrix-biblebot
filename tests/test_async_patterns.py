@@ -3,6 +3,8 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
+pytestmark = pytest.mark.asyncio
+
 from biblebot.bot import BibleBot
 
 
@@ -13,7 +15,7 @@ class TestAsyncPatterns:
     def mock_config(self):
         """
         Provide a mock configuration dictionary used by tests.
-        
+
         Returns a dict containing:
         - "matrix": homeserver URL, bot_user_id, and access_token for a mocked Matrix client.
         - "matrix_room_ids": list of room IDs the bot should consider during tests.
@@ -36,7 +38,7 @@ class TestAsyncPatterns:
     def mock_client(self):
         """
         Create a MagicMock that simulates a Matrix AsyncClient for tests.
-        
+
         The mock provides AsyncMock methods `sync`, `room_send`, `close`, and `join`,
         and a `rooms` attribute initialized to an empty dict. Use this fixture to inject
         an AsyncClient-compatible mock into tests.
@@ -53,11 +55,11 @@ class TestAsyncPatterns:
     def mock_room(self):
         """
         Create a MagicMock representing a Matrix room for tests.
-        
+
         The mock has the following attributes set:
         - room_id: "!room:matrix.org"
         - display_name: "Test Room"
-        
+
         Returns:
             MagicMock: A mock room object configured with the attributes above.
         """
@@ -70,14 +72,14 @@ class TestAsyncPatterns:
     def mock_event(self):
         """
         Create and return a MagicMock that simulates a Matrix room event for tests.
-        
+
         The returned mock has commonly accessed attributes used by the test suite:
         - sender: str, example "@user:matrix.org"
         - body: str, human-readable event body ("John 3:16")
         - event_id: str, example "$event123"
         - server_timestamp: int, epoch milliseconds (set to 1234567890000; intentionally after test start times)
         - source: dict with nested content.body matching `body`
-        
+
         Returns:
             MagicMock: A mock object shaped like a Matrix event, ready for use in async test scenarios.
         """
@@ -162,7 +164,7 @@ class TestAsyncPatterns:
     async def test_async_concurrent_operations(self, mock_config, mock_client):
         """
         Verify that multiple concurrent join_matrix_room calls run in parallel and each invokes the client's join method.
-        
+
         Creates a BibleBot with a mocked client whose join returns a room-like object, starts three concurrent join_matrix_room coroutines with asyncio.gather, and asserts that three results are returned and the client's join was called three times.
         """
         bot = BibleBot(config=mock_config, client=mock_client)
@@ -239,7 +241,7 @@ class TestAsyncPatterns:
                 async def rate_limited_call():
                     """
                     Perform a rate-limited retrieval of a Bible passage.
-                    
+
                     Awaits a short delay to simulate rate limiting, then calls `mock_get_bible("John 3:16")`
                     and returns whatever that coroutine returns (typically the verse text and reference).
                     """
@@ -261,10 +263,10 @@ class TestAsyncPatterns:
         async def quick_task():
             """
             Short asynchronous helper that sleeps briefly and returns "completed".
-            
+
             This coroutine awaits for a short delay (0.1 seconds) and then returns the string "completed".
             It is cancellable by the caller; if cancelled, asyncio.CancelledError will propagate to the caller.
-            
+
             Returns:
                 str: The literal string "completed" when the coroutine finishes normally.
             """
@@ -288,7 +290,7 @@ class TestAsyncPatterns:
     async def test_async_exception_propagation(self, mock_config, mock_client):
         """
         Verify that exceptions raised during Bible text retrieval are handled without propagating.
-        
+
         This async test sets up a BibleBot with mocked config and client, patches
         biblebot.bot.get_bible_text to raise a ValueError, and sends a simulated
         room event. It asserts that calling on_room_message does not raise the
@@ -322,7 +324,9 @@ class TestAsyncPatterns:
         try:
             # Simulate an error during operation
             raise Exception("Simulated error")
-        except Exception:
+        except Exception as exc:  # noqa: BLE001
+            # Optional: log for debug
+            _ = exc
             pass
         finally:
             # Test that client is still accessible for cleanup (no async mock issues)
@@ -344,7 +348,7 @@ class TestAsyncPatterns:
             def callback():
                 """
                 Mark the enclosing scope's `callback_called` flag as True.
-                
+
                 This zero-argument callback is intended to signal completion by setting the
                 nonlocal variable `callback_called` in the surrounding scope. It has no return
                 value and does not raise exceptions.
@@ -360,7 +364,7 @@ class TestAsyncPatterns:
     async def test_async_signal_handling(self, mock_config, mock_client):
         """
         Simulate and verify graceful async shutdown handling.
-        
+
         Creates a BibleBot with mocked config and client, defines a simple async shutdown callback that sets a flag, invokes it, and asserts the shutdown logic runs (the flag becomes True).
         """
         BibleBot(config=mock_config, client=mock_client)
@@ -371,7 +375,7 @@ class TestAsyncPatterns:
         async def mock_shutdown():
             """
             Mark the surrounding test's shutdown flag to indicate a simulated graceful shutdown.
-            
+
             This async helper sets the nonlocal `shutdown_called` variable to True when awaited,
             allowing tests to verify that shutdown logic ran.
             """
@@ -394,7 +398,7 @@ class TestAsyncPatterns:
             async def background_task():
                 """
                 Asynchronous background task that waits briefly and then marks completion.
-                
+
                 This coroutine sleeps for approximately 0.1 seconds and sets the enclosing scope's
                 nonlocal flag `task_completed` to True to indicate the background work finished.
                 """
