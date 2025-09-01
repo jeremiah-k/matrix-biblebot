@@ -403,8 +403,10 @@ async def get_bible_text(
 
     if translation == TRANSLATION_ESV:
         result = await get_esv_text(passage, api_key)
-    else:  # Assuming KJV as the default
+    elif translation.lower() == "kjv":
         result = await get_kjv_text(passage)
+    else:
+        raise PassageNotFound(f"Unsupported translation: '{translation}'")
     _cache_set(passage, translation, result, cache_enabled)
     return result
 
@@ -622,9 +624,8 @@ class BibleBot:
 
         This method is asynchronous and does not return; it only returns when the client's sync loop ends or raises.
         """
-        self.start_time = int(
-            time.perf_counter() * 1000
-        )  # Store bot start time in milliseconds (monotonic)
+        # Store bot start time in epoch milliseconds to compare with event.server_timestamp
+        self.start_time = int(time.time() * 1000)
         logger.info("Initializing BibleBot...")
         await self.resolve_aliases()  # Support for aliases in config
         self._room_id_set = set(self.config[CONFIG_MATRIX_ROOM_IDS])
@@ -653,7 +654,10 @@ class BibleBot:
             f"If this persists, the bot's session may be corrupt."
         )
         try:
-            # Monkey-patch the event object with the correct room_id from the room object
+            # Set room_id on the event object for key request methods
+            # This is necessary because MegolmEvent objects that failed to decrypt
+            # may not have room_id set, but both client.request_room_key() and
+            # event.as_key_request() require it to generate proper key requests
             event.room_id = room.room_id
 
             # Use the preferred client.request_room_key method if available
@@ -730,7 +734,7 @@ class BibleBot:
             passage = None
             translation = DEFAULT_TRANSLATION  # Default translation
             for pattern in search_patterns:
-                match = pattern.match(event.body)
+                match = pattern.search(event.body)
                 if match:
                     raw_book_name = match.group(1).strip()
                     book_name = normalize_book_name(raw_book_name)
@@ -976,8 +980,8 @@ async def main(config_path=DEFAULT_CONFIG_FILENAME_MAIN):
         except (
             nio.exceptions.LocalProtocolError,
             nio.exceptions.RemoteProtocolError,
-        ) as e:
-            logger.exception(f"Failed to upload E2EE keys: {e}")
+        ):
+            logger.exception("Failed to upload E2EE keys")
 
     # Register event handlers
     logger.debug("Registering event handlers")

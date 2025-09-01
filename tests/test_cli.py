@@ -327,7 +327,7 @@ class TestModernCommands:
     async def _stub_interactive_login(*_a, **_k):
         return True
 
-    @patch("biblebot.auth.interactive_login", new=_stub_interactive_login)
+    @patch("biblebot.cli.interactive_login", new=_stub_interactive_login)
     def test_auth_login_command(self):
         """Test 'biblebot auth login' command."""
         with patch("sys.argv", ["biblebot", "auth", "login"]):
@@ -714,7 +714,7 @@ class TestCLILegacyFlags:
     @patch("sys.argv", ["biblebot", "--auth-login"])
     @patch("builtins.input", return_value="https://matrix.org")
     @patch("getpass.getpass", return_value="password")
-    @patch("biblebot.auth.interactive_login", new_callable=AsyncMock)
+    @patch("biblebot.cli.interactive_login", new_callable=AsyncMock)
     @patch("sys.exit")
     @patch("warnings.warn")
     @patch("os.path.exists")
@@ -738,7 +738,7 @@ class TestCLILegacyFlags:
         mock_exit.assert_called_with(0)
 
     @patch("sys.argv", ["biblebot", "--auth-logout"])
-    @patch("biblebot.auth.interactive_logout", new_callable=AsyncMock)
+    @patch("biblebot.cli.interactive_logout", new_callable=AsyncMock)
     @patch("sys.exit")
     @patch("warnings.warn")
     @patch("os.path.exists")

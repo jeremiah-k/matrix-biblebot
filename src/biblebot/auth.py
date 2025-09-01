@@ -18,6 +18,7 @@ import tempfile
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Optional
+from urllib.parse import urlparse
 
 import aiohttp
 import nio.exceptions
@@ -434,8 +435,6 @@ async def interactive_login(
     hs = await discover_homeserver(client, hs)
     client.homeserver = hs
     if localpart is not None:
-        from urllib.parse import urlparse
-
         server_name = urlparse(hs).netloc
         user = f"@{localpart}:{server_name}"
         # Ensure client uses the corrected MXID for login

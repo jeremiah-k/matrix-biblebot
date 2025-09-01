@@ -12,10 +12,10 @@ def get_sample_config_path():
     Uses importlib.resources.files (Python 3.9+) to locate the resource; on older Python versions falls back to the package file location next to this module. The returned path points to the resource named by SAMPLE_CONFIG_FILENAME.
     """
     try:
-        # For Python 3.9+
-        return str(importlib.resources.files("biblebot.tools") / SAMPLE_CONFIG_FILENAME)
+        res = importlib.resources.files("biblebot.tools") / SAMPLE_CONFIG_FILENAME
+        with importlib.resources.as_file(res) as p:
+            return str(p)
     except AttributeError:
-        # Fallback for older Python versions
         return str(pathlib.Path(__file__).parent / SAMPLE_CONFIG_FILENAME)
 
 
@@ -25,8 +25,8 @@ def get_service_template_path():
     Attempts to resolve the resource using importlib.resources.files (Python 3.9+). If that API is unavailable, falls back to locating "biblebot.service" relative to this module's file.
     """
     try:
-        # For Python 3.9+
-        return str(importlib.resources.files("biblebot.tools") / "biblebot.service")
+        res = importlib.resources.files("biblebot.tools") / "biblebot.service"
+        with importlib.resources.as_file(res) as p:
+            return str(p)
     except AttributeError:
-        # Fallback for older Python versions
         return str(pathlib.Path(__file__).parent / "biblebot.service")
