@@ -22,14 +22,14 @@ class TestIntegrationPatterns:
     def mock_config(self):
         """
         Return a mock configuration dict used by integration tests.
-        
+
         The dict contains the minimal fields the tests expect:
         - homeserver (str): Matrix homeserver URL.
         - user_id (str): Bot's Matrix user ID.
         - access_token (str): Token used to authenticate the mock client.
         - device_id (str): Device identifier for the bot.
         - matrix_room_ids (list[str]): List of room IDs the bot is configured to operate in.
-        
+
         Returns:
             dict: Mock configuration mapping the keys above to test values.
         """
@@ -45,13 +45,13 @@ class TestIntegrationPatterns:
     def mock_client(self):
         """
         Create a MagicMock that simulates a Matrix client for integration tests.
-        
+
         Returns a MagicMock with AsyncMock attributes commonly used by BibleBot tests:
         - room_send: async send messages to a room
         - join: async join a room
         - sync: async sync loop
         - close: async cleanup/close
-        
+
         The mock can be awaited/inspected by test code to assert calls and payloads.
         """
         client = MagicMock()
@@ -72,7 +72,9 @@ class TestIntegrationPatterns:
         bot.api_keys = {}  # Set API keys
 
         # Mock complete API chain
-        with patch("biblebot.bot.get_bible_text") as mock_get_bible:
+        with patch(
+            "biblebot.bot.get_bible_text", new_callable=AsyncMock
+        ) as mock_get_bible:
             mock_get_bible.return_value = (
                 "For God so loved the world that he gave his one and only Son, "
                 "that whoever believes in him shall not perish but have eternal life.",
@@ -118,7 +120,9 @@ class TestIntegrationPatterns:
         bot.start_time = 1234567880000  # Set in milliseconds
         bot.api_keys = {}
 
-        with patch("biblebot.bot.get_bible_text") as mock_get_bible:
+        with patch(
+            "biblebot.bot.get_bible_text", new_callable=AsyncMock
+        ) as mock_get_bible:
             mock_get_bible.return_value = ("Test verse", "John 3:16")
 
             # Send messages from different rooms (only use configured rooms)
@@ -157,7 +161,9 @@ class TestIntegrationPatterns:
         bot._room_id_set = set(mock_config["matrix_room_ids"])
         bot.start_time = 1234567880000  # Converted to milliseconds
 
-        with patch("biblebot.bot.get_bible_text") as mock_get_bible:
+        with patch(
+            "biblebot.bot.get_bible_text", new_callable=AsyncMock
+        ) as mock_get_bible:
             mock_get_bible.return_value = ("Test verse", "John 3:16")
 
             # Create events from multiple users simultaneously
@@ -200,13 +206,13 @@ class TestIntegrationPatterns:
         async def failing_api(*args, **kwargs):
             """
             Test helper that simulates a transient API: fails on the first two calls, then returns a recovered verse.
-            
+
             Raises:
                 Exception: "API temporarily unavailable" for the first two invocations.
-            
+
             Returns:
                 tuple[str, str]: (verse_text, reference) once recovery occurs.
-            
+
             Notes:
                 - Increments an external `call_count` nonlocal each invocation.
                 - Accepts arbitrary positional and keyword arguments (ignored).
@@ -217,7 +223,10 @@ class TestIntegrationPatterns:
                 raise Exception("API temporarily unavailable")
             return ("Recovered verse", "John 3:16")
 
-        with patch("biblebot.bot.get_bible_text", side_effect=failing_api):
+        with patch(
+            "biblebot.bot.get_bible_text", new_callable=AsyncMock
+        ) as mock_get_bible:
+            mock_get_bible.side_effect = failing_api
             # Send multiple requests during failure period
             for i in range(5):
                 event = MagicMock()
@@ -314,7 +323,9 @@ class TestIntegrationPatterns:
         bot._room_id_set = set(mock_config["matrix_room_ids"])
         bot.start_time = 1234567880000  # Converted to milliseconds
 
-        with patch("biblebot.bot.get_bible_text") as mock_get_bible:
+        with patch(
+            "biblebot.bot.get_bible_text", new_callable=AsyncMock
+        ) as mock_get_bible:
             mock_get_bible.return_value = (
                 "In the beginning was the Word, and the Word was with God, and the Word was God.",
                 "John 1:1 (NIV)",
@@ -350,7 +361,7 @@ class TestIntegrationPatterns:
     async def test_api_integration_chain(self, mock_config, mock_client):
         """
         Verify the full API integration chain: when the external Bible API returns a verse, the bot calls the API and sends a reaction and a formatted message to the room.
-        
+
         The test:
         - Creates a BibleBot with mocked config and client and populates its room set and start time.
         - Patches `make_api_request` to return a sample verse payload (text, reference, version).
@@ -365,7 +376,7 @@ class TestIntegrationPatterns:
         bot.start_time = 1234567880000  # Converted to milliseconds
 
         # Mock the entire API chain
-        with patch("biblebot.bot.make_api_request") as mock_api:
+        with patch("biblebot.bot.make_api_request", new_callable=AsyncMock) as mock_api:
             mock_api.return_value = {
                 "text": "For God so loved the world that he gave his one and only Son",
                 "reference": "John 3:16",
@@ -391,7 +402,7 @@ class TestIntegrationPatterns:
     async def test_configuration_integration(self, mock_config, mock_client):
         """
         Validate that BibleBot accepts and preserves essential configuration variants.
-        
+
         Creates Bot instances for both a minimal and a fuller configuration, seeds the bot's internal room set as tests normally expect, and asserts that critical fields (homeserver and user_id) from each input config are retained on the bot instance.
         """
         # Test with various configuration scenarios
@@ -441,7 +452,9 @@ class TestIntegrationPatterns:
         # Test operation
         bot.start_time = 1234567880000  # Converted to milliseconds
 
-        with patch("biblebot.bot.get_bible_text") as mock_get_bible:
+        with patch(
+            "biblebot.bot.get_bible_text", new_callable=AsyncMock
+        ) as mock_get_bible:
             mock_get_bible.return_value = ("Test verse", "John 3:16")
 
             event = MagicMock()
@@ -471,7 +484,9 @@ class TestIntegrationPatterns:
         bot.start_time = 1234567880000  # Use milliseconds
         bot.api_keys = {}
 
-        with patch("biblebot.bot.get_bible_text") as mock_get_bible:
+        with patch(
+            "biblebot.bot.get_bible_text", new_callable=AsyncMock
+        ) as mock_get_bible:
             mock_get_bible.return_value = ("Test verse", "John 3:16")
 
             # Create many concurrent requests
@@ -508,7 +523,9 @@ class TestIntegrationPatterns:
         bot.api_keys = {}
 
         # Scenario 1: Bible study group
-        with patch("biblebot.bot.get_bible_text") as mock_get_bible:
+        with patch(
+            "biblebot.bot.get_bible_text", new_callable=AsyncMock
+        ) as mock_get_bible:
             mock_get_bible.side_effect = [
                 ("In the beginning was the Word", "John 1:1"),
                 ("For God so loved the world", "John 3:16"),
@@ -539,7 +556,9 @@ class TestIntegrationPatterns:
         # Scenario 2: Quick reference lookup
         mock_client.room_send.reset_mock()
 
-        with patch("biblebot.bot.get_bible_text") as mock_get_bible:
+        with patch(
+            "biblebot.bot.get_bible_text", new_callable=AsyncMock
+        ) as mock_get_bible:
             mock_get_bible.return_value = (
                 "Love is patient, love is kind",
                 "1 Corinthians 13:4",

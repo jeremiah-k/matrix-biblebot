@@ -196,7 +196,7 @@ EXECUTABLE_NAME = "biblebot"
 WARNING_EXECUTABLE_NOT_FOUND = "Warning: Could not find biblebot executable in PATH. Using current Python interpreter."
 DIR_TOOLS = "tools"
 DIR_SHARE = "share"
-SERVICE_FILE_NAME = "biblebot.service"
+
 FILE_MODE_READ = "r"
 
 # Systemctl commands

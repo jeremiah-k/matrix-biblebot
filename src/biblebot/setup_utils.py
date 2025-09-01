@@ -24,7 +24,6 @@ from .constants import (
     FILE_MODE_READ,
     LOCAL_SHARE_DIR,
     PIPX_VENV_PATH,
-    SERVICE_FILE_NAME,
     SERVICE_NAME,
     SYSTEMCTL_ARG_IS_ENABLED,
     SYSTEMCTL_ARG_USER,
@@ -129,19 +128,19 @@ def get_template_service_path():
             SERVICE_NAME,
         ),
         # Check one level up from the package directory
-        os.path.join(os.path.dirname(package_dir), DIR_TOOLS, SERVICE_FILE_NAME),
+        os.path.join(os.path.dirname(package_dir), DIR_TOOLS, SERVICE_NAME),
         # Check two levels up from the package directory (for development)
         os.path.join(
-            os.path.dirname(os.path.dirname(package_dir)), DIR_TOOLS, SERVICE_FILE_NAME
+            os.path.dirname(os.path.dirname(package_dir)), DIR_TOOLS, SERVICE_NAME
         ),
         # Check in the repository root (for development)
         os.path.join(
             os.path.dirname(os.path.dirname(os.path.dirname(__file__))),
             DIR_TOOLS,
-            SERVICE_FILE_NAME,
+            SERVICE_NAME,
         ),
         # Check in the current directory (fallback)
-        os.path.join(os.getcwd(), DIR_TOOLS, SERVICE_FILE_NAME),
+        os.path.join(os.getcwd(), DIR_TOOLS, SERVICE_NAME),
     ]
 
     # Try each path until we find one that exists

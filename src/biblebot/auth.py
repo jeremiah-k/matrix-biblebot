@@ -19,6 +19,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Optional
 
+import aiohttp
 import nio.exceptions
 from nio import (
     AsyncClient,
@@ -351,9 +352,13 @@ async def discover_homeserver(
             logger.debug("DiscoveryInfoError, using provided homeserver URL")
     except asyncio.TimeoutError:
         logger.debug("Server discovery timed out; using provided homeserver URL")
-    except Exception:
+    except (
+        nio.exceptions.RemoteProtocolError,
+        nio.exceptions.RemoteTransportError,
+        aiohttp.ClientError,
+    ) as e:
         logger.debug(
-            MSG_SERVER_DISCOVERY_FAILED,
+            f"{MSG_SERVER_DISCOVERY_FAILED}: {type(e).__name__}: {e}",
             exc_info=True,
         )
     return homeserver
@@ -393,12 +398,14 @@ async def interactive_login(
     if not (hs.startswith(URL_PREFIX_HTTP) or hs.startswith(URL_PREFIX_HTTPS)):
         hs = URL_PREFIX_HTTPS + hs
 
-    user = username or input(PROMPT_USERNAME).strip()
-    if not user.startswith("@"):
-        from urllib.parse import urlparse
-
-        server_name = urlparse(hs).netloc
-        user = f"@{user}:{server_name}"
+    user_input = username or input(PROMPT_USERNAME).strip()
+    # If a bare localpart was provided, defer appending the server until after discovery.
+    localpart: Optional[str] = None
+    if user_input.startswith("@"):
+        user = user_input
+    else:
+        localpart = user_input
+        user = user_input  # provisional; corrected after discovery
 
     pwd = password or getpass.getpass(PROMPT_PASSWORD)
 
@@ -426,6 +433,13 @@ async def interactive_login(
     # Attempt server discovery to normalize homeserver URL
     hs = await discover_homeserver(client, hs)
     client.homeserver = hs
+    if localpart is not None:
+        from urllib.parse import urlparse
+
+        server_name = urlparse(hs).netloc
+        user = f"@{localpart}:{server_name}"
+        # Ensure client uses the corrected MXID for login
+        client.user = user
 
     logger.info(f"Logging in to {hs} as {user}")
     try:

@@ -589,7 +589,10 @@ class TestCLIMainFunction:
     ):
         """Test auth login command."""
         mock_exit.side_effect = SystemExit(0)
-        mock_login.return_value = asyncio.sleep(0)
+        # Return an awaitable that resolves to True (successful login)
+        future = asyncio.Future()
+        future.set_result(True)
+        mock_login.return_value = future
         mock_run.side_effect = _consume_coroutine
 
         with pytest.raises(SystemExit) as e:
@@ -740,8 +743,10 @@ class TestCLILegacyFlags:
     ):
         """Test legacy --auth-login flag."""
         mock_exists.return_value = True  # Config exists to avoid input prompt
-        # Mock successful login
-        mock_login.return_value = asyncio.sleep(0)
+        # Mock successful login (awaitable resolving to True)
+        future = asyncio.Future()
+        future.set_result(True)
+        mock_login.return_value = future
         mock_run.side_effect = _consume_coroutine
 
         cli.main()
@@ -760,7 +765,9 @@ class TestCLILegacyFlags:
     ):
         """Test legacy --auth-logout flag."""
         mock_exists.return_value = True  # Config exists to avoid input prompt
-        mock_logout.return_value = asyncio.sleep(0)
+        future = asyncio.Future()
+        future.set_result(True)
+        mock_logout.return_value = future
         mock_run.side_effect = _consume_coroutine
 
         cli.main()

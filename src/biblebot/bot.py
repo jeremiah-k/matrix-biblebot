@@ -9,6 +9,7 @@ from time import monotonic
 from urllib.parse import quote
 
 import aiohttp
+import nio.exceptions
 import yaml
 from dotenv import load_dotenv
 from nio import (
@@ -972,8 +973,11 @@ async def main(config_path=DEFAULT_CONFIG_FILENAME_MAIN):
                 logger.info("Uploading encryption keys...")
                 await client.keys_upload()
                 logger.info("Encryption keys uploaded")
-        except Exception:
-            logger.exception("Failed to upload E2EE keys")
+        except (
+            nio.exceptions.LocalProtocolError,
+            nio.exceptions.RemoteProtocolError,
+        ) as e:
+            logger.exception(f"Failed to upload E2EE keys: {e}")
 
     # Register event handlers
     logger.debug("Registering event handlers")

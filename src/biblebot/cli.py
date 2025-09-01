@@ -45,7 +45,12 @@ logger = logging.getLogger(LOGGER_NAME)
 
 
 # Wrapper to ease testing (tests can patch biblebot.cli.run_async)
-def run_async(coro):
+from typing import Awaitable, TypeVar
+
+T = TypeVar("T")
+
+
+def run_async(coro: Awaitable[T]) -> T:
     """
     Run an asyncio coroutine to completion using asyncio.run and return its result.
 

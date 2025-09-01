@@ -4,6 +4,7 @@ import json
 import os
 from unittest.mock import AsyncMock, MagicMock, patch
 
+import nio.exceptions
 import pytest
 
 from biblebot import auth
@@ -13,7 +14,7 @@ from biblebot import auth
 def temp_config_dir(tmp_path):
     """
     Pytest fixture that creates a temporary configuration directory and patches auth paths to use it.
-    
+
     Yields:
         pathlib.Path: Path to a temporary config directory (named "matrix-biblebot"). While yielded,
         auth.CONFIG_DIR, auth.CREDENTIALS_FILE, and auth.E2EE_STORE_DIR are patched to point inside
@@ -348,7 +349,9 @@ class TestDiscoverHomeserver:
     async def test_discover_homeserver_error(self):
         """Test homeserver discovery with error."""
         mock_client = AsyncMock()
-        mock_client.discovery_info.side_effect = Exception("Discovery failed")
+        mock_client.discovery_info.side_effect = nio.exceptions.RemoteProtocolError(
+            "Discovery failed"
+        )
 
         result = await auth.discover_homeserver(mock_client, "https://matrix.org")
 
@@ -649,7 +652,9 @@ class TestDiscoverHomeserverExceptions:
     async def test_discover_homeserver_exception(self):
         """Test homeserver discovery with exception."""
         mock_client = AsyncMock()
-        mock_client.discovery_info.side_effect = Exception("Network error")
+        mock_client.discovery_info.side_effect = nio.exceptions.RemoteTransportError(
+            "Network error"
+        )
 
         result = await auth.discover_homeserver(mock_client, "https://matrix.org")
 
