@@ -559,7 +559,9 @@ class TestMessageHandling:
 
             # Mock failed Bible text retrieval
             with patch.object(
-                bot, "get_bible_text", new=AsyncMock(return_value=(None, None))
+                bot,
+                "get_bible_text",
+                new=AsyncMock(side_effect=bot.PassageNotFound("Invalid passage")),
             ):
                 with patch.object(
                     bot_instance, "send_reaction", new=AsyncMock()
@@ -575,7 +577,10 @@ class TestMessageHandling:
                     mock_client.room_send.assert_called_once()
                     call_args = mock_client.room_send.call_args[0]
                     content = call_args[2]
-                    assert "Error: Failed to retrieve" in content["body"]
+                    assert (
+                        "Error: The requested passage could not be found"
+                        in content["body"]
+                    )
 
 
 class TestInviteHandling:

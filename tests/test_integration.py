@@ -498,8 +498,12 @@ class TestErrorPropagationIntegration:
         # Should propagate error gracefully
         assert result is None
 
+    @pytest.mark.asyncio
     async def test_api_error_propagation(self):
         """Test API errors propagate properly."""
+        # Clear cache to ensure we hit the API
+        bot._passage_cache.clear()
+
         with patch(
             "biblebot.bot.make_api_request", new=AsyncMock(return_value=None)
         ) as mock_api:
