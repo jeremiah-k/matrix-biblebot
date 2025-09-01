@@ -1,5 +1,6 @@
 import asyncio
 import html
+import json
 import logging
 import os
 import time
@@ -186,7 +187,11 @@ async def make_api_request(
             url, headers=headers, params=params, timeout=req_timeout
         ) as response:
             if response.status == 200:
-                return await response.json()
+                try:
+                    return await response.json()
+                except (aiohttp.ContentTypeError, json.JSONDecodeError):
+                    logger.exception(f"Invalid JSON from {url}")
+                    return None
             logger.warning(f"HTTP {response.status} fetching {url}")
             return None
 
@@ -346,8 +351,8 @@ class BibleBot:
                     )
             else:
                 logger.debug(f"Bot is already in room '{room_id_or_alias}'")
-        except Exception as e:
-            logger.error(f"Error joining room '{room_id_or_alias}': {e}")
+        except Exception:
+            logger.exception(f"Error joining room '{room_id_or_alias}'")
 
     async def ensure_joined_rooms(self):
         """
@@ -566,7 +571,7 @@ async def main(config_path=DEFAULT_CONFIG_FILENAME_MAIN):
     config = load_config(config_path)
     if not config:
         logger.error(f"Failed to load configuration from {config_path}")
-        return
+        raise RuntimeError(f"Failed to load configuration from {config_path}")
 
     matrix_access_token, api_keys = load_environment(config_path)
     creds = load_credentials()
@@ -605,7 +610,9 @@ async def main(config_path=DEFAULT_CONFIG_FILENAME_MAIN):
             logger.error(
                 "Legacy MATRIX_ACCESS_TOKEN is deprecated and does not support E2EE."
             )
-            return
+            raise RuntimeError(
+                "No credentials found. Please run 'biblebot auth login' first."
+            )
 
         # For legacy mode, we need homeserver and user from environment or config
         homeserver = os.getenv("MATRIX_HOMESERVER") or config.get("matrix_homeserver")
@@ -618,7 +625,9 @@ async def main(config_path=DEFAULT_CONFIG_FILENAME_MAIN):
             logger.error(
                 "Please run 'biblebot auth login' for the modern authentication flow"
             )
-            return
+            raise RuntimeError(
+                "Legacy mode requires MATRIX_HOMESERVER and MATRIX_USER_ID"
+            )
 
         client = AsyncClient(
             homeserver,
@@ -642,7 +651,7 @@ async def main(config_path=DEFAULT_CONFIG_FILENAME_MAIN):
         if not matrix_access_token:
             logger.error(ERROR_NO_CREDENTIALS_AND_TOKEN)
             logger.error(ERROR_AUTH_INSTRUCTIONS)
-            return
+            raise RuntimeError("No credentials or access token found")
         client.access_token = matrix_access_token
 
     # If E2EE is enabled, ensure keys are uploaded

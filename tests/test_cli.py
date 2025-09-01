@@ -404,20 +404,22 @@ class TestMainFunction:
         # ✅ CORRECT: Mock result object to be returned by bot.main
         mock_bot_main_result = Mock()
 
-        # ✅ CORRECT: Use new_callable=Mock to prevent AsyncMock auto-detection
         with patch("os.path.exists", side_effect=mock_exists):
-            with patch(
-                "biblebot.auth.load_credentials", side_effect=mock_load_credentials
-            ):
-                with patch(
-                    "biblebot.bot.main", spec=[], return_value=mock_bot_main_result
-                ):
-                    with patch("biblebot.cli.asyncio.run", spec=[], return_value=None):
+            # Credentials present => CLI should start the bot
+            with patch("biblebot.auth.load_credentials", return_value=Mock()):
+                # async no-op coroutine for the bot entrypoint
+                with patch("biblebot.bot.main", new=lambda *a, **k: asyncio.sleep(0)):
+                    # make asyncio.run execute the coroutine
+                    with patch(
+                        "biblebot.cli.asyncio.run", side_effect=_consume_coroutine
+                    ) as run_patch:
                         with patch("sys.argv", ["biblebot"]):
-                            with patch("biblebot.cli.main"):
-                                # We can't easily test the full main() function due to argument parsing
-                                # but we can test the logic components
-                                pass
+                            with patch(
+                                "builtins.input", return_value="y"
+                            ):  # User chooses to start bot
+                                # exercise the real cli.main
+                                cli.main()
+                        run_patch.assert_called_once()
 
     @patch("builtins.input")
     @patch("biblebot.cli.generate_config")
@@ -513,15 +515,20 @@ class TestCLIMainFunction:
     @patch("sys.argv", ["biblebot", "auth", "login"])
     @patch("builtins.input", return_value="https://matrix.org")
     @patch("getpass.getpass", return_value="password")
-    @patch("biblebot.auth.interactive_login", return_value=True)
+    @patch("biblebot.auth.interactive_login")
     @patch("biblebot.cli.asyncio.run")
     @patch("sys.exit")
     def test_auth_login_command(
         self, mock_exit, mock_run, mock_login, mock_getpass, mock_input, mock_exists
     ):
         """Test auth login command."""
-        # Mock asyncio.run to return the login result directly
-        mock_run.return_value = True
+
+        # Make login awaitable and have asyncio.run actually consume it
+        async def fake_login():
+            return True
+
+        mock_login.side_effect = fake_login
+        mock_run.side_effect = _consume_coroutine
         mock_exit.side_effect = SystemExit(0)
 
         with pytest.raises(SystemExit) as e:
@@ -672,8 +679,8 @@ class TestCLILegacyFlags:
     ):
         """Test legacy --auth-login flag."""
         mock_exists.return_value = True  # Config exists to avoid input prompt
-        # Mock asyncio.run to return the login result directly
-        mock_run.return_value = True
+        # Execute the coroutine passed into asyncio.run
+        mock_run.side_effect = _consume_coroutine
 
         cli.main()
         mock_warn.assert_called_once()

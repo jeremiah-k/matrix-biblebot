@@ -50,9 +50,9 @@ class TestSecurityPatterns:
         ]
 
         with patch(
-            "biblebot.bot.get_bible_text", new_callable=AsyncMock
-        ) as mock_get_bible:
-            mock_get_bible.return_value = ("For God so loved the world", "John 3:16")
+            "biblebot.bot.get_bible_text",
+            new=AsyncMock(return_value=("For God so loved the world", "John 3:16")),
+        ):
 
             for malicious_input in malicious_inputs:
                 event = MagicMock()
@@ -86,9 +86,9 @@ class TestSecurityPatterns:
         user_id = "@spammer:matrix.org"
 
         with patch(
-            "biblebot.bot.get_bible_text", new_callable=AsyncMock
-        ) as mock_get_bible:
-            mock_get_bible.return_value = ("Test verse", "John 3:16")
+            "biblebot.bot.get_bible_text",
+            new=AsyncMock(return_value=("Test verse", "John 3:16")),
+        ):
 
             # Send many rapid requests
             for i in range(20):
@@ -218,9 +218,9 @@ class TestSecurityPatterns:
         ]
 
         with patch(
-            "biblebot.bot.get_bible_text", new_callable=AsyncMock
-        ) as mock_get_bible:
-            mock_get_bible.return_value = ("Test verse", "John 3:16")
+            "biblebot.bot.get_bible_text",
+            new=AsyncMock(return_value=("Test verse", "John 3:16")),
+        ):
 
             # Test with valid user IDs
             for user_id in valid_user_ids:
@@ -299,9 +299,9 @@ class TestSecurityPatterns:
         ]
 
         with patch(
-            "biblebot.bot.get_bible_text", new_callable=AsyncMock
-        ) as mock_get_bible:
-            mock_get_bible.return_value = ("For God so loved the world", "John 3:16")
+            "biblebot.bot.get_bible_text",
+            new=AsyncMock(return_value=("For God so loved the world", "John 3:16")),
+        ):
 
             for filtered_input in filtered_inputs:
                 event = MagicMock()
@@ -331,11 +331,11 @@ class TestSecurityPatterns:
 
         # Mock API error with sensitive information
         with patch(
-            "biblebot.bot.get_bible_text", new_callable=AsyncMock
-        ) as mock_get_bible:
-            mock_get_bible.side_effect = Exception(
-                "Database connection failed: password=secret123"
-            )
+            "biblebot.bot.get_bible_text",
+            new=AsyncMock(
+                side_effect=Exception("Database connection failed: password=secret123")
+            ),
+        ):
 
             event = MagicMock()
             event.body = "John 3:16"
@@ -401,9 +401,8 @@ class TestSecurityPatterns:
 
         for response in malformed_responses:
             with patch(
-                "biblebot.bot.get_bible_text", new_callable=AsyncMock
-            ) as mock_get_bible:
-                mock_get_bible.return_value = response
+                "biblebot.bot.get_bible_text", new=AsyncMock(return_value=response)
+            ):
 
                 event = MagicMock()
                 event.body = "John 3:16"
@@ -430,9 +429,9 @@ class TestSecurityPatterns:
         ]
 
         with patch(
-            "biblebot.bot.get_bible_text", new_callable=AsyncMock
-        ) as mock_get_bible:
-            mock_get_bible.return_value = ("Test verse", "John 3:16")
+            "biblebot.bot.get_bible_text",
+            new=AsyncMock(return_value=("Test verse", "John 3:16")),
+        ):
 
             for intensive_input in resource_intensive_inputs:
                 event = MagicMock()
@@ -477,9 +476,9 @@ class TestSecurityPatterns:
         ]
 
         with patch(
-            "biblebot.bot.get_bible_text", new_callable=AsyncMock
-        ) as mock_get_bible:
-            mock_get_bible.return_value = ("Test verse", "John 3:16")
+            "biblebot.bot.get_bible_text",
+            new=AsyncMock(return_value=("Test verse", "John 3:16")),
+        ):
 
             for admin_attempt in admin_attempts:
                 event = MagicMock()

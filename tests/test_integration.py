@@ -261,11 +261,9 @@ class TestErrorScenarios:
                     access_token="test_token",
                 )
 
-                # This might raise an exception, which is expected
-                try:
+                # Should raise permission error on read-only directory
+                with pytest.raises((PermissionError, OSError)):
                     auth.save_credentials(creds)
-                except (PermissionError, OSError):
-                    pass  # Expected behavior
         finally:
             # Restore permissions for cleanup
             restricted_dir.chmod(0o755)

@@ -46,9 +46,9 @@ class TestScalabilityPatterns:
         bot.start_time = 1234567880000  # Converted to milliseconds
 
         with patch(
-            "biblebot.bot.get_bible_text", new_callable=AsyncMock
-        ) as mock_get_bible:
-            mock_get_bible.return_value = ("Test verse", "John 3:16")
+            "biblebot.bot.get_bible_text",
+            new=AsyncMock(return_value=("Test verse", "John 3:16")),
+        ):
 
             # Process large number of messages
             message_count = 100
@@ -93,9 +93,9 @@ class TestScalabilityPatterns:
         bot.start_time = 1234567880000  # Converted to milliseconds
 
         with patch(
-            "biblebot.bot.get_bible_text", new_callable=AsyncMock
-        ) as mock_get_bible:
-            mock_get_bible.return_value = ("Test verse", "John 3:16")
+            "biblebot.bot.get_bible_text",
+            new=AsyncMock(return_value=("Test verse", "John 3:16")),
+        ):
 
             # Simulate many concurrent users
             user_count = 50
@@ -143,9 +143,9 @@ class TestScalabilityPatterns:
         bot.start_time = 1234567880000  # Converted to milliseconds
 
         with patch(
-            "biblebot.bot.get_bible_text", new_callable=AsyncMock
-        ) as mock_get_bible:
-            mock_get_bible.return_value = ("Test verse", "John 3:16")
+            "biblebot.bot.get_bible_text",
+            new=AsyncMock(return_value=("Test verse", "John 3:16")),
+        ):
 
             # Send messages to multiple rooms
             room_count = 20
@@ -192,9 +192,9 @@ class TestScalabilityPatterns:
         bot.start_time = 1234567880000  # Converted to milliseconds
 
         with patch(
-            "biblebot.bot.get_bible_text", new_callable=AsyncMock
-        ) as mock_get_bible:
-            mock_get_bible.return_value = ("Test verse", "John 3:16")
+            "biblebot.bot.get_bible_text",
+            new=AsyncMock(return_value=("Test verse", "John 3:16")),
+        ):
 
             # Process many messages to test memory scaling
             for _batch in range(10):  # 10 batches
@@ -238,7 +238,7 @@ class TestScalabilityPatterns:
         # Track API call performance
         api_call_times = []
 
-        async def timed_api_call(*args, **kwargs):
+        async def timed_api_call():
             start = time.time()
             await asyncio.sleep(0.01)  # Simulate API latency
             end = time.time()
@@ -284,7 +284,7 @@ class TestScalabilityPatterns:
         active_connections = 0
         max_connections = 0
 
-        async def connection_tracking_api(*args, **kwargs):
+        async def connection_tracking_api():
             nonlocal active_connections, max_connections
             active_connections += 1
             max_connections = max(max_connections, active_connections)
@@ -328,9 +328,9 @@ class TestScalabilityPatterns:
         response_times = []
 
         with patch(
-            "biblebot.bot.get_bible_text", new_callable=AsyncMock
-        ) as mock_get_bible:
-            mock_get_bible.return_value = ("Test verse", "John 3:16")
+            "biblebot.bot.get_bible_text",
+            new=AsyncMock(return_value=("Test verse", "John 3:16")),
+        ):
 
             # Measure response times under increasing load
             for load_level in [10, 20, 30]:

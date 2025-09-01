@@ -209,6 +209,7 @@ def interactive_main():
             except Exception as e:
                 print(f"\n❌ Bot failed to start: {e}")
                 print("Check your configuration and try again.")
+                sys.exit(1)
         else:
             print(
                 "Consider running 'biblebot auth login' to upgrade to modern authentication."
@@ -235,6 +236,7 @@ def interactive_main():
             except Exception as e:
                 print(f"\n❌ Bot failed to start: {e}")
                 print("Check your configuration and try again.")
+                sys.exit(1)
         else:
             print(
                 "Bot not started. Use 'biblebot' to start or 'biblebot --help' for options."
