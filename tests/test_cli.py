@@ -48,9 +48,8 @@ def temp_config_dir(tmp_path):
 
 @pytest.fixture
 def mock_sample_files(tmp_path):
-    """Create mock sample config and env files."""
+    """Create mock sample config file."""
     sample_config = tmp_path / "sample_config.yaml"
-    sample_env = tmp_path / "sample.env"
 
     sample_config.write_text(
         """
@@ -58,17 +57,12 @@ matrix_homeserver: "https://matrix.org"
 matrix_user: "@bot:matrix.org"
 matrix_room_ids:
   - "!room:matrix.org"
+api_keys:
+  esv: null
 """
     )
 
-    sample_env.write_text(
-        """
-MATRIX_ACCESS_TOKEN=your_token_here
-ESV_API_KEY=your_esv_key_here
-"""
-    )
-
-    return sample_config, sample_env
+    return sample_config, None
 
 
 class TestGetDefaultConfigPath:
@@ -100,7 +94,7 @@ class TestGenerateConfig:
 
         assert result is True
         assert config_path.exists()
-        # No longer generates .env file
+        # Only generates config.yaml, no .env file
         assert not (temp_config_dir / ".env").exists()
 
     @patch.object(cli, "get_sample_config_path")
@@ -866,24 +860,24 @@ class TestCLIUtilityFunctions:
         expected = tmp_path / "config.yaml"
         assert path == expected
 
+    @patch("os.chmod")
     @patch("os.makedirs")
     @patch("shutil.copy2")
     @patch("biblebot.tools.get_sample_config_path")
-    @patch("biblebot.tools.get_sample_env_path")
     @patch("os.path.exists")
     def test_generate_config_success(
-        self, mock_exists, mock_get_env, mock_get_config, mock_copy, mock_makedirs
+        self, mock_exists, mock_get_config, mock_copy, mock_makedirs, mock_chmod
     ):
         """Test successful config generation."""
         mock_exists.return_value = False  # No existing files
         mock_get_config.return_value = "/sample/config.yaml"
-        mock_get_env.return_value = "/sample/.env"
 
         result = cli.generate_config("/test/config.yaml")
 
         assert result is True
         mock_makedirs.assert_called_once()
-        assert mock_copy.call_count == 2
+        assert mock_copy.call_count == 1  # Only copies config.yaml now
+        mock_chmod.assert_called_once_with("/test/config.yaml", 0o600)
 
     @patch("builtins.print")
     @patch("os.path.exists")

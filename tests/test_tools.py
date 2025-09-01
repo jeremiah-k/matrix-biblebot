@@ -21,15 +21,6 @@ class TestSampleFilePaths:
         assert path.exists()
         assert path.is_file()
 
-    def test_get_sample_env_path(self):
-        """Test getting sample env path."""
-        path_str = tools.get_sample_env_path()
-        path = Path(path_str)
-
-        assert path.name == "sample.env"
-        assert path.exists()
-        assert path.is_file()
-
     def test_sample_config_content(self):
         """Test that sample config contains expected content."""
         path_str = tools.get_sample_config_path()
@@ -41,21 +32,9 @@ class TestSampleFilePaths:
         assert "matrix_user" in content
         assert "matrix_room_ids" in content
 
-    def test_sample_env_content(self):
-        """Test that sample env contains expected content."""
-        path_str = tools.get_sample_env_path()
-        path = Path(path_str)
-        content = path.read_text()
-
-        # Check for key environment variables
-        assert "MATRIX_ACCESS_TOKEN" in content
-        assert "ESV_API_KEY" in content
-
-        # Should contain placeholder values
-        assert (
-            "your_esv_api_key_here" in content
-            or "your_bots_matrix_access_token_here" in content
-        )
+        # Check for API keys section
+        assert "api_keys" in content
+        assert "esv" in content
 
 
 class TestPackageStructure:
@@ -74,12 +53,10 @@ class TestPackageStructure:
         # Get the package directory
         package_dir = Path(tools.__file__).parent
 
-        # Check for sample files
+        # Check for sample config file (no longer includes .env)
         sample_config = package_dir / "sample_config.yaml"
-        sample_env = package_dir / "sample.env"
 
         assert sample_config.exists(), f"Sample config not found at {sample_config}"
-        assert sample_env.exists(), f"Sample env not found at {sample_env}"
 
 
 class TestFilePermissions:
@@ -88,20 +65,15 @@ class TestFilePermissions:
     def test_sample_files_readable(self):
         """Test that sample files are readable."""
         config_path_str = tools.get_sample_config_path()
-        env_path_str = tools.get_sample_env_path()
         config_path = Path(config_path_str)
-        env_path = Path(env_path_str)
 
-        # Should be able to read the files
+        # Should be able to read the config file
         assert config_path.is_file()
-        assert env_path.is_file()
 
         # Should be able to read content
         config_content = config_path.read_text()
-        env_content = env_path.read_text()
 
         assert len(config_content) > 0
-        assert len(env_content) > 0
 
     @pytest.mark.skipif(
         os.name == "nt", reason="Unix permissions not applicable on Windows"
@@ -109,17 +81,13 @@ class TestFilePermissions:
     def test_sample_files_permissions(self):
         """Test that sample files have appropriate permissions."""
         config_path_str = tools.get_sample_config_path()
-        env_path_str = tools.get_sample_env_path()
         config_path = Path(config_path_str)
-        env_path = Path(env_path_str)
 
         # Get file permissions
         config_stat = config_path.stat()
-        env_stat = env_path.stat()
 
         # Should be readable by owner and group (at minimum)
         assert config_stat.st_mode & 0o400  # Owner read
-        assert env_stat.st_mode & 0o400  # Owner read
 
 
 class TestSampleConfigValidation:
@@ -184,69 +152,6 @@ class TestSampleConfigValidation:
         assert ":" in user  # Should have server part
 
 
-class TestSampleEnvValidation:
-    """Test that sample env file is properly formatted."""
-
-    def test_sample_env_format(self):
-        """Test that sample env file follows proper .env format."""
-        env_path_str = tools.get_sample_env_path()
-        env_path = Path(env_path_str)
-        content = env_path.read_text()
-
-        lines = content.strip().split("\n")
-
-        for line in lines:
-            line = line.strip()
-
-            # Skip empty lines and comments
-            if not line or line.startswith("#"):
-                continue
-
-            # Should be in KEY=VALUE format
-            assert "=" in line, f"Line '{line}' is not in KEY=VALUE format"
-
-            key, value = line.split("=", 1)
-            assert key.strip(), f"Empty key in line '{line}'"
-            # Value can be empty (placeholder)
-
-    def test_sample_env_required_variables(self):
-        """Test that sample env contains required environment variables."""
-        env_path_str = tools.get_sample_env_path()
-        env_path = Path(env_path_str)
-        content = env_path.read_text()
-
-        required_vars = ["MATRIX_ACCESS_TOKEN", "ESV_API_KEY"]
-
-        for var in required_vars:
-            assert (
-                var in content
-            ), f"Required environment variable '{var}' missing from sample env"
-
-    def test_sample_env_placeholder_values(self):
-        """Test that sample env contains placeholder values."""
-        env_path_str = tools.get_sample_env_path()
-        env_path = Path(env_path_str)
-        content = env_path.read_text()
-
-        # Should contain placeholder text to guide users
-        placeholder_indicators = [
-            "your_esv_api_key_here",
-            "your_bots_matrix_access_token_here",
-            "your_token_here",
-            "your_key_here",
-            "replace_with",
-            "example",
-            "TODO",
-        ]
-
-        has_placeholder = any(
-            indicator in content.lower() for indicator in placeholder_indicators
-        )
-        assert (
-            has_placeholder
-        ), "Sample env should contain placeholder values to guide users"
-
-
 class TestErrorHandling:
     """Test error handling in tools module."""
 
@@ -255,14 +160,11 @@ class TestErrorHandling:
         """Test behavior when sample files are missing."""
         mock_exists.return_value = False
 
-        # Should still return paths even if files don't exist
+        # Should still return path even if file doesn't exist
         config_path_str = tools.get_sample_config_path()
-        env_path_str = tools.get_sample_env_path()
 
         assert isinstance(config_path_str, str)
-        assert isinstance(env_path_str, str)
         assert "sample_config.yaml" in config_path_str
-        assert "sample.env" in env_path_str
 
 
 class TestIntegration:
@@ -271,20 +173,18 @@ class TestIntegration:
     def test_tools_importable_from_cli(self):
         """Test that tools module can be imported by CLI module."""
         try:
-            from biblebot.cli import get_sample_config_path, get_sample_env_path
+            from biblebot.cli import get_sample_config_path
 
-            # Should be able to call the functions
+            # Should be able to call the function
             config_path_str = get_sample_config_path()
-            env_path_str = get_sample_env_path()
 
             assert isinstance(config_path_str, str)
-            assert isinstance(env_path_str, str)
 
         except ImportError as e:
             pytest.fail(f"Could not import tools functions from CLI: {e}")
 
     def test_sample_files_usable_by_cli(self):
-        """Test that sample files can be used by CLI generate_config function."""
+        """Test that sample config file can be used by CLI generate_config function."""
         import shutil
         import tempfile
 
@@ -292,28 +192,19 @@ class TestIntegration:
         with tempfile.TemporaryDirectory() as temp_dir:
             temp_path = Path(temp_dir)
 
-            # Get sample file paths
+            # Get sample config file path
             sample_config_str = tools.get_sample_config_path()
-            sample_env_str = tools.get_sample_env_path()
             sample_config = Path(sample_config_str)
-            sample_env = Path(sample_env_str)
 
-            # Copy sample files (simulating CLI generate_config)
+            # Copy sample config file (simulating CLI generate_config)
             target_config = temp_path / "config.yaml"
-            target_env = temp_path / ".env"
 
             shutil.copy2(sample_config, target_config)
-            shutil.copy2(sample_env, target_env)
 
-            # Verify files were copied successfully
+            # Verify file was copied successfully
             assert target_config.exists()
-            assert target_env.exists()
 
             # Verify content is preserved
             original_config = sample_config.read_text()
             copied_config = target_config.read_text()
             assert original_config == copied_config
-
-            original_env = sample_env.read_text()
-            copied_env = target_env.read_text()
-            assert original_env == copied_env

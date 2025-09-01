@@ -43,32 +43,30 @@ class TestEndToEndWorkflow:
 
         # Test config generation
         with patch("biblebot.tools.get_sample_config_path") as mock_config:
-            with patch("biblebot.tools.get_sample_env_path") as mock_env:
-                sample_config = temp_workspace / "sample_config.yaml"
-                sample_env = temp_workspace / "sample.env"
+            sample_config = temp_workspace / "sample_config.yaml"
 
-                # Create sample files
-                sample_config.write_text(
-                    """
+            # Create sample config file with API keys section
+            sample_config.write_text(
+                """
 matrix_homeserver: "https://example.matrix.org"
 matrix_user: "@bot:example.org"
 matrix_room_ids:
   - "!example:matrix.org"
-matrix:
-  e2ee:
-    enabled: false
+e2ee:
+  enabled: false
+api_keys:
+  esv: null
 """
-                )
-                sample_env.write_text("MATRIX_ACCESS_TOKEN=your_token_here\n")
+            )
 
-                mock_config.return_value = sample_config
-                mock_env.return_value = sample_env
+            mock_config.return_value = sample_config
 
-                result = cli.generate_config(str(target_config))
+            result = cli.generate_config(str(target_config))
 
-                assert result is True
-                assert target_config.exists()
-                assert (target_dir / ".env").exists()
+            assert result is True
+            assert target_config.exists()
+            # No longer generates .env file
+            assert not (target_dir / ".env").exists()
 
     @pytest.mark.asyncio
     async def test_authentication_workflow(self, temp_workspace):
