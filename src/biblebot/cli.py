@@ -13,6 +13,19 @@ from . import __version__
 from .auth import interactive_login, interactive_logout, load_credentials
 from .bot import main as bot_main
 from .constants import (
+    CLI_ACTION_STORE_TRUE,
+    CLI_ACTION_VERSION,
+    CLI_ARG_CONFIG,
+    CLI_ARG_GENERATE_CONFIG,
+    CLI_ARG_INSTALL_SERVICE,
+    CLI_ARG_LOG_LEVEL,
+    CLI_ARG_VERSION,
+    CLI_ARG_YES_LONG,
+    CLI_ARG_YES_SHORT,
+    CLI_DESCRIPTION,
+    CLI_HELP_CONFIG,
+    CLI_HELP_LOG_LEVEL,
+    CLI_HELP_YES,
     CONFIG_DIR,
     DEFAULT_CONFIG_FILENAME,
     DEFAULT_ENV_FILENAME,
@@ -74,7 +87,7 @@ def main():
 
     # Main parser
     parser = argparse.ArgumentParser(
-        description="BibleBot for Matrix - A Bible verse bot with E2EE support",
+        description=CLI_DESCRIPTION,
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
@@ -91,35 +104,35 @@ Legacy flags (deprecated):
 
     # Global arguments
     parser.add_argument(
-        "--config",
+        CLI_ARG_CONFIG,
         default=str(default_config_path),
-        help=f"Path to config file (default: {default_config_path})",
+        help=CLI_HELP_CONFIG.format(default_config_path),
     )
     parser.add_argument(
-        "--log-level",
+        CLI_ARG_LOG_LEVEL,
         choices=LOG_LEVELS,
         default=DEFAULT_LOG_LEVEL,
-        help=f"Set logging level (default: {DEFAULT_LOG_LEVEL})",
+        help=CLI_HELP_LOG_LEVEL.format(DEFAULT_LOG_LEVEL),
     )
     parser.add_argument(
-        "--version", action="version", version=f"BibleBot {__version__}"
+        CLI_ARG_VERSION, action=CLI_ACTION_VERSION, version=f"BibleBot {__version__}"
     )
     parser.add_argument(
-        "-y",
-        "--yes",
-        action="store_true",
-        help="Automatically agree to prompts (useful in CI/non-interactive environments)",
+        CLI_ARG_YES_SHORT,
+        CLI_ARG_YES_LONG,
+        action=CLI_ACTION_STORE_TRUE,
+        help=CLI_HELP_YES,
     )
 
     # Legacy flags for backward compatibility (deprecated)
     parser.add_argument(
-        "--generate-config",
-        action="store_true",
+        CLI_ARG_GENERATE_CONFIG,
+        action=CLI_ACTION_STORE_TRUE,
         help=argparse.SUPPRESS,  # Hide from help but keep functional
     )
     parser.add_argument(
-        "--install-service",
-        action="store_true",
+        CLI_ARG_INSTALL_SERVICE,
+        action=CLI_ACTION_STORE_TRUE,
         help=argparse.SUPPRESS,
     )
     parser.add_argument(

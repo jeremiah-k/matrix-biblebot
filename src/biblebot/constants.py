@@ -164,6 +164,29 @@ RESPONSE_YES_PREFIX = "y"
 
 # Discovery API attribute
 DISCOVERY_ATTR_HOMESERVER_URL = "homeserver_url"
+
+# CLI argument names and descriptions
+CLI_DESCRIPTION = "BibleBot for Matrix - A Bible verse bot with E2EE support"
+CLI_ARG_CONFIG = "--config"
+CLI_ARG_LOG_LEVEL = "--log-level"
+CLI_ARG_VERSION = "--version"
+CLI_ARG_YES_SHORT = "-y"
+CLI_ARG_YES_LONG = "--yes"
+CLI_ARG_GENERATE_CONFIG = "--generate-config"
+CLI_ARG_INSTALL_SERVICE = "--install-service"
+
+# CLI help messages
+CLI_HELP_CONFIG = "Path to config file (default: {})"
+CLI_HELP_LOG_LEVEL = "Set logging level (default: {})"
+CLI_HELP_YES = (
+    "Automatically agree to prompts (useful in CI/non-interactive environments)"
+)
+CLI_HELP_GENERATE_CONFIG = "Generate sample configuration files"
+CLI_HELP_INSTALL_SERVICE = "Install systemd user service"
+
+# CLI actions
+CLI_ACTION_STORE_TRUE = "store_true"
+CLI_ACTION_VERSION = "version"
 SUCCESS_SERVICE_INSTALLED = "Service installed successfully"
 
 # Info messages
