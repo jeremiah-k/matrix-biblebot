@@ -449,7 +449,7 @@ class TestInteractiveLogout:
 
     @pytest.mark.asyncio
     @patch.object(auth, "load_credentials")
-    @patch("shutil.rmtree")
+    @patch("biblebot.auth.shutil.rmtree")
     async def test_interactive_logout_success(
         self, mock_rmtree, mock_load_creds, temp_config_dir
     ):
@@ -522,7 +522,7 @@ class TestInteractiveLogout:
             result = await auth.interactive_logout()
 
             assert result is True  # Should still succeed despite server error
-            # Note: close() may not be called on server error
+            mock_client.close.assert_called_once()
 
 
 class TestE2EEStatusFunctions:

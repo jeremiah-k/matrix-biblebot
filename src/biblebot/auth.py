@@ -139,6 +139,7 @@ def check_e2ee_status() -> dict:
         "store_exists": False,
         "platform_supported": True,
         "error": None,
+        "ready": False,
     }
 
     # Check platform support

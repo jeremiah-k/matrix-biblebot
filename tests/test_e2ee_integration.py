@@ -85,7 +85,8 @@ class TestE2EEStatus:
             mock_find_spec.return_value = MagicMock()  # Mock olm module found
 
             with patch("biblebot.auth.load_credentials", return_value=mock_credentials):
-                with patch("pathlib.Path.exists", return_value=True):
+                with patch("biblebot.auth.E2EE_STORE_DIR") as mock_store:
+                    mock_store.exists.return_value = True
                     status = check_e2ee_status()
 
                     assert status["dependencies_installed"] is True
@@ -106,20 +107,14 @@ class TestE2EEStoreManagement:
         mock_mkdir.assert_called_with(parents=True, exist_ok=True)
 
     @patch("biblebot.auth.os.chmod")
-    @patch("biblebot.auth.os.makedirs")
-    @patch("biblebot.auth.os.path.exists", return_value=False)
-    @patch("sys.platform", "linux")
-    def test_get_store_dir_sets_permissions(
-        self, mock_exists, mock_makedirs, mock_chmod
-    ):
+    @patch("biblebot.auth.E2EE_STORE_DIR")
+    def test_get_store_dir_sets_permissions(self, mock_store_dir, mock_chmod):
         """Test that E2EE store directory permissions are set correctly on Unix."""
+        mock_store_dir.mkdir = MagicMock()
         store_dir = get_store_dir()
 
         assert store_dir is not None
-        mock_chmod.assert_called_once()
-        # Verify secure permissions (0o700 = owner read/write/execute only)
-        call_args = mock_chmod.call_args
-        assert call_args[0][1] == 0o700
+        mock_chmod.assert_called_once_with(mock_store_dir, 0o700)
 
 
 class TestPrintE2EEStatus:
@@ -170,6 +165,7 @@ class TestPrintE2EEStatus:
 class TestDiscoverHomeserver:
     """Test homeserver discovery functionality."""
 
+    @pytest.mark.asyncio
     async def test_discover_homeserver_success(self):
         """Test successful homeserver discovery."""
 
@@ -186,6 +182,7 @@ class TestDiscoverHomeserver:
         assert result == "https://matrix.org"
         mock_client.discovery_info.assert_called_once()
 
+    @pytest.mark.asyncio
     async def test_discover_homeserver_timeout(self):
         """Test homeserver discovery with timeout."""
         import asyncio
@@ -201,6 +198,7 @@ class TestDiscoverHomeserver:
         # Should return the original homeserver on timeout
         assert result == "matrix.org"
 
+    @pytest.mark.asyncio
     async def test_discover_homeserver_error(self):
         """Test homeserver discovery with error."""
         from nio import DiscoveryInfoError

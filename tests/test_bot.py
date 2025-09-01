@@ -144,48 +144,40 @@ class TestAPIRequests:
     """Test API request functionality."""
 
     @pytest.mark.asyncio
-    async def test_make_api_request_success(self, aiohttp_client):
+    async def test_make_api_request_success(self):
         """Test successful API request."""
         mock_response_data = {"text": "Test verse", "reference": "Test 1:1"}
 
-        async def handler(request):
-            return web.json_response(mock_response_data)
+        with patch("aiohttp.ClientSession.get") as mock_get:
+            mock_response = AsyncMock()
+            mock_response.json.return_value = mock_response_data
+            mock_response.status = 200
+            mock_get.return_value.__aenter__.return_value = mock_response
 
-        app = web.Application()
-        app.router.add_get("/", handler)
-        client = await aiohttp_client(app)
-
-        result = await bot.make_api_request("/", session=client)
-        assert result == mock_response_data
+            result = await bot.make_api_request("/test")
+            assert result == mock_response_data
 
     @pytest.mark.asyncio
-    async def test_make_api_request_http_error(self, aiohttp_client):
+    async def test_make_api_request_http_error(self):
         """Test API request with HTTP error."""
 
-        async def handler(request):
-            return web.Response(status=404)
+        with patch("aiohttp.ClientSession.get") as mock_get:
+            mock_response = AsyncMock()
+            mock_response.status = 404
+            mock_get.return_value.__aenter__.return_value = mock_response
 
-        app = web.Application()
-        app.router.add_get("/", handler)
-        client = await aiohttp_client(app)
-
-        result = await bot.make_api_request("/", session=client)
-        assert result is None
+            result = await bot.make_api_request("/test")
+            assert result is None
 
     @pytest.mark.asyncio
-    async def test_make_api_request_timeout(self, aiohttp_client):
+    async def test_make_api_request_timeout(self):
         """Test API request with timeout."""
 
-        async def handler(request):
-            await asyncio.sleep(0.2)
-            return web.Response(text="ok")
+        with patch("aiohttp.ClientSession.get") as mock_get:
+            mock_get.side_effect = asyncio.TimeoutError()
 
-        app = web.Application()
-        app.router.add_get("/", handler)
-        client = await aiohttp_client(app)
-
-        result = await bot.make_api_request("/", timeout=0.1, session=client)
-        assert result is None
+            result = await bot.make_api_request("/test", timeout=0.1)
+            assert result is None
 
 
 class TestBibleTextRetrieval:

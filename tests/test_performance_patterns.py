@@ -5,7 +5,6 @@ Tests performance characteristics, memory usage, and scalability patterns.
 
 import asyncio
 import gc
-import resource
 import time
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -57,7 +56,7 @@ class TestPerformancePatterns:
                 events.append(event)
 
             # Measure processing time
-            start_time = time.time()
+            start_time = time.perf_counter()
 
             # Process events concurrently with proper room configuration
             tasks = []
@@ -69,7 +68,7 @@ class TestPerformancePatterns:
 
             await asyncio.gather(*tasks)
 
-            end_time = time.time()
+            end_time = time.perf_counter()
             processing_time = end_time - start_time
 
             # Performance assertions
@@ -82,7 +81,8 @@ class TestPerformancePatterns:
 
     async def test_memory_usage_patterns(self, mock_config, mock_client):
         """Test memory usage patterns and garbage collection."""
-        # Get initial memory usage using resource module
+        # Get initial memory usage using resource module (skip if unavailable)
+        resource = pytest.importorskip("resource")
         initial_memory = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
 
         bot = BibleBot(config=mock_config, client=mock_client)
@@ -97,7 +97,9 @@ class TestPerformancePatterns:
                 event.sender = f"@user{i}:matrix.org"
                 event.server_timestamp = int(time.time() * 1000)
 
-                await bot.on_room_message(MagicMock(), event)
+                room = MagicMock()
+                room.room_id = mock_config["matrix_room_ids"][0]
+                await bot.on_room_message(room, event)
 
         # Force garbage collection
         gc.collect()
@@ -122,7 +124,7 @@ class TestPerformancePatterns:
         # Mock API with varying response times
         call_count = 0
 
-        async def mock_api_call(*args, **kwargs):
+        async def mock_api_call(*_args, **_kwargs):
             nonlocal call_count
             call_count += 1
             # Simulate varying API response times
@@ -144,9 +146,9 @@ class TestPerformancePatterns:
                 tasks.append(task)
 
             # Measure concurrent processing time
-            start_time = time.time()
+            start_time = time.perf_counter()
             await asyncio.gather(*tasks)
-            end_time = time.time()
+            end_time = time.perf_counter()
 
             processing_time = end_time - start_time
 
@@ -163,8 +165,8 @@ class TestPerformancePatterns:
         # Mock rate-limited API
         request_times = []
 
-        async def rate_limited_api(*args, **kwargs):
-            request_times.append(time.time())
+        async def rate_limited_api(*_args, **_kwargs):
+            request_times.append(time.perf_counter())
             # Simulate rate limiting delay
             await asyncio.sleep(0.1)
             return ("Rate limited verse", "John 3:16")
@@ -183,17 +185,14 @@ class TestPerformancePatterns:
                 task = bot.on_room_message(room, event)
                 tasks.append(task)
 
+            start = time.perf_counter()
             await asyncio.gather(*tasks)
+            duration = time.perf_counter() - start
 
             # Verify requests were processed
             assert len(request_times) == 5
-            # Check that requests were processed concurrently (not sequentially)
-            time_spread = max(request_times) - min(request_times)
-            # Sequential would be ~0.4s (4 * 0.1s delay between requests); concurrent should be much less
-            # Allow headroom in CI or loaded systems
-            assert (
-                time_spread < 0.5
-            )  # Concurrent execution should have small time spread
+            # Sequential ≈ 0.5s (5 × 0.1); concurrent should be well under that.
+            assert duration < 0.5
 
     async def test_large_message_handling(self, mock_config, mock_client):
         """Test handling of large message content."""
@@ -209,9 +208,9 @@ class TestPerformancePatterns:
             mock_get_bible.return_value = ("In the beginning was the Word", "John 1:1")
 
             # Should handle large messages without issues
-            start_time = time.time()
+            start_time = time.perf_counter()
             await bot.on_room_message(MagicMock(), event)
-            end_time = time.time()
+            end_time = time.perf_counter()
 
             processing_time = end_time - start_time
             assert processing_time < 1.0  # Should process quickly even with large input
@@ -223,11 +222,11 @@ class TestPerformancePatterns:
         # Mock API that fails then recovers
         call_count = 0
 
-        async def failing_api(*args, **kwargs):
+        async def failing_api(*_args, **_kwargs):
             nonlocal call_count
             call_count += 1
             if call_count <= 3:
-                raise Exception("API Error")
+                raise RuntimeError("API Error")
             return ("Recovered verse", "John 3:16")
 
         with patch("biblebot.bot.get_bible_text", side_effect=failing_api):
@@ -243,9 +242,9 @@ class TestPerformancePatterns:
                 tasks.append(task)
 
             # Should handle errors gracefully without hanging
-            start_time = time.time()
+            start_time = time.perf_counter()
             await asyncio.gather(*tasks, return_exceptions=True)
-            end_time = time.time()
+            end_time = time.perf_counter()
 
             processing_time = end_time - start_time
             assert processing_time < 5.0  # Should complete quickly even with errors
@@ -259,7 +258,7 @@ class TestPerformancePatterns:
             bots.append(bot)
 
         # Simulate cleanup
-        start_time = time.time()
+        start_time = time.perf_counter()
         for bot in bots:
             # Simulate cleanup operations
             bot.client = None
@@ -267,7 +266,7 @@ class TestPerformancePatterns:
 
         # Force garbage collection
         gc.collect()
-        end_time = time.time()
+        end_time = time.perf_counter()
 
         cleanup_time = end_time - start_time
         assert cleanup_time < 1.0  # Cleanup should be fast
@@ -275,15 +274,15 @@ class TestPerformancePatterns:
     async def test_startup_performance(self, mock_config, mock_client):
         """Test bot startup and initialization performance."""
         # Measure bot initialization time
-        start_time = time.time()
+        start_time = time.perf_counter()
 
         bot = BibleBot(config=mock_config, client=mock_client)
 
-        end_time = time.time()
+        end_time = time.perf_counter()
         initialization_time = end_time - start_time
 
-        # Initialization should be fast
-        assert initialization_time < 0.1  # Should initialize in under 100ms
+        # Initialization should be fast (relaxed for CI)
+        assert initialization_time < 0.3  # Should initialize in under 300ms
         assert bot.client is not None
         assert bot.config is not None
 

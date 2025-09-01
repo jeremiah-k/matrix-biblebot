@@ -191,7 +191,7 @@ def test_save_credentials(mock_replace, mock_temp_file):
     mock_temp = MagicMock()
     mock_temp.name = "/tmp/temp_file"
     mock_temp.fileno.return_value = 3  # Return a valid file descriptor
-    mock_temp_file.return_value.__enter__.return_value = mock_temp
+    mock_temp_file.return_value = mock_temp
 
     # Mock os.fsync to avoid the fileno issue
     with patch("biblebot.auth.os.fsync") as mock_fsync:

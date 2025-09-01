@@ -627,6 +627,11 @@ class BibleBot:
             # Formatting text to ensure one space between words
             text = " ".join(text.replace("\n", " ").split())
 
+            # Check if text is empty after cleaning
+            if not text:
+                logger.warning(f"Retrieved empty passage text for: {passage}")
+                return
+
             # Send a checkmark reaction to the original message
             await self.send_reaction(room_id, event.event_id, REACTION_OK)
 
