@@ -6,6 +6,7 @@ from biblebot.auth import (
     check_e2ee_status,
     get_store_dir,
 )
+from tests.test_constants import TEST_HOMESERVER, TEST_ROOM_ID, TEST_USER_ID
 
 
 @pytest.fixture
@@ -14,8 +15,8 @@ def mock_credentials():
     from biblebot.auth import Credentials
 
     return Credentials(
-        homeserver="https://matrix.org",
-        user_id="@biblebot:matrix.org",
+        homeserver=TEST_HOMESERVER,
+        user_id=TEST_USER_ID,
         access_token="test_token",
         device_id="TEST_DEVICE",
     )
@@ -26,14 +27,14 @@ def e2ee_config():
     """E2EE configuration fixture."""
     return {
         "matrix": {
-            "homeserver": "https://matrix.org",
-            "bot_user_id": "@biblebot:matrix.org",
+            "homeserver": TEST_HOMESERVER,
+            "bot_user_id": TEST_USER_ID,
             "e2ee": {
                 "enabled": True,
                 "store_path": "/test/store",
             },
         },
-        "matrix_room_ids": ["!room:matrix.org"],
+        "matrix_room_ids": [TEST_ROOM_ID],
     }
 
 
@@ -174,12 +175,12 @@ class TestDiscoverHomeserver:
         # Mock AsyncClient and discovery response
         mock_client = MagicMock()
         mock_discovery_response = MagicMock()
-        mock_discovery_response.homeserver_url = "https://matrix.org"
+        mock_discovery_response.homeserver_url = TEST_HOMESERVER
         mock_client.discovery_info = AsyncMock(return_value=mock_discovery_response)
 
-        result = await discover_homeserver(mock_client, "https://matrix.org")
+        result = await discover_homeserver(mock_client, TEST_HOMESERVER)
 
-        assert result == "https://matrix.org"
+        assert result == TEST_HOMESERVER
         mock_client.discovery_info.assert_called_once()
 
     @pytest.mark.asyncio
@@ -229,8 +230,8 @@ class TestInteractiveLogin:
 
         # Mock user inputs
         mock_input.side_effect = [
-            "https://matrix.org",  # homeserver
-            "@biblebot:matrix.org",  # username
+            TEST_HOMESERVER,  # homeserver
+            TEST_USER_ID,  # username
         ]
         mock_getpass.return_value = "password123"
 
@@ -249,7 +250,7 @@ class TestInteractiveLogin:
             with patch("biblebot.auth.save_credentials") as mock_save:
                 with patch(
                     "biblebot.auth.discover_homeserver",
-                    return_value="https://matrix.org",
+                    return_value=TEST_HOMESERVER,
                 ):
                     result = await interactive_login()
 
@@ -285,8 +286,8 @@ class TestInteractiveLogin:
         from biblebot.auth import interactive_login
 
         mock_input.side_effect = [
-            "https://matrix.org",
-            "@biblebot:matrix.org",
+            TEST_HOMESERVER,
+            TEST_USER_ID,
         ]
         mock_getpass.return_value = "password123"
 

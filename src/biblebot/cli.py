@@ -19,6 +19,12 @@ from .constants import (
     DEFAULT_LOG_LEVEL,
     LOG_LEVELS,
     LOGGER_NAME,
+    MSG_CONFIG_EXISTS,
+    MSG_DELETE_EXISTING,
+    MSG_EDIT_FILES,
+    MSG_GENERATED_CONFIG,
+    MSG_GENERATED_ENV,
+    MSG_NO_CONFIG_PROMPT,
     SUCCESS_CONFIG_GENERATED,
 )
 from .tools import get_sample_config_path, get_sample_env_path
@@ -38,12 +44,12 @@ def generate_config(config_path):
     env_path = os.path.join(config_dir, DEFAULT_ENV_FILENAME)
 
     if os.path.exists(config_path) or os.path.exists(env_path):
-        print("A config or .env file already exists at:")
+        print(MSG_CONFIG_EXISTS)
         if os.path.exists(config_path):
             print(f"  {config_path}")
         if os.path.exists(env_path):
             print(f"  {env_path}")
-        print("If you want to regenerate them, delete the existing files first.")
+        print(MSG_DELETE_EXISTING)
         print("Otherwise, edit the current files in place.")
         return False
 
@@ -55,9 +61,9 @@ def generate_config(config_path):
     shutil.copy2(sample_config_path, config_path)
     shutil.copy2(sample_env_path, env_path)
 
-    print(f"Generated sample config file at: {config_path}")
-    print(f"Generated sample .env file at: {env_path}")
-    print("Please edit these files with your Matrix credentials and API keys.")
+    print(MSG_GENERATED_CONFIG.format(config_path))
+    print(MSG_GENERATED_ENV.format(env_path))
+    print(MSG_EDIT_FILES)
     print(SUCCESS_CONFIG_GENERATED)
     return True
 
@@ -300,13 +306,7 @@ Legacy flags (deprecated):
             resp = "y"
         else:
             try:
-                resp = (
-                    input(
-                        "No config found. Generate sample config and .env here now? [y/N]: "
-                    )
-                    .strip()
-                    .lower()
-                )
+                resp = input(MSG_NO_CONFIG_PROMPT).strip().lower()
             except (EOFError, KeyboardInterrupt):
                 resp = "n"
         if resp.startswith("y"):

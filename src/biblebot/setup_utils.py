@@ -14,8 +14,15 @@ from pathlib import Path
 
 from .constants import (
     APP_NAME,
+    CONFIG_SUBDIR,
+    DEFAULT_CONFIG_PATH,
+    ENV_USER,
+    ENV_USERNAME,
+    LOCAL_SHARE_DIR,
+    PIPX_VENV_PATH,
     SERVICE_NAME,
     SYSTEMCTL_COMMANDS,
+    SYSTEMCTL_PATH,
     SYSTEMD_USER_DIR,
 )
 from .tools import get_service_template_path
@@ -84,15 +91,15 @@ def get_template_service_path():
         os.path.join(sys.prefix, "share", APP_NAME, "tools", SERVICE_NAME),
         # Check in the user site-packages location
         os.path.join(
-            os.path.expanduser("~"), ".local", "share", "biblebot", "biblebot.service"
+            os.path.expanduser("~"), LOCAL_SHARE_DIR, "share", APP_NAME, SERVICE_NAME
         ),
         os.path.join(
             os.path.expanduser("~"),
-            ".local",
+            LOCAL_SHARE_DIR,
             "share",
-            "biblebot",
+            APP_NAME,
             "tools",
-            "biblebot.service",
+            SERVICE_NAME,
         ),
         # Check one level up from the package directory
         os.path.join(os.path.dirname(package_dir), "tools", "biblebot.service"),
@@ -190,7 +197,7 @@ def is_service_enabled():
     """
     try:
         result = subprocess.run(
-            ["/usr/bin/systemctl", "--user", "is-enabled", SERVICE_NAME],
+            [SYSTEMCTL_PATH, "--user", "is-enabled", SERVICE_NAME],
             check=False,  # Don't raise an exception if the service is not enabled
             capture_output=True,
             text=True,
@@ -208,7 +215,7 @@ def is_service_active():
     """
     try:
         result = subprocess.run(
-            ["/usr/bin/systemctl", "--user", "is-active", SERVICE_NAME],
+            [SYSTEMCTL_PATH, "--user", "is-active", SERVICE_NAME],
             check=False,  # Don't raise an exception if the service is not active
             capture_output=True,
             text=True,
@@ -235,7 +242,7 @@ def create_service_file():
     service_dir.mkdir(parents=True, exist_ok=True)
 
     # Create config directory if it doesn't exist
-    config_dir = Path.home() / ".config" / "matrix-biblebot"
+    config_dir = Path.home() / CONFIG_SUBDIR / APP_NAME
     config_dir.mkdir(parents=True, exist_ok=True)
 
     # Get the template service content
@@ -251,7 +258,7 @@ def create_service_file():
         exec_cmd = f"{sys.executable} -m biblebot"
 
     # Replace ExecStart line to use discovered command and default config path
-    default_config = "%h/.config/matrix-biblebot/config.yaml"
+    default_config = DEFAULT_CONFIG_PATH
     new_lines = []
     for line in service_template.splitlines():
         if line.strip().startswith("ExecStart="):
@@ -274,7 +281,7 @@ def reload_daemon():
     """Reload the systemd user daemon."""
     try:
         # Using absolute path for security
-        subprocess.run(["/usr/bin/systemctl", "--user", "daemon-reload"], check=True)
+        subprocess.run([SYSTEMCTL_PATH, "--user", "daemon-reload"], check=True)
         print("Systemd user daemon reloaded")
         return True
     except subprocess.CalledProcessError as e:
@@ -318,7 +325,7 @@ def service_needs_update():
         return True, "Service file ExecStart does not match the current installation"
 
     # Check if the PATH environment includes pipx paths
-    if "%h/.local/pipx/venvs/matrix-biblebot/bin" not in existing_service:
+    if PIPX_VENV_PATH not in existing_service:
         return True, "Service file does not include pipx paths in PATH environment"
 
     # Check if the service file has been modified recently
@@ -357,7 +364,7 @@ def check_lingering_enabled():
         bool: True if lingering is enabled, False otherwise.
     """
     try:
-        username = os.environ.get("USER", os.environ.get("USERNAME"))
+        username = os.environ.get(ENV_USER, os.environ.get(ENV_USERNAME))
         result = subprocess.run(
             ["loginctl", "show-user", username, "--property=Linger"],
             check=False,
@@ -376,7 +383,7 @@ def enable_lingering():
         bool: True if lingering was enabled successfully, False otherwise.
     """
     try:
-        username = os.environ.get("USER", os.environ.get("USERNAME"))
+        username = os.environ.get(ENV_USER, os.environ.get(ENV_USERNAME))
         print(f"Enabling lingering for user {username}...")
         result = subprocess.run(
             ["sudo", "loginctl", "enable-linger", username],
@@ -402,9 +409,7 @@ def start_service():
         bool: True if successful, False otherwise.
     """
     try:
-        subprocess.run(
-            ["/usr/bin/systemctl", "--user", "start", SERVICE_NAME], check=True
-        )
+        subprocess.run([SYSTEMCTL_PATH, "--user", "start", SERVICE_NAME], check=True)
         return True
     except subprocess.CalledProcessError as e:
         print(f"Error starting service: {e}")
@@ -422,7 +427,7 @@ def show_service_status():
     """
     try:
         result = subprocess.run(
-            ["/usr/bin/systemctl", "--user", "status", SERVICE_NAME],
+            [SYSTEMCTL_PATH, "--user", "status", SERVICE_NAME],
             check=False,  # Don't raise an exception if the service is not active
             capture_output=True,
             text=True,
@@ -515,7 +520,7 @@ def install_service():
         ):
             try:
                 subprocess.run(
-                    ["/usr/bin/systemctl", "--user", "enable", SERVICE_NAME],
+                    [SYSTEMCTL_PATH, "--user", "enable", SERVICE_NAME],
                     check=True,
                 )
                 print("Service enabled successfully")
@@ -532,7 +537,7 @@ def install_service():
         if input("Do you want to restart the service? (y/n): ").lower().startswith("y"):
             try:
                 subprocess.run(
-                    ["/usr/bin/systemctl", "--user", "restart", SERVICE_NAME],
+                    [SYSTEMCTL_PATH, "--user", "restart", SERVICE_NAME],
                     check=True,
                 )
                 print("Service restarted successfully")

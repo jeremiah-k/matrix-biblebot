@@ -15,9 +15,12 @@ from tests.test_constants import (
     TEST_HOMESERVER,
     TEST_MESSAGE_BODY,
     TEST_MESSAGE_SENDER,
+    TEST_RESOLVED_ROOM_ID,
     TEST_ROOM_ID,
     TEST_ROOM_IDS,
+    TEST_UNKNOWN_ROOM_ID,
     TEST_USER_ID,
+    TEST_WRONG_ROOM_ID,
 )
 
 
@@ -291,7 +294,7 @@ class TestBibleBot:
 
             # Mock alias resolution response
             mock_response = MagicMock()
-            mock_response.room_id = "!resolved:matrix.org"
+            mock_response.room_id = TEST_RESOLVED_ROOM_ID
             mock_client.room_resolve_alias.return_value = mock_response
 
             bot_instance = bot.BibleBot(config_with_alias)
@@ -300,7 +303,7 @@ class TestBibleBot:
             await bot_instance.resolve_aliases()
 
             # Check that alias was resolved and added to room IDs
-            assert "!resolved:matrix.org" in bot_instance.config["matrix_room_ids"]
+            assert TEST_RESOLVED_ROOM_ID in bot_instance.config["matrix_room_ids"]
             mock_client.room_resolve_alias.assert_called_once_with("#alias:matrix.org")
 
     @pytest.mark.asyncio
@@ -462,7 +465,7 @@ class TestMessageHandling:
             bot_instance.start_time = 1000
 
             mock_room = MagicMock()
-            mock_room.room_id = "!wrong_room:matrix.org"  # Not in config
+            mock_room.room_id = TEST_WRONG_ROOM_ID  # Not in config
 
             mock_event = MagicMock()
             mock_event.sender = TEST_MESSAGE_SENDER
@@ -506,7 +509,7 @@ class TestMessageHandling:
                     # Should send scripture message
                     mock_client.room_send.assert_called_once()
                     call_args = mock_client.room_send.call_args[0]
-                    assert call_args[0] == "!room:matrix.org"
+                    assert call_args[0] == TEST_ROOM_ID
                     assert call_args[1] == "m.room.message"
                     content = call_args[2]
                     assert "Test verse text" in content["body"]
@@ -530,7 +533,7 @@ class TestMessageHandling:
             with patch.object(bot, "get_bible_text", return_value=(None, None)):
                 with patch.object(bot_instance, "send_reaction") as mock_reaction:
                     await bot_instance.handle_scripture_command(
-                        "!room:matrix.org", "Invalid 99:99", "kjv", mock_event
+                        TEST_ROOM_ID, "Invalid 99:99", "kjv", mock_event
                     )
 
                     # Should not send reaction
@@ -557,14 +560,14 @@ class TestInviteHandling:
             bot_instance.client = mock_client
 
             mock_room = MagicMock()
-            mock_room.room_id = "!room1:matrix.org"  # In config
+            mock_room.room_id = TEST_ROOM_IDS[0]  # In config
 
             mock_event = MagicMock()
 
             with patch.object(bot_instance, "join_matrix_room") as mock_join:
                 await bot_instance.on_invite(mock_room, mock_event)
 
-                mock_join.assert_called_once_with("!room1:matrix.org")
+                mock_join.assert_called_once_with(TEST_ROOM_IDS[0])
 
     @pytest.mark.asyncio
     async def test_on_invite_non_configured_room(self, sample_config):
@@ -577,7 +580,7 @@ class TestInviteHandling:
             bot_instance.client = mock_client
 
             mock_room = MagicMock()
-            mock_room.room_id = "!unknown:matrix.org"  # Not in config
+            mock_room.room_id = TEST_UNKNOWN_ROOM_ID  # Not in config
 
             mock_event = MagicMock()
 
@@ -607,7 +610,7 @@ class TestE2EEFunctionality:
             bot_instance.client = mock_client
 
             mock_room = MagicMock()
-            mock_room.room_id = "!room:matrix.org"
+            mock_room.room_id = TEST_ROOM_ID
 
             mock_event = MagicMock()
             mock_event.event_id = "$failed_event:matrix.org"

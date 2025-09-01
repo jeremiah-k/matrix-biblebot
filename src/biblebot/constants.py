@@ -97,8 +97,40 @@ ERROR_E2EE_DEPS_MISSING = "E2EE dependencies not installed"
 
 # Success messages
 SUCCESS_CONFIG_GENERATED = "Configuration files generated successfully"
+
+# CLI messages
+MSG_CONFIG_EXISTS = "A config or .env file already exists at:"
+MSG_DELETE_EXISTING = "If you want to regenerate them, delete the existing files first."
+MSG_EDIT_FILES = "Please edit these files with your Matrix credentials and API keys."
+MSG_GENERATED_CONFIG = "Generated sample config file at: {}"
+MSG_GENERATED_ENV = "Generated sample .env file at: {}"
+MSG_NO_CONFIG_PROMPT = (
+    "No config found. Generate sample config and .env here now? [y/N]: "
+)
 SUCCESS_LOGIN_COMPLETE = "Login completed successfully"
 SUCCESS_LOGOUT_COMPLETE = "Logout completed successfully"
+
+# Bot error messages
+ERROR_NO_CREDENTIALS_AND_TOKEN = (
+    "No credentials.json and no MATRIX_ACCESS_TOKEN found."  # nosec B105
+)
+ERROR_AUTH_INSTRUCTIONS = (
+    "Run 'biblebot auth login' (preferred) or set MATRIX_ACCESS_TOKEN in .env"
+)
+
+# Default values
+DEFAULT_CONFIG_FILENAME_MAIN = "config.yaml"
+
+# Auth prompts
+PROMPT_HOMESERVER = "Matrix homeserver (e.g. https://matrix.org): "
+PROMPT_USERNAME = "Matrix username (e.g. @user:server.com): "
+
+# Environment variable names for system
+ENV_USER = "USER"
+ENV_USERNAME = "USERNAME"
+
+# File names
+SAMPLE_CONFIG_FILENAME = "sample_config.yaml"
 SUCCESS_SERVICE_INSTALLED = "Service installed successfully"
 
 # Info messages
@@ -122,6 +154,18 @@ CACHE_TTL_SECONDS = 3600  # 1 hour
 
 # Systemd paths and commands
 SYSTEMD_USER_DIR = Path.home() / ".config" / "systemd" / "user"
+SYSTEMCTL_PATH = "/usr/bin/systemctl"
+LOCAL_BIN_DIR = ".local"
+LOCAL_SHARE_DIR = ".local"
+CONFIG_SUBDIR = ".config"
+PIPX_VENV_PATH = "%h/.local/pipx/venvs/matrix-biblebot/bin"
+DEFAULT_CONFIG_PATH = "%h/.config/matrix-biblebot/config.yaml"
+WORKING_DIRECTORY = "%h/.config/matrix-biblebot"
+EXEC_START_TEMPLATE = (
+    "%h/.local/bin/biblebot --config %h/.config/matrix-biblebot/config.yaml"
+)
+PATH_ENVIRONMENT = "%h/.local/bin:%h/.local/pipx/venvs/matrix-biblebot/bin:/usr/local/bin:/usr/bin:/bin"
+
 SYSTEMCTL_COMMANDS = {
     "start": "systemctl --user start biblebot.service",
     "stop": "systemctl --user stop biblebot.service",

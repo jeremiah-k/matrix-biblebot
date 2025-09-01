@@ -37,6 +37,8 @@ from .constants import (
     LOGGER_NAME,
     LOGIN_TIMEOUT_SEC,
     MATRIX_DEVICE_NAME,
+    PROMPT_HOMESERVER,
+    PROMPT_USERNAME,
 )
 
 logger = logging.getLogger(LOGGER_NAME)
@@ -255,11 +257,11 @@ async def interactive_login(
             logger.info("\nLogin cancelled.")
             return False
 
-    hs = homeserver or input("Matrix homeserver (e.g. https://matrix.org): ").strip()
+    hs = homeserver or input(PROMPT_HOMESERVER).strip()
     if not (hs.startswith("http://") or hs.startswith("https://")):
         hs = "https://" + hs
 
-    user = username or input("Matrix username (e.g. @user:server.com): ").strip()
+    user = username or input(PROMPT_USERNAME).strip()
     if not user.startswith("@"):
         from urllib.parse import urlparse
 

@@ -7,6 +7,9 @@ TEST_ACCESS_TOKEN = "test_access_token"
 TEST_DEVICE_ID = "TEST_DEVICE"
 TEST_ROOM_ID = "!room:matrix.org"
 TEST_ROOM_IDS = ["!room1:matrix.org", "!room2:matrix.org"]
+TEST_RESOLVED_ROOM_ID = "!resolved:matrix.org"
+TEST_WRONG_ROOM_ID = "!wrong:matrix.org"
+TEST_UNKNOWN_ROOM_ID = "!unknown:matrix.org"
 
 # Test API responses
 TEST_BIBLE_TEXT = "Test verse"

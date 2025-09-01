@@ -28,10 +28,15 @@ from .constants import (
     CACHE_TTL_SECONDS,
     CONFIG_MATRIX_HOMESERVER,
     CONFIG_MATRIX_ROOM_IDS,
+    CONFIG_MATRIX_USER,
+    DEFAULT_CONFIG_FILENAME_MAIN,
+    DEFAULT_ENV_FILENAME,
     DEFAULT_TRANSLATION,
     ENV_ESV_API_KEY,
     ENV_MATRIX_ACCESS_TOKEN,
+    ERROR_AUTH_INSTRUCTIONS,
     ERROR_MISSING_CONFIG_KEYS,
+    ERROR_NO_CREDENTIALS_AND_TOKEN,
     ESV_API_URL,
     INFO_API_KEY_FOUND,
     INFO_LOADING_ENV,
@@ -96,14 +101,14 @@ def load_environment(config_path):
     """
     # Try to load .env from the same directory as the config file
     config_dir = os.path.dirname(config_path)
-    env_path = os.path.join(config_dir, ".env")
+    env_path = os.path.join(config_dir, DEFAULT_ENV_FILENAME)
 
     if os.path.exists(env_path):
         load_dotenv(env_path)
         logger.info(f"{INFO_LOADING_ENV} {env_path}")
     else:
         # Fall back to default .env in current directory if present
-        cwd_env = os.path.join(os.getcwd(), ".env")
+        cwd_env = os.path.join(os.getcwd(), DEFAULT_ENV_FILENAME)
         if os.path.exists(cwd_env):
             load_dotenv(cwd_env)
             logger.info(f"{INFO_LOADING_ENV} {cwd_env}")
@@ -511,7 +516,7 @@ class BibleBot:
 
 
 # Run bot
-async def main(config_path="config.yaml"):
+async def main(config_path=DEFAULT_CONFIG_FILENAME_MAIN):
     """
     Main entry point for the bot.
     Loads configuration, sets up the bot, and starts processing events.
@@ -558,10 +563,8 @@ async def main(config_path="config.yaml"):
         )
     else:
         if not matrix_access_token:
-            logger.error("No credentials.json and no MATRIX_ACCESS_TOKEN found.")
-            logger.error(
-                "Run 'biblebot auth login' (preferred) or set MATRIX_ACCESS_TOKEN in .env"
-            )
+            logger.error(ERROR_NO_CREDENTIALS_AND_TOKEN)
+            logger.error(ERROR_AUTH_INSTRUCTIONS)
             return
         client.access_token = matrix_access_token
 
