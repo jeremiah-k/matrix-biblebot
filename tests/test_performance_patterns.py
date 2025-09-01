@@ -37,7 +37,11 @@ class TestPerformancePatterns:
         return client
 
     async def test_message_processing_performance(self, mock_config, mock_client):
-        """Test message processing performance under load."""
+        """
+        Measure concurrent message-processing performance of BibleBot.
+        
+        Creates a BibleBot using the provided fixtures, patches the external Bible API to return a fixed verse, and processes 10 messages concurrently (from a generated set of 100). Asserts that processing completes within 5 seconds and that the client's room_send was invoked at least once per processed message.
+        """
         bot = BibleBot(config=mock_config, client=mock_client)
 
         # Populate room ID set for testing (normally done in initialize())
@@ -140,6 +144,14 @@ class TestPerformancePatterns:
         call_count = 0
 
         async def mock_api_call(*_args, **_kwargs):
+            """
+            Async test helper that simulates an external Bible API call.
+            
+            Increments the enclosing `call_count` nonlocal counter each invocation, waits for a short, variable delay to emulate network latency, and returns a tuple of (verse_text, verse_reference). The delay pattern is 0.1s plus (call_count % 3) * 0.05s.
+            
+            Returns:
+                tuple[str, str]: (verse_text, verse_reference), where `verse_text` is "Verse {n}" and `verse_reference` is "John 3:{n}" with `n` equal to the current call count.
+            """
             nonlocal call_count
             call_count += 1
             # Simulate varying API response times
@@ -185,6 +197,11 @@ class TestPerformancePatterns:
         request_times = []
 
         async def rate_limited_api(*_args, **_kwargs):
+            """
+            Async test helper that simulates a rate-limited Bible API call.
+            
+            Appends the current high-resolution timestamp to the external list `request_times`, waits ~0.1 seconds to mimic rate-limit delay, and returns a fixed (verse_text, verse_reference) tuple.
+            """
             request_times.append(time.perf_counter())
             # Simulate rate limiting delay
             await asyncio.sleep(0.1)
@@ -250,6 +267,15 @@ class TestPerformancePatterns:
         call_count = 0
 
         async def failing_api(*_args, **_kwargs):
+            """
+            Async test helper that simulates an unstable API: increments an external call counter, raises RuntimeError on the first three invocations, and returns a fixed Bible verse thereafter.
+            
+            Returns:
+                tuple: (verse_text, verse_reference) — e.g., ("Recovered verse", "John 3:16")
+            
+            Raises:
+                RuntimeError: for the first three calls to simulate transient failures.
+            """
             nonlocal call_count
             call_count += 1
             if call_count <= 3:
@@ -335,6 +361,12 @@ class TestPerformancePatterns:
         task_completed = False
 
         async def background_task():
+            """
+            Background task that waits briefly and then marks completion.
+            
+            Sleeps for 0.1 seconds asynchronously and sets the enclosing scope's `task_completed`
+            flag to True to signal that the background work finished.
+            """
             nonlocal task_completed
             await asyncio.sleep(0.1)
             task_completed = True

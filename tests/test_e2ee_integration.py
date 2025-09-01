@@ -11,7 +11,12 @@ from tests.test_constants import TEST_HOMESERVER, TEST_ROOM_ID, TEST_USER_ID
 
 @pytest.fixture
 def mock_credentials():
-    """Mock credentials fixture for E2EE testing."""
+    """
+    Pytest fixture that returns a Credentials object populated with deterministic test values for E2EE tests.
+    
+    Returns:
+        biblebot.auth.Credentials: Credentials with TEST_HOMESERVER, TEST_USER_ID, access_token "test_token", and device_id "TEST_DEVICE".
+    """
     from biblebot.auth import Credentials
 
     return Credentials(
@@ -24,7 +29,19 @@ def mock_credentials():
 
 @pytest.fixture
 def e2ee_config():
-    """E2EE configuration fixture."""
+    """
+    Pytest fixture returning a sample E2EE-enabled Matrix configuration used in tests.
+    
+    Returns:
+        dict: Configuration mapping with keys:
+            - "matrix": dict containing:
+                - "homeserver": test homeserver URL (TEST_HOMESERVER)
+                - "bot_user_id": test bot user id (TEST_USER_ID)
+                - "e2ee": dict with:
+                    - "enabled" (bool): whether E2EE is enabled (True)
+                    - "store_path" (str): path to the local E2EE store ("/test/store")
+            - "matrix_room_ids": list of test room IDs ([TEST_ROOM_ID])
+    """
     return {
         "matrix": {
             "homeserver": TEST_HOMESERVER,

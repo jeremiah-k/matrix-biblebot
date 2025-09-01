@@ -16,7 +16,18 @@ def mock_room():
 
 @pytest.fixture
 def mock_event():
-    """Mock Matrix event fixture for testing message events."""
+    """
+    Create a MagicMock representing a Matrix room message event for tests.
+    
+    The mock has these attributes set:
+    - sender: "@user:matrix.org"
+    - body: "John 3:16"
+    - source: {"content": {"body": "John 3:16"}} (raw event content)
+    - server_timestamp: 1234567890000
+    - event_id: "$event123"
+    
+    Use this fixture to simulate an incoming room message requesting a verse.
+    """
     mock_event = MagicMock()
     mock_event.sender = "@user:matrix.org"
     mock_event.body = "John 3:16"
@@ -42,7 +53,17 @@ def test_config():
 
 @pytest.fixture
 def mock_bible_bot():
-    """Mock BibleBot instance for testing."""
+    """
+    Create a MagicMock that mimics a BibleBot for tests.
+    
+    The mock is applied with spec=BibleBot and pre-populated with a minimal
+    config useful for message-handling tests:
+    - matrix.bot_user_id set to "@biblebot:matrix.org"
+    - matrix_room_ids set to ["!room:matrix.org"]
+    
+    Returns:
+        MagicMock: A mocked BibleBot instance with the above config.
+    """
     mock_bot = MagicMock(spec=BibleBot)
     mock_bot.config = {
         "matrix": {"bot_user_id": "@biblebot:matrix.org"},
@@ -55,7 +76,15 @@ def mock_bible_bot():
 async def test_bible_bot_message_handling(
     mock_get_bible_text, mock_room, mock_event, test_config
 ):
-    """Test that Bible verse requests are processed correctly."""
+    """
+    Verify that the bot processes a room message requesting a Bible verse and responds correctly.
+    
+    Sets up a real BibleBot with a mocked Matrix client and a mocked get_bible_text returning a verse. Ensures the bot:
+    - only handles messages from supported rooms (room id present in the bot's room set),
+    - ignores messages older than the bot's start_time (start_time set before the event timestamp here),
+    - fetches the Bible text via get_bible_text, and
+    - sends both a reaction and the verse message to the room (two room_send calls).
+    """
     # Mock Bible API response
     mock_get_bible_text.return_value = ("For God so loved the world...", "John 3:16")
 

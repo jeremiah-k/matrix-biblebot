@@ -17,6 +17,15 @@ if str(SRC_DIR) not in sys.path:
 
 
 def clear_env(keys):
+    """
+    Remove specified environment variables from os.environ and return their previous values.
+    
+    Parameters:
+        keys (iterable): An iterable of environment variable names (strings) to remove.
+    
+    Returns:
+        dict: A mapping of removed environment variable names to their previous values.
+    """
     removed = {}
     for k in keys:
         if k in os.environ:
@@ -27,9 +36,9 @@ def clear_env(keys):
 @pytest.fixture(autouse=True)
 def cleanup_asyncmock_objects(request):
     """
-    Force garbage collection after tests that commonly create AsyncMock objects to avoid "never awaited" RuntimeWarning messages.
-
-    This fixture is based on the mmrelay testing patterns and helps prevent AsyncMock warnings.
+    Force garbage collection after tests that commonly create AsyncMock objects to prevent "never awaited" RuntimeWarning messages.
+    
+    This autouse pytest fixture yields to the test and, after the test completes, triggers a garbage collection sweep for tests whose filename matches known AsyncMock-using patterns (e.g., "test_cli", "test_bot", "test_auth", "test_integration"). During cleanup it temporarily suppresses RuntimeWarning about unawaited coroutines so spurious warnings are not raised.
     """
     yield
 
@@ -56,15 +65,24 @@ def cleanup_asyncmock_objects(request):
 @pytest.fixture(autouse=True)
 def mock_submit_coro(monkeypatch):
     """
-    Mock any _submit_coro functions to properly await AsyncMock coroutines.
-
-    Based on mmrelay patterns to ensure AsyncMock coroutines are properly awaited.
+    Replace any existing `_submit_coro` function with a synchronous runner that awaits AsyncMock coroutines and returns a concurrent.futures.Future with the result or exception.
+    
+    This pytest fixture patches `biblebot.bot._submit_coro` (if present) with an implementation that:
+    - returns None for non-coroutines,
+    - creates a temporary event loop, runs the coroutine to completion, and returns a Future containing the result or exception.
+    
+    Yields control to the test; `monkeypatch` will restore the original attribute after the test.
     """
     import inspect
 
     def mock_submit(coro, loop=None):
         """
-        Synchronously runs a coroutine in a temporary event loop and returns a Future with its result or exception.
+        Run a coroutine to completion on a temporary event loop and return a Future containing its outcome.
+        
+        If `coro` is not a coroutine object, returns None. Otherwise this function creates a new event loop,
+        runs the coroutine to completion, and returns a concurrent.futures.Future that is already resolved
+        with the coroutine's result or completed with the coroutine's raised exception. The temporary loop
+        is closed before returning.
         """
         if not inspect.iscoroutine(coro):  # Not a coroutine
             return None
@@ -99,9 +117,14 @@ def mock_submit_coro(monkeypatch):
 @pytest.fixture(autouse=True)
 def comprehensive_cleanup(request):
     """
-    Comprehensive resource cleanup fixture for tests that create async resources.
-
-    Based on mmrelay patterns to ensure all system resources are properly cleaned up.
+    Autouse pytest fixture that performs comprehensive cleanup of asynchronous resources and forces garbage collection after a test.
+    
+    After yielding to the test, this fixture checks the test file name and test name for indicators that the test may have created async resources (patterns: "test_bot", "test_integration", "async", "main_function"). If matched, it attempts to obtain the running asyncio event loop, cancel any pending tasks, and wait for their completion. Any exceptions during cleanup are suppressed to avoid affecting test isolation.
+    
+    The fixture always suppresses specific RuntimeWarning/DeprecationWarning/ResourceWarning messages related to unawaited coroutines, missing event loops, and unclosed resources before calling gc.collect() to reclaim remaining resources.
+    
+    Parameters:
+        request: pytest fixture request object used to determine the current test's file and name.
     """
     yield
 

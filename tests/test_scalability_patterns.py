@@ -18,7 +18,16 @@ class TestScalabilityPatterns:
 
     @pytest.fixture
     def mock_config(self):
-        """Mock configuration for scalability tests."""
+        """
+        Provide a mocked Matrix-like configuration dictionary used by scalability tests.
+        
+        Returns a dict with keys:
+        - "homeserver": Home server URL.
+        - "user_id": Matrix user identifier.
+        - "access_token": Token used for authenticated requests.
+        - "device_id": Client device identifier.
+        - "matrix_room_ids": List of room IDs to initialize tests against.
+        """
         return {
             "homeserver": "https://matrix.org",
             "user_id": "@test:matrix.org",
@@ -29,7 +38,17 @@ class TestScalabilityPatterns:
 
     @pytest.fixture
     def mock_client(self):
-        """Mock Matrix client for scalability tests."""
+        """
+        Create and return a MagicMock representing a Matrix client for scalability tests.
+        
+        The mock exposes async methods used by the tests:
+        - `room_send`: AsyncMock for sending messages/reactions.
+        - `join`: AsyncMock for joining rooms.
+        - `sync`: AsyncMock for syncing the client.
+        
+        Returns:
+            MagicMock: A mock client with the async attributes above.
+        """
         client = MagicMock()
         client.room_send = AsyncMock()
         client.join = AsyncMock()
@@ -37,7 +56,18 @@ class TestScalabilityPatterns:
         return client
 
     async def test_high_volume_message_processing(self, mock_config, mock_client):
-        """Test processing high volume of messages."""
+        """
+        Run a high-volume message processing scenario and assert throughput and per-message I/O behavior.
+        
+        Simulates 100 concurrent incoming messages (from 10 distinct users) addressed to a single room while patching the external Bible text API to a deterministic response. Measures total processing time and messages-per-second, and verifies:
+        - total processing completes in under 30 seconds,
+        - throughput exceeds 3 messages/second,
+        - the mock Matrix client's room_send is invoked twice per message (reaction + response).
+        
+        Parameters:
+            mock_config: pytest fixture providing a Matrix-like configuration (includes "matrix_room_ids").
+            mock_client: pytest fixture providing a mocked Matrix client with AsyncMock methods (e.g., room_send).
+        """
         bot = BibleBot(config=mock_config, client=mock_client)
 
         # Populate room ID set for testing (normally done in initialize())
@@ -243,6 +273,11 @@ class TestScalabilityPatterns:
         api_call_times = []
 
         async def timed_api_call(*args, **kwargs):
+            """
+            Simulate a timed API call that sleeps ~10ms, records elapsed time, and returns a fixed verse.
+            
+            Accepts arbitrary positional and keyword arguments (ignored). Appends the measured call duration to the external list `api_call_times` and returns a tuple (verse_text, reference) — here ("Test verse", "John 3:16").
+            """
             start = time.perf_counter()
             await asyncio.sleep(0.01)  # Simulate API latency
             end = time.perf_counter()
@@ -289,6 +324,13 @@ class TestScalabilityPatterns:
         max_connections = 0
 
         async def connection_tracking_api(*args, **kwargs):
+            """
+            Async mock API that simulates a short external request while tracking concurrent connections.
+            
+            Increments the enclosing `active_connections` counter on entry and updates `max_connections` to record the peak concurrency, then awaits ~50ms to simulate latency before decrementing `active_connections` and returning a fixed (verse, reference) tuple ("Test verse", "John 3:16").
+            
+            Accepts arbitrary positional and keyword arguments (ignored).
+            """
             nonlocal active_connections, max_connections
             active_connections += 1
             max_connections = max(max_connections, active_connections)
@@ -320,7 +362,13 @@ class TestScalabilityPatterns:
             assert max_connections > 1  # Should use multiple connections
 
     async def test_response_time_under_load(self, mock_config, mock_client):
-        """Test response time degradation under load."""
+        """
+        Measure how BibleBot's per-batch response time changes as concurrent load increases.
+        
+        Runs three load levels (10, 20, 30 concurrent messages). For each level it executes 3 batches of concurrent calls to bot.on_room_message (with get_bible_text patched to a deterministic AsyncMock), records each batch's elapsed time, and computes the average batch time per load level. Asserts that three average times were collected and that the final average does not exceed five times the first average (permits moderate degradation under load).
+        
+        No return value. Side effects: invokes the bot's message handler concurrently using the provided mocked client and configuration.
+        """
         bot = BibleBot(config=mock_config, client=mock_client)
 
         # Populate room ID set for testing (normally done in initialize())
@@ -377,7 +425,16 @@ class TestScalabilityPatterns:
             )  # Allow 5x degradation instead of 3x
 
     async def test_throughput_scaling(self, mock_config, mock_client):
-        """Test throughput scaling characteristics."""
+        """
+        Measure throughput scaling for BibleBot by sending concurrent message batches of sizes 25, 50, and 75 and asserting stability.
+        
+        Sends each batch concurrently to bot.on_room_message, records processing time per batch, computes messages/sec for each batch, and asserts:
+        - Three throughput measurements are produced.
+        - Minimum throughput > 1.0 messages/second.
+        - Ratio of max to min throughput < 5.0 (reasonable variation across batch sizes).
+        
+        This test relies on a patched `get_bible_text` returning a deterministic response and uses the provided mock client/config.
+        """
         bot = BibleBot(config=mock_config, client=mock_client)
 
         # Populate room ID set for testing (normally done in initialize())
@@ -427,7 +484,11 @@ class TestScalabilityPatterns:
             assert max_throughput / min_throughput < 5.0  # Not more than 5x variation
 
     async def test_resource_cleanup_scaling(self, mock_config, mock_client):
-        """Test resource cleanup under scaling conditions."""
+        """
+        Test that resources are cleaned up under repeated load waves.
+        
+        Runs five waves of simulated message processing; each wave allocates 20 simulated resources and processes 20 messages concurrently via BibleBot.on_room_message. Every other wave triggers an explicit cleanup (clearing accumulated resources and running garbage collection). The test asserts that accumulated resources do not grow without bound (final count <= 40).
+        """
         bot = BibleBot(config=mock_config, client=mock_client)
 
         # Populate room ID set for testing (normally done in initialize())

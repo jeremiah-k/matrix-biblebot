@@ -59,7 +59,13 @@ class TestCachePerformance:
         assert bulk_get_time < 1.0  # Gets should be faster
 
     def test_cache_performance_case_insensitive(self):
-        """Test cache performance with case insensitive operations."""
+        """
+        Measure cache performance for case-insensitive keys.
+        
+        Clears the internal `_passage_cache` if present, writes 100 entries using mixed-case keys via `bot._cache_set`,
+        then reads them back using a different case via `bot._cache_get`. Asserts each read returns a non-None value
+        and that the set phase completes under 1.0 second and the get phase under 0.5 seconds.
+        """
         # Clear cache
         if hasattr(bot, "_passage_cache"):
             bot._passage_cache.clear()
@@ -176,7 +182,11 @@ class TestAPIPerformance:
 
     @patch("biblebot.bot.make_api_request", new_callable=AsyncMock)
     async def test_api_request_performance_single(self, mock_api):
-        """Test single API request performance."""
+        """
+        Verify that a single call to get_bible_text returns a non-None result and completes quickly when the underlying API is mocked.
+        
+        The test sets the API mock to return a simple verse payload, measures elapsed time for await bot.get_bible_text("Test 1:1", "kjv"), and asserts the call completes in under 1.0 second and returns a non-None value.
+        """
         mock_api.return_value = {"text": "Test verse", "reference": "Test 1:1"}
 
         start_time = time.perf_counter()
@@ -193,6 +203,15 @@ class TestAPIPerformance:
         mock_api.return_value = {"text": "Test verse", "reference": "Test 1:1"}
 
         async def single_request(verse):
+            """
+            Fetch the KJV text for a single test verse identifier.
+            
+            Parameters:
+                verse (str|int): Verse identifier used to build the reference (formatted into "Test {verse}:1").
+            
+            Returns:
+                str | None: The retrieved passage text (may be None if no text is found).
+            """
             return await bot.get_bible_text(f"Test {verse}:1", "kjv")
 
         start_time = time.perf_counter()
@@ -235,7 +254,11 @@ class TestConfigPerformance:
     """Test configuration loading performance."""
 
     def test_config_loading_performance(self, tmp_path):
-        """Test config loading performance."""
+        """
+        Measure that loading a YAML configuration via bot.load_config is performant.
+        
+        Creates a temporary YAML config file with minimal Matrix settings, then calls bot.load_config 100 times asserting each call returns a non-None configuration. Fails if the total load time exceeds 5.0 seconds. The test writes to the provided temporary path fixture.
+        """
         # Create test config
         config_data = {
             "matrix_homeserver": "https://matrix.org",
@@ -352,6 +375,11 @@ class TestStressPerformance:
         errors = []
 
         def normalize_worker():
+            """
+            Run 100 iterations of book-name normalization and record results.
+            
+            This worker repeatedly normalizes a fixed set of book-name variants by calling bot.normalize_book_name and appends each normalization result to the outer-scope list `results`. Any exception raised during processing is caught and appended to the outer-scope list `errors`. Intended for use as a threaded worker in concurrency/stress tests. Returns None.
+            """
             try:
                 for _i in range(100):
                     book_names = [

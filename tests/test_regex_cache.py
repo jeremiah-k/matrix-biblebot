@@ -49,7 +49,11 @@ def test_reference_patterns_basic():
     ],
 )
 def test_normalize_book_name(abbreviation, full_name):
-    """Tests the normalization of book abbreviations."""
+    """
+    Assert that a book abbreviation normalizes to the expected full book name.
+    
+    The test passes the given abbreviation (which may include extra whitespace, punctuation, numeric prefixes like "1", and varying case) to normalize_book_name and verifies the returned canonical book name equals full_name.
+    """
     assert botmod.normalize_book_name(abbreviation) == full_name
 
 
@@ -61,6 +65,21 @@ def test_passage_cache(monkeypatch):
     calls = {"n": 0}
 
     async def fake_req(url, headers=None, params=None):
+        """
+        Test helper that simulates an async HTTP request to a Bible API.
+        
+        Increments the outer `calls["n"]` counter and returns a fixed payload mimicking a kjv
+        response: a dict with "text" and "reference" keys (e.g., John 3:16). Intended for use
+        in tests that need a predictable async API response and to verify caching or call counts.
+        
+        Parameters:
+            url (str): Requested URL (ignored).
+            headers (dict|None): Request headers (ignored).
+            params (dict|None): Query parameters (ignored).
+        
+        Returns:
+            dict: Fixed response payload with keys "text" and "reference".
+        """
         calls["n"] += 1
         # Simulate bible-api.com kjv response
         return {"text": "For God so loved the world...", "reference": "John 3:16"}

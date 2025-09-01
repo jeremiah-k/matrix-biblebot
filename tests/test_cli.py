@@ -11,7 +11,17 @@ from biblebot import cli
 
 
 def _consume_coroutine(coro):
-    """Helper to properly consume a coroutine in tests."""
+    """
+    Execute a coroutine to completion using a fresh event loop, or return the input unchanged if it is not a coroutine.
+    
+    If `coro` is an awaitable coroutine, this runs it in a newly created event loop (mirroring asyncio.run semantics), cancels any pending tasks on that loop, waits for their completion, closes the loop, and returns the coroutine's result. Non-coroutine inputs are returned as-is.
+    
+    Parameters:
+        coro: A coroutine object or any other value. If a coroutine is provided, it will be executed and its result returned; otherwise the original value is returned.
+    
+    Raises:
+        Any exception raised by the executed coroutine is propagated.
+    """
     if asyncio.iscoroutine(coro):
         # Mirror asyncio.run behavior: always use a dedicated event loop
         loop = asyncio.new_event_loop()
@@ -31,7 +41,17 @@ def _consume_coroutine(coro):
 
 @pytest.fixture
 def temp_config_dir(tmp_path):
-    """Create a temporary config directory for testing."""
+    """
+    Create and return a temporary "matrix-biblebot" configuration directory inside the provided pytest tmp_path.
+    
+    The directory is created with parents=True and exist_ok=True so it is safe to call if the directory already exists.
+    
+    Parameters:
+        tmp_path (pathlib.Path): pytest temporary path fixture to contain the created config directory.
+    
+    Returns:
+        pathlib.Path: Path to the created "matrix-biblebot" directory.
+    """
     config_dir = tmp_path / "matrix-biblebot"
     config_dir.mkdir(parents=True, exist_ok=True)
     return config_dir
@@ -39,7 +59,20 @@ def temp_config_dir(tmp_path):
 
 @pytest.fixture
 def mock_sample_files(tmp_path):
-    """Create mock sample config file."""
+    """
+    Create a minimal sample YAML config file for tests.
+    
+    Creates a file named "sample_config.yaml" in the provided temporary path containing
+    a minimal Matrix and API-keys configuration used by tests.
+    
+    Parameters:
+        tmp_path (pathlib.Path): Temporary directory (pytest tmp_path fixture) where the
+            sample file will be written.
+    
+    Returns:
+        tuple[pathlib.Path, None]: A tuple with the path to the created sample config file
+        and None (second return value kept for historical test-signature compatibility).
+    """
     sample_config = tmp_path / "sample_config.yaml"
 
     sample_config.write_text(
@@ -327,11 +360,26 @@ class TestModernCommands:
 
         # ✅ CORRECT: Create simple replacement functions
         def mock_load_credentials():
+            """
+            Return a fresh MockCredentials instance for tests.
+            
+            Provides a newly constructed MockCredentials object to simulate stored credentials in test scenarios.
+            
+            Returns:
+                MockCredentials: a new mock credentials instance.
+            """
             return MockCredentials()
 
         print_e2ee_called = []
 
         def mock_print_e2ee_status():
+            """
+            Mock replacement for an E2EE status printer used in tests.
+            
+            When called, records that the function was invoked by appending True to the
+            shared list `print_e2ee_called`. Intended solely as a test spy; it does not
+            produce output or return a value.
+            """
             print_e2ee_called.append(True)
 
         # ✅ CORRECT: Use patch with explicit function replacement
@@ -375,6 +423,11 @@ class TestServiceCommands:
         install_called = []
 
         def mock_install_service():
+            """
+            Record that the service installation was invoked by appending True to the test's `install_called` list.
+            
+            This function is a lightweight test stub intended to be used as a mock replacement for a real install routine; it has no return value and only mutates the surrounding `install_called` list.
+            """
             install_called.append(True)
 
         # ✅ CORRECT: Use patch with explicit function replacement
@@ -396,9 +449,23 @@ class TestMainFunction:
 
         # ✅ CORRECT: Use explicit function replacement (mmrelay pattern)
         def mock_exists(path):
+            """
+            Mock replacement for os.path.exists that always reports the given path exists.
+            
+            Parameters:
+                path (str): Path to check (ignored by this mock).
+            
+            Returns:
+                bool: Always returns True.
+            """
             return True  # Config file exists
 
         def mock_load_credentials():
+            """
+            Simulate absence of stored credentials by returning None.
+            
+            Used in tests to mock a credential loader that indicates the user is not authenticated.
+            """
             return None  # No credentials
 
         # ✅ CORRECT: Mock result object to be returned by bot.main
@@ -785,7 +852,11 @@ class TestCLIBotOperation:
     @patch("biblebot.cli.detect_configuration_state")
     @patch("builtins.input")
     def test_bot_no_config_keyboard_interrupt(self, mock_input, mock_detect_state):
-        """Test bot operation when no config exists and user interrupts."""
+        """
+        Test that the CLI handles a KeyboardInterrupt gracefully when configuration requires authentication.
+        
+        Mocks the configuration detection to indicate authentication is required and simulates a KeyboardInterrupt raised during user input; running cli.main() must not propagate the exception.
+        """
         # Mock configuration state to need auth
         mock_detect_state.return_value = (
             "auth",
@@ -814,6 +885,19 @@ class TestCLIBotOperation:
         mock_load_creds.return_value = Mock()
 
         def _consume_then_interrupt(coro):
+            """
+            Run the given coroutine to completion and then raise KeyboardInterrupt.
+            
+            This helper executes `coro` using the test-suite's synchronous runner (`_consume_coroutine`)
+            and always raises a KeyboardInterrupt immediately after completion. Intended for simulating
+            an interrupt occurring right after an awaited task finishes in tests.
+            
+            Parameters:
+                coro: A coroutine or awaitable to run.
+            
+            Raises:
+                KeyboardInterrupt: Always raised after `coro` has been consumed.
+            """
             _consume_coroutine(coro)
             raise KeyboardInterrupt()
 
@@ -832,7 +916,11 @@ class TestCLIBotOperation:
     def test_bot_runtime_error(
         self, mock_run, mock_load_creds, mock_input, mock_detect_state
     ):
-        """Test bot operation with runtime error."""
+        """
+        Verify CLI handles a runtime error during bot startup by exiting with code 1.
+        
+        Mocks a ready configuration state and valid credentials, simulates the user choosing to start the bot, and makes the bot's run function raise an exception after consuming its coroutine. Asserts the CLI main() raises SystemExit with exit code 1 (graceful failure).
+        """
         # Mock configuration state to be ready
         mock_detect_state.return_value = (
             "ready",
@@ -841,6 +929,18 @@ class TestCLIBotOperation:
         mock_load_creds.return_value = Mock()
 
         def _consume_then_error(coro):
+            """
+            Run the given coroutine (or awaitable) to completion and then raise a Runtime error.
+            
+            This helper consumes the provided coroutine using _consume_coroutine and always raises Exception("Runtime error")
+            after the coroutine finishes. Useful in tests to simulate a task that completes but subsequently fails.
+            
+            Parameters:
+                coro: A coroutine or awaitable to be executed.
+            
+            Raises:
+                Exception: Always raises Exception with message "Runtime error" after running the coroutine.
+            """
             _consume_coroutine(coro)
             raise Exception("Runtime error")
 
