@@ -320,7 +320,19 @@ class TestBibleBot:
         ]
 
         with patch("biblebot.bot.AsyncClient") as mock_client_class:
-            mock_client = AsyncMock()
+            mock_client = AsyncMock(
+                spec=[
+                    "user_id",
+                    "device_id",
+                    "room_send",
+                    "join",
+                    "add_event_callback",
+                    "should_upload_keys",
+                    "restore_login",
+                    "access_token",
+                    "rooms",
+                ]
+            )
             mock_client_class.return_value = mock_client
 
             # Mock alias resolution response
@@ -341,7 +353,19 @@ class TestBibleBot:
     async def test_join_matrix_room_success(self, sample_config):
         """Test successful room joining."""
         with patch("biblebot.bot.AsyncClient") as mock_client_class:
-            mock_client = AsyncMock()
+            mock_client = AsyncMock(
+                spec=[
+                    "user_id",
+                    "device_id",
+                    "room_send",
+                    "join",
+                    "add_event_callback",
+                    "should_upload_keys",
+                    "restore_login",
+                    "access_token",
+                    "rooms",
+                ]
+            )
             mock_client_class.return_value = mock_client
             mock_client.rooms = {}  # Bot not in room yet
 
@@ -361,7 +385,19 @@ class TestBibleBot:
     async def test_join_matrix_room_already_joined(self, sample_config):
         """Test joining room when already a member."""
         with patch("biblebot.bot.AsyncClient") as mock_client_class:
-            mock_client = AsyncMock()
+            mock_client = AsyncMock(
+                spec=[
+                    "user_id",
+                    "device_id",
+                    "room_send",
+                    "join",
+                    "add_event_callback",
+                    "should_upload_keys",
+                    "restore_login",
+                    "access_token",
+                    "rooms",
+                ]
+            )
             mock_client_class.return_value = mock_client
             mock_client.rooms = {TEST_ROOM_IDS[0]: MagicMock()}  # Already in room
 
@@ -377,7 +413,19 @@ class TestBibleBot:
     async def test_send_reaction(self, sample_config):
         """Test sending reaction to message."""
         with patch("biblebot.bot.AsyncClient") as mock_client_class:
-            mock_client = AsyncMock()
+            mock_client = AsyncMock(
+                spec=[
+                    "user_id",
+                    "device_id",
+                    "room_send",
+                    "join",
+                    "add_event_callback",
+                    "should_upload_keys",
+                    "restore_login",
+                    "access_token",
+                    "rooms",
+                ]
+            )
             mock_client_class.return_value = mock_client
 
             bot_instance = bot.BibleBot(sample_config)
@@ -403,7 +451,19 @@ class TestMessageHandling:
     async def test_on_room_message_bible_reference(self, sample_config):
         """Test handling room message with Bible reference."""
         with patch("biblebot.bot.AsyncClient") as mock_client_class:
-            mock_client = AsyncMock()
+            mock_client = AsyncMock(
+                spec=[
+                    "user_id",
+                    "device_id",
+                    "room_send",
+                    "join",
+                    "add_event_callback",
+                    "should_upload_keys",
+                    "restore_login",
+                    "access_token",
+                    "rooms",
+                ]
+            )
             mock_client_class.return_value = mock_client
             mock_client.user_id = TEST_USER_ID
 
@@ -441,7 +501,19 @@ class TestMessageHandling:
     async def test_on_room_message_ignore_own_message(self, sample_config):
         """Test ignoring messages from the bot itself."""
         with patch("biblebot.bot.AsyncClient") as mock_client_class:
-            mock_client = AsyncMock()
+            mock_client = AsyncMock(
+                spec=[
+                    "user_id",
+                    "device_id",
+                    "room_send",
+                    "join",
+                    "add_event_callback",
+                    "should_upload_keys",
+                    "restore_login",
+                    "access_token",
+                    "rooms",
+                ]
+            )
             mock_client_class.return_value = mock_client
             mock_client.user_id = TEST_USER_ID
 
@@ -469,7 +541,19 @@ class TestMessageHandling:
     async def test_on_room_message_ignore_old_message(self, sample_config):
         """Test ignoring messages from before bot start."""
         with patch("biblebot.bot.AsyncClient") as mock_client_class:
-            mock_client = AsyncMock()
+            mock_client = AsyncMock(
+                spec=[
+                    "user_id",
+                    "device_id",
+                    "room_send",
+                    "join",
+                    "add_event_callback",
+                    "should_upload_keys",
+                    "restore_login",
+                    "access_token",
+                    "rooms",
+                ]
+            )
             mock_client_class.return_value = mock_client
             mock_client.user_id = TEST_USER_ID
 
@@ -497,7 +581,19 @@ class TestMessageHandling:
     async def test_on_room_message_wrong_room(self, sample_config):
         """Test ignoring messages from non-configured rooms."""
         with patch("biblebot.bot.AsyncClient") as mock_client_class:
-            mock_client = AsyncMock()
+            mock_client = AsyncMock(
+                spec=[
+                    "user_id",
+                    "device_id",
+                    "room_send",
+                    "join",
+                    "add_event_callback",
+                    "should_upload_keys",
+                    "restore_login",
+                    "access_token",
+                    "rooms",
+                ]
+            )
             mock_client_class.return_value = mock_client
             mock_client.user_id = TEST_USER_ID
 
@@ -525,7 +621,19 @@ class TestMessageHandling:
     async def test_handle_scripture_command_success(self, sample_config):
         """Test successful scripture command handling."""
         with patch("biblebot.bot.AsyncClient") as mock_client_class:
-            mock_client = AsyncMock()
+            mock_client = AsyncMock(
+                spec=[
+                    "user_id",
+                    "device_id",
+                    "room_send",
+                    "join",
+                    "add_event_callback",
+                    "should_upload_keys",
+                    "restore_login",
+                    "access_token",
+                    "rooms",
+                ]
+            )
             mock_client_class.return_value = mock_client
 
             bot_instance = bot.BibleBot(sample_config)
@@ -566,7 +674,19 @@ class TestMessageHandling:
     async def test_handle_scripture_command_failure(self, sample_config):
         """Test scripture command handling when retrieval fails."""
         with patch("biblebot.bot.AsyncClient") as mock_client_class:
-            mock_client = AsyncMock()
+            mock_client = AsyncMock(
+                spec=[
+                    "user_id",
+                    "device_id",
+                    "room_send",
+                    "join",
+                    "add_event_callback",
+                    "should_upload_keys",
+                    "restore_login",
+                    "access_token",
+                    "rooms",
+                ]
+            )
             mock_client_class.return_value = mock_client
 
             bot_instance = bot.BibleBot(sample_config)
@@ -609,7 +729,19 @@ class TestInviteHandling:
     async def test_on_invite_configured_room(self, sample_config):
         """Test handling invite to configured room."""
         with patch("biblebot.bot.AsyncClient") as mock_client_class:
-            mock_client = AsyncMock()
+            mock_client = AsyncMock(
+                spec=[
+                    "user_id",
+                    "device_id",
+                    "room_send",
+                    "join",
+                    "add_event_callback",
+                    "should_upload_keys",
+                    "restore_login",
+                    "access_token",
+                    "rooms",
+                ]
+            )
             mock_client_class.return_value = mock_client
 
             bot_instance = bot.BibleBot(sample_config)
@@ -633,7 +765,19 @@ class TestInviteHandling:
     async def test_on_invite_non_configured_room(self, sample_config):
         """Test handling invite to non-configured room."""
         with patch("biblebot.bot.AsyncClient") as mock_client_class:
-            mock_client = AsyncMock()
+            mock_client = AsyncMock(
+                spec=[
+                    "user_id",
+                    "device_id",
+                    "room_send",
+                    "join",
+                    "add_event_callback",
+                    "should_upload_keys",
+                    "restore_login",
+                    "access_token",
+                    "rooms",
+                ]
+            )
             mock_client_class.return_value = mock_client
 
             bot_instance = bot.BibleBot(sample_config)
@@ -660,7 +804,19 @@ class TestE2EEFunctionality:
     async def test_on_decryption_failure(self, sample_config):
         """Test handling decryption failure events."""
         with patch("biblebot.bot.AsyncClient") as mock_client_class:
-            mock_client = AsyncMock()
+            mock_client = AsyncMock(
+                spec=[
+                    "user_id",
+                    "device_id",
+                    "room_send",
+                    "join",
+                    "add_event_callback",
+                    "should_upload_keys",
+                    "restore_login",
+                    "access_token",
+                    "rooms",
+                ]
+            )
             mock_client_class.return_value = mock_client
             mock_client.user_id = TEST_USER_ID
             mock_client.device_id = TEST_DEVICE_ID
@@ -754,7 +910,19 @@ class TestMainFunction:
         mock_get_store.return_value = tmp_path / "store"
 
         with patch("biblebot.bot.AsyncClient") as mock_client_class:
-            mock_client = AsyncMock()
+            mock_client = AsyncMock(
+                spec=[
+                    "user_id",
+                    "device_id",
+                    "room_send",
+                    "join",
+                    "add_event_callback",
+                    "should_upload_keys",
+                    "restore_login",
+                    "access_token",
+                    "rooms",
+                ]
+            )
             mock_client.restore_login = MagicMock()
             mock_client.add_event_callback = MagicMock()
             mock_client.should_upload_keys = False
@@ -796,7 +964,19 @@ class TestMainFunction:
         mock_load_creds.return_value = None  # No saved credentials
 
         with patch("biblebot.bot.AsyncClient") as mock_client_class:
-            mock_client = AsyncMock()
+            mock_client = AsyncMock(
+                spec=[
+                    "user_id",
+                    "device_id",
+                    "room_send",
+                    "join",
+                    "add_event_callback",
+                    "should_upload_keys",
+                    "restore_login",
+                    "access_token",
+                    "rooms",
+                ]
+            )
             mock_client.restore_login = MagicMock()
             mock_client.add_event_callback = MagicMock()
             mock_client_class.return_value = mock_client
@@ -881,7 +1061,19 @@ class TestMainFunction:
 
         with patch("biblebot.bot.AsyncClient") as mock_client_class:
             with patch("biblebot.bot.AsyncClientConfig"):
-                mock_client = AsyncMock()
+                mock_client = AsyncMock(
+                    spec=[
+                        "user_id",
+                        "device_id",
+                        "room_send",
+                        "join",
+                        "add_event_callback",
+                        "should_upload_keys",
+                        "restore_login",
+                        "access_token",
+                        "rooms",
+                    ]
+                )
                 mock_client.restore_login = MagicMock()
                 mock_client.add_event_callback = MagicMock()
                 mock_client.keys_upload = AsyncMock()

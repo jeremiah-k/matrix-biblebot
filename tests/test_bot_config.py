@@ -278,8 +278,16 @@ class TestMessageTruncation:
             # Should send both reaction and message
             assert mock_client.room_send.call_count == 2
 
+            # Assert the first send is a reaction and the second is a message
+            calls = mock_client.room_send.call_args_list
+            reaction_call = calls[0]
+            message_call = calls[1]
+
+            # Check reaction event type
+            reaction_content = reaction_call[0][2]
+            assert reaction_content.get("msgtype") == "m.reaction"
+
             # Check the message call (second call)
-            message_call = mock_client.room_send.call_args_list[1]
             content = message_call[0][2]
 
             assert short_text in content["body"]
@@ -313,8 +321,16 @@ class TestMessageTruncation:
             # Should send both reaction and message
             assert mock_client.room_send.call_count == 2
 
+            # Assert the first send is a reaction and the second is a message
+            calls = mock_client.room_send.call_args_list
+            reaction_call = calls[0]
+            message_call = calls[1]
+
+            # Check reaction event type
+            reaction_content = reaction_call[0][2]
+            assert reaction_content.get("msgtype") == "m.reaction"
+
             # Check the message call (second call)
-            message_call = mock_client.room_send.call_args_list[1]
             content = message_call[0][2]
 
             assert "..." in content["body"]
