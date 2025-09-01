@@ -21,7 +21,7 @@ def mock_event():
     mock_event.sender = "@user:matrix.org"
     mock_event.body = "John 3:16"
     mock_event.source = {"content": {"body": "John 3:16"}}
-    mock_event.server_timestamp = 1234567890
+    mock_event.server_timestamp = 1234567890000
     mock_event.event_id = "$event123"
     return mock_event
 
@@ -65,7 +65,7 @@ async def test_bible_bot_message_handling(
     mock_client.room_send = AsyncMock()
 
     bot = BibleBot(config=test_config, client=mock_client)
-    bot.start_time = 1234567880  # Before event timestamp
+    bot.start_time = 1234567880000  # Before event timestamp
 
     # Test verse request handling
     await bot.on_room_message(mock_room, mock_event)
@@ -88,7 +88,7 @@ async def test_bible_bot_ignore_own_messages(
     mock_client.room_send = AsyncMock()
 
     bot = BibleBot(config=test_config, client=mock_client)
-    bot.start_time = 1234567880
+    bot.start_time = 1234567880000
 
     await bot.on_room_message(mock_room, mock_event)
 
@@ -109,7 +109,7 @@ async def test_bible_bot_unsupported_room(
     mock_client.room_send = AsyncMock()
 
     bot = BibleBot(config=test_config, client=mock_client)
-    bot.start_time = 1234567880
+    bot.start_time = 1234567880000
 
     await bot.on_room_message(mock_room, mock_event)
 
@@ -131,18 +131,15 @@ async def test_bible_bot_api_error_handling(
     mock_client.room_send = AsyncMock()
 
     bot = BibleBot(config=test_config, client=mock_client)
-    bot.start_time = 1234567880
+    bot.start_time = 1234567880000
 
     await bot.on_room_message(mock_room, mock_event)
 
     # Verify error message was sent
     mock_client.room_send.assert_called_once()
-    call_args = mock_client.room_send.call_args
-    # Check the message content structure - our BibleBot sends formatted messages
-    content = call_args[0][2] if len(call_args[0]) > 2 else call_args[1]["content"]
+    content = mock_client.room_send.call_args[0][2]
     assert (
-        "error" in content["formatted_body"].lower()
-        or "error" in content["body"].lower()
+        "error" in (content.get("formatted_body", "") + content.get("body", "")).lower()
     )
 
 
@@ -184,11 +181,9 @@ def test_load_credentials_file_not_exists(mock_credentials_path):
     assert credentials is None
 
 
-@patch("builtins.open")
-@patch("json.dump")
 @patch("biblebot.auth.tempfile.NamedTemporaryFile")
 @patch("biblebot.auth.os.replace")
-def test_save_credentials(mock_replace, mock_temp_file, mock_json_dump, mock_open):
+def test_save_credentials(mock_replace, mock_temp_file):
     """Test credentials saving with atomic write."""
     from biblebot.auth import Credentials
 
@@ -297,7 +292,7 @@ async def test_matrix_client_initialization(test_config):
     mock_client.user_id = "@biblebot:matrix.org"
 
     bot = BibleBot(config=test_config, client=mock_client)
-    bot.start_time = 1234567880
+    bot.start_time = 1234567880000
 
     # Test that bot can be initialized with client
     assert bot.client is not None

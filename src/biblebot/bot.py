@@ -227,8 +227,8 @@ def load_config(config_file):
                 config["matrix_homeserver"] = config["matrix_homeserver"].rstrip("/")
             logger.info(f"Loaded configuration from {config_file}")
             return config
-    except Exception as e:
-        logger.error(f"Error loading config from {config_file}: {e}")
+    except (OSError, yaml.YAMLError):
+        logger.exception(f"Error loading config from {config_file}")
         return None
 
 
@@ -610,18 +610,19 @@ class BibleBot:
             return
 
         if text.startswith("Error:"):
-            logger.warning(f"Invalid passage format: {passage}")
-            error_msg = "Error: Invalid passage format. Use [Book Chapter:Verse-range (optional)]"
+            # Use the actual error message from the fetcher
+            logger.warning(f"Passage lookup error for {passage}: {text}")
             await self.client.room_send(
                 room_id,
                 "m.room.message",
                 {
                     "msgtype": "m.text",
-                    "body": error_msg,
+                    "body": text,
                     "format": "org.matrix.custom.html",
-                    "formatted_body": html.escape(error_msg),
+                    "formatted_body": html.escape(text),
                 },
             )
+            return
         else:
             # Formatting text to ensure one space between words
             text = " ".join(text.replace("\n", " ").split())

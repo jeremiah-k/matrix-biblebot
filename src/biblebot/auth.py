@@ -172,8 +172,9 @@ def check_e2ee_status() -> dict:
     creds = load_credentials()
     # Consider E2EE "available" when deps are present AND creds exist AND a store exists
     status["available"] = bool(
-        status["dependencies_installed"] and creds and status["store_exists"]
+        status["dependencies_installed"] and status["platform_supported"]
     )
+    status["ready"] = bool(creds and status["store_exists"])
 
     return status
 
@@ -320,8 +321,9 @@ async def interactive_login(
     except (OSError, ValueError, RuntimeError):
         logger.exception("Login error")
         return False
-    except Exception as e:
-        logger.exception(f"Unexpected login error: {type(e).__name__}")
+    except Exception:
+        # e.g., nio exceptions like MatrixRequestError / LocalProtocolError
+        logger.exception("Unexpected login error")
         return False
     finally:
         await client.close()
