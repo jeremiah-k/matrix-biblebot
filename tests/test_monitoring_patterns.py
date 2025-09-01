@@ -111,9 +111,9 @@ class TestMonitoringPatterns:
         processing_times = []
 
         async def timed_api_call(*args, **kwargs):
-            start_time = time.time()
+            start_time = time.perf_counter()
             await asyncio.sleep(0.01)  # Simulate processing
-            end_time = time.time()
+            end_time = time.perf_counter()
             processing_times.append(end_time - start_time)
             return ("Test verse", "John 3:16")
 
@@ -310,9 +310,16 @@ class TestMonitoringPatterns:
                 await bot.on_room_message(room, event)
 
         # Get final resource usage
-        final_memory = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
+        _ru_end = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
         final_cpu = resource.getrusage(resource.RUSAGE_SELF).ru_utime
+        # Normalize: ru_maxrss is bytes on Darwin, KB elsewhere
+        import sys
 
+        if sys.platform == "darwin":
+            initial_memory = initial_memory / 1024
+            final_memory = _ru_end / 1024
+        else:
+            final_memory = _ru_end
         # Should have measurable resource usage
         memory_used = final_memory - initial_memory
         cpu_used = final_cpu - initial_cpu
@@ -430,11 +437,11 @@ class TestMonitoringPatterns:
         async def traced_api_call(*args, **kwargs):
             # Simulate trace span
             span_id = f"span_{len(trace_spans)}"
-            start_time = time.time()
+            start_time = time.perf_counter()
 
             await asyncio.sleep(0.01)  # Simulate work
 
-            end_time = time.time()
+            end_time = time.perf_counter()
             trace_spans.append(
                 {
                     "span_id": span_id,

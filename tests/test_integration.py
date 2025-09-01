@@ -302,7 +302,7 @@ class TestCacheManagement:
         mock_response = {"text": "Test verse", "reference": "Test 1:1"}
 
         with patch.object(
-            bot, "make_api_request", return_value=mock_response
+            bot, "make_api_request", new=AsyncMock(return_value=mock_response)
         ) as mock_request:
             # First call should hit API
             result1 = await bot.get_bible_text("Test 1:1", "kjv")
@@ -498,8 +498,9 @@ class TestErrorPropagationIntegration:
 
     async def test_api_error_propagation(self):
         """Test API errors propagate properly."""
-        with patch("biblebot.bot.make_api_request") as mock_api:
-            mock_api.return_value = None  # Simulate API failure
+        with patch(
+            "biblebot.bot.make_api_request", new=AsyncMock(return_value=None)
+        ) as mock_api:
 
             # Test error propagation
             result = await bot.get_bible_text("Test 1:1", "kjv")

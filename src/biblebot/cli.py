@@ -44,6 +44,11 @@ from .tools import get_sample_config_path
 logger = logging.getLogger(LOGGER_NAME)
 
 
+# Wrapper to ease testing (tests can patch biblebot.cli.run_async)
+def run_async(coro):
+    return asyncio.run(coro)
+
+
 def get_default_config_path():
     """Get the default config path in the user's home directory."""
     return CONFIG_DIR / DEFAULT_CONFIG_FILENAME
@@ -173,7 +178,7 @@ def interactive_main():
         if response in ("", "y", "yes"):
             print("🔑 Starting interactive login...")
             try:
-                ok = asyncio.run(interactive_login())
+                ok = run_async(interactive_login())
                 if ok:
                     print("✅ Login completed! Run 'biblebot' again to start the bot.")
                 else:
@@ -203,11 +208,15 @@ def interactive_main():
             print("🚀 Starting Matrix BibleBot (legacy mode)...")
             try:
                 config_path = get_default_config_path()
-                asyncio.run(bot_main(str(config_path)))
+                run_async(bot_main(str(config_path)))
             except KeyboardInterrupt:
                 print("\n🛑 Bot stopped by user.")
-            except Exception as e:
+            except (RuntimeError, ConnectionError, FileNotFoundError) as e:
                 print(f"\n❌ Bot failed to start: {e}")
+                print("Check your configuration and try again.")
+                sys.exit(1)
+            except Exception as e:
+                print(f"\n❌ Unexpected error: {e}")
                 print("Check your configuration and try again.")
                 sys.exit(1)
         else:
@@ -230,11 +239,15 @@ def interactive_main():
             print("🚀 Starting Matrix BibleBot...")
             try:
                 config_path = get_default_config_path()
-                asyncio.run(bot_main(str(config_path)))
+                run_async(bot_main(str(config_path)))
             except KeyboardInterrupt:
                 print("\n🛑 Bot stopped by user.")
-            except Exception as e:
+            except (RuntimeError, ConnectionError, FileNotFoundError) as e:
                 print(f"\n❌ Bot failed to start: {e}")
+                print("Check your configuration and try again.")
+                sys.exit(1)
+            except Exception as e:
+                print(f"\n❌ Unexpected error: {e}")
                 print("Check your configuration and try again.")
                 sys.exit(1)
         else:
@@ -387,7 +400,7 @@ Legacy flags (deprecated):
         logging.warning(
             "--auth-login is deprecated. Use 'biblebot auth login' instead."
         )
-        ok = asyncio.run(interactive_login())
+        ok = run_async(interactive_login())
         sys.exit(0 if ok else 1)
 
     if args.auth_logout:
@@ -399,7 +412,7 @@ Legacy flags (deprecated):
         logging.warning(
             "--auth-logout is deprecated. Use 'biblebot auth logout' instead."
         )
-        ok = asyncio.run(interactive_logout())
+        ok = run_async(interactive_logout())
         sys.exit(0 if ok else 1)
 
     # Handle modern grouped commands
@@ -444,10 +457,10 @@ Legacy flags (deprecated):
 
     elif args.command == "auth":
         if args.auth_action == "login":
-            ok = asyncio.run(interactive_login())
+            ok = run_async(interactive_login())
             sys.exit(0 if ok else 1)
         elif args.auth_action == "logout":
-            ok = asyncio.run(interactive_logout())
+            ok = run_async(interactive_logout())
             sys.exit(0 if ok else 1)
         elif args.auth_action == "status":
             from .auth import print_e2ee_status
@@ -506,11 +519,14 @@ Legacy flags (deprecated):
 
     # Run the bot
     try:
-        asyncio.run(bot_main(args.config))
+        run_async(bot_main(args.config))
     except KeyboardInterrupt:
         logging.info("Bot stopped by user")
-    except Exception as e:
+    except (RuntimeError, ConnectionError, FileNotFoundError) as e:
         logging.error(f"Error running bot: {e}")
+        sys.exit(1)
+    except Exception as e:
+        logging.error(f"Unexpected error running bot: {e}")
         sys.exit(1)
 
 

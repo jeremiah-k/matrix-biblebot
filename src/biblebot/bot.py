@@ -69,6 +69,11 @@ from .constants import (
 # Configure logging
 logger = logging.getLogger(LOGGER_NAME)
 
+# Patchable cache constants for backward compatibility and testing
+# These can be patched in tests to control cache behavior
+CACHE_SIZE = CACHE_MAX_SIZE
+CACHE_TTL = CACHE_TTL_SECONDS
+
 
 def normalize_book_name(book_str: str) -> str:
     """Normalize common Bible book abbreviations to their full name."""

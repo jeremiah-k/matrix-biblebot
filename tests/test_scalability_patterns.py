@@ -182,7 +182,10 @@ class TestScalabilityPatterns:
         import resource
 
         # Get initial memory usage
-        initial_memory = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
+        _ru_start = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
+        import sys
+
+        initial_memory = _ru_start / 1024 if sys.platform == "darwin" else _ru_start
 
         bot = BibleBot(config=mock_config, client=mock_client)
 
@@ -219,7 +222,8 @@ class TestScalabilityPatterns:
                 gc.collect()
 
         # Check final memory usage
-        final_memory = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
+        _ru_end = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
+        final_memory = _ru_end / 1024 if sys.platform == "darwin" else _ru_end
         memory_growth = final_memory - initial_memory
 
         # Memory growth should be reasonable (less than 100MB)
@@ -239,9 +243,9 @@ class TestScalabilityPatterns:
         api_call_times = []
 
         async def timed_api_call(*args, **kwargs):
-            start = time.time()
+            start = time.perf_counter()
             await asyncio.sleep(0.01)  # Simulate API latency
-            end = time.time()
+            end = time.perf_counter()
             api_call_times.append(end - start)
             return ("Test verse", "John 3:16")
 

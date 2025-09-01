@@ -476,8 +476,8 @@ class TestCLIMainFunction:
     @patch("sys.argv", ["biblebot", "--log-level", "debug"])
     @patch("os.path.exists")
     @patch("biblebot.auth.load_credentials")
-    @patch("biblebot.bot.main", new=lambda *a, **k: asyncio.sleep(0))  # async no-op
-    @patch("biblebot.cli.asyncio.run", return_value=None)
+    @patch("biblebot.cli.bot_main", new=lambda *a, **k: asyncio.sleep(0))  # async no-op
+    @patch("biblebot.cli.run_async", side_effect=_consume_coroutine)
     def test_log_level_setting(self, mock_run, mock_load_creds, mock_exists):
         """Test log level setting."""
         mock_exists.return_value = True
@@ -709,7 +709,7 @@ class TestCLIBotOperation:
     @patch("builtins.input")
     @patch("biblebot.auth.load_credentials")
     @patch("biblebot.cli.bot_main", new=lambda *a, **k: asyncio.sleep(0))  # async no-op
-    @patch("biblebot.cli.asyncio.run")
+    @patch("biblebot.cli.run_async")
     def test_bot_run_with_config(
         self, mock_run, mock_load_creds, mock_input, mock_detect_state
     ):
@@ -801,7 +801,7 @@ class TestCLIBotOperation:
     @patch("builtins.input")
     @patch("biblebot.auth.load_credentials")
     @patch("biblebot.cli.bot_main", new=lambda *a, **k: asyncio.sleep(0))  # async no-op
-    @patch("biblebot.cli.asyncio.run")
+    @patch("biblebot.cli.run_async")
     def test_bot_keyboard_interrupt(
         self, mock_run, mock_load_creds, mock_input, mock_detect_state
     ):
@@ -828,7 +828,7 @@ class TestCLIBotOperation:
     @patch("builtins.input")
     @patch("biblebot.auth.load_credentials")
     @patch("biblebot.cli.bot_main", new=lambda *a, **k: asyncio.sleep(0))  # async no-op
-    @patch("biblebot.cli.asyncio.run")
+    @patch("biblebot.cli.run_async")
     def test_bot_runtime_error(
         self, mock_run, mock_load_creds, mock_input, mock_detect_state
     ):

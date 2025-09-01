@@ -820,9 +820,6 @@ class TestMainFunction:
         with pytest.raises(RuntimeError, match="Failed to load configuration"):
             await bot.main("invalid_config.yaml")
 
-            # Should not create bot instance
-            mock_bot_class.assert_not_called()
-
     @pytest.mark.asyncio
     @patch.dict(
         "os.environ",
