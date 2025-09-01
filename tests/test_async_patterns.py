@@ -32,6 +32,7 @@ class TestAsyncPatterns:
         client.sync = AsyncMock()
         client.room_send = AsyncMock()
         client.close = AsyncMock()
+        client.join = AsyncMock()
         client.rooms = {}
         return client
 
@@ -71,7 +72,9 @@ class TestAsyncPatterns:
         bot._room_id_set = set(mock_config["matrix_room_ids"])
 
         # Mock Bible text retrieval
-        with patch("biblebot.bot.get_bible_text") as mock_get_bible:
+        with patch(
+            "biblebot.bot.get_bible_text", new_callable=AsyncMock
+        ) as mock_get_bible:
             mock_get_bible.return_value = ("For God so loved the world...", "John 3:16")
 
             await bot.on_room_message(mock_room, mock_event)
@@ -89,7 +92,9 @@ class TestAsyncPatterns:
         bot._room_id_set = set(mock_config["matrix_room_ids"])
 
         # Mock API error
-        with patch("biblebot.bot.get_bible_text") as mock_get_bible:
+        with patch(
+            "biblebot.bot.get_bible_text", new_callable=AsyncMock
+        ) as mock_get_bible:
             mock_get_bible.return_value = (None, None)  # Simulate error
 
             # Should not raise exception
@@ -164,7 +169,7 @@ class TestAsyncPatterns:
         BibleBot(config=mock_config, client=mock_client)
 
         # Test that our API calls work with successful response
-        with patch("biblebot.bot.make_api_request") as mock_api:
+        with patch("biblebot.bot.make_api_request", new_callable=AsyncMock) as mock_api:
             mock_api.return_value = {"text": "Success", "reference": "John 3:16"}
 
             # Test actual function
@@ -182,8 +187,10 @@ class TestAsyncPatterns:
         BibleBot(config=mock_config, client=mock_client)
 
         # Mock rate-limited API
-        with patch("asyncio.sleep") as mock_sleep:
-            with patch("biblebot.bot.get_bible_text") as mock_get_bible:
+        with patch("asyncio.sleep", new_callable=AsyncMock) as mock_sleep:
+            with patch(
+                "biblebot.bot.get_bible_text", new_callable=AsyncMock
+            ) as mock_get_bible:
                 mock_get_bible.return_value = ("Test verse", "John 3:16")
 
                 # Simulate rate limiting by adding delays
@@ -226,7 +233,9 @@ class TestAsyncPatterns:
         bot = BibleBot(config=mock_config, client=mock_client)
 
         # Test that exceptions are properly propagated
-        with patch("biblebot.bot.get_bible_text") as mock_get_bible:
+        with patch(
+            "biblebot.bot.get_bible_text", new_callable=AsyncMock
+        ) as mock_get_bible:
             mock_get_bible.side_effect = ValueError("Invalid verse reference")
 
             # Exception should be caught and handled gracefully
@@ -261,7 +270,7 @@ class TestAsyncPatterns:
             BibleBot(config=mock_config)
 
             # Test that bot works with different event loop policies
-            loop = asyncio.get_event_loop()
+            loop = asyncio.get_running_loop()
             assert loop is not None
 
             # Test scheduling callbacks

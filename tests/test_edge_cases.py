@@ -76,7 +76,9 @@ class TestEdgeCases:
         bot.start_time = 1234567880000  # Use milliseconds
         bot.api_keys = {}
 
-        with patch("biblebot.bot.get_bible_text") as mock_get_bible:
+        with patch(
+            "biblebot.bot.get_bible_text", new_callable=AsyncMock
+        ) as mock_get_bible:
             mock_get_bible.return_value = ("Test verse", "John 3:16")
 
             # Test with message that has valid reference format
@@ -108,7 +110,9 @@ class TestEdgeCases:
         bot._room_id_set = set(mock_config["matrix_room_ids"])
         bot.start_time = 1234567880000  # Converted to milliseconds
 
-        with patch("biblebot.bot.get_bible_text") as mock_get_bible:
+        with patch(
+            "biblebot.bot.get_bible_text", new_callable=AsyncMock
+        ) as mock_get_bible:
             mock_get_bible.return_value = ("Test verse", "John 3:16")
 
             # Test various Unicode and special characters
@@ -144,7 +148,9 @@ class TestEdgeCases:
         bot.start_time = 1234567880000  # Use milliseconds
         bot.api_keys = {}
 
-        with patch("biblebot.bot.get_bible_text") as mock_get_bible:
+        with patch(
+            "biblebot.bot.get_bible_text", new_callable=AsyncMock
+        ) as mock_get_bible:
             # Mock API to return None for malformed references
             mock_get_bible.return_value = None
 
@@ -168,12 +174,9 @@ class TestEdgeCases:
                 room = MagicMock()
                 room.room_id = "!room:matrix.org"
 
-                # The real bot crashes when get_bible_text returns None
-                # So we need to catch the exception
-                try:
-                    await bot.on_room_message(room, event)
-                except TypeError:
-                    pass  # Expected when trying to unpack None
+                # The bot now handles None gracefully and logs a warning
+                await bot.on_room_message(room, event)
+                # Should not crash, just log the failure
 
     async def test_rapid_message_bursts(self, mock_config, mock_client):
         """Test handling of rapid message bursts."""
@@ -184,7 +187,9 @@ class TestEdgeCases:
         bot._room_id_set = set(mock_config["matrix_room_ids"])
         bot.start_time = 1234567880000  # Converted to milliseconds
 
-        with patch("biblebot.bot.get_bible_text") as mock_get_bible:
+        with patch(
+            "biblebot.bot.get_bible_text", new_callable=AsyncMock
+        ) as mock_get_bible:
             mock_get_bible.return_value = ("Test verse", "John 3:16")
 
             # Send many messages in rapid succession
@@ -213,7 +218,9 @@ class TestEdgeCases:
         bot._room_id_set = set(mock_config["matrix_room_ids"])
         bot.start_time = 1234567880000  # Converted to milliseconds
 
-        with patch("biblebot.bot.get_bible_text") as mock_get_bible:
+        with patch(
+            "biblebot.bot.get_bible_text", new_callable=AsyncMock
+        ) as mock_get_bible:
             mock_get_bible.return_value = ("Test verse", "John 3:16")
 
             # Send multiple concurrent messages from same user
@@ -244,7 +251,9 @@ class TestEdgeCases:
         bot._room_id_set = set(mock_config["matrix_room_ids"])
         bot.start_time = 1234567880000  # Converted to milliseconds
 
-        with patch("biblebot.bot.get_bible_text") as mock_get_bible:
+        with patch(
+            "biblebot.bot.get_bible_text", new_callable=AsyncMock
+        ) as mock_get_bible:
             mock_get_bible.return_value = ("Test verse", "John 3:16")
 
             # Test various timestamp edge cases
@@ -277,7 +286,9 @@ class TestEdgeCases:
         bot._room_id_set = set(mock_config["matrix_room_ids"])
         bot.start_time = 1234567880000  # Converted to milliseconds
 
-        with patch("biblebot.bot.get_bible_text") as mock_get_bible:
+        with patch(
+            "biblebot.bot.get_bible_text", new_callable=AsyncMock
+        ) as mock_get_bible:
             mock_get_bible.return_value = ("Test verse", "John 3:16")
 
             # Test various room ID edge cases
@@ -311,7 +322,9 @@ class TestEdgeCases:
         bot._room_id_set = set(mock_config["matrix_room_ids"])
         bot.start_time = 1234567880000  # Converted to milliseconds
 
-        with patch("biblebot.bot.get_bible_text") as mock_get_bible:
+        with patch(
+            "biblebot.bot.get_bible_text", new_callable=AsyncMock
+        ) as mock_get_bible:
             mock_get_bible.return_value = ("Test verse", "John 3:16")
 
             # Test various user ID edge cases
@@ -358,7 +371,9 @@ class TestEdgeCases:
         ]
 
         for response in api_responses:
-            with patch("biblebot.bot.get_bible_text") as mock_get_bible:
+            with patch(
+                "biblebot.bot.get_bible_text", new_callable=AsyncMock
+            ) as mock_get_bible:
                 mock_get_bible.return_value = response
 
                 event = MagicMock()
@@ -388,12 +403,14 @@ class TestEdgeCases:
         # Test various timeout scenarios (optimized for faster testing)
         for _ in range(4):
 
-            async def timeout_api(*args, **kwargs):
+            async def timeout_api(*_args, **_kwargs):
                 # Simulate timeout without actual delay for faster testing
                 # await asyncio.sleep(timeout_duration)
                 raise asyncio.TimeoutError("API timeout")
 
-            with patch("biblebot.bot.get_bible_text", side_effect=timeout_api):
+            with patch(
+                "biblebot.bot.get_bible_text", new=AsyncMock(side_effect=timeout_api)
+            ):
                 event = MagicMock()
                 event.body = "John 3:16"
                 event.sender = "@user:matrix.org"
@@ -425,7 +442,9 @@ class TestEdgeCases:
         # Simulate memory pressure by creating large objects
         large_objects = []
 
-        with patch("biblebot.bot.get_bible_text") as mock_get_bible:
+        with patch(
+            "biblebot.bot.get_bible_text", new_callable=AsyncMock
+        ) as mock_get_bible:
             mock_get_bible.return_value = ("Test verse", "John 3:16")
 
             try:
@@ -457,7 +476,9 @@ class TestEdgeCases:
         bot._room_id_set = set(mock_config["matrix_room_ids"])
         bot.start_time = 1234567880000  # Converted to milliseconds
 
-        with patch("biblebot.bot.get_bible_text") as mock_get_bible:
+        with patch(
+            "biblebot.bot.get_bible_text", new_callable=AsyncMock
+        ) as mock_get_bible:
             mock_get_bible.return_value = ("Test verse", "John 3:16")
 
             # Test with minimal event object

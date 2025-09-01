@@ -75,7 +75,7 @@ class TestReliabilityPatterns:
             # Should have attempted all requests and recovered
             assert call_count == 5
             # Should have sent responses for successful requests
-            assert mock_client.room_send.call_count >= 0
+            assert mock_client.room_send.call_count > 0
 
     async def test_api_timeout_resilience(self, mock_config, mock_client):
         """Test resilience to API timeouts."""
@@ -101,13 +101,9 @@ class TestReliabilityPatterns:
             room = MagicMock()
             room.room_id = mock_config["matrix_room_ids"][0]  # Use configured room
 
-            # Should handle timeout gracefully
             start_time = time.time()
-            # The real bot doesn't have try/catch, so exception will propagate
-            try:
+            with pytest.raises(asyncio.TimeoutError):
                 await bot.on_room_message(room, event)
-            except Exception:
-                pass  # Expected timeout exception
             end_time = time.time()
 
             # Should not hang indefinitely
@@ -154,8 +150,7 @@ class TestReliabilityPatterns:
 
             # Should have attempted all requests
             assert call_count == 6
-            # Should have sent responses for successful requests
-            assert mock_client.room_send.call_count >= 0
+            assert mock_client.room_send.call_count > 0
 
     async def test_matrix_client_failure_recovery(self, mock_config, mock_client):
         """Test recovery from Matrix client failures."""
@@ -309,7 +304,9 @@ class TestReliabilityPatterns:
                     pass  # Expected for failure cases
 
             # Should have handled all failures independently
-            assert mock_client.room_send.call_count >= 0
+            assert (
+                mock_client.room_send.call_count >= 0
+            )  # Keep lenient if failures dominate
 
     async def test_graceful_degradation(self, mock_config, mock_client):
         """Test graceful degradation of service."""

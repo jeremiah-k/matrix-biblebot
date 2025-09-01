@@ -200,7 +200,9 @@ class TestBibleTextRetrieval:
             "reference": TEST_BIBLE_REFERENCE,
         }
 
-        with patch.object(bot, "make_api_request", return_value=mock_response):
+        with patch.object(
+            bot, "make_api_request", new=AsyncMock(return_value=mock_response)
+        ):
             result = await bot.get_kjv_text(TEST_BIBLE_REFERENCE)
 
             assert result is not None
@@ -227,7 +229,9 @@ class TestBibleTextRetrieval:
             "canonical": TEST_BIBLE_REFERENCE,
         }
 
-        with patch.object(bot, "make_api_request", return_value=mock_response):
+        with patch.object(
+            bot, "make_api_request", new=AsyncMock(return_value=mock_response)
+        ):
             result = await bot.get_esv_text(TEST_BIBLE_REFERENCE, "test_api_key")
 
             assert result is not None
@@ -254,7 +258,7 @@ class TestBibleTextRetrieval:
         }
 
         with patch.object(
-            bot, "make_api_request", return_value=mock_response
+            bot, "make_api_request", new=AsyncMock(return_value=mock_response)
         ) as mock_request:
             # First call should hit the API
             result1 = await bot.get_bible_text(TEST_BIBLE_REFERENCE, "kjv")
@@ -378,7 +382,7 @@ class TestMessageHandling:
 
             bot_instance = bot.BibleBot(sample_config)
             bot_instance.client = mock_client
-            bot_instance.start_time = 1000000000  # Set start time (milliseconds)
+            bot_instance.start_time = 1000000000000  # Set start time (milliseconds)
             # Populate room ID set for testing (normally done in initialize())
             bot_instance._room_id_set = set(sample_config["matrix_room_ids"])
 
@@ -388,12 +392,16 @@ class TestMessageHandling:
 
             mock_event = MagicMock()
             mock_event.sender = TEST_MESSAGE_SENDER  # Different from bot
-            mock_event.server_timestamp = 2000000000  # After start time (milliseconds)
+            mock_event.server_timestamp = (
+                2000000000000  # After start time (milliseconds)
+            )
             mock_event.body = TEST_MESSAGE_BODY
             mock_event.event_id = "$event:matrix.org"
 
             # Mock the scripture handling
-            with patch.object(bot_instance, "handle_scripture_command") as mock_handle:
+            with patch.object(
+                bot_instance, "handle_scripture_command", new=AsyncMock()
+            ) as mock_handle:
                 await bot_instance.on_room_message(mock_room, mock_event)
 
                 mock_handle.assert_called_once()
@@ -412,17 +420,19 @@ class TestMessageHandling:
 
             bot_instance = bot.BibleBot(sample_config)
             bot_instance.client = mock_client
-            bot_instance.start_time = 1000
+            bot_instance.start_time = 1000000000000
 
             mock_room = MagicMock()
             mock_room.room_id = TEST_ROOM_IDS[0]
 
             mock_event = MagicMock()
             mock_event.sender = TEST_USER_ID  # Same as bot
-            mock_event.server_timestamp = 2000
+            mock_event.server_timestamp = 2000000000000
             mock_event.body = TEST_MESSAGE_BODY
 
-            with patch.object(bot_instance, "handle_scripture_command") as mock_handle:
+            with patch.object(
+                bot_instance, "handle_scripture_command", new=AsyncMock()
+            ) as mock_handle:
                 await bot_instance.on_room_message(mock_room, mock_event)
 
                 # Should not handle scripture from own message
@@ -438,17 +448,19 @@ class TestMessageHandling:
 
             bot_instance = bot.BibleBot(sample_config)
             bot_instance.client = mock_client
-            bot_instance.start_time = 2000
+            bot_instance.start_time = 2000000000000
 
             mock_room = MagicMock()
             mock_room.room_id = TEST_ROOM_IDS[0]
 
             mock_event = MagicMock()
             mock_event.sender = TEST_MESSAGE_SENDER
-            mock_event.server_timestamp = 1000  # Before start time
+            mock_event.server_timestamp = 1000000000000  # Before start time
             mock_event.body = TEST_MESSAGE_BODY
 
-            with patch.object(bot_instance, "handle_scripture_command") as mock_handle:
+            with patch.object(
+                bot_instance, "handle_scripture_command", new=AsyncMock()
+            ) as mock_handle:
                 await bot_instance.on_room_message(mock_room, mock_event)
 
                 # Should not handle old message
@@ -471,10 +483,12 @@ class TestMessageHandling:
 
             mock_event = MagicMock()
             mock_event.sender = TEST_MESSAGE_SENDER
-            mock_event.server_timestamp = 2000
+            mock_event.server_timestamp = 2000000000000
             mock_event.body = TEST_MESSAGE_BODY
 
-            with patch.object(bot_instance, "handle_scripture_command") as mock_handle:
+            with patch.object(
+                bot_instance, "handle_scripture_command", new=AsyncMock()
+            ) as mock_handle:
                 await bot_instance.on_room_message(mock_room, mock_event)
 
                 # Should not handle message from wrong room
@@ -496,9 +510,13 @@ class TestMessageHandling:
 
             # Mock successful Bible text retrieval
             with patch.object(
-                bot, "get_bible_text", return_value=("Test verse text", "Test 1:1")
+                bot,
+                "get_bible_text",
+                new=AsyncMock(return_value=("Test verse text", "Test 1:1")),
             ):
-                with patch.object(bot_instance, "send_reaction") as mock_reaction:
+                with patch.object(
+                    bot_instance, "send_reaction", new=AsyncMock()
+                ) as mock_reaction:
                     await bot_instance.handle_scripture_command(
                         TEST_ROOM_ID, "Test 1:1", "kjv", mock_event
                     )
@@ -532,8 +550,12 @@ class TestMessageHandling:
             mock_event.event_id = "$event:matrix.org"
 
             # Mock failed Bible text retrieval
-            with patch.object(bot, "get_bible_text", return_value=(None, None)):
-                with patch.object(bot_instance, "send_reaction") as mock_reaction:
+            with patch.object(
+                bot, "get_bible_text", new=AsyncMock(return_value=(None, None))
+            ):
+                with patch.object(
+                    bot_instance, "send_reaction", new=AsyncMock()
+                ) as mock_reaction:
                     await bot_instance.handle_scripture_command(
                         TEST_ROOM_ID, "Invalid 99:99", "kjv", mock_event
                     )
@@ -566,7 +588,9 @@ class TestInviteHandling:
 
             mock_event = MagicMock()
 
-            with patch.object(bot_instance, "join_matrix_room") as mock_join:
+            with patch.object(
+                bot_instance, "join_matrix_room", new=AsyncMock()
+            ) as mock_join:
                 await bot_instance.on_invite(mock_room, mock_event)
 
                 mock_join.assert_called_once_with(TEST_ROOM_IDS[0])
@@ -586,7 +610,9 @@ class TestInviteHandling:
 
             mock_event = MagicMock()
 
-            with patch.object(bot_instance, "join_matrix_room") as mock_join:
+            with patch.object(
+                bot_instance, "join_matrix_room", new=AsyncMock()
+            ) as mock_join:
                 await bot_instance.on_invite(mock_room, mock_event)
 
                 # Should not join non-configured room

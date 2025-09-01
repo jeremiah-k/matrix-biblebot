@@ -63,8 +63,8 @@ class TestMonitoringPatterns:
 
                 # Should have logged request processing
                 log_messages = [record.message for record in caplog.records]
-                # Check for presence of logging (implementation may vary)
-                assert len(log_messages) >= 0  # At least some logging should occur
+                assert log_messages, "Expected at least one log record"
+                assert any(r.levelno >= logging.DEBUG for r in caplog.records)
 
     async def test_error_logging_patterns(self, mock_config, mock_client, caplog):
         """Test error logging and tracking."""
@@ -88,20 +88,11 @@ class TestMonitoringPatterns:
                 room = MagicMock()
                 room.room_id = mock_config["matrix_room_ids"][0]  # Use configured room
 
-                # The real bot doesn't have try/catch, so exception will propagate
-                try:
+                with pytest.raises((ValueError, TypeError, AttributeError)):
                     await bot.on_room_message(room, event)
-                except Exception:
-                    pass  # Expected exception
-
-                # Should have logged the error (implementation may vary)
-                error_logs = [
-                    record
-                    for record in caplog.records
-                    if record.levelno >= logging.ERROR
-                ]
-                # Implementation may handle errors differently
-                assert len(error_logs) >= 0
+                # Should have logged the error
+                error_logs = [r for r in caplog.records if r.levelno >= logging.ERROR]
+                assert error_logs, "Expected at least one ERROR log"
 
     async def test_performance_metrics_collection(self, mock_config, mock_client):
         """Test collection of performance metrics."""
@@ -321,8 +312,8 @@ class TestMonitoringPatterns:
         memory_used = final_memory - initial_memory
         cpu_used = final_cpu - initial_cpu
 
-        assert memory_used >= 0  # Memory usage should not decrease
-        assert cpu_used >= 0  # CPU usage should not decrease
+        assert cpu_used > 0, "CPU time should increase after processing requests"
+        assert memory_used >= 0
 
     async def test_alert_threshold_monitoring(self, mock_config, mock_client):
         """Test monitoring for alert thresholds."""
