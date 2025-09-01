@@ -267,9 +267,13 @@ class TestConfigPerformance:
         env_file.write_text("MATRIX_ACCESS_TOKEN=test_token\nESV_API_KEY=test_key")
 
         # Measure environment loading performance
+        # Create a minimal config for testing
+        config = {"matrix_room_ids": ["!test:matrix.org"]}
         start_time = time.time()
         for _ in range(100):
-            matrix_token, api_keys = bot.load_environment(str(tmp_path / "config.yaml"))
+            matrix_token, api_keys = bot.load_environment(
+                config, str(tmp_path / "config.yaml")
+            )
             assert isinstance(api_keys, dict)
         env_loading_time = time.time() - start_time
 

@@ -43,7 +43,9 @@ def test_load_environment_prefers_config_dir_env(tmp_path: Path, monkeypatch):
             os.chdir(d)
             Path(".env").write_text("MATRIX_ACCESS_TOKEN=from_cwd\n")
 
-            token, _ = botmod.load_environment(str(cfg))
+            # Load config first, then pass to load_environment
+            config = botmod.load_config(str(cfg))
+            token, _ = botmod.load_environment(config, str(cfg))
             assert token == "from_config_dir"
     finally:
         os.chdir(cwd)

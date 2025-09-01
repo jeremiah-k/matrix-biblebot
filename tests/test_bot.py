@@ -101,7 +101,9 @@ class TestEnvironmentLoading:
         env_target = temp_config_file.parent / ".env"
         env_target.write_text(temp_env_file.read_text())
 
-        matrix_token, api_keys = bot.load_environment(str(temp_config_file))
+        # Load config first, then pass to load_environment
+        config = bot.load_config(str(temp_config_file))
+        matrix_token, api_keys = bot.load_environment(config, str(temp_config_file))
 
         assert matrix_token == TEST_ACCESS_TOKEN
         assert api_keys["esv"] == "test_esv_key"
@@ -111,7 +113,9 @@ class TestEnvironmentLoading:
     )
     def test_load_environment_from_os_env(self, temp_config_file):
         """Test loading environment from OS environment variables."""
-        matrix_token, api_keys = bot.load_environment(str(temp_config_file))
+        # Load config first, then pass to load_environment
+        config = bot.load_config(str(temp_config_file))
+        matrix_token, api_keys = bot.load_environment(config, str(temp_config_file))
 
         assert matrix_token == "env_token"
         assert api_keys["esv"] == "env_esv_key"
@@ -119,7 +123,9 @@ class TestEnvironmentLoading:
     @patch.dict("os.environ", {}, clear=True)
     def test_load_environment_no_env_vars(self, temp_config_file):
         """Test loading environment with no environment variables."""
-        matrix_token, api_keys = bot.load_environment(str(temp_config_file))
+        # Load config first, then pass to load_environment
+        config = bot.load_config(str(temp_config_file))
+        matrix_token, api_keys = bot.load_environment(config, str(temp_config_file))
 
         assert matrix_token is None
         assert api_keys["esv"] is None
@@ -955,7 +961,9 @@ class TestEnvironmentLoadingExtra:
         """Test loading environment with .env file."""
         config_path = str(temp_env_file.parent / "config.yaml")
 
-        matrix_token, api_keys = bot.load_environment(config_path)
+        # Create a minimal config for testing
+        config = {"matrix_room_ids": ["!test:matrix.org"]}
+        matrix_token, api_keys = bot.load_environment(config, config_path)
 
         # matrix_token should be a string (or None)
         assert matrix_token == TEST_ACCESS_TOKEN or matrix_token is None
@@ -967,7 +975,9 @@ class TestEnvironmentLoadingExtra:
         """Test loading environment returns proper data structures."""
         config_path = str(tmp_path / "config.yaml")
 
-        matrix_token, api_keys = bot.load_environment(config_path)
+        # Create a minimal config for testing
+        config = {"matrix_room_ids": ["!test:matrix.org"]}
+        matrix_token, api_keys = bot.load_environment(config, config_path)
 
         # Should return (string/None, dict)
         assert matrix_token is None or isinstance(matrix_token, str)

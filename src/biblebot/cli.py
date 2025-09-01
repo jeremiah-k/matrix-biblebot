@@ -421,7 +421,7 @@ Legacy flags (deprecated):
                 print(f"  Matrix rooms: {len(config.get('matrix_room_ids', []))}")
                 from .bot import load_environment
 
-                _, api_keys = load_environment(args.config)
+                _, api_keys = load_environment(config, args.config)
                 print(
                     f"  API keys configured: {len([k for k, v in api_keys.items() if v])}"
                 )

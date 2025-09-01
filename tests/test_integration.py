@@ -195,14 +195,16 @@ class TestConfigValidation:
         # Test with .env file
         env_file.write_text("MATRIX_ACCESS_TOKEN=file_token\nESV_API_KEY=file_key\n")
 
-        matrix_token, api_keys = bot.load_environment(str(config_file))
+        # Load config first, then pass to load_environment
+        config = bot.load_config(str(config_file))
+        matrix_token, api_keys = bot.load_environment(config, str(config_file))
 
         assert matrix_token == "file_token"
         assert api_keys["esv"] == "file_key"
 
         # Test with OS environment override
         with patch.dict("os.environ", {"MATRIX_ACCESS_TOKEN": "env_token"}):
-            matrix_token, api_keys = bot.load_environment(str(config_file))
+            matrix_token, api_keys = bot.load_environment(config, str(config_file))
             assert matrix_token == "env_token"  # OS env should override file
 
 
@@ -438,7 +440,11 @@ class TestDataFlowIntegration:
         )
 
         # Test data flow
-        matrix_token, api_keys = bot.load_environment(str(tmp_path / "config.yaml"))
+        # Create a minimal config for testing
+        config = {"matrix_room_ids": ["!test:matrix.org"]}
+        matrix_token, api_keys = bot.load_environment(
+            config, str(tmp_path / "config.yaml")
+        )
 
         # Verify data flow integration
         assert isinstance(api_keys, dict)

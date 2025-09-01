@@ -101,13 +101,16 @@ def load_config(config_file):
 
 
 # Load environment variables
-def load_environment(config_path):
+def load_environment(config: dict, config_path: str):
     """
     Load environment variables and API keys from config file and environment.
     Supports both new config-based API keys and legacy .env files.
+
+    Args:
+        config: Already-loaded configuration dictionary
+        config_path: Path to config file (used for .env file location)
     """
-    # Load the config to get API keys
-    config = load_config(config_path)
+    # The config is now passed in directly, no need to load it again
     # Initialize with expected keys set to None
     api_keys = {TRANSLATION_ESV: None}
 
@@ -573,7 +576,7 @@ async def main(config_path=DEFAULT_CONFIG_FILENAME_MAIN):
         logger.error(f"Failed to load configuration from {config_path}")
         raise RuntimeError(f"Failed to load configuration from {config_path}")
 
-    matrix_access_token, api_keys = load_environment(config_path)
+    matrix_access_token, api_keys = load_environment(config, config_path)
     creds = load_credentials()
 
     # Determine E2EE configuration from config
