@@ -238,7 +238,7 @@ class TestScalabilityPatterns:
         # Track API call performance
         api_call_times = []
 
-        async def timed_api_call():
+        async def timed_api_call(*args, **kwargs):
             start = time.time()
             await asyncio.sleep(0.01)  # Simulate API latency
             end = time.time()
@@ -284,7 +284,7 @@ class TestScalabilityPatterns:
         active_connections = 0
         max_connections = 0
 
-        async def connection_tracking_api():
+        async def connection_tracking_api(*args, **kwargs):
             nonlocal active_connections, max_connections
             active_connections += 1
             max_connections = max(max_connections, active_connections)

@@ -249,7 +249,7 @@ class TestErrorScenarios:
         """Test handling of file permission errors."""
         # Create a directory where we can't write
         restricted_dir = tmp_path / "restricted"
-        restricted_dir.mkdir(mode=0o444)  # Read-only
+        restricted_dir.mkdir(mode=0o444)  # Read-only, no write or execute
 
         try:
             # This should handle permission errors gracefully
@@ -262,6 +262,7 @@ class TestErrorScenarios:
                 )
 
                 # Should raise permission error on read-only directory
+                # The save_credentials function tries to create a temp file which should fail
                 with pytest.raises((PermissionError, OSError)):
                     auth.save_credentials(creds)
         finally:

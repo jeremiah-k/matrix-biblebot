@@ -796,11 +796,9 @@ class TestMainFunction:
         mock_load_env.return_value = (None, {"esv": "test_key"})  # No access token
         mock_load_creds.return_value = None  # No saved credentials
 
-        # The main function should return early without creating client/bot
-        result = await bot.main("test_config.yaml")
-
-        # Should return None (early return due to no auth)
-        assert result is None
+        # The main function should raise RuntimeError for no auth
+        with pytest.raises(RuntimeError, match="No credentials found"):
+            await bot.main("test_config.yaml")
 
         # Verify the mocks were called to check for auth
         mock_load_env.assert_called_once()
@@ -812,10 +810,8 @@ class TestMainFunction:
         """Test main function with invalid config."""
         mock_load_config.return_value = None  # Invalid config
 
-        with patch("biblebot.bot.BibleBot") as mock_bot_class:
-            mock_bot = MagicMock()
-            mock_bot_class.return_value = mock_bot
-
+        # Should raise RuntimeError for invalid config
+        with pytest.raises(RuntimeError, match="Failed to load configuration"):
             await bot.main("invalid_config.yaml")
 
             # Should not create bot instance

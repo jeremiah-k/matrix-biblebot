@@ -478,7 +478,7 @@ class TestSecurityPatterns:
         with patch(
             "biblebot.bot.get_bible_text",
             new=AsyncMock(return_value=("Test verse", "John 3:16")),
-        ):
+        ) as mock_get_bible:
 
             for admin_attempt in admin_attempts:
                 event = MagicMock()
