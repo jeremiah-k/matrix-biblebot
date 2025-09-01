@@ -102,16 +102,44 @@ def load_config(config_file):
     try:
         with open(config_file, "r", encoding=FILE_ENCODING_UTF8) as f:
             config = yaml.safe_load(f) or {}
-            # Basic validation
-            missing = [k for k in REQUIRED_CONFIG_KEYS if k not in config]
-            if missing:
+
+            # Handle both old flat structure and new nested structure
+            # Convert old flat structure to new nested structure for backward compatibility
+            if "matrix_room_ids" in config and "matrix" not in config:
+                logger.info(
+                    "Converting legacy flat config structure to nested structure"
+                )
+                matrix_config = {}
+
+                # Move matrix-related keys under matrix section
+                if "matrix_homeserver" in config:
+                    matrix_config["homeserver"] = config.pop("matrix_homeserver")
+                if "matrix_user" in config:
+                    matrix_config["user"] = config.pop("matrix_user")
+                if "matrix_room_ids" in config:
+                    matrix_config["room_ids"] = config.pop("matrix_room_ids")
+
+                config["matrix"] = matrix_config
+
+            # Basic validation - check for room_ids in either location
+            room_ids = None
+            if "matrix" in config and isinstance(config["matrix"], dict):
+                room_ids = config["matrix"].get("room_ids")
+            elif CONFIG_MATRIX_ROOM_IDS in config:
+                room_ids = config[CONFIG_MATRIX_ROOM_IDS]
+
+            if not room_ids:
                 logger.error(
-                    f"{ERROR_MISSING_CONFIG_KEYS}: {CHAR_COMMA.join(missing)} in {config_file}"
+                    f"Missing required configuration: room_ids in {config_file}"
                 )
                 return None
-            if not isinstance(config.get(CONFIG_MATRIX_ROOM_IDS), list):
-                logger.error("'matrix_room_ids' must be a list in config")
+            if not isinstance(room_ids, list):
+                logger.error("'room_ids' must be a list in config")
                 return None
+
+            # Ensure matrix_room_ids is available at top level for backward compatibility
+            config[CONFIG_MATRIX_ROOM_IDS] = room_ids
+
             logger.info(f"Loaded configuration from {config_file}")
             return config
     except (OSError, yaml.YAMLError):
@@ -234,7 +262,10 @@ _passage_cache: "OrderedDict[tuple[str, str], tuple[float, tuple[str, str]]]" = 
 )
 
 
-def _cache_get(passage: str, translation: str):
+def _cache_get(passage: str, translation: str, cache_enabled: bool = True):
+    if not cache_enabled:
+        return None
+
     key = (passage.lower(), translation.lower())
     now = monotonic()
     if key in _passage_cache:
@@ -246,7 +277,12 @@ def _cache_get(passage: str, translation: str):
     return None
 
 
-def _cache_set(passage: str, translation: str, value: tuple[str, str]):
+def _cache_set(
+    passage: str, translation: str, value: tuple[str, str], cache_enabled: bool = True
+):
+    if not cache_enabled:
+        return
+
     key = (passage.lower(), translation.lower())
     _passage_cache[key] = (monotonic(), value)
     # enforce LRU max size
@@ -254,9 +290,19 @@ def _cache_set(passage: str, translation: str, value: tuple[str, str]):
         _passage_cache.popitem(last=False)
 
 
-async def get_bible_text(passage, translation=DEFAULT_TRANSLATION, api_keys=None):
+async def get_bible_text(
+    passage,
+    translation=None,
+    api_keys=None,
+    cache_enabled=True,
+    default_translation=DEFAULT_TRANSLATION,
+):
+    # Use provided translation or fall back to configurable default
+    if translation is None:
+        translation = default_translation
+
     # Check cache first
-    cached = _cache_get(passage, translation)
+    cached = _cache_get(passage, translation, cache_enabled)
     if cached is not None:
         return cached
 
@@ -271,7 +317,7 @@ async def get_bible_text(passage, translation=DEFAULT_TRANSLATION, api_keys=None
             result = await get_kjv_text(passage)
 
         # Cache successful results
-        _cache_set(passage, translation, result)
+        _cache_set(passage, translation, result, cache_enabled)
         return result
     except (PassageNotFound, APIKeyMissing):
         # Re-raise these specific exceptions for the caller to handle
@@ -331,6 +377,21 @@ class BibleBot:
         self.client = client  # Injected AsyncClient instance
         self.api_keys = {}  # Will be set in main()
         self._room_id_set: set[str] = set()
+
+        # Bot configuration settings with defaults
+        bot_settings = config.get("bot", {}) if isinstance(config, dict) else {}
+        self.default_translation = bot_settings.get(
+            "default_translation", DEFAULT_TRANSLATION
+        )
+        self.cache_enabled = bot_settings.get("cache_enabled", True)
+        self.max_message_length = bot_settings.get("max_message_length", 2000)
+
+        # Validate settings
+        if self.max_message_length <= 0:
+            logger.warning(
+                f"Invalid max_message_length: {self.max_message_length}, using default 2000"
+            )
+            self.max_message_length = 2000
 
     def __repr__(self):
         keys = list(self.config.keys()) if isinstance(self.config, dict) else []
@@ -516,10 +577,20 @@ class BibleBot:
         Handle a detected Bible verse reference by fetching and posting the text.
         Sends a reaction to the original message and posts the verse text.
         """
+        # Use configured default translation if none specified
+        if translation is None:
+            translation = self.default_translation
+
         logger.info(f"Fetching scripture passage: {passage} ({translation.upper()})")
 
         try:
-            text, reference = await get_bible_text(passage, translation, self.api_keys)
+            text, reference = await get_bible_text(
+                passage,
+                translation,
+                self.api_keys,
+                cache_enabled=self.cache_enabled,
+                default_translation=self.default_translation,
+            )
 
             # Formatting text to ensure one space between words
             text = " ".join(text.replace("\n", " ").split())
@@ -532,9 +603,30 @@ class BibleBot:
             # Send a checkmark reaction to the original message
             await self.send_reaction(room_id, event.event_id, REACTION_OK)
 
-            # Format and send the scripture message
+            # Format the scripture message
             plain_body = f"{text} - {reference}{MESSAGE_SUFFIX}"
             formatted_body = f"{html.escape(text)} - {html.escape(reference)}{html.escape(MESSAGE_SUFFIX)}"
+
+            # Apply message length truncation if needed
+            if len(plain_body) > self.max_message_length:
+                # Calculate how much space we need for the suffix and truncation indicator
+                suffix_length = (
+                    len(f" - {reference}{MESSAGE_SUFFIX}") + 3
+                )  # +3 for "..."
+                max_text_length = self.max_message_length - suffix_length
+
+                if max_text_length > 0:
+                    truncated_text = text[:max_text_length] + "..."
+                    plain_body = f"{truncated_text} - {reference}{MESSAGE_SUFFIX}"
+                    formatted_body = f"{html.escape(truncated_text)} - {html.escape(reference)}{html.escape(MESSAGE_SUFFIX)}"
+                    logger.info(
+                        f"Truncated message from {len(text)} to {len(truncated_text)} characters"
+                    )
+                else:
+                    # Message is too long even with minimal text, use a short error message
+                    plain_body = f"[Message too long] - {reference}{MESSAGE_SUFFIX}"
+                    formatted_body = f"[Message too long] - {html.escape(reference)}{html.escape(MESSAGE_SUFFIX)}"
+
             logger.info(f"Sending scripture: {reference}")
 
             content = {

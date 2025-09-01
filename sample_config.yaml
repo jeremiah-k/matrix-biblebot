@@ -1,5 +1,34 @@
-matrix_homeserver: https://your_homeserver_url_here
-matrix_user: "@your_bot_username:your_homeserver_domain"
-matrix_room_ids:
-  - "!your_room_id:your_homeserver_domain"
-  - "!your_other_room_id:your_homeserver_domain"
+# Matrix server configuration
+matrix:
+  homeserver: https://your_homeserver_url_here
+  user: "@your_bot_username:your_homeserver_domain"
+  # List of Matrix room IDs where the bot should respond
+  # Get room IDs from Element: Room Settings > Advanced > Internal room ID
+  room_ids:
+    - "!your_room_id:your_homeserver_domain"
+    - "!your_other_room_id:your_homeserver_domain"
+
+  # End-to-end encryption settings (optional)
+  # Only enable if you understand the implications and have proper key management
+  e2ee:
+    enabled: false
+    # Store encryption keys in this directory (ensure proper permissions)
+    store_path: "./crypto_store"
+
+# Bot behavior configuration
+bot:
+  # Default Bible translation to use when none is specified
+  default_translation: "kjv" # Options: "kjv", "esv"
+
+  # Enable or disable caching of Bible passages
+  cache_enabled: true
+
+  # Maximum length for bot messages (characters)
+  # Messages longer than this will be truncated with "..."
+  max_message_length: 2000
+
+# API Keys for Bible translations (optional)
+# These can also be set via environment variables
+api_keys:
+  # ESV API key from https://api.esv.org/
+  esv: "your_esv_api_key_here"
