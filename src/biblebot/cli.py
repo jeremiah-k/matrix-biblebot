@@ -145,6 +145,14 @@ def interactive_main():
             print("Check your configuration and try again.")
             sys.exit(1)
 
+    def _get_user_input(prompt: str, cancellation_message: str = "Cancelled.") -> str:
+        """Get user input with consistent cancellation handling."""
+        try:
+            return input(prompt).strip().lower()
+        except (EOFError, KeyboardInterrupt):
+            print(f"\n{cancellation_message}")
+            return None
+
     state, message = detect_configuration_state()
 
     print("🤖 Matrix BibleBot")
@@ -155,14 +163,11 @@ def interactive_main():
         print("🔧 Setup Required")
         print("The bot needs to be configured before it can run.")
         print()
-        try:
-            response = (
-                input("Would you like to generate sample configuration now? [Y/n]: ")
-                .strip()
-                .lower()
-            )
-        except (EOFError, KeyboardInterrupt):
-            print("\nSetup cancelled.")
+        response = _get_user_input(
+            "Would you like to generate sample configuration now? [Y/n]: ",
+            "Setup cancelled.",
+        )
+        if response is None:
             return
         if response in ("", "y", "yes"):
             config_path = get_default_config_path()
@@ -184,10 +189,10 @@ def interactive_main():
         print("The bot uses secure session-based authentication that supports E2EE.")
         print("Manual access tokens are deprecated and don't support E2EE.")
         print()
-        try:
-            response = input("Would you like to login now? [Y/n]: ").strip().lower()
-        except (EOFError, KeyboardInterrupt):
-            print("\nAuthentication cancelled.")
+        response = _get_user_input(
+            "Would you like to login now? [Y/n]: ", "Authentication cancelled."
+        )
+        if response is None:
             return
         if response in ("", "y", "yes"):
             print("🔑 Starting interactive login...")
@@ -213,10 +218,10 @@ def interactive_main():
         print("  1. Run 'biblebot auth login' to use secure session-based auth")
         print("  2. This enables E2EE support and better security")
         print()
-        try:
-            response = input("Start with legacy token anyway? [y/N]: ").strip().lower()
-        except (EOFError, KeyboardInterrupt):
-            print("\nCancelled.")
+        response = _get_user_input(
+            "Start with legacy token anyway? [y/N]: ", "Cancelled."
+        )
+        if response is None:
             return
         if response in ("y", "yes"):
             _run_bot(get_default_config_path(), legacy=True)
@@ -229,12 +234,10 @@ def interactive_main():
         print("✅ Bot Ready")
         print("Configuration and credentials are valid.")
         print()
-        try:
-            response = (
-                input("Would you like to start the bot now? [Y/n]: ").strip().lower()
-            )
-        except (EOFError, KeyboardInterrupt):
-            print("\nCancelled.")
+        response = _get_user_input(
+            "Would you like to start the bot now? [Y/n]: ", "Cancelled."
+        )
+        if response is None:
             return
         if response in ("", "y", "yes"):
             _run_bot(get_default_config_path())

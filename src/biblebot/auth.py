@@ -19,6 +19,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Optional
 
+import nio.exceptions
 from nio import (
     AsyncClient,
     AsyncClientConfig,
@@ -338,12 +339,15 @@ async def interactive_login(
     except asyncio.TimeoutError:
         logger.exception(f"Login timed out after {LOGIN_TIMEOUT_SEC} seconds")
         return False
-    except (OSError, ValueError, RuntimeError):
-        logger.exception("Login error")
+    except (OSError, ValueError, RuntimeError) as e:
+        logger.error(f"Login error: {e}")
         return False
-    except Exception:
-        # e.g., nio exceptions like MatrixRequestError / LocalProtocolError
-        logger.exception("Unexpected login error")
+    except (nio.exceptions.LoginError, nio.exceptions.MatrixRequestError) as e:
+        logger.error(f"Matrix login error: {e}")
+        return False
+    except Exception as e:
+        # Catch any other unexpected errors with more specific logging
+        logger.exception(f"Unexpected login error: {type(e).__name__}: {e}")
         return False
     finally:
         await client.close()

@@ -269,14 +269,14 @@ def create_service_file():
         exec_cmd = f"{sys.executable} -m biblebot"
 
     # Replace ExecStart line to use discovered command and default config path
-    default_config = DEFAULT_CONFIG_PATH
-    new_lines = []
-    for line in service_template.splitlines():
-        if line.strip().startswith("ExecStart="):
-            new_lines.append(f"ExecStart={exec_cmd} --config {default_config}")
-        else:
-            new_lines.append(line)
-    service_content = "\n".join(new_lines) + "\n"
+    import re
+
+    exec_start_line = f"ExecStart={exec_cmd} --config {DEFAULT_CONFIG_PATH}"
+    service_content = re.sub(
+        r"^ExecStart=.*$", exec_start_line, service_template, flags=re.MULTILINE
+    )
+    if not service_content.endswith("\n"):
+        service_content += "\n"
 
     # Write service file
     try:
