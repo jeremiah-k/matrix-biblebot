@@ -5,6 +5,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 import yaml
+from aiohttp import web
 
 from biblebot import bot
 
@@ -137,9 +138,6 @@ class TestBookNameNormalization:
         """Test book name normalization with various inputs."""
         result = bot.normalize_book_name(input_name)
         assert result == expected
-
-
-from aiohttp import web
 
 
 class TestAPIRequests:

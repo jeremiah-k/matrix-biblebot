@@ -635,8 +635,8 @@ class TestDirectoryManagement:
         assert result == mock_creds_file
 
 
-class TestDiscoverHomeserver:
-    """Test homeserver discovery functionality."""
+class TestDiscoverHomeserverExceptions:
+    """Test homeserver discovery exception handling."""
 
     async def test_discover_homeserver_exception(self):
         """Test homeserver discovery with exception."""

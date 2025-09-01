@@ -35,6 +35,7 @@ lint:
     - linters: [bandit]
       paths:
         - src/biblebot/setup_utils.py
+        - tests/**
 actions:
   enabled:
     - trunk-announce
