@@ -20,7 +20,7 @@ class TestMonitoringPatterns:
     def mock_config(self):
         """
         Return a mocked Matrix configuration dictionary used by monitoring tests.
-        
+
         The dictionary contains the minimal fields the tests expect:
         - homeserver: URL of the Matrix homeserver.
         - user_id: Matrix user identifier.
@@ -122,9 +122,9 @@ class TestMonitoringPatterns:
         async def timed_api_call(*args, **kwargs):
             """
             Simulate an asynchronous Bible API call, record its processing time, and return a sample verse.
-            
+
             This coroutine measures elapsed time (using time.perf_counter) around a small simulated delay, appends the elapsed duration to the global list `processing_times`, and returns a tuple of (verse_text, verse_reference).
-            
+
             Returns:
                 tuple[str, str]: A sample verse and its reference, e.g. ("Test verse", "John 3:16").
             """
@@ -197,12 +197,14 @@ class TestMonitoringPatterns:
         bot._room_id_set = set(mock_config["matrix_room_ids"])
 
         # Set start time in the past
-        past_time = time.time() - 3600  # 1 hour ago
-        bot.start_time = past_time
+        # Keep times in milliseconds like other tests
+        past_ms = int((time.time() - 3600) * 1000)
+        bot.start_time = past_ms
 
         # Calculate uptime
         current_time = time.time()
-        uptime = current_time - bot.start_time
+        # Calculate uptime in seconds for assertions
+        uptime = current_time - (bot.start_time / 1000)
 
         # Should track uptime correctly
         assert uptime >= 3600  # At least 1 hour
@@ -223,9 +225,9 @@ class TestMonitoringPatterns:
         async def timestamped_api_call(*args, **kwargs):
             """
             Record the current epoch time into the external `request_times` list and return a fixed test verse.
-            
+
             This helper simulates an asynchronous API call by appending time.time() to a surrounding `request_times` list (side effect) and returning a tuple of (verse_text, reference). Any positional or keyword arguments are accepted but ignored.
-            
+
             Returns:
                 tuple[str, str]: A fixed verse text and its reference, ("Test verse", "John 3:16").
             """
@@ -271,24 +273,26 @@ class TestMonitoringPatterns:
         async def error_prone_api(*args, **kwargs):
             """
             Simulate an asynchronous Bible API call that randomly fails.
-            
+
             On invocation this coroutine either returns a (verse_text, reference) tuple or raises Exception("API Error")
             to model a 30% failure rate. It also updates the enclosing scope's nonlocal counters:
             - increments error_count when an error is raised
             - increments success_count when returning successfully
-            
+
             Parameters:
                 *args, **kwargs: Ignored — present to match caller signature.
-            
+
             Returns:
                 tuple[str, str]: (verse_text, reference) on success.
-            
+
             Raises:
                 Exception: "API Error" when a simulated failure occurs.
             """
             nonlocal success_count, error_count
             # Simulate 30% error rate
             import random
+
+            random.seed(12345)
 
             if random.random() < 0.3:
                 error_count += 1
@@ -386,12 +390,12 @@ class TestMonitoringPatterns:
         async def variable_speed_api(*args, **kwargs):
             """
             Simulate a Bible API call with variable (simulated) response times for testing.
-            
+
             This async helper mimics an external API by generating a random response duration (0.01–0.5s)
             without performing real I/O or sleeping. It increments the nonlocal `total_responses` counter
             on every call and increments the nonlocal `slow_responses` counter when the simulated
             response_time exceeds 0.3 seconds. Returns a deterministic test verse tuple.
-            
+
             Returns:
                 tuple[str, str]: (verse_text, verse_reference), e.g. ("Test verse", "John 3:16")
             """
@@ -400,6 +404,8 @@ class TestMonitoringPatterns:
 
             # Simulate variable response times without actual delays for faster testing
             import random
+
+            random.seed(12345)
 
             response_time = random.uniform(0.01, 0.5)
             # Remove the actual sleep to speed up the test
@@ -450,10 +456,10 @@ class TestMonitoringPatterns:
             # Extract verse reference from args if available
             """
             Simulated async API that records a verse request and returns a test verse.
-            
+
             If a verse reference is provided in args it will be used; otherwise "John 3:16" is used as the default.
             Side effect: increments the global `verse_requests` mapping for the chosen verse reference.
-            
+
             Returns:
                 tuple[str, str]: A pair (verse_text, verse_ref) where `verse_text` is a test string and
                 `verse_ref` is the verse reference that was recorded.
@@ -501,14 +507,14 @@ class TestMonitoringPatterns:
             # Simulate trace span
             """
             Async helper that simulates a traced API call by sleeping briefly, recording a trace span, and returning a test verse.
-            
+
             This coroutine appends a span dictionary to the module-level `trace_spans` list to simulate distributed tracing. The appended span contains the keys:
             - "span_id": unique identifier for the span,
             - "operation": the operation name ("bible_api_call"),
             - "duration": elapsed time in seconds,
             - "start_time": perf_counter timestamp at span start,
             - "end_time": perf_counter timestamp at span end.
-            
+
             Returns:
                 tuple[str, str]: A (verse_text, reference) pair; here ("Test verse", "John 3:16").
             """

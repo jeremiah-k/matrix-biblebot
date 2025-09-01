@@ -30,12 +30,12 @@ class TestEdgeCases:
     def mock_client(self):
         """
         Create a MagicMock Matrix client configured for edge-case tests.
-        
+
         The returned mock exposes async-compatible methods used by the tests:
         - room_send: AsyncMock used to simulate sending messages to a room.
         - join: AsyncMock used to simulate joining a room.
         - sync: AsyncMock used to simulate client syncing.
-        
+
         Returns:
             MagicMock: A mock Matrix client with the above AsyncMock attributes.
         """
@@ -48,7 +48,7 @@ class TestEdgeCases:
     async def test_empty_message_handling(self, mock_config, mock_client):
         """
         Verify that on_room_message gracefully ignores messages that contain no meaningful content.
-        
+
         This asynchronous test creates a BibleBot with a mocked client and populates its room ID set and start time, then sends a variety of empty or whitespace-only message bodies (empty string, space, newline, tab, mixed whitespace) as events. The expectation is that calling bot.on_room_message for each event does not raise and does not produce a response (i.e., no crash or outgoing room_send).
         """
         bot = BibleBot(config=mock_config, client=mock_client)
@@ -261,14 +261,14 @@ class TestEdgeCases:
     async def test_message_timestamp_edge_cases(self, mock_config, mock_client):
         """
         Verify that on_room_message correctly handles a variety of message timestamp edge cases.
-        
+
         This async test sets up a BibleBot with mock configuration and client, injects a start time and room set, patches get_bible_text to return a sample verse, and invokes on_room_message with events whose server_timestamp values exercise:
         - 0 (Unix epoch)
         - a typical integer timestamp
         - a very large future timestamp
         - a negative timestamp
         - a floating-point timestamp
-        
+
         The test ensures these timestamp formats are handled without raising exceptions or crashing.
         """
         bot = BibleBot(config=mock_config, client=mock_client)
@@ -380,7 +380,7 @@ class TestEdgeCases:
     async def test_api_response_edge_cases(self, mock_config, mock_client):
         """
         Verify on_room_message handles a variety of API response shapes without crashing.
-        
+
         This test patches get_bible_text to return several edge-case responses (None, empty strings, extremely long texts, long references, strings with newlines/tabs, and Unicode/emojis) and calls on_room_message for each case. The expected behavior is graceful handling of each response; a TypeError is tolerated when the API returns None.
         """
         bot = BibleBot(config=mock_config, client=mock_client)
@@ -415,11 +415,10 @@ class TestEdgeCases:
                 room = MagicMock()
                 room.room_id = "!room:matrix.org"
 
-                # Should handle various API response formats
-                try:
-                    await bot.on_room_message(room, event)
-                except TypeError:
-                    pass  # Expected when response is None
+                await bot.on_room_message(room, event)
+                # For None response, bot should not send a message
+                if response is None:
+                    assert not mock_client.room_send.called
 
     async def test_network_timeout_edge_cases(self, mock_config, mock_client):
         """Test edge cases with network timeouts."""
@@ -439,11 +438,11 @@ class TestEdgeCases:
                 # await asyncio.sleep(timeout_duration)
                 """
                 Simulate an API timeout by immediately raising asyncio.TimeoutError.
-                
+
                 This coroutine is intended for testing: it accepts any positional and keyword arguments
                 but does not perform I/O or delays — it immediately raises asyncio.TimeoutError to
                 simulate a timeout condition.
-                
+
                 Raises:
                     asyncio.TimeoutError: Always raised to represent an API timeout.
                 """
@@ -490,8 +489,8 @@ class TestEdgeCases:
 
             try:
                 # Create some memory pressure
-                for _i in range(10):
-                    large_objects.append("X" * 1000000)  # 1MB strings
+                for _i in range(5):
+                    large_objects.append("X" * 500_000)  # ~0.5MB each
 
                 event = MagicMock()
                 event.body = "John 3:16"

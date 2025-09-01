@@ -259,7 +259,7 @@ class TestErrorScenarios:
             result = await bot.make_api_request("https://test.api/error")
             assert result is None
 
-    def test_file_permission_errors(self, tmp_path):
+    def test_file_permission_errors(self, _tmp_path):
         """Test handling of file permission errors."""
         # Mock tempfile.NamedTemporaryFile to raise PermissionError
         with patch("tempfile.NamedTemporaryFile") as mock_temp:
