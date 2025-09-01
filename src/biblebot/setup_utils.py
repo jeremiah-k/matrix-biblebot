@@ -39,7 +39,7 @@ from .tools import get_service_template_path
 def get_executable_path():
     """
     Return the full path to the biblebot executable.
-    
+
     Attempts to locate an installed `biblebot` entry point using the system PATH (suitable for pipx or pip installs).
     If found, returns that executable path; if not found, returns the current Python interpreter path (sys.executable) as a fallback.
     This function prints either the discovered executable path or a warning message when falling back.
@@ -56,7 +56,7 @@ def get_executable_path():
 def get_user_service_path():
     """
     Return the filesystem path to the user's systemd service file for the application.
-    
+
     Returns:
         pathlib.Path: Full path to the user service file (SYSTEMD_USER_DIR / SERVICE_NAME).
     """
@@ -66,9 +66,9 @@ def get_user_service_path():
 def service_exists():
     """
     Return True if the user systemd service file exists.
-    
+
     Checks for the presence of the service unit file at the path returned by get_user_service_path().
-    
+
     Returns:
         bool: True if the service file exists, False otherwise.
     """
@@ -87,19 +87,19 @@ def read_service_file():
     """Read the content of the service file if it exists."""
     service_path = get_user_service_path()
     if service_path.exists():
-        return service_path.read_text()
+        return service_path.read_text(encoding="utf-8")
     return None
 
 
 def get_template_service_path():
     """
     Locate the systemd service template file for the application.
-    
+
     Searches a series of likely locations (package directory, package tools subdir,
     system-wide share under sys.prefix, user local share, several development
     paths relative to the package, and the current working directory) and returns
     the first existing path.
-    
+
     Returns:
         str or None: Absolute path to the first found template file, or None if no
         candidate exists.
@@ -156,20 +156,21 @@ def get_template_service_path():
 def get_template_service_content():
     """
     Return the systemd service template content to use when creating the user service.
-    
+
     Tries the following sources in order and returns the first successfully read content:
     1. Path returned by get_service_template_path().
     2. The packaged resource `biblebot.tools:biblebot.service` via importlib.resources.
     3. A path found by get_template_service_path().
-    
-    If none of the sources can be read, returns a built-in default service template string suitable for a typical user install."""
+
+    If none of the sources can be read, returns a built-in default service template string suitable for a typical user install.
+    """
     # Use the helper function to get the service template path
     template_path = get_service_template_path()
 
     if template_path and os.path.exists(template_path):
         # Read the template from file
         try:
-            with open(template_path, FILE_MODE_READ) as f:
+            with open(template_path, FILE_MODE_READ, encoding="utf-8") as f:
                 service_template = f.read()
             return service_template
         except Exception as e:
@@ -191,7 +192,7 @@ def get_template_service_content():
         if template_path:
             # Read the template from file
             try:
-                with open(template_path, FILE_MODE_READ) as f:
+                with open(template_path, FILE_MODE_READ, encoding="utf-8") as f:
                     service_template = f.read()
                 return service_template
             except Exception as e:
@@ -200,7 +201,7 @@ def get_template_service_content():
     # If we couldn't find or read the template file, use a default template
     print("Using default service template")
     return """[Unit]
-Description={SERVICE_DESCRIPTION}
+Description=BibleBot service
 After=network-online.target
 Wants=network-online.target
 
@@ -223,9 +224,9 @@ WantedBy=default.target
 def is_service_enabled():
     """
     Return True if the user systemd service is enabled to start at boot.
-    
+
     Performs `systemctl --user is-enabled <SERVICE_NAME>` using the configured SYSTEMCTL_PATH; returns True only when the command exits successfully and prints "enabled". Any execution error or unexpected output yields False.
-    
+
     Returns:
         bool: True when the service is enabled, False otherwise (including on errors).
     """
@@ -249,12 +250,12 @@ def is_service_enabled():
 def is_service_active():
     """
     Return True if the BibleBot user systemd service is currently active (running), otherwise False.
-    
+
     Checks the service status by invoking `systemctl --user is-active <SERVICE_NAME>`. Any errors or unexpected results are treated as the service not being active and result in False.
     """
     try:
         result = subprocess.run(
-            [SYSTEMCTL_PATH, "--user", "is-active", SERVICE_NAME],
+            [SYSTEMCTL_PATH, SYSTEMCTL_ARG_USER, "is-active", SERVICE_NAME],
             check=False,  # Don't raise an exception if the service is not active
             capture_output=True,
             text=True,
@@ -267,19 +268,19 @@ def is_service_active():
 def create_service_file():
     """
     Create or update the systemd user service file for BibleBot.
-    
+
     Determines the best command to start BibleBot (prefers an installed `biblebot` executable on PATH;
     falls back to invoking the package with the current Python interpreter using `-m biblebot`),
     injects that command into a service template as the `ExecStart` value (including the
     DEFAULT_CONFIG_PATH `--config` argument), and writes the resulting unit to the user's
     systemd service path.
-    
+
     Side effects:
     - Ensures the user systemd service directory and the application config directory exist.
     - Reads the service template via get_template_service_content().
     - Writes the final service unit to get_user_service_path().
     - Prints status and error messages to stdout/stderr.
-    
+
     Returns:
         bool: True if the service file was successfully created/updated, False on failure
         (including template resolution or I/O errors).
@@ -294,7 +295,9 @@ def create_service_file():
     service_dir.mkdir(parents=True, exist_ok=True)
 
     # Create config directory if it doesn't exist
-    config_dir = Path.home() / CONFIG_SUBDIR / APP_NAME
+    from .constants import CONFIG_DIR
+
+    config_dir = CONFIG_DIR
     config_dir.mkdir(parents=True, exist_ok=True)
 
     # Get the template service content
@@ -313,15 +316,21 @@ def create_service_file():
     import re
 
     exec_start_line = f"ExecStart={exec_cmd} --config {DEFAULT_CONFIG_PATH}"
-    service_content = re.sub(
+    service_content, n = re.subn(
         r"^ExecStart=.*$", exec_start_line, service_template, flags=re.MULTILINE
     )
+    if n == 0:
+        service_content = re.sub(
+            r"(?m)^\[Service\]\s*$",
+            f"[Service]\n{exec_start_line}",
+            service_template,
+        )
     if not service_content.endswith("\n"):
         service_content += "\n"
 
     # Write service file
     try:
-        get_user_service_path().write_text(service_content)
+        get_user_service_path().write_text(service_content, encoding="utf-8")
         print(f"Service file created at {get_user_service_path()}")
         return True
     except (IOError, OSError) as e:
@@ -332,17 +341,19 @@ def create_service_file():
 def reload_daemon():
     """
     Reload the systemd user daemon.
-    
+
     Runs the configured systemctl command (via SYSTEMCTL_PATH) with the `--user daemon-reload`
     action to make systemd pick up changes to user units.
-    
+
     Returns:
         bool: True if the daemon-reload command completed successfully; False on failure
         (command returned non-zero or an OSError occurred).
     """
     try:
         # Using absolute path for security
-        subprocess.run([SYSTEMCTL_PATH, "--user", "daemon-reload"], check=True)
+        subprocess.run(
+            [SYSTEMCTL_PATH, SYSTEMCTL_ARG_USER, "daemon-reload"], check=True
+        )
         print("Systemd user daemon reloaded")
         return True
     except subprocess.CalledProcessError as e:
@@ -356,7 +367,7 @@ def reload_daemon():
 def service_needs_update():
     """
     Determine whether the installed user systemd service file needs updating.
-    
+
     Performs these checks in order and returns the first applicable result:
     - If no installed service file exists -> needs update.
     - If a template service file cannot be located -> reports no update (template missing).
@@ -365,7 +376,7 @@ def service_needs_update():
     - If the service file's PATH does not include the configured pipx venv path -> needs update.
     - If the template file's modification time is newer than the installed service file -> needs update.
     If none of the above indicate an update is necessary, reports the service file as up to date.
-    
+
     Returns:
         tuple: (needs_update: bool, reason: str) — `needs_update` is True when an update is required; `reason` is a short explanation.
     """
@@ -431,14 +442,20 @@ def check_loginctl_available():
 def check_lingering_enabled():
     """
     Return True if user lingering (systemd --user Linger) is enabled for the current user.
-    
+
     This inspects the environment variables ENV_USER then ENV_USERNAME to determine the target username
     and runs `loginctl show-user <username> --property=Linger`. Returns True when the command
     succeeds and reports `Linger=yes`. Any error (including missing username or command failure)
     results in False.
     """
     try:
-        username = os.environ.get(ENV_USER, os.environ.get(ENV_USERNAME))
+        import getpass
+
+        username = (
+            os.environ.get(ENV_USER)
+            or os.environ.get(ENV_USERNAME)
+            or getpass.getuser()
+        )
         result = subprocess.run(
             ["loginctl", "show-user", username, "--property=Linger"],
             check=False,
@@ -453,11 +470,17 @@ def check_lingering_enabled():
 def enable_lingering():
     """
     Enable systemd "lingering" for the current user by running `sudo loginctl enable-linger <username>`.
-    
+
     Determines the target username from the environment variables ENV_USER or ENV_USERNAME and invokes `sudo loginctl enable-linger`. Returns True if the command exits with status 0; returns False on nonzero exit status or on exceptions (e.g., missing environment variables or subprocess errors). Note: this function requires sudo privileges to succeed.
     """
     try:
-        username = os.environ.get(ENV_USER, os.environ.get(ENV_USERNAME))
+        import getpass
+
+        username = (
+            os.environ.get(ENV_USER)
+            or os.environ.get(ENV_USERNAME)
+            or getpass.getuser()
+        )
         print(f"Enabling lingering for user {username}...")
         result = subprocess.run(
             ["sudo", "loginctl", "enable-linger", username],
@@ -483,7 +506,9 @@ def start_service():
         bool: True if successful, False otherwise.
     """
     try:
-        subprocess.run([SYSTEMCTL_PATH, "--user", "start", SERVICE_NAME], check=True)
+        subprocess.run(
+            [SYSTEMCTL_PATH, SYSTEMCTL_ARG_USER, "start", SERVICE_NAME], check=True
+        )
         return True
     except subprocess.CalledProcessError as e:
         print(f"Error starting service: {e}")
@@ -496,15 +521,15 @@ def start_service():
 def show_service_status():
     """
     Print the systemd user service status for the configured SERVICE_NAME.
-    
+
     Runs `systemctl --user status <SERVICE_NAME>` and prints the command output to stdout.
-    
+
     Returns:
         bool: True if the status command was executed and output printed; False if the command could not be run due to an OS or subprocess error.
     """
     try:
         result = subprocess.run(
-            [SYSTEMCTL_PATH, "--user", "status", SERVICE_NAME],
+            [SYSTEMCTL_PATH, SYSTEMCTL_ARG_USER, "status", SERVICE_NAME],
             check=False,  # Don't raise an exception if the service is not active
             capture_output=True,
             text=True,
@@ -523,13 +548,13 @@ def show_service_status():
 def install_service():
     """
     Install or update the BibleBot systemd user service.
-    
+
     This is an interactive routine that ensures the user-level systemd service file exists
     and matches the current installation, creates or updates the service file if needed,
     reloads the user systemd daemon, and (optionally, with user consent) enables/starts/restarts
     the service and enables user lingering. The function prints prompts, progress messages,
     errors, and a final status summary to stdout.
-    
+
     Behavior and side effects:
     - May create or overwrite the service file at the user systemd directory.
     - Reloads the systemd user daemon (daemon-reload).
@@ -537,9 +562,9 @@ def install_service():
       user agrees.
     - May run `systemctl --user enable|start|restart <SERVICE_NAME>` depending on user input.
     - Shows the service status after start/restart when applicable.
-    
+
     This function is interactive and should be run in a terminal where user input is possible.
-    
+
     Returns:
         bool: True on normal completion (including cases where the user declines optional actions);
               False if a fatal step failed (e.g., creating the service file or reloading the daemon).
@@ -619,7 +644,7 @@ def install_service():
         ):
             try:
                 subprocess.run(
-                    [SYSTEMCTL_PATH, "--user", "enable", SERVICE_NAME],
+                    [SYSTEMCTL_PATH, SYSTEMCTL_ARG_USER, "enable", SERVICE_NAME],
                     check=True,
                 )
                 print("Service enabled successfully")
@@ -636,7 +661,7 @@ def install_service():
         if input("Do you want to restart the service? (y/n): ").lower().startswith("y"):
             try:
                 subprocess.run(
-                    [SYSTEMCTL_PATH, "--user", "restart", SERVICE_NAME],
+                    [SYSTEMCTL_PATH, SYSTEMCTL_ARG_USER, "restart", SERVICE_NAME],
                     check=True,
                 )
                 print("Service restarted successfully")

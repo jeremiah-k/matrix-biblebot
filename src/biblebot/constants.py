@@ -68,7 +68,7 @@ REQUIRED_CONFIG_KEYS = [
 ]
 
 # Log levels
-LOG_LEVELS = ["error", "warning", "info", "debug"]
+LOG_LEVELS = ("error", "warning", "info", "debug")
 DEFAULT_LOG_LEVEL = "info"
 
 # CLI command names

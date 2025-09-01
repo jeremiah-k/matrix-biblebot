@@ -92,7 +92,7 @@ _PASSAGE_CACHE_TTL_SECS = CACHE_TTL_SECONDS
 def normalize_book_name(book_str: str) -> str:
     """
     Normalize a Bible book name or abbreviation to its canonical full name.
-    
+
     The input is lowercased, periods are removed, and surrounding whitespace is trimmed before lookup
     in the BOOK_ABBREVIATIONS mapping. If a normalized entry exists in that mapping, the mapped
     full book name is returned; otherwise the original input is returned in title case.
@@ -106,15 +106,15 @@ def normalize_book_name(book_str: str) -> str:
 def load_config(config_file):
     """
     Load and validate the bot configuration from a YAML file.
-    
+
     This reads YAML from config_file, supports a legacy flat format by migrating
     matrix_* keys into a nested `matrix` section, and ensures a list of room IDs
     is present. On success returns the parsed configuration with a top-level
     `CONFIG_MATRIX_ROOM_IDS` key populated for backward compatibility.
-    
+
     Parameters:
         config_file (str): Path to the YAML configuration file.
-    
+
     Returns:
         dict | None: Parsed configuration dictionary on success; None if the file
         cannot be read, contains invalid YAML, or fails validation (missing or
@@ -172,13 +172,13 @@ def load_config(config_file):
 def load_environment(config: dict, config_path: str):
     """
     Load API keys and the Matrix access token from the provided configuration and the environment.
-    
+
     Checks the supplied config dict for an "api_keys" section and reads a legacy .env file next to the given config_path (falling back to a .env in the current working directory or the process environment). Environment variables take precedence over values in the config file. Emits deprecation warnings when legacy .env or MATRIX_ACCESS_TOKEN are used.
-    
+
     Parameters:
         config (dict): Parsed configuration dictionary (typically loaded from YAML). If it contains an "api_keys" mapping, any "esv" entry will be read.
         config_path (str): Filesystem path to the active config file; its directory is used to locate a legacy .env file.
-    
+
     Returns:
         tuple: (matrix_access_token, api_keys) where
             - matrix_access_token (str | None): value of the ENV_MATRIX_ACCESS_TOKEN environment variable if set, otherwise None.
@@ -222,21 +222,18 @@ def load_environment(config: dict, config_path: str):
     # Get access token from environment (legacy support with deprecation warning)
     matrix_access_token = os.getenv(ENV_MATRIX_ACCESS_TOKEN)
     if matrix_access_token:
-        logger.warning(
-            "⚠️  MATRIX_ACCESS_TOKEN environment variable detected - this is deprecated and does NOT support E2EE."
-        )
-        logger.warning(
-            "⚠️  Consider using 'biblebot auth login' for secure session-based authentication with E2EE support."
-        )
+        # Don't warn here; main() decides legacy vs modern auth.
+        logger.debug("MATRIX_ACCESS_TOKEN environment variable detected")
     else:
-        logger.warning(WARN_MATRIX_ACCESS_TOKEN_NOT_SET)
+        # Don't warn here; main() decides legacy vs modern auth.
+        logger.debug(WARN_MATRIX_ACCESS_TOKEN_NOT_SET)
 
     # Override API keys from environment if present (environment takes precedence)
     esv_key = os.getenv(ENV_ESV_API_KEY)
     if esv_key:
         api_keys[TRANSLATION_ESV] = esv_key
         logger.info(INFO_API_KEY_FOUND.format(TRANSLATION_ESV.upper()))
-    elif TRANSLATION_ESV not in api_keys:
+    elif not api_keys.get(TRANSLATION_ESV):
         logger.debug(INFO_NO_API_KEY.format(TRANSLATION_ESV.upper()))
 
     return matrix_access_token, api_keys
@@ -252,9 +249,9 @@ async def make_api_request(
 ):
     """
     Perform an HTTP GET to the given URL and return the parsed JSON response, or None on failure.
-    
+
     The function accepts optional request headers and query parameters. If a ClientSession is provided it will be reused; otherwise a temporary session is created for the request. The timeout argument may be either an aiohttp.ClientTimeout instance or a numeric total timeout in seconds.
-    
+
     Returns:
         The decoded JSON object on HTTP 200 with valid JSON, or None if the response is non-200, the body is not valid JSON, or a network/timeout error occurs.
     """
@@ -269,7 +266,7 @@ async def make_api_request(
     async def _request(sess):
         """
         Perform an HTTP GET on the outer-scope URL and return the parsed JSON response.
-        
+
         Returns the decoded JSON object (typically a dict or list) on HTTP 200 with valid JSON, or None on non-200 responses or if the response body cannot be parsed as JSON. Side effects: logs warnings on non-200 status and logs exceptions when JSON decoding fails.
         """
         async with sess.get(
@@ -281,7 +278,13 @@ async def make_api_request(
                 except (aiohttp.ContentTypeError, json.JSONDecodeError):
                     logger.exception(f"Invalid JSON from {url}")
                     return None
-            logger.warning(f"HTTP {response.status} fetching {url}")
+            try:
+                snippet = (await response.text())[:200]
+            except Exception:
+                snippet = "<unavailable>"
+            logger.warning(
+                f"HTTP {response.status} fetching {url} - body[:200]={snippet!r}"
+            )
             return None
 
     try:
@@ -304,17 +307,17 @@ _passage_cache: "OrderedDict[tuple[str, str], tuple[float, tuple[str, str]]]" = 
 def _cache_get(passage: str, translation: str, cache_enabled: bool = True):
     """
     Return a cached passage text for a given passage and translation if present and not expired.
-    
+
     Looks up an LRU-style in-memory cache keyed by (passage, translation) after normalizing both to lowercase.
     If cache_enabled is False this function always returns None. If a cached entry exists and its timestamp
     is within the TTL (_PASSAGE_CACHE_TTL_SECS), the entry is reinserted to mark it as recently used and its
     value is returned. Expired or missing entries return None.
-    
+
     Parameters:
         passage (str): Bible passage identifier (e.g., "John 3:16"); matching is case-insensitive.
         translation (str): Translation code/name (case-insensitive).
         cache_enabled (bool): When False, bypasses the cache and returns None.
-    
+
     Returns:
         The cached passage text (any type stored) if present and fresh; otherwise None.
     """
@@ -337,11 +340,11 @@ def _cache_set(
 ):
     """
     Store a fetched passage in the in-memory LRU TTL cache.
-    
+
     If caching is disabled this is a no-op. The cache key is the lowercased (passage, translation) pair;
     the stored value is a tuple of (timestamp, value). When the cache exceeds the module-level
     _max size, the oldest entries are evicted (LRU behavior).
-    
+
     Parameters:
         passage (str): Bible passage string (e.g., "John 3:16").
         translation (str): Translation identifier (e.g., "ESV", "KJV"); used in the cache key.
@@ -368,19 +371,19 @@ async def get_bible_text(
     # Use provided translation or fall back to configurable default
     """
     Retrieve a Bible passage text (with its canonical reference), using optional translation selection and an LRU TTL cache.
-    
+
     If `translation` is not provided the function uses `default_translation`. When caching is enabled and a cached entry exists for the (passage, translation) pair that cached value is returned. The function dispatches to the appropriate backend for the requested translation (ESV uses an API key from `api_keys`, KJV uses the public KJV endpoint), stores successful results in the cache, and returns the fetched passage result.
-    
+
     Parameters:
         passage (str): Bible passage identifier or range (e.g., "John 3:16").
         translation (str | None): Translation identifier (e.g., value of TRANSLATION_ESV). If None, `default_translation` is used.
         api_keys (Mapping[str, str] | None): Optional mapping of translation identifiers to API keys; used when a translation backend requires a key (ESV).
         cache_enabled (bool): If True, consult and update the internal passage cache (LRU with TTL); set False to bypass caching.
         default_translation (str): Translation to use when `translation` is None.
-    
+
     Returns:
         The fetched passage result (contains the passage text and its canonical reference).
-    
+
     Raises:
         PassageNotFound: If the passage cannot be retrieved or is not present in the backend response.
         APIKeyMissing: If a backend requiring an API key (e.g., ESV) is requested but no key is available.
@@ -397,31 +400,25 @@ async def get_bible_text(
     if api_keys:
         api_key = api_keys.get(translation)
 
-    try:
-        if translation == TRANSLATION_ESV:
-            result = await get_esv_text(passage, api_key)
-        else:  # Assuming KJV as the default
-            result = await get_kjv_text(passage)
-
-        # Cache successful results
-        _cache_set(passage, translation, result, cache_enabled)
-        return result
-    except (PassageNotFound, APIKeyMissing):
-        # Re-raise these specific exceptions for the caller to handle
-        raise
+    if translation == TRANSLATION_ESV:
+        result = await get_esv_text(passage, api_key)
+    else:  # Assuming KJV as the default
+        result = await get_kjv_text(passage)
+    _cache_set(passage, translation, result, cache_enabled)
+    return result
 
 
 async def get_esv_text(passage, api_key):
     """
     Fetch the specified passage text from the ESV API and return the passage text with its canonical reference.
-    
+
     Parameters:
         passage (str): Passage query (e.g., "John 3:16").
         api_key (str | None): ESV API key; required.
-    
+
     Returns:
         tuple[str, str | None]: (passage_text, canonical_reference). passage_text is stripped of surrounding whitespace; canonical_reference may be None if the API did not provide one.
-    
+
     Raises:
         APIKeyMissing: If api_key is None.
         PassageNotFound: If the API response is invalid or the passage could not be found.
@@ -458,13 +455,13 @@ async def get_kjv_text(passage):
     # Preserve ':' in chapter:verse while encoding spaces and punctuation
     """
     Fetch the King James Version (KJV) text for a given Bible passage.
-    
+
     Parameters:
         passage (str): Passage reference (e.g., "John 3:16" or "Genesis 1:1-3"). Colons in the passage are preserved during URL encoding.
-    
+
     Returns:
         tuple[str, str | None]: A pair (text, reference) where `text` is the passage text (trimmed) and `reference` is the canonical reference returned by the API (may be None).
-    
+
     Raises:
         PassageNotFound: If the API returns no result or an empty text for the requested passage.
     """
@@ -488,12 +485,12 @@ class BibleBot:
     def __init__(self, config, client=None):
         """
         Initialize the BibleBot instance.
-        
+
         Parameters:
             config (dict): Configuration mapping (expected keys: "bot" with optional "default_translation",
                 "cache_enabled", and "max_message_length"; also contains matrix room IDs elsewhere in the config).
             client: Optional injected AsyncClient used for Matrix interactions (omitted from detailed param docs as a common service).
-        
+
         Behavior:
             - Stores the provided config and optional client.
             - Initializes an empty api_keys dict (populated later by main) and an empty set of joined room IDs.
@@ -526,9 +523,9 @@ class BibleBot:
     def __repr__(self):
         """
         Return a concise, developer-oriented representation of the BibleBot.
-        
+
         The string includes the list of keys present in the bot's `config` (empty list if `config` is not a dict) and a boolean `client_set` indicating whether an AsyncClient was provided.
-        
+
         Returns:
             str: A representation like "BibleBot(config_keys=['a','b'], client_set=True)".
         """
@@ -538,7 +535,7 @@ class BibleBot:
     async def resolve_aliases(self):
         """
         Resolve any Matrix room aliases in the configured room list and replace them with canonical room IDs.
-        
+
         Iterates over self.config[CONFIG_MATRIX_ROOM_IDS]; for entries starting with '#', attempts to resolve the alias via self.client.room_resolve_alias and replaces the alias with the resolved room_id. Non-alias entries are preserved. Duplicates are removed while preserving order. The method updates self.config[CONFIG_MATRIX_ROOM_IDS] in place and logs warnings for aliases that cannot be resolved.
         """
         resolved_ids = []
@@ -562,7 +559,7 @@ class BibleBot:
     async def join_matrix_room(self, room_id_or_alias):
         """
         Join a Matrix room by ID or alias.
-        
+
         If room_id_or_alias starts with '#', the alias is resolved to a room ID via the client's room_resolve_alias; otherwise the value is treated as a room ID. If the bot is not already in the room, this method attempts to join it. Successes and failures are logged; exceptions are caught and logged — the method does not raise.
         Parameters:
             room_id_or_alias (str): A Matrix room ID (e.g. "!abc:example.org") or alias (e.g. "#room:example.org").
@@ -605,14 +602,14 @@ class BibleBot:
     async def start(self):
         """
         Start the bot and begin processing Matrix events.
-        
+
         Performs startup tasks and then enters the continuous event sync loop:
         - Records the bot start time (milliseconds) in self.start_time.
         - Resolves any room aliases in configuration and builds the internal room ID set.
         - Ensures the bot is joined to all configured rooms.
         - Performs an initial full-state sync; any exception during this step is logged and startup proceeds.
         - Enters the long-running `sync_forever` loop to process events.
-        
+
         This method is asynchronous and does not return; it only returns when the client's sync loop ends or raises.
         """
         self.start_time = int(
@@ -637,7 +634,7 @@ class BibleBot:
     async def on_decryption_failure(self, room: MatrixRoom, event: MegolmEvent) -> None:
         """
         Handle a Megolm event that failed to decrypt by requesting the missing session keys.
-        
+
         If the event cannot be decrypted, this will request the needed room key from the sender. As a side effect the event's `room_id` may be set/updated to the provided room's id. The method prefers the client's `request_room_key` API and falls back to creating and sending a to-device key request when necessary. Exceptions are logged and not propagated.
         """
         logger.error(
@@ -666,10 +663,10 @@ class BibleBot:
                 f"Failed to request keys for event {getattr(event, 'event_id', '?')}"
             )
 
-    async def on_invite(self, room: MatrixRoom, event: InviteEvent):
+    async def on_invite(self, room: MatrixRoom, _event: InviteEvent):
         """
         Handle an incoming room invite: join the room when it is listed in the bot's configured rooms; otherwise log a warning.
-        
+
         Parameters:
             room (MatrixRoom): The room the bot was invited to.
             event (InviteEvent): The invite event (unused by this handler).
@@ -697,19 +694,19 @@ class BibleBot:
     async def on_room_message(self, room: MatrixRoom, event: RoomMessageText):
         """
         Handle incoming room message events, detect Bible verse references, and trigger scripture processing.
-        
+
         Only processes messages that:
         - originate in configured rooms,
         - are not sent by the bot itself, and
         - were sent after the bot's recorded start time.
-        
+
         Scans the message text with REFERENCE_PATTERNS. When a match is found it:
         - normalizes the book name with normalize_book_name(),
         - constructs a passage string "<Book> <Reference>",
         - determines the requested translation (falls back to DEFAULT_TRANSLATION),
         - logs the detected reference, and
         - invokes handle_scripture_command(room_id, passage, translation, event) to produce a reply.
-        
+
         Parameters are typed (MatrixRoom, RoomMessageText) and represent the source room and the received event.
         """
         if (
@@ -748,15 +745,15 @@ class BibleBot:
     async def handle_scripture_command(self, room_id, passage, translation, event):
         """
         Handle a detected Bible verse reference by fetching the passage text and posting it to the room.
-        
+
         Fetches the requested passage (using the configured/default translation and cache), normalizes whitespace,
         reacts to the triggering event with a checkmark, and sends a formatted HTML/plain text message containing
         the verse and its canonical reference. If the assembled message exceeds the bot's max_message_length it will
         be truncated with an ellipsis; if it cannot be truncated to fit, a short "[Message too long]" placeholder is sent.
-        
+
         On failure to retrieve the passage (e.g., passage not found or missing API key) a user-facing error message is posted.
         Unexpected exceptions are logged and the same generic error message is sent.
-        
+
         Parameters:
             room_id (str): Matrix room ID where the response should be posted.
             passage (str): Bible passage reference as detected (e.g., "John 3:16").
@@ -790,28 +787,27 @@ class BibleBot:
             await self.send_reaction(room_id, event.event_id, REACTION_OK)
 
             # Format the scripture message
-            plain_body = f"{text} - {reference}{MESSAGE_SUFFIX}"
-            formatted_body = f"{html.escape(text)} - {html.escape(reference)}{html.escape(MESSAGE_SUFFIX)}"
+            ref_str = reference or ""
+            plain_body = f"{text} - {ref_str}{MESSAGE_SUFFIX}"
+            formatted_body = f"{html.escape(text)} - {html.escape(ref_str)}{html.escape(MESSAGE_SUFFIX)}"
 
             # Apply message length truncation if needed
             if len(plain_body) > self.max_message_length:
                 # Calculate how much space we need for the suffix and truncation indicator
-                suffix_length = (
-                    len(f" - {reference}{MESSAGE_SUFFIX}") + 3
-                )  # +3 for "..."
+                suffix_length = len(f" - {ref_str}{MESSAGE_SUFFIX}") + 3  # +3 for "..."
                 max_text_length = self.max_message_length - suffix_length
 
                 if max_text_length > 0:
                     truncated_text = text[:max_text_length] + "..."
-                    plain_body = f"{truncated_text} - {reference}{MESSAGE_SUFFIX}"
-                    formatted_body = f"{html.escape(truncated_text)} - {html.escape(reference)}{html.escape(MESSAGE_SUFFIX)}"
+                    plain_body = f"{truncated_text} - {ref_str}{MESSAGE_SUFFIX}"
+                    formatted_body = f"{html.escape(truncated_text)} - {html.escape(ref_str)}{html.escape(MESSAGE_SUFFIX)}"
                     logger.info(
                         f"Truncated message from {len(text)} to {len(truncated_text)} characters"
                     )
                 else:
                     # Message is too long even with minimal text, use a short error message
-                    plain_body = f"[Message too long] - {reference}{MESSAGE_SUFFIX}"
-                    formatted_body = f"[Message too long] - {html.escape(reference)}{html.escape(MESSAGE_SUFFIX)}"
+                    plain_body = f"[Message too long] - {ref_str}{MESSAGE_SUFFIX}"
+                    formatted_body = f"[Message too long] - {html.escape(ref_str)}{html.escape(MESSAGE_SUFFIX)}"
 
             logger.info(f"Sending scripture: {reference}")
 
@@ -937,17 +933,28 @@ async def main(config_path=DEFAULT_CONFIG_FILENAME_MAIN):
 
     if creds:
         logger.info("Using saved credentials.json for Matrix session")
+        if matrix_access_token:
+            logger.warning(
+                "⚠️  Found credentials.json, ignoring legacy MATRIX_ACCESS_TOKEN environment variable."
+            )
         client.restore_login(
             user_id=creds.user_id,
             device_id=creds.device_id,
             access_token=creds.access_token,
         )
     else:
-        if not matrix_access_token:
+        if matrix_access_token:
+            logger.warning(
+                "⚠️  Using MATRIX_ACCESS_TOKEN environment variable. This is deprecated and does NOT support E2EE."
+            )
+            logger.warning(
+                "⚠️  Consider using 'biblebot auth login' for secure session-based authentication with E2EE support."
+            )
+            client.access_token = matrix_access_token
+        else:
             logger.error(ERROR_NO_CREDENTIALS_AND_TOKEN)
             logger.error(ERROR_AUTH_INSTRUCTIONS)
             raise RuntimeError("No credentials or access token found")
-        client.access_token = matrix_access_token
 
     # If E2EE is enabled, ensure keys are uploaded
     if e2ee_enabled:

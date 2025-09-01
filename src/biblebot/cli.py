@@ -48,13 +48,13 @@ logger = logging.getLogger(LOGGER_NAME)
 def run_async(coro):
     """
     Run an asyncio coroutine to completion using asyncio.run and return its result.
-    
+
     Parameters:
         coro: An awaitable coroutine to execute.
-    
+
     Returns:
         The result returned by the coroutine.
-    
+
     Notes:
         Exceptions raised by the coroutine are propagated to the caller.
     """
@@ -64,9 +64,9 @@ def run_async(coro):
 def get_default_config_path():
     """
     Return the default configuration file path used by the CLI.
-    
+
     The path is constructed by joining the module CONFIG_DIR with DEFAULT_CONFIG_FILENAME.
-    
+
     Returns:
         pathlib.Path: Full path to the default configuration file.
     """
@@ -76,13 +76,13 @@ def get_default_config_path():
 def detect_configuration_state():
     """
     Determine the CLI's current configuration/authentication state.
-    
+
     Returns a 2-tuple (state, message) where `state` is one of:
     - "setup": no valid config present; user should run configuration setup.
     - "auth": configuration exists but credentials are missing or invalid; user should authenticate.
     - "ready_legacy": a legacy MATRIX_ACCESS_TOKEN environment token is present (E2EE not supported); user may migrate to the modern auth flow.
     - "ready": configuration and credentials are present and valid; bot can be started.
-    
+
     The accompanying `message` is a user-facing string describing the detected condition and recommended next steps. Errors encountered while loading or validating the configuration or credentials are mapped to the appropriate state ("setup" or "auth") with an explanatory message rather than being raised.
     """
     config_path = get_default_config_path()
@@ -129,15 +129,15 @@ def detect_configuration_state():
 def generate_config(config_path):
     """
     Create a sample configuration file at config_path by copying the bundled template.
-    
+
     If the target file already exists this function prints guidance and returns False.
     Otherwise it ensures the target directory exists, copies the sample config into
     place, sets restrictive file permissions (owner read/write only, mode 0o600),
     prints next-step instructions, and returns True.
-    
+
     Parameters:
         config_path (str or pathlib.Path): Destination path for the generated config.
-    
+
     Returns:
         bool: True if a new config file was created; False if the file already existed.
     """
@@ -170,20 +170,20 @@ def generate_config(config_path):
 def interactive_main():
     """
     Interactive CLI entry that guides the user through initial setup, authentication, and starting the bot.
-    
+
     This function inspects the current configuration and credential state (via detect_configuration_state()) and presents an interactive flow appropriate to that state:
-    
+
     - "setup": offers to generate a sample configuration file (generate_config). If generated, prints next steps and returns.
     - "auth": offers to run the interactive login flow (interactive_login) to create session credentials; reports success/failure and returns.
     - "ready_legacy": informs the user about a legacy manual access token (deprecated, no E2EE) and optionally starts the bot in legacy mode.
     - "ready": confirms configuration and credentials are valid and offers to start the bot.
-    
+
     Side effects:
     - May create a configuration file on disk.
     - May launch the interactive login flow.
     - May start the bot by calling bot_main via run_async; when starting the bot, this helper may call sys.exit(1) on certain runtime, connection, or file errors.
     - Reads user input from stdin; EOF or keyboard interrupt during prompts cancels the current flow and returns.
-    
+
     Returns:
         None
     """
@@ -191,9 +191,9 @@ def interactive_main():
     def _run_bot(config_path: str, legacy: bool = False):
         """
         Run the BibleBot process for the given configuration and handle common startup errors.
-        
+
         Starts the bot by invoking the async bot_main coroutine via run_async. Prints a startup banner indicating legacy mode when requested. On user interrupt (KeyboardInterrupt) prints a stop message and returns; on runtime/connection/file errors or any other unexpected exception prints an error message and exits the process with status code 1.
-        
+
         Parameters:
             config_path (str): Path to the configuration file passed to the bot.
             legacy (bool): If True, indicate legacy mode in the startup banner.
@@ -216,15 +216,15 @@ def interactive_main():
     def _get_user_input(prompt: str, cancellation_message: str = "Cancelled.") -> str:
         """
         Prompt the user for input, returning the trimmed, lowercased response or None if the user cancels.
-        
+
         Reads a line from standard input using the provided prompt. Leading/trailing whitespace is removed
         and the result is converted to lowercase before being returned. If the user cancels input (Ctrl+C
         or EOF), prints the provided cancellation_message on its own line and returns None.
-        
+
         Parameters:
             prompt: Text shown to the user when requesting input.
             cancellation_message: Message printed when input is cancelled (default: "Cancelled.").
-        
+
         Returns:
             The user's input as a stripped, lowercase string, or None if input was cancelled.
         """
@@ -331,18 +331,18 @@ def interactive_main():
 def main():
     """
     Run the BibleBot command-line interface.
-    
+
     If invoked with no arguments, enters the interactive setup/run flow. When called with arguments, provides modern grouped subcommands:
     - config generate / validate: create a sample config or validate an existing config file.
     - auth login / logout / status: perform interactive Matrix login/logout and show authentication/E2EE status.
     - service install: install or update the per-user systemd service.
-    
+
     Legacy, deprecated flags (--generate-config, --install-service, --auth-login, --auth-logout) are still accepted for backward compatibility and map to the corresponding modern commands while emitting deprecation warnings.
-    
+
     Side effects:
     - May create files (sample config), install a service, modify credentials/E2EE state, or start the running bot.
     - May call sys.exit with non-zero codes on errors or after certain operations (e.g., failed validation, missing config, failed auth, or bot runtime errors).
-    
+
     Logging is configured from the --log-level argument. The default config path is used when --config is not provided.
     """
     # If no arguments provided, use interactive mode
@@ -609,11 +609,11 @@ Legacy flags (deprecated):
         run_async(bot_main(args.config))
     except KeyboardInterrupt:
         logging.info("Bot stopped by user")
-    except (RuntimeError, ConnectionError, FileNotFoundError) as e:
-        logging.error(f"Error running bot: {e}")
+    except (RuntimeError, ConnectionError, FileNotFoundError):
+        logging.exception("Error running bot")
         sys.exit(1)
-    except Exception as e:
-        logging.error(f"Unexpected error running bot: {e}")
+    except Exception:
+        logging.exception("Unexpected error running bot")
         sys.exit(1)
 
 

@@ -75,7 +75,7 @@ class Credentials:
     def to_dict(self) -> dict:
         """
         Return a JSON-serializable dict representation of the credentials.
-        
+
         The returned dictionary uses the module's credential key constants as keys and maps
         them to the corresponding fields (homeserver, user_id, access_token, device_id).
         This structure is intended for persisting credentials to disk.
@@ -91,16 +91,16 @@ class Credentials:
     def from_dict(d: dict) -> "Credentials":
         """
         Create a Credentials instance from a dictionary.
-        
+
         The input dictionary is expected to contain the credential keys:
         - CRED_KEY_HOMESERVER -> homeserver URL (defaults to "")
         - CRED_KEY_USER_ID -> Matrix user ID (defaults to "")
         - CRED_KEY_ACCESS_TOKEN -> access token (defaults to "")
         - CRED_KEY_DEVICE_ID -> device ID (optional, may be None)
-        
+
         Parameters:
             d (dict): Mapping containing credential values (typically parsed from JSON).
-        
+
         Returns:
             Credentials: A new Credentials populated from the provided dictionary; missing string fields default to an empty string and device_id may be None.
         """
@@ -115,11 +115,11 @@ class Credentials:
 def get_config_dir() -> Path:
     """
     Ensure the application's configuration directory exists and return its Path.
-    
+
     Creates CONFIG_DIR (including parents) if missing and attempts to set its POSIX
     permissions to CONFIG_DIR_PERMISSIONS. If setting permissions fails the function
     logs a debug message but still returns the directory path.
-    
+
     Returns:
         Path: The path to the configuration directory (CONFIG_DIR).
     """
@@ -134,11 +134,11 @@ def get_config_dir() -> Path:
 def credentials_path() -> Path:
     """
     Return the path to the credentials file, ensuring the configuration directory exists.
-    
+
     The function ensures the application's configuration directory is created (and its
     permissions attempted to be set) before returning the resolved Path to the
     credentials JSON file used to persist Matrix credentials.
-    
+
     Returns:
         pathlib.Path: Path to the credentials file (e.g. ~/.config/matrix-biblebot/credentials.json).
     """
@@ -149,12 +149,12 @@ def credentials_path() -> Path:
 def save_credentials(creds: Credentials) -> None:
     """
     Persist a Credentials object to the configured credentials file atomically.
-    
+
     The credentials are serialized to JSON and written to a temporary file in the same
     directory before being atomically moved into place. File permissions are set to
     the configured credentials-file mode. On failure the temporary file is removed
     when possible; errors are logged but not raised.
-    
+
     Parameters:
         creds (Credentials): Credentials to serialize and save.
     """
@@ -196,7 +196,7 @@ def save_credentials(creds: Credentials) -> None:
 def load_credentials() -> Optional[Credentials]:
     """
     Load persisted Matrix credentials from the configured credentials file.
-    
+
     Reads and parses the credentials JSON at the configured credentials path and returns a Credentials instance.
     If the credentials file does not exist, cannot be read, or contains invalid JSON, returns None (errors are logged).
     """
@@ -215,11 +215,11 @@ def load_credentials() -> Optional[Credentials]:
 def get_store_dir() -> Path:
     """
     Ensure the E2EE store directory exists and return its path.
-    
+
     Creates the configured E2EE store directory (including parents) if missing and attempts to restrict
     its permissions to 0o700. Failure to change permissions is ignored (a debug message is logged).
     Returns the Path to the E2EE store directory.
-        
+
     Returns:
         Path: Path to the E2EE store directory (guaranteed to exist after this call).
     """
@@ -234,9 +234,9 @@ def get_store_dir() -> Path:
 def check_e2ee_status() -> dict:
     """
     Return a dictionary describing whether End-to-End Encryption (E2EE) is available and ready.
-    
+
     Performs platform and dependency checks, inspects whether the local E2EE store directory exists, and checks for saved Matrix credentials.
-    
+
     Returns:
         dict: Status mapping with these keys:
             - E2EE_KEY_AVAILABLE (bool): True if platform is supported and required Python dependencies are present.
@@ -294,14 +294,14 @@ def check_e2ee_status() -> dict:
 def print_e2ee_status():
     """
     Print a human-readable report about the module's End-to-End Encryption (E2EE) readiness to stdout.
-    
+
     The report includes:
     - whether the current platform is supported,
     - whether required dependencies are installed,
     - whether a local E2EE store directory exists,
     - an overall enabled/disabled indicator,
     - any detected error message.
-    
+
     If E2EE is supported but not available, the function also prints short instructions to enable E2EE and re-run login. This function obtains its information by calling check_e2ee_status() and has the side effect of writing the formatted status to standard output.
     """
     status = check_e2ee_status()
@@ -331,13 +331,13 @@ async def discover_homeserver(
 ) -> str:
     """
     Attempt to discover the server's canonical homeserver URL via the Matrix discovery API and fall back to the provided homeserver on error or timeout.
-    
+
     If discovery succeeds and returns a homeserver URL, that URL is returned. Any discovery errors, unexpected exceptions, or a timeout cause the function to return the original `homeserver` argument.
-    
+
     Parameters:
         homeserver (str): Fallback homeserver URL to use if discovery fails or times out.
         timeout (float): Maximum seconds to wait for the discovery request (default 10.0).
-    
+
     Returns:
         str: The discovered homeserver URL, or the provided `homeserver` if discovery did not yield a URL.
     """
@@ -366,14 +366,14 @@ async def interactive_login(
 ) -> bool:
     """
     Perform an interactive Matrix login, persist credentials to the configured credentials file, and return whether login succeeded.
-    
+
     Prompts for any missing homeserver, username, or password values; if saved credentials exist the user is asked whether to create a new device session. The function will attempt server discovery to normalize the homeserver URL, enable end-to-end encryption if dependencies and platform support are available (creating an E2EE store when enabled), and save a Credentials record (homeserver, user_id, access_token, device_id) on successful login. On user cancellation, timeouts, or login errors the function returns False. If the user declines to re-login when credentials already exist, the function returns True (treating the existing session as a successful state).
-    
+
     Parameters:
         homeserver (Optional[str]): Optional homeserver URL or host to use; if omitted, the user is prompted. A scheme (http/https) will be added if missing.
         username (Optional[str]): Optional Matrix localpart or full user ID; if omitted the user is prompted. A bare localpart will be transformed into a full user ID using the homeserver host.
         password (Optional[str]): Optional password; if omitted the user is prompted (input is hidden).
-    
+
     Returns:
         bool: True if login completed or an existing session was kept; False on cancellation, timeout, or any login error.
     """
@@ -448,17 +448,17 @@ async def interactive_login(
             logger.error(f"Login failed: {resp}")
             return False
     except asyncio.TimeoutError:
-        logger.exception(f"Login timed out after {LOGIN_TIMEOUT_SEC} seconds")
+        logger.exception("Login timed out after %s seconds", LOGIN_TIMEOUT_SEC)
         return False
-    except (OSError, ValueError, RuntimeError) as e:
-        logger.error(f"Login error: {e}")
+    except (OSError, ValueError, RuntimeError):
+        logger.exception("Login error")
         return False
-    except (nio.exceptions.LoginError, nio.exceptions.MatrixRequestError) as e:
-        logger.error(f"Matrix login error: {e}")
+    except (nio.exceptions.LoginError, nio.exceptions.MatrixRequestError):
+        logger.exception("Matrix login error")
         return False
-    except Exception as e:
-        # Catch any other unexpected errors with more specific logging
-        logger.exception(f"Unexpected login error: {type(e).__name__}: {e}")
+    except Exception:
+        # Unexpected error
+        logger.exception("Unexpected login error")
         return False
     finally:
         await client.close()

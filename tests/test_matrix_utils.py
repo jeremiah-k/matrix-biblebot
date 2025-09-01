@@ -18,14 +18,14 @@ def mock_room():
 def mock_event():
     """
     Create a MagicMock representing a Matrix room message event for tests.
-    
+
     The mock has these attributes set:
     - sender: "@user:matrix.org"
     - body: "John 3:16"
     - source: {"content": {"body": "John 3:16"}} (raw event content)
     - server_timestamp: 1234567890000
     - event_id: "$event123"
-    
+
     Use this fixture to simulate an incoming room message requesting a verse.
     """
     mock_event = MagicMock()
@@ -55,12 +55,12 @@ def test_config():
 def mock_bible_bot():
     """
     Create a MagicMock that mimics a BibleBot for tests.
-    
+
     The mock is applied with spec=BibleBot and pre-populated with a minimal
     config useful for message-handling tests:
     - matrix.bot_user_id set to "@biblebot:matrix.org"
     - matrix_room_ids set to ["!room:matrix.org"]
-    
+
     Returns:
         MagicMock: A mocked BibleBot instance with the above config.
     """
@@ -72,13 +72,13 @@ def mock_bible_bot():
     return mock_bot
 
 
-@patch("biblebot.bot.get_bible_text")
+@patch("biblebot.bot.get_bible_text", new_callable=AsyncMock)
 async def test_bible_bot_message_handling(
     mock_get_bible_text, mock_room, mock_event, test_config
 ):
     """
     Verify that the bot processes a room message requesting a Bible verse and responds correctly.
-    
+
     Sets up a real BibleBot with a mocked Matrix client and a mocked get_bible_text returning a verse. Ensures the bot:
     - only handles messages from supported rooms (room id present in the bot's room set),
     - ignores messages older than the bot's start_time (start_time set before the event timestamp here),
@@ -106,7 +106,7 @@ async def test_bible_bot_message_handling(
     assert mock_client.room_send.call_count == 2  # Reaction + message
 
 
-@patch("biblebot.bot.get_bible_text")
+@patch("biblebot.bot.get_bible_text", new_callable=AsyncMock)
 async def test_bible_bot_ignore_own_messages(
     mock_get_bible_text, mock_room, mock_event, test_config
 ):
@@ -129,7 +129,7 @@ async def test_bible_bot_ignore_own_messages(
     mock_get_bible_text.assert_not_called()
 
 
-@patch("biblebot.bot.get_bible_text")
+@patch("biblebot.bot.get_bible_text", new_callable=AsyncMock)
 async def test_bible_bot_unsupported_room(
     mock_get_bible_text, mock_room, mock_event, test_config
 ):
@@ -152,7 +152,7 @@ async def test_bible_bot_unsupported_room(
     mock_get_bible_text.assert_not_called()
 
 
-@patch("biblebot.bot.get_bible_text")
+@patch("biblebot.bot.get_bible_text", new_callable=AsyncMock)
 async def test_bible_bot_api_error_handling(
     mock_get_bible_text, mock_room, mock_event, test_config
 ):
@@ -251,7 +251,7 @@ def test_save_credentials(mock_chmod, mock_replace, mock_temp_file):
         mock_replace.assert_called_once()  # Now using os.replace
 
 
-@patch("biblebot.bot.make_api_request")
+@patch("biblebot.bot.make_api_request", new_callable=AsyncMock)
 async def test_bible_api_verse_fetch(mock_api_request):
     """Test Bible API verse fetching."""
     # Mock API response
@@ -270,7 +270,7 @@ async def test_bible_api_verse_fetch(mock_api_request):
     mock_api_request.assert_called_once()
 
 
-@patch("biblebot.bot.make_api_request")
+@patch("biblebot.bot.make_api_request", new_callable=AsyncMock)
 async def test_bible_api_error_handling(mock_api_request):
     """Test Bible API error handling."""
     # Mock API error response

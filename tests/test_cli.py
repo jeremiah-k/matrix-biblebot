@@ -13,12 +13,12 @@ from biblebot import cli
 def _consume_coroutine(coro):
     """
     Execute a coroutine to completion using a fresh event loop, or return the input unchanged if it is not a coroutine.
-    
+
     If `coro` is an awaitable coroutine, this runs it in a newly created event loop (mirroring asyncio.run semantics), cancels any pending tasks on that loop, waits for their completion, closes the loop, and returns the coroutine's result. Non-coroutine inputs are returned as-is.
-    
+
     Parameters:
         coro: A coroutine object or any other value. If a coroutine is provided, it will be executed and its result returned; otherwise the original value is returned.
-    
+
     Raises:
         Any exception raised by the executed coroutine is propagated.
     """
@@ -43,12 +43,12 @@ def _consume_coroutine(coro):
 def temp_config_dir(tmp_path):
     """
     Create and return a temporary "matrix-biblebot" configuration directory inside the provided pytest tmp_path.
-    
+
     The directory is created with parents=True and exist_ok=True so it is safe to call if the directory already exists.
-    
+
     Parameters:
         tmp_path (pathlib.Path): pytest temporary path fixture to contain the created config directory.
-    
+
     Returns:
         pathlib.Path: Path to the created "matrix-biblebot" directory.
     """
@@ -61,14 +61,14 @@ def temp_config_dir(tmp_path):
 def mock_sample_files(tmp_path):
     """
     Create a minimal sample YAML config file for tests.
-    
+
     Creates a file named "sample_config.yaml" in the provided temporary path containing
     a minimal Matrix and API-keys configuration used by tests.
-    
+
     Parameters:
         tmp_path (pathlib.Path): Temporary directory (pytest tmp_path fixture) where the
             sample file will be written.
-    
+
     Returns:
         tuple[pathlib.Path, None]: A tuple with the path to the created sample config file
         and None (second return value kept for historical test-signature compatibility).
@@ -236,8 +236,8 @@ class TestLegacyFlags:
     @patch("biblebot.auth.interactive_login")
     def test_legacy_auth_login_flag(self, mock_login, mock_run):
         """Test legacy --auth-login flag."""
-        mock_login.return_value = True
-        mock_run.return_value = True
+        mock_login.return_value = asyncio.sleep(0)
+        mock_run.side_effect = _consume_coroutine
 
         with warnings.catch_warnings(record=True) as w:
             warnings.simplefilter("always")
@@ -362,9 +362,9 @@ class TestModernCommands:
         def mock_load_credentials():
             """
             Return a fresh MockCredentials instance for tests.
-            
+
             Provides a newly constructed MockCredentials object to simulate stored credentials in test scenarios.
-            
+
             Returns:
                 MockCredentials: a new mock credentials instance.
             """
@@ -375,7 +375,7 @@ class TestModernCommands:
         def mock_print_e2ee_status():
             """
             Mock replacement for an E2EE status printer used in tests.
-            
+
             When called, records that the function was invoked by appending True to the
             shared list `print_e2ee_called`. Intended solely as a test spy; it does not
             produce output or return a value.
@@ -425,7 +425,7 @@ class TestServiceCommands:
         def mock_install_service():
             """
             Record that the service installation was invoked by appending True to the test's `install_called` list.
-            
+
             This function is a lightweight test stub intended to be used as a mock replacement for a real install routine; it has no return value and only mutates the surrounding `install_called` list.
             """
             install_called.append(True)
@@ -451,10 +451,10 @@ class TestMainFunction:
         def mock_exists(path):
             """
             Mock replacement for os.path.exists that always reports the given path exists.
-            
+
             Parameters:
                 path (str): Path to check (ignored by this mock).
-            
+
             Returns:
                 bool: Always returns True.
             """
@@ -463,7 +463,7 @@ class TestMainFunction:
         def mock_load_credentials():
             """
             Simulate absence of stored credentials by returning None.
-            
+
             Used in tests to mock a credential loader that indicates the user is not authenticated.
             """
             return None  # No credentials
@@ -583,14 +583,16 @@ class TestCLIMainFunction:
     @patch("sys.argv", ["biblebot", "auth", "login"])
     @patch("builtins.input", return_value="https://matrix.org")
     @patch("getpass.getpass", return_value="password")
-    @patch("biblebot.auth.interactive_login", return_value=True)
-    @patch("biblebot.cli.asyncio.run", return_value=True)
+    @patch("biblebot.auth.interactive_login")
+    @patch("biblebot.cli.asyncio.run")
     @patch("sys.exit")
     def test_auth_login_command(
         self, mock_exit, mock_run, mock_login, mock_getpass, mock_input, mock_exists
     ):
         """Test auth login command."""
         mock_exit.side_effect = SystemExit(0)
+        mock_login.return_value = asyncio.sleep(0)
+        mock_run.side_effect = _consume_coroutine
 
         with pytest.raises(SystemExit) as e:
             cli.main()
@@ -723,7 +725,7 @@ class TestCLILegacyFlags:
     @patch("sys.argv", ["biblebot", "--auth-login"])
     @patch("builtins.input", return_value="https://matrix.org")
     @patch("getpass.getpass", return_value="password")
-    @patch("biblebot.auth.interactive_login", return_value=True)
+    @patch("biblebot.auth.interactive_login")
     @patch("biblebot.cli.asyncio.run")
     @patch("sys.exit")
     @patch("warnings.warn")
@@ -741,7 +743,8 @@ class TestCLILegacyFlags:
         """Test legacy --auth-login flag."""
         mock_exists.return_value = True  # Config exists to avoid input prompt
         # Mock successful login
-        mock_run.return_value = True
+        mock_login.return_value = asyncio.sleep(0)
+        mock_run.side_effect = _consume_coroutine
 
         cli.main()
         mock_warn.assert_called_once()
@@ -759,8 +762,8 @@ class TestCLILegacyFlags:
     ):
         """Test legacy --auth-logout flag."""
         mock_exists.return_value = True  # Config exists to avoid input prompt
-        mock_logout.return_value = True
-        mock_run.return_value = True
+        mock_logout.return_value = asyncio.sleep(0)
+        mock_run.side_effect = _consume_coroutine
 
         cli.main()
         mock_warn.assert_called_once()
@@ -854,7 +857,7 @@ class TestCLIBotOperation:
     def test_bot_no_config_keyboard_interrupt(self, mock_input, mock_detect_state):
         """
         Test that the CLI handles a KeyboardInterrupt gracefully when configuration requires authentication.
-        
+
         Mocks the configuration detection to indicate authentication is required and simulates a KeyboardInterrupt raised during user input; running cli.main() must not propagate the exception.
         """
         # Mock configuration state to need auth
@@ -887,14 +890,14 @@ class TestCLIBotOperation:
         def _consume_then_interrupt(coro):
             """
             Run the given coroutine to completion and then raise KeyboardInterrupt.
-            
+
             This helper executes `coro` using the test-suite's synchronous runner (`_consume_coroutine`)
             and always raises a KeyboardInterrupt immediately after completion. Intended for simulating
             an interrupt occurring right after an awaited task finishes in tests.
-            
+
             Parameters:
                 coro: A coroutine or awaitable to run.
-            
+
             Raises:
                 KeyboardInterrupt: Always raised after `coro` has been consumed.
             """
@@ -918,7 +921,7 @@ class TestCLIBotOperation:
     ):
         """
         Verify CLI handles a runtime error during bot startup by exiting with code 1.
-        
+
         Mocks a ready configuration state and valid credentials, simulates the user choosing to start the bot, and makes the bot's run function raise an exception after consuming its coroutine. Asserts the CLI main() raises SystemExit with exit code 1 (graceful failure).
         """
         # Mock configuration state to be ready
@@ -931,13 +934,13 @@ class TestCLIBotOperation:
         def _consume_then_error(coro):
             """
             Run the given coroutine (or awaitable) to completion and then raise a Runtime error.
-            
+
             This helper consumes the provided coroutine using _consume_coroutine and always raises Exception("Runtime error")
             after the coroutine finishes. Useful in tests to simulate a task that completes but subsequently fails.
-            
+
             Parameters:
                 coro: A coroutine or awaitable to be executed.
-            
+
             Raises:
                 Exception: Always raises Exception with message "Runtime error" after running the coroutine.
             """
