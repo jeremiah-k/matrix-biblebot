@@ -37,6 +37,7 @@ from .constants import (
     ERROR_AUTH_INSTRUCTIONS,
     ERROR_MISSING_CONFIG_KEYS,
     ERROR_NO_CREDENTIALS_AND_TOKEN,
+    ERROR_PASSAGE_NOT_FOUND,
     ESV_API_URL,
     INFO_API_KEY_FOUND,
     INFO_LOADING_ENV,
@@ -451,7 +452,22 @@ class BibleBot:
         Sends a reaction to the original message and posts the verse text.
         """
         logger.info(f"Fetching scripture passage: {passage} ({translation.upper()})")
-        result = await get_bible_text(passage, translation, self.api_keys)
+        try:
+            result = await get_bible_text(passage, translation, self.api_keys)
+        except Exception as e:
+            # Log the specific error for debugging but send generic message to user
+            logger.error(f"Exception during passage lookup for {passage}: {e}")
+            await self.client.room_send(
+                room_id,
+                "m.room.message",
+                {
+                    "msgtype": "m.text",
+                    "body": ERROR_PASSAGE_NOT_FOUND,
+                    "format": "org.matrix.custom.html",
+                    "formatted_body": html.escape(ERROR_PASSAGE_NOT_FOUND),
+                },
+            )
+            return
 
         if result is None:
             text, reference = None, None
@@ -474,16 +490,16 @@ class BibleBot:
             return
 
         if text.startswith("Error:"):
-            # Use the actual error message from the fetcher
+            # Log the specific API error for debugging but send generic message to user
             logger.warning(f"Passage lookup error for {passage}: {text}")
             await self.client.room_send(
                 room_id,
                 "m.room.message",
                 {
                     "msgtype": "m.text",
-                    "body": text,
+                    "body": ERROR_PASSAGE_NOT_FOUND,
                     "format": "org.matrix.custom.html",
-                    "formatted_body": html.escape(text),
+                    "formatted_body": html.escape(ERROR_PASSAGE_NOT_FOUND),
                 },
             )
             return

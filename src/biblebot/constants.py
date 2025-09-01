@@ -199,6 +199,9 @@ FILE_MODE_READ = "r"
 # Systemctl commands
 SYSTEMCTL_ARG_USER = "--user"
 SYSTEMCTL_ARG_IS_ENABLED = "is-enabled"
+
+# Generic error messages for security (don't expose internal API errors)
+ERROR_PASSAGE_NOT_FOUND = "Error: The requested passage could not be found. Please check the book, chapter, and verse."
 SUCCESS_SERVICE_INSTALLED = "Service installed successfully"
 
 # Info messages
