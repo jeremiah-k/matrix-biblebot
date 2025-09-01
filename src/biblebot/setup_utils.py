@@ -13,10 +13,7 @@ import sys
 from pathlib import Path
 
 from .constants import (
-    SERVICE_DESCRIPTION,
     SERVICE_NAME,
-    SERVICE_RESTART_SEC,
-    SUCCESS_SERVICE_INSTALLED,
     SYSTEMCTL_COMMANDS,
     SYSTEMD_USER_DIR,
 )

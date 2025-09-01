@@ -2,7 +2,6 @@ import asyncio
 import html
 import logging
 import os
-import re
 import time
 from collections import OrderedDict
 from time import monotonic
@@ -27,14 +26,9 @@ from .constants import (
     API_REQUEST_TIMEOUT_SEC,
     CACHE_MAX_SIZE,
     CACHE_TTL_SECONDS,
-    CONFIG_MATRIX_HOMESERVER,
-    CONFIG_MATRIX_ROOM_IDS,
-    CONFIG_MATRIX_USER,
     DEFAULT_TRANSLATION,
     ENV_ESV_API_KEY,
     ENV_MATRIX_ACCESS_TOKEN,
-    ERROR_CONFIG_NOT_FOUND,
-    ERROR_INVALID_YAML,
     ERROR_MISSING_CONFIG_KEYS,
     ESV_API_URL,
     INFO_API_KEY_FOUND,
@@ -50,7 +44,6 @@ from .constants import (
     REQUIRED_CONFIG_KEYS,
     SYNC_TIMEOUT_MS,
     WARN_COULD_NOT_RESOLVE_ALIAS,
-    WARN_OLD_MESSAGE,
 )
 
 # Configure logging
@@ -176,8 +169,6 @@ async def make_api_request(
 
 
 # Get Bible text
-_PASSAGE_CACHE_MAX = 128
-_PASSAGE_CACHE_TTL_SECS = 12 * 60 * 60  # 12 hours
 _passage_cache: "OrderedDict[tuple[str, str], tuple[float, tuple[str, str]]]" = (
     OrderedDict()
 )
@@ -189,7 +180,7 @@ def _cache_get(passage: str, translation: str):
     if key in _passage_cache:
         ts, value = _passage_cache.pop(key)
         # Evict if stale
-        if now - ts <= _PASSAGE_CACHE_TTL_SECS:
+        if now - ts <= CACHE_TTL_SECONDS:
             _passage_cache[key] = (ts, value)  # reinsert to mark recent
             return value
     return None
@@ -199,7 +190,7 @@ def _cache_set(passage: str, translation: str, value: tuple[str, str]):
     key = (passage.lower(), translation.lower())
     _passage_cache[key] = (monotonic(), value)
     # enforce LRU max size
-    while len(_passage_cache) > _PASSAGE_CACHE_MAX:
+    while len(_passage_cache) > CACHE_MAX_SIZE:
         _passage_cache.popitem(last=False)
 
 

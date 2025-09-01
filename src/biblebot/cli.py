@@ -8,22 +8,16 @@ import os
 import shutil
 import sys
 import warnings
-from pathlib import Path
 
 from . import __version__
 from .auth import interactive_login, interactive_logout, load_credentials
 from .bot import main as bot_main
 from .constants import (
-    APP_NAME,
     CONFIG_DIR,
     DEFAULT_CONFIG_FILENAME,
     DEFAULT_ENV_FILENAME,
-    DEFAULT_LOG_LEVEL,
-    LOG_LEVELS,
     LOGGER_NAME,
     SUCCESS_CONFIG_GENERATED,
-    SUCCESS_LOGIN_COMPLETE,
-    SUCCESS_LOGOUT_COMPLETE,
 )
 from .tools import get_sample_config_path, get_sample_env_path
 

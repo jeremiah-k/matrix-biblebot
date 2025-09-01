@@ -27,7 +27,6 @@ from nio import (
 )
 
 from .constants import (
-    APP_NAME,
     CONFIG_DIR,
     CONFIG_DIR_PERMISSIONS,
     CREDENTIALS_FILE,

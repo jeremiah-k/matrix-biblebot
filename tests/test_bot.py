@@ -8,18 +8,10 @@ import yaml
 
 from biblebot import bot
 from tests.test_constants import (
-    MOCK_RESPONSE_DATA,
     TEST_ACCESS_TOKEN,
-    TEST_BIBLE_REFERENCE,
-    TEST_BIBLE_TEXT,
     TEST_CONFIG_YAML,
-    TEST_CREDENTIALS,
     TEST_DEVICE_ID,
     TEST_HOMESERVER,
-    TEST_MESSAGE_BODY,
-    TEST_MESSAGE_SENDER,
-    TEST_MESSAGE_TIMESTAMP,
-    TEST_ROOM_ID,
     TEST_ROOM_IDS,
     TEST_USER_ID,
 )
