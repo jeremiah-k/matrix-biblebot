@@ -183,7 +183,8 @@ def test_load_credentials_file_not_exists(mock_credentials_path):
 
 @patch("biblebot.auth.tempfile.NamedTemporaryFile")
 @patch("biblebot.auth.os.replace")
-def test_save_credentials(mock_replace, mock_temp_file):
+@patch("biblebot.auth.os.chmod")
+def test_save_credentials(mock_chmod, mock_replace, mock_temp_file):
     """Test credentials saving with atomic write."""
     from biblebot.auth import Credentials
 
@@ -206,6 +207,8 @@ def test_save_credentials(mock_replace, mock_temp_file):
 
         mock_temp_file.assert_called_once()
         mock_fsync.assert_called_once()  # Don't check specific args
+        # Check that chmod was called with the temp file and correct permissions
+        mock_chmod.assert_any_call("/tmp/temp_file", 0o600)
         mock_replace.assert_called_once()  # Now using os.replace
 
 

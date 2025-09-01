@@ -86,6 +86,9 @@ class TestPerformancePatterns:
         initial_memory = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
 
         bot = BibleBot(config=mock_config, client=mock_client)
+        bot.start_time = int(
+            (time.time() - 100) * 1000
+        )  # Set start_time for message filtering
 
         # Create and process many events to test memory management
         with patch("biblebot.bot.get_bible_text") as mock_get_bible:
