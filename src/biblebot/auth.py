@@ -54,8 +54,15 @@ from .constants import (
     PLATFORM_WINDOWS,
     PROMPT_HOMESERVER,
     PROMPT_LOGIN_AGAIN,
+    PROMPT_PASSWORD,
     PROMPT_USERNAME,
     RESPONSE_YES_PREFIX,
+    STATUS_KEY_AVAILABLE,
+    STATUS_KEY_ERROR,
+    STATUS_KEY_PLATFORM_SUPPORTED,
+    URL_PREFIX_HTTP,
+    URL_PREFIX_HTTPS,
+    WARN_E2EE_DEPS_NOT_FOUND_LOGIN,
 )
 
 logger = logging.getLogger(LOGGER_NAME)
@@ -215,10 +222,10 @@ def print_e2ee_status():
     print(f"  Store Directory: {'✓' if status['store_exists'] else '✗'}")
     print(f"  Overall Status: {'✓ Enabled' if status['available'] else '✗ Disabled'}")
 
-    if status["error"]:
+    if status[STATUS_KEY_ERROR]:
         print(f"  Error: {status['error']}")
 
-    if not status["available"] and status["platform_supported"]:
+    if not status[STATUS_KEY_AVAILABLE] and status[STATUS_KEY_PLATFORM_SUPPORTED]:
         print("\n  To enable E2EE:")
         print('    pip install ".[e2e]"  # preferred')
         print("    # or: pip install -r requirements-e2e.txt")
@@ -273,8 +280,8 @@ async def interactive_login(
             return False
 
     hs = homeserver or input(PROMPT_HOMESERVER).strip()
-    if not (hs.startswith("http://") or hs.startswith("https://")):
-        hs = "https://" + hs
+    if not (hs.startswith(URL_PREFIX_HTTP) or hs.startswith(URL_PREFIX_HTTPS)):
+        hs = URL_PREFIX_HTTPS + hs
 
     user = username or input(PROMPT_USERNAME).strip()
     if not user.startswith("@"):
@@ -283,7 +290,7 @@ async def interactive_login(
         server_name = urlparse(hs).netloc
         user = f"@{user}:{server_name}"
 
-    pwd = password or getpass.getpass("Password: ")
+    pwd = password or getpass.getpass(PROMPT_PASSWORD)
 
     # E2EE-aware client config
     try:
@@ -294,14 +301,10 @@ async def interactive_login(
         if e2ee_available:
             logger.debug("E2EE dependencies found, enabling encryption for login.")
         else:
-            logger.debug(
-                "E2EE dependencies not found, proceeding without encryption for login."
-            )
+            logger.debug(WARN_E2EE_DEPS_NOT_FOUND_LOGIN)
     except ImportError:
         e2ee_available = False
-        logger.debug(
-            "E2EE dependencies not found, proceeding without encryption for login."
-        )
+        logger.debug(WARN_E2EE_DEPS_NOT_FOUND_LOGIN)
 
     client_kwargs = {}
     if e2ee_available:

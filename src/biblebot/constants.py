@@ -202,6 +202,28 @@ SYSTEMCTL_ARG_IS_ENABLED = "is-enabled"
 
 # Generic error messages for security (don't expose internal API errors)
 ERROR_PASSAGE_NOT_FOUND = "Error: The requested passage could not be found. Please check the book, chapter, and verse."
+
+# String literals and characters
+CHAR_DOT = "."
+CHAR_SLASH = "/"
+CHAR_COMMA = ", "
+
+# Translation identifiers
+TRANSLATION_ESV = "esv"
+TRANSLATION_KJV = "kjv"
+
+# API parameter names
+API_PARAM_Q = "q"
+API_PARAM_INCLUDE_HEADINGS = "include-headings"
+API_PARAM_INCLUDE_FOOTNOTES = "include-footnotes"
+API_PARAM_INCLUDE_VERSE_NUMBERS = "include-verse-numbers"
+API_PARAM_FALSE = "false"
+
+# Logger names
+LOGGER_NIO = "nio"
+
+# Warning messages
+WARN_MATRIX_ACCESS_TOKEN_NOT_SET = "MATRIX_ACCESS_TOKEN not set; will rely on saved credentials.json if available"  # nosec B105
 SUCCESS_SERVICE_INSTALLED = "Service installed successfully"
 
 # Info messages
@@ -245,3 +267,14 @@ SYSTEMCTL_COMMANDS = {
     "enable": "systemctl --user enable biblebot.service",
     "disable": "systemctl --user disable biblebot.service",
 }
+
+# Additional auth constants
+WARN_E2EE_DEPS_NOT_FOUND_LOGIN = (
+    "E2EE dependencies not found, proceeding without encryption for login."
+)
+URL_PREFIX_HTTP = "http://"
+URL_PREFIX_HTTPS = "https://"
+PROMPT_PASSWORD = "Password: "  # nosec B105
+STATUS_KEY_ERROR = "error"
+STATUS_KEY_AVAILABLE = "available"
+STATUS_KEY_PLATFORM_SUPPORTED = "platform_supported"

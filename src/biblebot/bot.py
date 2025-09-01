@@ -23,9 +23,17 @@ from nio import (
 from .auth import get_store_dir, load_credentials
 from .bible_constants import BOOK_ABBREVIATIONS
 from .constants import (
+    API_PARAM_FALSE,
+    API_PARAM_INCLUDE_FOOTNOTES,
+    API_PARAM_INCLUDE_HEADINGS,
+    API_PARAM_INCLUDE_VERSE_NUMBERS,
+    API_PARAM_Q,
     API_REQUEST_TIMEOUT_SEC,
     CACHE_MAX_SIZE,
     CACHE_TTL_SECONDS,
+    CHAR_COMMA,
+    CHAR_DOT,
+    CHAR_SLASH,
     CONFIG_MATRIX_HOMESERVER,
     CONFIG_MATRIX_ROOM_IDS,
     CONFIG_MATRIX_USER,
@@ -39,6 +47,7 @@ from .constants import (
     ERROR_NO_CREDENTIALS_AND_TOKEN,
     ERROR_PASSAGE_NOT_FOUND,
     ESV_API_URL,
+    FILE_ENCODING_UTF8,
     INFO_API_KEY_FOUND,
     INFO_LOADING_ENV,
     INFO_NO_API_KEY,
@@ -46,11 +55,13 @@ from .constants import (
     INFO_RESOLVED_ALIAS,
     KJV_API_URL_TEMPLATE,
     LOGGER_NAME,
+    LOGGER_NIO,
     MESSAGE_SUFFIX,
     REACTION_OK,
     REFERENCE_PATTERNS,
     REQUIRED_CONFIG_KEYS,
     SYNC_TIMEOUT_MS,
+    TRANSLATION_ESV,
     WARN_COULD_NOT_RESOLVE_ALIAS,
 )
 
@@ -61,7 +72,7 @@ logger = logging.getLogger(LOGGER_NAME)
 def normalize_book_name(book_str: str) -> str:
     """Normalize common Bible book abbreviations to their full name."""
     # Clean the input: lowercase, remove dots, and strip whitespace
-    clean_str = book_str.lower().replace(".", "").strip()
+    clean_str = book_str.lower().replace(CHAR_DOT, "").strip()
     return BOOK_ABBREVIATIONS.get(clean_str, book_str.title())
 
 
@@ -69,13 +80,13 @@ def normalize_book_name(book_str: str) -> str:
 def load_config(config_file):
     """Load configuration from YAML file."""
     try:
-        with open(config_file, "r", encoding="utf-8") as f:
+        with open(config_file, "r", encoding=FILE_ENCODING_UTF8) as f:
             config = yaml.safe_load(f) or {}
             # Basic validation
             missing = [k for k in REQUIRED_CONFIG_KEYS if k not in config]
             if missing:
                 logger.error(
-                    f"{ERROR_MISSING_CONFIG_KEYS}: {', '.join(missing)} in {config_file}"
+                    f"{ERROR_MISSING_CONFIG_KEYS}: {CHAR_COMMA.join(missing)} in {config_file}"
                 )
                 return None
             if not isinstance(config.get(CONFIG_MATRIX_ROOM_IDS), list):
@@ -85,7 +96,7 @@ def load_config(config_file):
             if isinstance(config.get(CONFIG_MATRIX_HOMESERVER), str):
                 config[CONFIG_MATRIX_HOMESERVER] = config[
                     CONFIG_MATRIX_HOMESERVER
-                ].rstrip("/")
+                ].rstrip(CHAR_SLASH)
             logger.info(f"Loaded configuration from {config_file}")
             return config
     except (OSError, yaml.YAMLError):
@@ -121,13 +132,11 @@ def load_environment(config_path):
     # Get access token and API keys
     matrix_access_token = os.getenv(ENV_MATRIX_ACCESS_TOKEN)
     if not matrix_access_token:
-        logger.info(
-            "MATRIX_ACCESS_TOKEN not set; will rely on saved credentials.json if available"
-        )
+        logger.info("            WARN_MATRIX_ACCESS_TOKEN_NOT_SET")
 
     # Dictionary to hold API keys for different translations
     api_keys = {
-        "esv": os.getenv(ENV_ESV_API_KEY),
+        TRANSLATION_ESV: os.getenv(ENV_ESV_API_KEY),
         # Add more translations here
     }
 
@@ -142,7 +151,7 @@ def load_environment(config_path):
 
 
 # Set nio logging to WARNING level to suppress verbose messages by default.
-logging.getLogger("nio").setLevel(logging.WARNING)
+logging.getLogger(LOGGER_NIO).setLevel(logging.WARNING)
 
 
 # Handles headers & parameters for API requests
@@ -213,7 +222,7 @@ async def get_bible_text(passage, translation=DEFAULT_TRANSLATION, api_keys=None
     if api_keys:
         api_key = api_keys.get(translation)
 
-    if translation == "esv":
+    if translation == TRANSLATION_ESV:
         result = await get_esv_text(passage, api_key)
     else:  # Assuming KJV as the default
         result = await get_kjv_text(passage)
@@ -228,10 +237,10 @@ async def get_esv_text(passage, api_key):
         return None
     API_URL = ESV_API_URL
     params = {
-        "q": passage,
-        "include-headings": "false",
-        "include-footnotes": "false",
-        "include-verse-numbers": "false",
+        API_PARAM_Q: passage,
+        API_PARAM_INCLUDE_HEADINGS: API_PARAM_FALSE,
+        API_PARAM_INCLUDE_FOOTNOTES: API_PARAM_FALSE,
+        API_PARAM_INCLUDE_VERSE_NUMBERS: API_PARAM_FALSE,
         "include-short-copyright": "false",
         "include-passage-references": "false",
     }
