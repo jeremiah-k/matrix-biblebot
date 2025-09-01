@@ -95,7 +95,11 @@ class TestAsyncPatterns:
         with patch(
             "biblebot.bot.get_bible_text", new_callable=AsyncMock
         ) as mock_get_bible:
-            mock_get_bible.return_value = (None, None)  # Simulate error
+            from biblebot.bot import PassageNotFound
+
+            mock_get_bible.side_effect = PassageNotFound(
+                "Test passage not found"
+            )  # Simulate error
 
             # Should not raise exception
             await bot.on_room_message(mock_room, mock_event)

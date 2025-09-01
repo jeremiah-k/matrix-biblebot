@@ -151,8 +151,10 @@ class TestEdgeCases:
         with patch(
             "biblebot.bot.get_bible_text", new_callable=AsyncMock
         ) as mock_get_bible:
-            # Mock API to return None for malformed references
-            mock_get_bible.return_value = None
+            # Mock API to raise PassageNotFound for malformed references
+            from biblebot.bot import PassageNotFound
+
+            mock_get_bible.side_effect = PassageNotFound("Malformed reference")
 
             malformed_refs = [
                 "John 999:999",  # Non-existent chapter/verse

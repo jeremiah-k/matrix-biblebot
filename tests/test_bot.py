@@ -220,12 +220,11 @@ class TestBibleTextRetrieval:
     async def test_get_kjv_text_not_found(self):
         """Test KJV text retrieval when verse not found."""
         with patch.object(bot, "make_api_request", new=AsyncMock(return_value=None)):
-            result = await bot.get_kjv_text("Invalid 99:99")
+            with pytest.raises(bot.PassageNotFound) as exc_info:
+                await bot.get_kjv_text("Invalid 99:99")
 
-            assert result is not None
-            text, reference = result
-            assert text == "Error: Passage not found"
-            assert reference == ""
+            assert "Invalid 99:99" in str(exc_info.value)
+            assert "not found in KJV" in str(exc_info.value)
 
     @pytest.mark.asyncio
     async def test_get_esv_text_success(self):
@@ -248,8 +247,11 @@ class TestBibleTextRetrieval:
     @pytest.mark.asyncio
     async def test_get_esv_text_no_api_key(self):
         """Test ESV text retrieval without API key."""
-        result = await bot.get_esv_text(TEST_BIBLE_REFERENCE, None)
-        assert result is None
+        with pytest.raises(bot.APIKeyMissing) as exc_info:
+            await bot.get_esv_text(TEST_BIBLE_REFERENCE, None)
+
+        assert TEST_BIBLE_REFERENCE in str(exc_info.value)
+        assert "ESV API key is required" in str(exc_info.value)
 
     @pytest.mark.asyncio
     async def test_get_bible_text_with_cache(self):

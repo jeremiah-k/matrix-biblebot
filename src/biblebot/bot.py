@@ -69,6 +69,20 @@ from .constants import (
 # Configure logging
 logger = logging.getLogger(LOGGER_NAME)
 
+
+# Custom exceptions for Bible text retrieval
+class PassageNotFound(Exception):
+    """Raised when a Bible passage cannot be found or retrieved."""
+
+    pass
+
+
+class APIKeyMissing(Exception):
+    """Raised when a required API key is missing."""
+
+    pass
+
+
 # Patchable cache constants for backward compatibility and testing
 # These can be patched in tests to control cache behavior
 _PASSAGE_CACHE_MAX = CACHE_MAX_SIZE
@@ -245,23 +259,30 @@ async def get_bible_text(passage, translation=DEFAULT_TRANSLATION, api_keys=None
     cached = _cache_get(passage, translation)
     if cached is not None:
         return cached
+
     api_key = None
     if api_keys:
         api_key = api_keys.get(translation)
 
-    if translation == TRANSLATION_ESV:
-        result = await get_esv_text(passage, api_key)
-    else:  # Assuming KJV as the default
-        result = await get_kjv_text(passage)
-    if result is not None:
+    try:
+        if translation == TRANSLATION_ESV:
+            result = await get_esv_text(passage, api_key)
+        else:  # Assuming KJV as the default
+            result = await get_kjv_text(passage)
+
+        # Cache successful results
         _cache_set(passage, translation, result)
-    return result
+        return result
+    except (PassageNotFound, APIKeyMissing):
+        # Re-raise these specific exceptions for the caller to handle
+        raise
 
 
 async def get_esv_text(passage, api_key):
     if api_key is None:
         logger.warning("ESV API key not found")
-        return None
+        raise APIKeyMissing(f"ESV API key is required for passage '{passage}'")
+
     API_URL = ESV_API_URL
     params = {
         API_PARAM_Q: passage,
@@ -273,13 +294,17 @@ async def get_esv_text(passage, api_key):
     }
     headers = {"Authorization": f"Token {api_key}"}
     response = await make_api_request(API_URL, headers, params)
-    passages = response.get("passages") if isinstance(response, dict) else None
-    reference = response.get("canonical") if isinstance(response, dict) else None
-    return (
-        (passages[0].strip(), reference)
-        if passages
-        else ("Error: Passage not found", "")
-    )
+
+    if not isinstance(response, dict):
+        raise PassageNotFound(f"Invalid API response for passage '{passage}'")
+
+    passages = response.get("passages")
+    reference = response.get("canonical")
+
+    if not passages or not passages[0].strip():
+        raise PassageNotFound(f"Passage '{passage}' not found in ESV")
+
+    return (passages[0].strip(), reference)
 
 
 async def get_kjv_text(passage):
@@ -287,13 +312,17 @@ async def get_kjv_text(passage):
     encoded = quote(passage, safe=":")
     API_URL = KJV_API_URL_TEMPLATE.format(passage=encoded)
     response = await make_api_request(API_URL)
-    passages = [response.get("text")] if response and response.get("text") else None
-    reference = response.get("reference") if response else None
-    return (
-        (passages[0].strip(), reference)
-        if passages
-        else ("Error: Passage not found", "")
-    )
+
+    if not response or not response.get("text"):
+        raise PassageNotFound(f"Passage '{passage}' not found in KJV")
+
+    text = response.get("text").strip()
+    reference = response.get("reference")
+
+    if not text:
+        raise PassageNotFound(f"Empty text returned for passage '{passage}' in KJV")
+
+    return (text, reference)
 
 
 class BibleBot:
@@ -488,58 +517,10 @@ class BibleBot:
         Sends a reaction to the original message and posts the verse text.
         """
         logger.info(f"Fetching scripture passage: {passage} ({translation.upper()})")
+
         try:
-            result = await get_bible_text(passage, translation, self.api_keys)
-        except Exception:
-            # Log full traceback but send generic message to user
-            logger.exception(f"Exception during passage lookup for {passage}")
-            await self.client.room_send(
-                room_id,
-                "m.room.message",
-                {
-                    "msgtype": "m.text",
-                    "body": ERROR_PASSAGE_NOT_FOUND,
-                    "format": "org.matrix.custom.html",
-                    "formatted_body": html.escape(ERROR_PASSAGE_NOT_FOUND),
-                },
-            )
-            return
+            text, reference = await get_bible_text(passage, translation, self.api_keys)
 
-        if result is None:
-            text, reference = None, None
-        else:
-            text, reference = result
-
-        if text is None or reference is None:
-            logger.warning(f"Failed to retrieve passage: {passage}")
-            error_msg = "Error: Failed to retrieve the specified passage."
-            await self.client.room_send(
-                room_id,
-                "m.room.message",
-                {
-                    "msgtype": "m.text",
-                    "body": error_msg,
-                    "format": "org.matrix.custom.html",
-                    "formatted_body": html.escape(error_msg),
-                },
-            )
-            return
-
-        if text.startswith("Error:"):
-            # Log the specific API error for debugging but send generic message to user
-            logger.warning(f"Passage lookup error for {passage}: {text}")
-            await self.client.room_send(
-                room_id,
-                "m.room.message",
-                {
-                    "msgtype": "m.text",
-                    "body": ERROR_PASSAGE_NOT_FOUND,
-                    "format": "org.matrix.custom.html",
-                    "formatted_body": html.escape(ERROR_PASSAGE_NOT_FOUND),
-                },
-            )
-            return
-        else:
             # Formatting text to ensure one space between words
             text = " ".join(text.replace("\n", " ").split())
 
@@ -566,6 +547,34 @@ class BibleBot:
                 room_id,
                 "m.room.message",
                 content,
+            )
+
+        except (PassageNotFound, APIKeyMissing) as e:
+            logger.warning(f"Failed to retrieve passage: {passage} ({e})")
+            await self.client.room_send(
+                room_id,
+                "m.room.message",
+                {
+                    "msgtype": "m.text",
+                    "body": ERROR_PASSAGE_NOT_FOUND,
+                    "format": "org.matrix.custom.html",
+                    "formatted_body": html.escape(ERROR_PASSAGE_NOT_FOUND),
+                },
+            )
+        except Exception:
+            # Log full traceback but send generic message to user
+            logger.exception(
+                f"Unexpected exception during passage lookup for {passage}"
+            )
+            await self.client.room_send(
+                room_id,
+                "m.room.message",
+                {
+                    "msgtype": "m.text",
+                    "body": ERROR_PASSAGE_NOT_FOUND,
+                    "format": "org.matrix.custom.html",
+                    "formatted_body": html.escape(ERROR_PASSAGE_NOT_FOUND),
+                },
             )
 
 

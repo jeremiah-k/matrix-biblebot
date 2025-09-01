@@ -128,8 +128,10 @@ async def test_bible_bot_api_error_handling(
     mock_get_bible_text, mock_room, mock_event, test_config
 ):
     """Test that API errors are handled gracefully."""
-    # Mock API error
-    mock_get_bible_text.return_value = (None, None)
+    # Mock API error by raising PassageNotFound exception
+    from biblebot.bot import PassageNotFound
+
+    mock_get_bible_text.side_effect = PassageNotFound("Test passage not found")
 
     # Create real BibleBot instance with mock client
     mock_client = MagicMock()
@@ -246,12 +248,14 @@ async def test_bible_api_error_handling(mock_api_request):
     mock_api_request.return_value = None
 
     # Test error handling using actual function
-    from biblebot.bot import get_kjv_text
+    from biblebot.bot import PassageNotFound, get_kjv_text
 
-    text, reference = await get_kjv_text("Invalid 99:99")
+    # Should raise PassageNotFound exception
+    with pytest.raises(PassageNotFound) as exc_info:
+        await get_kjv_text("Invalid 99:99")
 
-    # Should return error message
-    assert "Error" in text
+    assert "Invalid 99:99" in str(exc_info.value)
+    assert "not found in KJV" in str(exc_info.value)
     mock_api_request.assert_called_once()
 
 

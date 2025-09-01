@@ -504,11 +504,15 @@ class TestErrorPropagationIntegration:
             "biblebot.bot.make_api_request", new=AsyncMock(return_value=None)
         ) as mock_api:
 
-            # Test error propagation
-            result = await bot.get_bible_text("Test 1:1", "kjv")
+            # Test error propagation - should raise PassageNotFound
+            from biblebot.bot import PassageNotFound
 
-            # Should propagate error gracefully
-            assert result is not None
+            with pytest.raises(PassageNotFound) as exc_info:
+                await bot.get_bible_text("Test 1:1", "kjv")
+
+            # Should propagate error gracefully with proper exception
+            assert "Test 1:1" in str(exc_info.value)
+            assert "not found in KJV" in str(exc_info.value)
 
     def test_auth_error_propagation(self):
         """Test auth errors propagate properly."""
