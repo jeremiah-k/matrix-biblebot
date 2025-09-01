@@ -11,7 +11,14 @@ from biblebot import auth
 
 @pytest.fixture
 def temp_config_dir(tmp_path):
-    """Create a temporary config directory for testing."""
+    """
+    Pytest fixture that creates a temporary configuration directory and patches auth paths to use it.
+    
+    Yields:
+        pathlib.Path: Path to a temporary config directory (named "matrix-biblebot"). While yielded,
+        auth.CONFIG_DIR, auth.CREDENTIALS_FILE, and auth.E2EE_STORE_DIR are patched to point inside
+        this directory so tests run in isolation.
+    """
     config_dir = tmp_path / "matrix-biblebot"
     config_dir.mkdir(parents=True, exist_ok=True)
 

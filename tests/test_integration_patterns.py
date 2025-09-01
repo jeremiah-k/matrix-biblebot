@@ -20,7 +20,19 @@ class TestIntegrationPatterns:
 
     @pytest.fixture
     def mock_config(self):
-        """Mock configuration for integration tests."""
+        """
+        Return a mock configuration dict used by integration tests.
+        
+        The dict contains the minimal fields the tests expect:
+        - homeserver (str): Matrix homeserver URL.
+        - user_id (str): Bot's Matrix user ID.
+        - access_token (str): Token used to authenticate the mock client.
+        - device_id (str): Device identifier for the bot.
+        - matrix_room_ids (list[str]): List of room IDs the bot is configured to operate in.
+        
+        Returns:
+            dict: Mock configuration mapping the keys above to test values.
+        """
         return {
             "homeserver": "https://matrix.org",
             "user_id": "@biblebot:matrix.org",
@@ -31,7 +43,17 @@ class TestIntegrationPatterns:
 
     @pytest.fixture
     def mock_client(self):
-        """Mock Matrix client for integration tests."""
+        """
+        Create a MagicMock that simulates a Matrix client for integration tests.
+        
+        Returns a MagicMock with AsyncMock attributes commonly used by BibleBot tests:
+        - room_send: async send messages to a room
+        - join: async join a room
+        - sync: async sync loop
+        - close: async cleanup/close
+        
+        The mock can be awaited/inspected by test code to assert calls and payloads.
+        """
         client = MagicMock()
         client.room_send = AsyncMock()
         client.join = AsyncMock()
@@ -176,6 +198,19 @@ class TestIntegrationPatterns:
         call_count = 0
 
         async def failing_api(*args, **kwargs):
+            """
+            Test helper that simulates a transient API: fails on the first two calls, then returns a recovered verse.
+            
+            Raises:
+                Exception: "API temporarily unavailable" for the first two invocations.
+            
+            Returns:
+                tuple[str, str]: (verse_text, reference) once recovery occurs.
+            
+            Notes:
+                - Increments an external `call_count` nonlocal each invocation.
+                - Accepts arbitrary positional and keyword arguments (ignored).
+            """
             nonlocal call_count
             call_count += 1
             if call_count <= 2:
@@ -313,7 +348,15 @@ class TestIntegrationPatterns:
             assert "John 1:1" in content["body"]
 
     async def test_api_integration_chain(self, mock_config, mock_client):
-        """Test complete API integration chain."""
+        """
+        Verify the full API integration chain: when the external Bible API returns a verse, the bot calls the API and sends a reaction and a formatted message to the room.
+        
+        The test:
+        - Creates a BibleBot with mocked config and client and populates its room set and start time.
+        - Patches `make_api_request` to return a sample verse payload (text, reference, version).
+        - Constructs a mock Matrix event and room and invokes `await bot.on_room_message(room, event)`.
+        - Asserts the API was invoked once and the Matrix client sent two messages (a reaction and the verse message).
+        """
         bot = BibleBot(config=mock_config, client=mock_client)
 
         # Populate room ID set for testing (normally done in initialize())
@@ -346,7 +389,11 @@ class TestIntegrationPatterns:
             assert mock_client.room_send.call_count == 2  # Reaction + message
 
     async def test_configuration_integration(self, mock_config, mock_client):
-        """Test configuration handling integration."""
+        """
+        Validate that BibleBot accepts and preserves essential configuration variants.
+        
+        Creates Bot instances for both a minimal and a fuller configuration, seeds the bot's internal room set as tests normally expect, and asserts that critical fields (homeserver and user_id) from each input config are retained on the bot instance.
+        """
         # Test with various configuration scenarios
         configs = [
             # Minimal config

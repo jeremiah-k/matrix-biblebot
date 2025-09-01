@@ -14,7 +14,19 @@ class TestEndToEndWorkflow:
 
     @pytest.fixture
     def temp_workspace(self, tmp_path):
-        """Create a temporary workspace with config files."""
+        """
+        Create a temporary workspace directory populated with sample configuration files for tests.
+        
+        The workspace directory (created as tmp_path / "biblebot_test") will contain:
+        - config.yaml: a YAML config with keys `matrix_homeserver`, `matrix_user`, `matrix_room_ids`, and `matrix.e2ee.enabled` set to False.
+        - .env: environment file containing `MATRIX_ACCESS_TOKEN=test_token` and `ESV_API_KEY=test_key`.
+        
+        Parameters:
+            tmp_path (pathlib.Path): Base temporary directory provided by pytest.
+        
+        Returns:
+            pathlib.Path: Path to the created workspace directory.
+        """
         workspace = tmp_path / "biblebot_test"
         workspace.mkdir()
 

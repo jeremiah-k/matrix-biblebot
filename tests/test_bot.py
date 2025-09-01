@@ -32,7 +32,17 @@ def sample_config():
 
 @pytest.fixture
 def temp_config_file(tmp_path, sample_config):
-    """Create a temporary config file."""
+    """
+    Create a temporary YAML config file from the given sample configuration and return its path.
+    
+    The fixture writes `sample_config` to a file named `config.yaml` under `tmp_path` using YAML serialization.
+    
+    Parameters:
+        sample_config (Mapping): Data to serialize into the YAML config file.
+    
+    Returns:
+        pathlib.Path: Path to the created `config.yaml`.
+    """
     config_file = tmp_path / "config.yaml"
     with open(config_file, "w") as f:
         yaml.dump(sample_config, f)
@@ -41,7 +51,16 @@ def temp_config_file(tmp_path, sample_config):
 
 @pytest.fixture
 def temp_env_file(tmp_path):
-    """Create a temporary .env file."""
+    """
+    Create a temporary `.env` file for tests containing MATRIX_ACCESS_TOKEN and ESV_API_KEY.
+    
+    The file is written to the provided temporary path and contains:
+    - MATRIX_ACCESS_TOKEN set to the test constant `TEST_ACCESS_TOKEN`
+    - ESV_API_KEY set to "test_esv_key"
+    
+    Returns:
+        pathlib.Path: Path to the created `.env` file.
+    """
     env_file = tmp_path / ".env"
     env_file.write_text(
         f"""

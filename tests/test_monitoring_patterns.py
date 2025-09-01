@@ -18,7 +18,16 @@ class TestMonitoringPatterns:
 
     @pytest.fixture
     def mock_config(self):
-        """Mock configuration for monitoring tests."""
+        """
+        Return a mocked Matrix configuration dictionary used by monitoring tests.
+        
+        The dictionary contains the minimal fields the tests expect:
+        - homeserver: URL of the Matrix homeserver.
+        - user_id: Matrix user identifier.
+        - access_token: Authorization token for the client.
+        - device_id: Client device identifier.
+        - matrix_room_ids: List of room IDs the bot is present in.
+        """
         return {
             "homeserver": "https://matrix.org",
             "user_id": "@test:matrix.org",
@@ -111,6 +120,14 @@ class TestMonitoringPatterns:
         processing_times = []
 
         async def timed_api_call(*args, **kwargs):
+            """
+            Simulate an asynchronous Bible API call, record its processing time, and return a sample verse.
+            
+            This coroutine measures elapsed time (using time.perf_counter) around a small simulated delay, appends the elapsed duration to the global list `processing_times`, and returns a tuple of (verse_text, verse_reference).
+            
+            Returns:
+                tuple[str, str]: A sample verse and its reference, e.g. ("Test verse", "John 3:16").
+            """
             start_time = time.perf_counter()
             await asyncio.sleep(0.01)  # Simulate processing
             end_time = time.perf_counter()
@@ -204,6 +221,14 @@ class TestMonitoringPatterns:
         request_times = []
 
         async def timestamped_api_call(*args, **kwargs):
+            """
+            Record the current epoch time into the external `request_times` list and return a fixed test verse.
+            
+            This helper simulates an asynchronous API call by appending time.time() to a surrounding `request_times` list (side effect) and returning a tuple of (verse_text, reference). Any positional or keyword arguments are accepted but ignored.
+            
+            Returns:
+                tuple[str, str]: A fixed verse text and its reference, ("Test verse", "John 3:16").
+            """
             request_times.append(time.time())
             return ("Test verse", "John 3:16")
 
@@ -244,6 +269,23 @@ class TestMonitoringPatterns:
         error_count = 0
 
         async def error_prone_api(*args, **kwargs):
+            """
+            Simulate an asynchronous Bible API call that randomly fails.
+            
+            On invocation this coroutine either returns a (verse_text, reference) tuple or raises Exception("API Error")
+            to model a 30% failure rate. It also updates the enclosing scope's nonlocal counters:
+            - increments error_count when an error is raised
+            - increments success_count when returning successfully
+            
+            Parameters:
+                *args, **kwargs: Ignored — present to match caller signature.
+            
+            Returns:
+                tuple[str, str]: (verse_text, reference) on success.
+            
+            Raises:
+                Exception: "API Error" when a simulated failure occurs.
+            """
             nonlocal success_count, error_count
             # Simulate 30% error rate
             import random
@@ -342,6 +384,17 @@ class TestMonitoringPatterns:
         total_responses = 0
 
         async def variable_speed_api(*args, **kwargs):
+            """
+            Simulate a Bible API call with variable (simulated) response times for testing.
+            
+            This async helper mimics an external API by generating a random response duration (0.01–0.5s)
+            without performing real I/O or sleeping. It increments the nonlocal `total_responses` counter
+            on every call and increments the nonlocal `slow_responses` counter when the simulated
+            response_time exceeds 0.3 seconds. Returns a deterministic test verse tuple.
+            
+            Returns:
+                tuple[str, str]: (verse_text, verse_reference), e.g. ("Test verse", "John 3:16")
+            """
             nonlocal slow_responses, total_responses
             total_responses += 1
 
@@ -395,6 +448,16 @@ class TestMonitoringPatterns:
 
         async def metrics_collecting_api(*args, **kwargs):
             # Extract verse reference from args if available
+            """
+            Simulated async API that records a verse request and returns a test verse.
+            
+            If a verse reference is provided in args it will be used; otherwise "John 3:16" is used as the default.
+            Side effect: increments the global `verse_requests` mapping for the chosen verse reference.
+            
+            Returns:
+                tuple[str, str]: A pair (verse_text, verse_ref) where `verse_text` is a test string and
+                `verse_ref` is the verse reference that was recorded.
+            """
             verse_ref = "John 3:16"  # Default
             verse_requests[verse_ref] = verse_requests.get(verse_ref, 0) + 1
             return ("Test verse", verse_ref)
@@ -436,6 +499,19 @@ class TestMonitoringPatterns:
 
         async def traced_api_call(*args, **kwargs):
             # Simulate trace span
+            """
+            Async helper that simulates a traced API call by sleeping briefly, recording a trace span, and returning a test verse.
+            
+            This coroutine appends a span dictionary to the module-level `trace_spans` list to simulate distributed tracing. The appended span contains the keys:
+            - "span_id": unique identifier for the span,
+            - "operation": the operation name ("bible_api_call"),
+            - "duration": elapsed time in seconds,
+            - "start_time": perf_counter timestamp at span start,
+            - "end_time": perf_counter timestamp at span end.
+            
+            Returns:
+                tuple[str, str]: A (verse_text, reference) pair; here ("Test verse", "John 3:16").
+            """
             span_id = f"span_{len(trace_spans)}"
             start_time = time.perf_counter()
 
