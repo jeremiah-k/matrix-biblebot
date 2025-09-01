@@ -50,7 +50,7 @@ class TestCachePerformance:
 
         # Bulk get operations
         start_time = time.perf_counter()
-        for i in range(100):  # Reduced from 1000 to 100
+        for i in range(50):  # Only get entries that were actually set (0-49)
             result = bot._cache_get(f"Bulk {i}:1", "kjv")
             # Only assert if cache is working, otherwise skip
             if hasattr(bot, "_passage_cache") and bot._passage_cache:

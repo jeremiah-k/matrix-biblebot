@@ -536,10 +536,14 @@ class BibleBot:
         """
         Resolve any Matrix room aliases in the configured room list and replace them with canonical room IDs.
 
-        Iterates over self.config[CONFIG_MATRIX_ROOM_IDS]; for entries starting with '#', attempts to resolve the alias via self.client.room_resolve_alias and replaces the alias with the resolved room_id. Non-alias entries are preserved. Duplicates are removed while preserving order. The method updates self.config[CONFIG_MATRIX_ROOM_IDS] in place and logs warnings for aliases that cannot be resolved.
+        Iterates over room IDs from config; for entries starting with '#', attempts to resolve the alias via self.client.room_resolve_alias and replaces the alias with the resolved room_id. Non-alias entries are preserved. Duplicates are removed while preserving order. The method updates the room IDs in place and logs warnings for aliases that cannot be resolved.
         """
         resolved_ids = []
-        for entry in self.config[CONFIG_MATRIX_ROOM_IDS]:
+        # Support both old and new config schema
+        room_ids = self.config.get("matrix", {}).get("room_ids") or self.config.get(
+            CONFIG_MATRIX_ROOM_IDS, []
+        )
+        for entry in room_ids:
             if entry.startswith("#"):
                 try:
                     resp = await self.client.room_resolve_alias(entry)
@@ -554,7 +558,12 @@ class BibleBot:
                     )
             else:
                 resolved_ids.append(entry)
-        self.config[CONFIG_MATRIX_ROOM_IDS] = list(dict.fromkeys(resolved_ids))
+        # Update configuration with resolved IDs (support both schemas)
+        unique_ids = list(dict.fromkeys(resolved_ids))
+        if "matrix" in self.config and "room_ids" in self.config["matrix"]:
+            self.config["matrix"]["room_ids"] = unique_ids
+        else:
+            self.config[CONFIG_MATRIX_ROOM_IDS] = unique_ids
 
     async def join_matrix_room(self, room_id_or_alias):
         """

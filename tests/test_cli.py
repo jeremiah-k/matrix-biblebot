@@ -476,11 +476,11 @@ class TestMainFunction:
                     # make asyncio.run execute the coroutine
                     with patch(
                         "biblebot.cli.asyncio.run", side_effect=_consume_coroutine
-                    ):
+                    ) as mock_run:
                         with patch("sys.argv", ["biblebot"]):
                             with patch(
-                                "builtins.input", return_value="n"
-                            ):  # User chooses not to login
+                                "builtins.input", return_value="y"
+                            ):  # User chooses to login
                                 with patch("getpass.getpass", return_value="password"):
                                     # exercise the real cli.main
                                     cli.main()

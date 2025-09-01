@@ -314,7 +314,9 @@ class TestBibleBot:
     async def test_resolve_aliases(self, sample_config):
         """Test room alias resolution."""
         config_with_alias = sample_config.copy()
-        config_with_alias["matrix_room_ids"] = [
+        if "matrix" not in config_with_alias:
+            config_with_alias["matrix"] = {}
+        config_with_alias["matrix"]["room_ids"] = [
             TEST_ROOM_IDS[0],
             "#alias:matrix.org",
         ]
@@ -340,7 +342,7 @@ class TestBibleBot:
             # Mock alias resolution response
             mock_response = MagicMock()
             mock_response.room_id = TEST_RESOLVED_ROOM_ID
-            mock_client.room_resolve_alias.return_value = mock_response
+            mock_client.room_resolve_alias = AsyncMock(return_value=mock_response)
 
             bot_instance = bot.BibleBot(config_with_alias)
             bot_instance.client = mock_client
@@ -348,7 +350,7 @@ class TestBibleBot:
             await bot_instance.resolve_aliases()
 
             # Check that alias was resolved and added to room IDs
-            assert TEST_RESOLVED_ROOM_ID in bot_instance.config["matrix_room_ids"]
+            assert TEST_RESOLVED_ROOM_ID in bot_instance.config["matrix"]["room_ids"]
             mock_client.room_resolve_alias.assert_called_once_with("#alias:matrix.org")
 
     @pytest.mark.asyncio
@@ -430,9 +432,13 @@ class TestBibleBot:
                     "restore_login",
                     "access_token",
                     "rooms",
+                    "room_resolve_alias",
+                    "close",
                 ]
             )
             mock_client_class.return_value = mock_client
+            # Ensure room_send is AsyncMock
+            mock_client.room_send = AsyncMock()
 
             bot_instance = bot.BibleBot(sample_config)
             bot_instance.client = mock_client
@@ -638,9 +644,13 @@ class TestMessageHandling:
                     "restore_login",
                     "access_token",
                     "rooms",
+                    "room_resolve_alias",
+                    "close",
                 ]
             )
             mock_client_class.return_value = mock_client
+            # Ensure room_send is AsyncMock
+            mock_client.room_send = AsyncMock()
 
             bot_instance = bot.BibleBot(sample_config)
             bot_instance.client = mock_client
@@ -691,9 +701,13 @@ class TestMessageHandling:
                     "restore_login",
                     "access_token",
                     "rooms",
+                    "room_resolve_alias",
+                    "close",
                 ]
             )
             mock_client_class.return_value = mock_client
+            # Ensure room_send is AsyncMock
+            mock_client.room_send = AsyncMock()
 
             bot_instance = bot.BibleBot(sample_config)
             bot_instance.client = mock_client
@@ -927,11 +941,15 @@ class TestMainFunction:
                     "restore_login",
                     "access_token",
                     "rooms",
+                    "room_resolve_alias",
+                    "close",
                 ]
             )
             mock_client.restore_login = MagicMock()
             mock_client.add_event_callback = MagicMock()
             mock_client.should_upload_keys = False
+            # Ensure close is AsyncMock
+            mock_client.close = AsyncMock()
             mock_client_class.return_value = mock_client
 
             with patch("biblebot.bot.BibleBot") as mock_bot_class:
@@ -981,10 +999,14 @@ class TestMainFunction:
                     "restore_login",
                     "access_token",
                     "rooms",
+                    "room_resolve_alias",
+                    "close",
                 ]
             )
             mock_client.restore_login = MagicMock()
             mock_client.add_event_callback = MagicMock()
+            # Ensure close is AsyncMock
+            mock_client.close = AsyncMock()
             mock_client_class.return_value = mock_client
 
             with patch("biblebot.bot.BibleBot") as mock_bot_class:
@@ -1078,11 +1100,16 @@ class TestMainFunction:
                         "restore_login",
                         "access_token",
                         "rooms",
+                        "room_resolve_alias",
+                        "close",
+                        "keys_upload",
                     ]
                 )
                 mock_client.restore_login = MagicMock()
                 mock_client.add_event_callback = MagicMock()
                 mock_client.keys_upload = AsyncMock()
+                # Ensure close is AsyncMock
+                mock_client.close = AsyncMock()
                 mock_client_class.return_value = mock_client
                 mock_client.should_upload_keys = True
 

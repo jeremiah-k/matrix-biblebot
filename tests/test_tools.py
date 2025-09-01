@@ -28,7 +28,7 @@ class TestSampleFilePaths:
         content = path.read_text()
 
         # Check for key configuration sections
-        assert "matrix_room_ids" in content
+        assert "room_ids" in content  # New nested structure
         assert "biblebot auth login" in content  # Should mention auth flow
 
         # Check for API keys section
@@ -116,17 +116,18 @@ class TestSampleConfigValidation:
         with open(config_path_str, "r") as f:
             config = yaml.safe_load(f)
 
-        # Check required top-level fields (matrix_homeserver and matrix_user now handled by auth)
-        required_fields = ["matrix_room_ids"]
+        # Check required fields (matrix_homeserver and matrix_user now handled by auth)
+        # Check for new nested structure
+        assert (
+            "matrix" in config
+        ), "Required 'matrix' section missing from sample config"
+        assert (
+            "room_ids" in config["matrix"]
+        ), "Required 'matrix.room_ids' field missing from sample config"
 
-        for field in required_fields:
-            assert (
-                field in config
-            ), f"Required field '{field}' missing from sample config"
-
-        # Check that matrix_room_ids is a list
-        assert isinstance(config["matrix_room_ids"], list)
-        assert len(config["matrix_room_ids"]) > 0
+        # Check that matrix.room_ids is a list
+        assert isinstance(config["matrix"]["room_ids"], list)
+        assert len(config["matrix"]["room_ids"]) > 0
 
     def test_sample_config_placeholder_values(self):
         """Test that sample config contains placeholder values."""
@@ -138,7 +139,7 @@ class TestSampleConfigValidation:
             config = yaml.safe_load(f)
 
         # Should contain placeholder values that users need to replace
-        room_ids = config.get("matrix_room_ids", [])
+        room_ids = config.get("matrix", {}).get("room_ids", [])
 
         # Room IDs should be example values, not real ones
         assert len(room_ids) > 0, "Should have example room IDs"

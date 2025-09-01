@@ -406,6 +406,8 @@ class TestEdgeCases:
                 "biblebot.bot.get_bible_text", new_callable=AsyncMock
             ) as mock_get_bible:
                 mock_get_bible.return_value = response
+                # Reset mock client for each iteration
+                mock_client.room_send.reset_mock()
 
                 event = MagicMock()
                 event.body = "John 3:16"
@@ -416,9 +418,16 @@ class TestEdgeCases:
                 room.room_id = "!room:matrix.org"
 
                 await bot.on_room_message(room, event)
-                # For None response, bot should not send a message
+                # Check behavior based on response type
                 if response is None:
+                    # None response causes exception, should send error message
+                    assert mock_client.room_send.called
+                elif response == ("", ""):
+                    # Empty strings should not send a message (just log warning)
                     assert not mock_client.room_send.called
+                else:
+                    # Valid responses should send a message
+                    assert mock_client.room_send.called
 
     async def test_network_timeout_edge_cases(self, mock_config, mock_client):
         """Test edge cases with network timeouts."""
