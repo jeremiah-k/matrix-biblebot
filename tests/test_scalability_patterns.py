@@ -39,7 +39,11 @@ class TestScalabilityPatterns:
     async def test_high_volume_message_processing(self, mock_config, mock_client):
         """Test processing high volume of messages."""
         bot = BibleBot(config=mock_config, client=mock_client)
-        bot.start_time = 1234567880
+
+        # Populate room ID set for testing (normally done in initialize())
+
+        bot._room_id_set = set(mock_config["matrix_room_ids"])
+        bot.start_time = 1234567880000  # Converted to milliseconds
 
         with patch("biblebot.bot.get_bible_text") as mock_get_bible:
             mock_get_bible.return_value = ("Test verse", "John 3:16")
@@ -53,7 +57,7 @@ class TestScalabilityPatterns:
                 event = MagicMock()
                 event.body = f"John 3:{i+1}"
                 event.sender = f"@user{i % 10}:matrix.org"  # 10 different users
-                event.server_timestamp = 1234567890 + i
+                event.server_timestamp = 1234567890000  # Converted to milliseconds + i
 
                 room = MagicMock()
                 room.room_id = "!room:matrix.org"
@@ -80,7 +84,11 @@ class TestScalabilityPatterns:
     async def test_concurrent_user_scaling(self, mock_config, mock_client):
         """Test scaling with many concurrent users."""
         bot = BibleBot(config=mock_config, client=mock_client)
-        bot.start_time = 1234567880
+
+        # Populate room ID set for testing (normally done in initialize())
+
+        bot._room_id_set = set(mock_config["matrix_room_ids"])
+        bot.start_time = 1234567880000  # Converted to milliseconds
 
         with patch("biblebot.bot.get_bible_text") as mock_get_bible:
             mock_get_bible.return_value = ("Test verse", "John 3:16")
@@ -95,7 +103,7 @@ class TestScalabilityPatterns:
                     event = MagicMock()
                     event.body = f"John 3:{msg_id + 16}"
                     event.sender = f"@user{user_id}:matrix.org"
-                    event.server_timestamp = 1234567890 + user_id * 10 + msg_id
+                    event.server_timestamp = 1234567890000  # Converted to milliseconds + user_id * 10 + msg_id
 
                     room = MagicMock()
                     room.room_id = "!room:matrix.org"
@@ -124,7 +132,11 @@ class TestScalabilityPatterns:
         ]
 
         bot = BibleBot(config=multi_room_config, client=mock_client)
-        bot.start_time = 1234567880
+
+        # Populate room ID set for testing (normally done in initialize())
+
+        bot._room_id_set = set(multi_room_config["matrix_room_ids"])
+        bot.start_time = 1234567880000  # Converted to milliseconds
 
         with patch("biblebot.bot.get_bible_text") as mock_get_bible:
             mock_get_bible.return_value = ("Test verse", "John 3:16")
@@ -139,7 +151,7 @@ class TestScalabilityPatterns:
                     event = MagicMock()
                     event.body = f"John 3:{msg_id + 16}"
                     event.sender = f"@user{msg_id}:matrix.org"
-                    event.server_timestamp = 1234567890 + room_id * 10 + msg_id
+                    event.server_timestamp = 1234567890000  # Converted to milliseconds + room_id * 10 + msg_id
 
                     room = MagicMock()
                     room.room_id = f"!room{room_id}:matrix.org"
@@ -167,19 +179,25 @@ class TestScalabilityPatterns:
         initial_memory = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
 
         bot = BibleBot(config=mock_config, client=mock_client)
-        bot.start_time = 1234567880
+
+        # Populate room ID set for testing (normally done in initialize())
+
+        bot._room_id_set = set(mock_config["matrix_room_ids"])
+        bot.start_time = 1234567880000  # Converted to milliseconds
 
         with patch("biblebot.bot.get_bible_text") as mock_get_bible:
             mock_get_bible.return_value = ("Test verse", "John 3:16")
 
             # Process many messages to test memory scaling
-            for batch in range(10):  # 10 batches
+            for _batch in range(10):  # 10 batches
                 tasks = []
                 for i in range(20):  # 20 messages per batch
                     event = MagicMock()
                     event.body = f"John 3:{i + 16}"
                     event.sender = f"@user{i}:matrix.org"
-                    event.server_timestamp = 1234567890 + batch * 100 + i
+                    event.server_timestamp = (
+                        1234567890000  # Converted to milliseconds + batch * 100 + i
+                    )
 
                     room = MagicMock()
                     room.room_id = "!room:matrix.org"
@@ -203,7 +221,11 @@ class TestScalabilityPatterns:
     async def test_api_request_scaling(self, mock_config, mock_client):
         """Test scaling of API requests."""
         bot = BibleBot(config=mock_config, client=mock_client)
-        bot.start_time = 1234567880
+
+        # Populate room ID set for testing (normally done in initialize())
+
+        bot._room_id_set = set(mock_config["matrix_room_ids"])
+        bot.start_time = 1234567880000  # Converted to milliseconds
 
         # Track API call performance
         api_call_times = []
@@ -222,7 +244,7 @@ class TestScalabilityPatterns:
                 event = MagicMock()
                 event.body = f"John 3:{i + 16}"
                 event.sender = f"@user{i}:matrix.org"
-                event.server_timestamp = 1234567890 + i
+                event.server_timestamp = 1234567890000  # Converted to milliseconds + i
 
                 room = MagicMock()
                 room.room_id = "!room:matrix.org"
@@ -244,7 +266,11 @@ class TestScalabilityPatterns:
     async def test_connection_pool_scaling(self, mock_config, mock_client):
         """Test connection pool scaling behavior."""
         bot = BibleBot(config=mock_config, client=mock_client)
-        bot.start_time = 1234567880
+
+        # Populate room ID set for testing (normally done in initialize())
+
+        bot._room_id_set = set(mock_config["matrix_room_ids"])
+        bot.start_time = 1234567880000  # Converted to milliseconds
 
         # Mock connection pool behavior
         active_connections = 0
@@ -267,7 +293,7 @@ class TestScalabilityPatterns:
                 event = MagicMock()
                 event.body = f"John 3:{i + 16}"
                 event.sender = f"@user{i}:matrix.org"
-                event.server_timestamp = 1234567890 + i
+                event.server_timestamp = 1234567890000  # Converted to milliseconds + i
 
                 room = MagicMock()
                 room.room_id = "!room:matrix.org"
@@ -284,6 +310,10 @@ class TestScalabilityPatterns:
     async def test_response_time_under_load(self, mock_config, mock_client):
         """Test response time degradation under load."""
         bot = BibleBot(config=mock_config, client=mock_client)
+
+        # Populate room ID set for testing (normally done in initialize())
+
+        bot._room_id_set = set(mock_config["matrix_room_ids"])
         bot.start_time = 1234567880000  # Use milliseconds
         bot.api_keys = {}
 
@@ -335,7 +365,11 @@ class TestScalabilityPatterns:
     async def test_throughput_scaling(self, mock_config, mock_client):
         """Test throughput scaling characteristics."""
         bot = BibleBot(config=mock_config, client=mock_client)
-        bot.start_time = 1234567880
+
+        # Populate room ID set for testing (normally done in initialize())
+
+        bot._room_id_set = set(mock_config["matrix_room_ids"])
+        bot.start_time = 1234567880000  # Converted to milliseconds
 
         with patch("biblebot.bot.get_bible_text") as mock_get_bible:
             mock_get_bible.return_value = ("Test verse", "John 3:16")
@@ -351,7 +385,9 @@ class TestScalabilityPatterns:
                     event = MagicMock()
                     event.body = f"John 3:{i + 16}"
                     event.sender = f"@user{i}:matrix.org"
-                    event.server_timestamp = 1234567890 + i
+                    event.server_timestamp = (
+                        1234567890000  # Converted to milliseconds + i
+                    )
 
                     room = MagicMock()
                     room.room_id = "!room:matrix.org"
@@ -377,7 +413,11 @@ class TestScalabilityPatterns:
     async def test_resource_cleanup_scaling(self, mock_config, mock_client):
         """Test resource cleanup under scaling conditions."""
         bot = BibleBot(config=mock_config, client=mock_client)
-        bot.start_time = 1234567880
+
+        # Populate room ID set for testing (normally done in initialize())
+
+        bot._room_id_set = set(mock_config["matrix_room_ids"])
+        bot.start_time = 1234567880000  # Converted to milliseconds
 
         # Track resource allocation and cleanup
         allocated_resources = []
@@ -398,7 +438,9 @@ class TestScalabilityPatterns:
                     event = MagicMock()
                     event.body = f"John 3:{i + 16}"
                     event.sender = f"@user{i}:matrix.org"
-                    event.server_timestamp = 1234567890 + wave * 100 + i
+                    event.server_timestamp = (
+                        1234567890000  # Converted to milliseconds + wave * 100 + i
+                    )
 
                     room = MagicMock()
                     room.room_id = "!room:matrix.org"
@@ -420,7 +462,11 @@ class TestScalabilityPatterns:
     async def test_burst_traffic_handling(self, mock_config, mock_client):
         """Test handling of burst traffic patterns."""
         bot = BibleBot(config=mock_config, client=mock_client)
-        bot.start_time = 1234567880
+
+        # Populate room ID set for testing (normally done in initialize())
+
+        bot._room_id_set = set(mock_config["matrix_room_ids"])
+        bot.start_time = 1234567880000  # Converted to milliseconds
 
         with patch("biblebot.bot.get_bible_text") as mock_get_bible:
             mock_get_bible.return_value = ("Test verse", "John 3:16")
@@ -434,7 +480,7 @@ class TestScalabilityPatterns:
                 event = MagicMock()
                 event.body = f"John 3:{i + 16}"
                 event.sender = f"@user{i}:matrix.org"
-                event.server_timestamp = 1234567890 + i
+                event.server_timestamp = 1234567890000  # Converted to milliseconds + i
 
                 room = MagicMock()
                 room.room_id = "!room:matrix.org"

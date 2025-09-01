@@ -66,6 +66,8 @@ async def test_bible_bot_message_handling(
 
     bot = BibleBot(config=test_config, client=mock_client)
     bot.start_time = 1234567880000  # Before event timestamp
+    # Populate room ID set for testing (normally done in initialize())
+    bot._room_id_set = set(test_config["matrix_room_ids"])
 
     # Test verse request handling
     await bot.on_room_message(mock_room, mock_event)
@@ -89,6 +91,8 @@ async def test_bible_bot_ignore_own_messages(
 
     bot = BibleBot(config=test_config, client=mock_client)
     bot.start_time = 1234567880000
+    # Populate room ID set for testing (normally done in initialize())
+    bot._room_id_set = set(test_config["matrix_room_ids"])
 
     await bot.on_room_message(mock_room, mock_event)
 
@@ -110,6 +114,8 @@ async def test_bible_bot_unsupported_room(
 
     bot = BibleBot(config=test_config, client=mock_client)
     bot.start_time = 1234567880000
+    # Populate room ID set for testing (normally done in initialize())
+    bot._room_id_set = set(test_config["matrix_room_ids"])
 
     await bot.on_room_message(mock_room, mock_event)
 
@@ -132,6 +138,8 @@ async def test_bible_bot_api_error_handling(
 
     bot = BibleBot(config=test_config, client=mock_client)
     bot.start_time = 1234567880000
+    # Populate room ID set for testing (normally done in initialize())
+    bot._room_id_set = set(test_config["matrix_room_ids"])
 
     await bot.on_room_message(mock_room, mock_event)
 

@@ -39,7 +39,11 @@ class TestMonitoringPatterns:
     async def test_request_logging_patterns(self, mock_config, mock_client, caplog):
         """Test request logging and tracing."""
         bot = BibleBot(config=mock_config, client=mock_client)
-        bot.start_time = 1234567880
+
+        # Populate room ID set for testing (normally done in initialize())
+
+        bot._room_id_set = set(mock_config["matrix_room_ids"])
+        bot.start_time = 1234567880000  # Converted to milliseconds
 
         with patch("biblebot.bot.get_bible_text") as mock_get_bible:
             mock_get_bible.return_value = ("Test verse", "John 3:16")
@@ -49,7 +53,7 @@ class TestMonitoringPatterns:
                 event = MagicMock()
                 event.body = "John 3:16"
                 event.sender = "@user:matrix.org"
-                event.server_timestamp = 1234567890
+                event.server_timestamp = 1234567890000  # Converted to milliseconds
                 event.event_id = "$event123:matrix.org"
 
                 room = MagicMock()
@@ -65,6 +69,10 @@ class TestMonitoringPatterns:
     async def test_error_logging_patterns(self, mock_config, mock_client, caplog):
         """Test error logging and tracking."""
         bot = BibleBot(config=mock_config, client=mock_client)
+
+        # Populate room ID set for testing (normally done in initialize())
+
+        bot._room_id_set = set(mock_config["matrix_room_ids"])
         bot.start_time = 1234567880000  # Use milliseconds
         bot.api_keys = {}
 
@@ -98,7 +106,11 @@ class TestMonitoringPatterns:
     async def test_performance_metrics_collection(self, mock_config, mock_client):
         """Test collection of performance metrics."""
         bot = BibleBot(config=mock_config, client=mock_client)
-        bot.start_time = 1234567880
+
+        # Populate room ID set for testing (normally done in initialize())
+
+        bot._room_id_set = set(mock_config["matrix_room_ids"])
+        bot.start_time = 1234567880000  # Converted to milliseconds
 
         # Track timing metrics
         processing_times = []
@@ -116,7 +128,7 @@ class TestMonitoringPatterns:
                 event = MagicMock()
                 event.body = f"John 3:{i+16}"
                 event.sender = "@user:matrix.org"
-                event.server_timestamp = 1234567890 + i
+                event.server_timestamp = 1234567890000  # Converted to milliseconds + i
 
                 room = MagicMock()
                 room.room_id = "!room:matrix.org"
@@ -131,6 +143,10 @@ class TestMonitoringPatterns:
     async def test_health_check_patterns(self, mock_config, mock_client):
         """Test health check functionality."""
         bot = BibleBot(config=mock_config, client=mock_client)
+
+        # Populate room ID set for testing (normally done in initialize())
+
+        bot._room_id_set = set(mock_config["matrix_room_ids"])
         bot.start_time = 1234567880000  # Use fixed start time in milliseconds
         bot.api_keys = {}
 
@@ -162,6 +178,10 @@ class TestMonitoringPatterns:
         """Test uptime tracking and reporting."""
         bot = BibleBot(config=mock_config, client=mock_client)
 
+        # Populate room ID set for testing (normally done in initialize())
+
+        bot._room_id_set = set(mock_config["matrix_room_ids"])
+
         # Set start time in the past
         past_time = time.time() - 3600  # 1 hour ago
         bot.start_time = past_time
@@ -177,7 +197,11 @@ class TestMonitoringPatterns:
     async def test_request_rate_monitoring(self, mock_config, mock_client):
         """Test monitoring of request rates."""
         bot = BibleBot(config=mock_config, client=mock_client)
-        bot.start_time = 1234567880
+
+        # Populate room ID set for testing (normally done in initialize())
+
+        bot._room_id_set = set(mock_config["matrix_room_ids"])
+        bot.start_time = 1234567880000  # Converted to milliseconds
 
         # Track request timestamps
         request_times = []
@@ -192,7 +216,7 @@ class TestMonitoringPatterns:
                 event = MagicMock()
                 event.body = f"John 3:{i+16}"
                 event.sender = "@user:matrix.org"
-                event.server_timestamp = 1234567890 + i
+                event.server_timestamp = 1234567890000  # Converted to milliseconds + i
 
                 room = MagicMock()
                 room.room_id = "!room:matrix.org"
@@ -211,6 +235,10 @@ class TestMonitoringPatterns:
     async def test_error_rate_monitoring(self, mock_config, mock_client):
         """Test monitoring of error rates."""
         bot = BibleBot(config=mock_config, client=mock_client)
+
+        # Populate room ID set for testing (normally done in initialize())
+
+        bot._room_id_set = set(mock_config["matrix_room_ids"])
         bot.start_time = 1234567880000  # Use milliseconds
         bot.api_keys = {}
 
@@ -260,7 +288,11 @@ class TestMonitoringPatterns:
         import resource
 
         bot = BibleBot(config=mock_config, client=mock_client)
-        bot.start_time = 1234567880
+
+        # Populate room ID set for testing (normally done in initialize())
+
+        bot._room_id_set = set(mock_config["matrix_room_ids"])
+        bot.start_time = 1234567880000  # Converted to milliseconds
 
         # Get initial resource usage
         initial_memory = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
@@ -274,7 +306,7 @@ class TestMonitoringPatterns:
                 event = MagicMock()
                 event.body = f"John 3:{i+16}"
                 event.sender = "@user:matrix.org"
-                event.server_timestamp = 1234567890 + i
+                event.server_timestamp = 1234567890000  # Converted to milliseconds + i
 
                 room = MagicMock()
                 room.room_id = "!room:matrix.org"
@@ -295,6 +327,10 @@ class TestMonitoringPatterns:
     async def test_alert_threshold_monitoring(self, mock_config, mock_client):
         """Test monitoring for alert thresholds."""
         bot = BibleBot(config=mock_config, client=mock_client)
+
+        # Populate room ID set for testing (normally done in initialize())
+
+        bot._room_id_set = set(mock_config["matrix_room_ids"])
         bot.start_time = 1234567880000  # Use milliseconds
         bot.api_keys = {}
 
@@ -344,7 +380,11 @@ class TestMonitoringPatterns:
     async def test_custom_metrics_collection(self, mock_config, mock_client):
         """Test collection of custom application metrics."""
         bot = BibleBot(config=mock_config, client=mock_client)
-        bot.start_time = 1234567880
+
+        # Populate room ID set for testing (normally done in initialize())
+
+        bot._room_id_set = set(mock_config["matrix_room_ids"])
+        bot.start_time = 1234567880000  # Converted to milliseconds
 
         # Track custom metrics
         verse_requests = {}
@@ -367,7 +407,7 @@ class TestMonitoringPatterns:
                 event = MagicMock()
                 event.body = f"John 3:{(i % 5) + 16}"
                 event.sender = user
-                event.server_timestamp = 1234567890 + i
+                event.server_timestamp = 1234567890000  # Converted to milliseconds + i
 
                 room = MagicMock()
                 room.room_id = "!room:matrix.org"
@@ -382,7 +422,11 @@ class TestMonitoringPatterns:
     async def test_distributed_tracing_patterns(self, mock_config, mock_client):
         """Test distributed tracing capabilities."""
         bot = BibleBot(config=mock_config, client=mock_client)
-        bot.start_time = 1234567880
+
+        # Populate room ID set for testing (normally done in initialize())
+
+        bot._room_id_set = set(mock_config["matrix_room_ids"])
+        bot.start_time = 1234567880000  # Converted to milliseconds
 
         # Track trace information
         trace_spans = []
@@ -413,7 +457,7 @@ class TestMonitoringPatterns:
                 event = MagicMock()
                 event.body = f"John 3:{i+16}"
                 event.sender = "@user:matrix.org"
-                event.server_timestamp = 1234567890 + i
+                event.server_timestamp = 1234567890000  # Converted to milliseconds + i
 
                 room = MagicMock()
                 room.room_id = "!room:matrix.org"
@@ -433,7 +477,11 @@ class TestMonitoringPatterns:
     async def test_log_aggregation_patterns(self, mock_config, mock_client, caplog):
         """Test log aggregation and structured logging."""
         bot = BibleBot(config=mock_config, client=mock_client)
-        bot.start_time = 1234567880
+
+        # Populate room ID set for testing (normally done in initialize())
+
+        bot._room_id_set = set(mock_config["matrix_room_ids"])
+        bot.start_time = 1234567880000  # Converted to milliseconds
 
         with patch("biblebot.bot.get_bible_text") as mock_get_bible:
             mock_get_bible.return_value = ("Test verse", "John 3:16")
@@ -444,7 +492,9 @@ class TestMonitoringPatterns:
                     event = MagicMock()
                     event.body = f"John 3:{i+16}"
                     event.sender = f"@user{i}:matrix.org"
-                    event.server_timestamp = 1234567890 + i
+                    event.server_timestamp = (
+                        1234567890000  # Converted to milliseconds + i
+                    )
                     event.event_id = f"$event{i}:matrix.org"
 
                     room = MagicMock()

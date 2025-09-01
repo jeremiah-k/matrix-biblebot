@@ -50,7 +50,7 @@ class TestAsyncPatterns:
         event.sender = "@user:matrix.org"
         event.body = "John 3:16"
         event.event_id = "$event123"
-        event.server_timestamp = 1234567890
+        event.server_timestamp = 1234567890000  # After start time (milliseconds)
         event.source = {"content": {"body": "John 3:16"}}
         return event
 
@@ -66,7 +66,9 @@ class TestAsyncPatterns:
     ):
         """Test async message handling patterns."""
         bot = BibleBot(config=mock_config, client=mock_client)
-        bot.start_time = 1234567880  # Before event timestamp
+        bot.start_time = 1234567880000  # Before event timestamp (milliseconds)
+        # Populate room ID set for testing (normally done in initialize())
+        bot._room_id_set = set(mock_config["matrix_room_ids"])
 
         # Mock Bible text retrieval
         with patch("biblebot.bot.get_bible_text") as mock_get_bible:
@@ -82,7 +84,9 @@ class TestAsyncPatterns:
     ):
         """Test async error handling patterns."""
         bot = BibleBot(config=mock_config, client=mock_client)
-        bot.start_time = 1234567880
+        bot.start_time = 1234567880000  # Before event timestamp (milliseconds)
+        # Populate room ID set for testing (normally done in initialize())
+        bot._room_id_set = set(mock_config["matrix_room_ids"])
 
         # Mock API error
         with patch("biblebot.bot.get_bible_text") as mock_get_bible:
@@ -229,9 +233,11 @@ class TestAsyncPatterns:
             mock_event = MagicMock()
             mock_event.body = "Invalid 99:99"
             mock_event.sender = "@user:matrix.org"
-            mock_event.server_timestamp = 1234567890
+            mock_event.server_timestamp = (
+                1234567890000  # After start time (milliseconds)
+            )
 
-            bot.start_time = 1234567880
+            bot.start_time = 1234567880000  # Before event timestamp (milliseconds)
             await bot.on_room_message(MagicMock(), mock_event)
 
     async def test_async_resource_management(self, mock_config, mock_client):

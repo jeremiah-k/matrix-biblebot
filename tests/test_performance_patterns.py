@@ -39,6 +39,10 @@ class TestPerformancePatterns:
     async def test_message_processing_performance(self, mock_config, mock_client):
         """Test message processing performance under load."""
         bot = BibleBot(config=mock_config, client=mock_client)
+
+        # Populate room ID set for testing (normally done in initialize())
+
+        bot._room_id_set = set(mock_config["matrix_room_ids"])
         bot.start_time = int((time.time() - 100) * 1000)  # Use milliseconds
         bot.api_keys = {}
 
@@ -86,6 +90,10 @@ class TestPerformancePatterns:
         initial_memory = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
 
         bot = BibleBot(config=mock_config, client=mock_client)
+
+        # Populate room ID set for testing (normally done in initialize())
+
+        bot._room_id_set = set(mock_config["matrix_room_ids"])
         bot.start_time = int(
             (time.time() - 100) * 1000
         )  # Set start_time for message filtering
@@ -121,6 +129,10 @@ class TestPerformancePatterns:
     async def test_concurrent_request_handling(self, mock_config, mock_client):
         """Test handling of concurrent API requests."""
         bot = BibleBot(config=mock_config, client=mock_client)
+
+        # Populate room ID set for testing (normally done in initialize())
+
+        bot._room_id_set = set(mock_config["matrix_room_ids"])
         bot.start_time = int((time.time() - 100) * 1000)  # Use milliseconds
         bot.api_keys = {}
 
@@ -162,6 +174,10 @@ class TestPerformancePatterns:
     async def test_rate_limiting_performance(self, mock_config, mock_client):
         """Test performance under rate limiting conditions."""
         bot = BibleBot(config=mock_config, client=mock_client)
+
+        # Populate room ID set for testing (normally done in initialize())
+
+        bot._room_id_set = set(mock_config["matrix_room_ids"])
         bot.start_time = int((time.time() - 100) * 1000)  # Use milliseconds
         bot.api_keys = {}
 
@@ -201,6 +217,10 @@ class TestPerformancePatterns:
         """Test handling of large message content."""
         bot = BibleBot(config=mock_config, client=mock_client)
 
+        # Populate room ID set for testing (normally done in initialize())
+
+        bot._room_id_set = set(mock_config["matrix_room_ids"])
+
         # Create event with large message content
         event = MagicMock()
         event.body = "John 1:1 " * 1000  # Very long message
@@ -221,6 +241,10 @@ class TestPerformancePatterns:
     async def test_error_recovery_performance(self, mock_config, mock_client):
         """Test performance during error conditions and recovery."""
         bot = BibleBot(config=mock_config, client=mock_client)
+
+        # Populate room ID set for testing (normally done in initialize())
+
+        bot._room_id_set = set(mock_config["matrix_room_ids"])
 
         # Mock API that fails then recovers
         call_count = 0
@@ -258,6 +282,10 @@ class TestPerformancePatterns:
         bots = []
         for _i in range(10):
             bot = BibleBot(config=mock_config, client=mock_client)
+
+            # Populate room ID set for testing (normally done in initialize())
+
+            bot._room_id_set = set(mock_config["matrix_room_ids"])
             bots.append(bot)
 
         # Simulate cleanup
@@ -281,6 +309,10 @@ class TestPerformancePatterns:
 
         bot = BibleBot(config=mock_config, client=mock_client)
 
+        # Populate room ID set for testing (normally done in initialize())
+
+        bot._room_id_set = set(mock_config["matrix_room_ids"])
+
         end_time = time.perf_counter()
         initialization_time = end_time - start_time
 
@@ -292,6 +324,10 @@ class TestPerformancePatterns:
     async def test_background_task_performance(self, mock_config, mock_client):
         """Test background task performance and resource usage."""
         bot = BibleBot(config=mock_config, client=mock_client)
+
+        # Populate room ID set for testing (normally done in initialize())
+
+        bot._room_id_set = set(mock_config["matrix_room_ids"])
         bot.start_time = int((time.time() - 100) * 1000)  # Use milliseconds
         bot.api_keys = {}
 

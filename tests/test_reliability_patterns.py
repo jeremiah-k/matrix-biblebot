@@ -38,6 +38,10 @@ class TestReliabilityPatterns:
     async def test_network_failure_recovery(self, mock_config, mock_client):
         """Test recovery from network failures."""
         bot = BibleBot(config=mock_config, client=mock_client)
+
+        # Populate room ID set for testing (normally done in initialize())
+
+        bot._room_id_set = set(mock_config["matrix_room_ids"])
         bot.start_time = 1234567880000  # Use milliseconds
         bot.api_keys = {}
 
@@ -76,6 +80,10 @@ class TestReliabilityPatterns:
     async def test_api_timeout_resilience(self, mock_config, mock_client):
         """Test resilience to API timeouts."""
         bot = BibleBot(config=mock_config, client=mock_client)
+
+        # Populate room ID set for testing (normally done in initialize())
+
+        bot._room_id_set = set(mock_config["matrix_room_ids"])
         bot.start_time = 1234567880000  # Use milliseconds
         bot.api_keys = {}
 
@@ -110,6 +118,10 @@ class TestReliabilityPatterns:
     async def test_partial_service_degradation(self, mock_config, mock_client):
         """Test handling of partial service degradation."""
         bot = BibleBot(config=mock_config, client=mock_client)
+
+        # Populate room ID set for testing (normally done in initialize())
+
+        bot._room_id_set = set(mock_config["matrix_room_ids"])
         bot.start_time = 1234567880000  # Use milliseconds
         bot.api_keys = {}
 
@@ -148,6 +160,10 @@ class TestReliabilityPatterns:
     async def test_matrix_client_failure_recovery(self, mock_config, mock_client):
         """Test recovery from Matrix client failures."""
         bot = BibleBot(config=mock_config, client=mock_client)
+
+        # Populate room ID set for testing (normally done in initialize())
+
+        bot._room_id_set = set(mock_config["matrix_room_ids"])
         bot.start_time = 1234567880000  # Use milliseconds
         bot.api_keys = {}
 
@@ -188,7 +204,11 @@ class TestReliabilityPatterns:
     async def test_concurrent_failure_handling(self, mock_config, mock_client):
         """Test handling of concurrent failures."""
         bot = BibleBot(config=mock_config, client=mock_client)
-        bot.start_time = 1234567880
+
+        # Populate room ID set for testing (normally done in initialize())
+
+        bot._room_id_set = set(mock_config["matrix_room_ids"])
+        bot.start_time = 1234567880000  # Converted to milliseconds
 
         # Mock random failures
         import random
@@ -205,7 +225,7 @@ class TestReliabilityPatterns:
                 event = MagicMock()
                 event.body = f"John 3:{i+16}"
                 event.sender = f"@user{i}:matrix.org"
-                event.server_timestamp = 1234567890 + i
+                event.server_timestamp = 1234567890000  # Converted to milliseconds + i
 
                 room = MagicMock()
                 room.room_id = "!room:matrix.org"
@@ -222,6 +242,10 @@ class TestReliabilityPatterns:
     async def test_resource_exhaustion_handling(self, mock_config, mock_client):
         """Test handling of resource exhaustion scenarios."""
         bot = BibleBot(config=mock_config, client=mock_client)
+
+        # Populate room ID set for testing (normally done in initialize())
+
+        bot._room_id_set = set(mock_config["matrix_room_ids"])
         bot.start_time = 1234567880000  # Use milliseconds
         bot.api_keys = {}
 
@@ -250,6 +274,10 @@ class TestReliabilityPatterns:
     async def test_cascading_failure_prevention(self, mock_config, mock_client):
         """Test prevention of cascading failures."""
         bot = BibleBot(config=mock_config, client=mock_client)
+
+        # Populate room ID set for testing (normally done in initialize())
+
+        bot._room_id_set = set(mock_config["matrix_room_ids"])
         bot.start_time = 1234567880000  # Use milliseconds
         bot.api_keys = {}
 
@@ -286,7 +314,11 @@ class TestReliabilityPatterns:
     async def test_graceful_degradation(self, mock_config, mock_client):
         """Test graceful degradation of service."""
         bot = BibleBot(config=mock_config, client=mock_client)
-        bot.start_time = 1234567880
+
+        # Populate room ID set for testing (normally done in initialize())
+
+        bot._room_id_set = set(mock_config["matrix_room_ids"])
+        bot.start_time = 1234567880000  # Converted to milliseconds
 
         # Mock degraded service (slower responses, limited functionality)
         async def degraded_api(*args, **kwargs):
@@ -297,7 +329,7 @@ class TestReliabilityPatterns:
             event = MagicMock()
             event.body = "John 3:16"
             event.sender = "@user:matrix.org"
-            event.server_timestamp = 1234567890
+            event.server_timestamp = 1234567890000  # Converted to milliseconds
 
             room = MagicMock()
             room.room_id = "!room:matrix.org"
@@ -314,6 +346,10 @@ class TestReliabilityPatterns:
     async def test_circuit_breaker_pattern(self, mock_config, mock_client):
         """Test circuit breaker pattern for fault tolerance."""
         bot = BibleBot(config=mock_config, client=mock_client)
+
+        # Populate room ID set for testing (normally done in initialize())
+
+        bot._room_id_set = set(mock_config["matrix_room_ids"])
         bot.start_time = 1234567880000  # Use milliseconds
         bot.api_keys = {}
 
@@ -344,6 +380,10 @@ class TestReliabilityPatterns:
     async def test_data_consistency_during_failures(self, mock_config, mock_client):
         """Test data consistency during failure scenarios."""
         bot = BibleBot(config=mock_config, client=mock_client)
+
+        # Populate room ID set for testing (normally done in initialize())
+
+        bot._room_id_set = set(mock_config["matrix_room_ids"])
         bot.start_time = 1234567880000  # Use milliseconds
         bot.api_keys = {}
 
@@ -387,6 +427,10 @@ class TestReliabilityPatterns:
     async def test_recovery_time_measurement(self, mock_config, mock_client):
         """Test measurement of recovery times."""
         bot = BibleBot(config=mock_config, client=mock_client)
+
+        # Populate room ID set for testing (normally done in initialize())
+
+        bot._room_id_set = set(mock_config["matrix_room_ids"])
         bot.start_time = 1234567880000  # Use milliseconds
         bot.api_keys = {}
 

@@ -37,6 +37,10 @@ class TestSecurityPatterns:
     async def test_input_sanitization(self, mock_config, mock_client):
         """Test input sanitization and validation."""
         bot = BibleBot(config=mock_config, client=mock_client)
+
+        # Populate room ID set for testing (normally done in initialize())
+
+        bot._room_id_set = set(mock_config["matrix_room_ids"])
         bot.start_time = 1234567880000  # Use milliseconds
         bot.api_keys = {}
 
@@ -69,6 +73,10 @@ class TestSecurityPatterns:
     async def test_rate_limiting_protection(self, mock_config, mock_client):
         """Test rate limiting protection against spam."""
         bot = BibleBot(config=mock_config, client=mock_client)
+
+        # Populate room ID set for testing (normally done in initialize())
+
+        bot._room_id_set = set(mock_config["matrix_room_ids"])
         bot.start_time = 1234567880000  # Use milliseconds
         bot.api_keys = {}
 
@@ -99,6 +107,10 @@ class TestSecurityPatterns:
         sensitive_config["access_token"] = "syt_very_secret_token_12345"
 
         bot = BibleBot(config=sensitive_config, client=mock_client)
+
+        # Populate room ID set for testing (normally done in initialize())
+
+        bot._room_id_set = set(sensitive_config["matrix_room_ids"])
 
         # Verify token is stored securely
         assert bot.config["access_token"] == "syt_very_secret_token_12345"
@@ -157,6 +169,10 @@ class TestSecurityPatterns:
 
             # Should accept valid homeservers
             bot = BibleBot(config=config, client=mock_client)
+
+            # Populate room ID set for testing (normally done in initialize())
+
+            bot._room_id_set = set(config["matrix_room_ids"])
             assert bot.config["homeserver"] == homeserver
 
         for homeserver in invalid_homeservers:
@@ -165,11 +181,19 @@ class TestSecurityPatterns:
 
             # Should handle invalid homeservers gracefully
             bot = BibleBot(config=config, client=mock_client)
+
+            # Populate room ID set for testing (normally done in initialize())
+
+            bot._room_id_set = set(config["matrix_room_ids"])
             # Bot should still be created but may have validation warnings
 
     async def test_user_id_validation(self, mock_config, mock_client):
         """Test Matrix user ID validation."""
         bot = BibleBot(config=mock_config, client=mock_client)
+
+        # Populate room ID set for testing (normally done in initialize())
+
+        bot._room_id_set = set(mock_config["matrix_room_ids"])
         bot.start_time = 1234567880000  # Use milliseconds
         bot.api_keys = {}
 
@@ -212,7 +236,7 @@ class TestSecurityPatterns:
                 event = MagicMock()
                 event.body = "John 3:16"
                 event.sender = user_id
-                event.server_timestamp = 1234567890
+                event.server_timestamp = 1234567890000  # Converted to milliseconds
 
                 # Should not crash with invalid user IDs
                 await bot.on_room_message(MagicMock(), event)
@@ -220,6 +244,10 @@ class TestSecurityPatterns:
     async def test_room_id_validation(self, mock_config, mock_client):
         """Test Matrix room ID validation."""
         bot = BibleBot(config=mock_config, client=mock_client)
+
+        # Populate room ID set for testing (normally done in initialize())
+
+        bot._room_id_set = set(mock_config["matrix_room_ids"])
 
         # Test various room IDs
         valid_room_ids = [
@@ -250,6 +278,10 @@ class TestSecurityPatterns:
     async def test_message_content_filtering(self, mock_config, mock_client):
         """Test message content filtering and sanitization."""
         bot = BibleBot(config=mock_config, client=mock_client)
+
+        # Populate room ID set for testing (normally done in initialize())
+
+        bot._room_id_set = set(mock_config["matrix_room_ids"])
         bot.start_time = 1234567880000  # Use milliseconds
         bot.api_keys = {}
 
@@ -280,6 +312,10 @@ class TestSecurityPatterns:
     async def test_error_message_sanitization(self, mock_config, mock_client):
         """Test that error messages don't leak sensitive information."""
         bot = BibleBot(config=mock_config, client=mock_client)
+
+        # Populate room ID set for testing (normally done in initialize())
+
+        bot._room_id_set = set(mock_config["matrix_room_ids"])
         bot.start_time = 1234567880000  # Use milliseconds
         bot.api_keys = {}
 
@@ -324,7 +360,11 @@ class TestSecurityPatterns:
     async def test_api_response_validation(self, mock_config, mock_client):
         """Test validation of API responses."""
         bot = BibleBot(config=mock_config, client=mock_client)
-        bot.start_time = 1234567880
+
+        # Populate room ID set for testing (normally done in initialize())
+
+        bot._room_id_set = set(mock_config["matrix_room_ids"])
+        bot.start_time = 1234567880000  # Converted to milliseconds
 
         # Test with malformed API responses
         malformed_responses = [
@@ -342,7 +382,7 @@ class TestSecurityPatterns:
                 event = MagicMock()
                 event.body = "John 3:16"
                 event.sender = "@user:matrix.org"
-                event.server_timestamp = 1234567890
+                event.server_timestamp = 1234567890000  # Converted to milliseconds
 
                 # Should handle malformed responses gracefully
                 await bot.on_room_message(MagicMock(), event)
@@ -350,7 +390,11 @@ class TestSecurityPatterns:
     async def test_denial_of_service_protection(self, mock_config, mock_client):
         """Test protection against denial of service attacks."""
         bot = BibleBot(config=mock_config, client=mock_client)
-        bot.start_time = 1234567880
+
+        # Populate room ID set for testing (normally done in initialize())
+
+        bot._room_id_set = set(mock_config["matrix_room_ids"])
+        bot.start_time = 1234567880000  # Converted to milliseconds
 
         # Test with resource-intensive inputs
         resource_intensive_inputs = [
@@ -366,7 +410,7 @@ class TestSecurityPatterns:
                 event = MagicMock()
                 event.body = intensive_input
                 event.sender = "@user:matrix.org"
-                event.server_timestamp = 1234567890
+                event.server_timestamp = 1234567890000  # Converted to milliseconds
 
                 # Should handle resource-intensive inputs without hanging
                 await bot.on_room_message(MagicMock(), event)
@@ -374,7 +418,11 @@ class TestSecurityPatterns:
     async def test_privilege_escalation_prevention(self, mock_config, mock_client):
         """Test prevention of privilege escalation attempts."""
         bot = BibleBot(config=mock_config, client=mock_client)
-        bot.start_time = 1234567880
+
+        # Populate room ID set for testing (normally done in initialize())
+
+        bot._room_id_set = set(mock_config["matrix_room_ids"])
+        bot.start_time = 1234567880000  # Converted to milliseconds
 
         # Test with admin-like commands
         admin_attempts = [
@@ -391,7 +439,7 @@ class TestSecurityPatterns:
                 event = MagicMock()
                 event.body = admin_attempt
                 event.sender = "@user:matrix.org"
-                event.server_timestamp = 1234567890
+                event.server_timestamp = 1234567890000  # Converted to milliseconds
 
                 # Should treat as normal message, not admin command
                 await bot.on_room_message(MagicMock(), event)

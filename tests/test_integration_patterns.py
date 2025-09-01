@@ -42,6 +42,10 @@ class TestIntegrationPatterns:
     async def test_full_message_workflow(self, mock_config, mock_client):
         """Test complete message processing workflow."""
         bot = BibleBot(config=mock_config, client=mock_client)
+
+        # Populate room ID set for testing (normally done in initialize())
+
+        bot._room_id_set = set(mock_config["matrix_room_ids"])
         bot.start_time = 1234567880000  # Set in milliseconds like the real bot
         bot.api_keys = {}  # Set API keys
 
@@ -85,6 +89,10 @@ class TestIntegrationPatterns:
     async def test_multi_room_integration(self, mock_config, mock_client):
         """Test bot operation across multiple rooms."""
         bot = BibleBot(config=mock_config, client=mock_client)
+
+        # Populate room ID set for testing (normally done in initialize())
+
+        bot._room_id_set = set(mock_config["matrix_room_ids"])
         bot.start_time = 1234567880000  # Set in milliseconds
         bot.api_keys = {}
 
@@ -121,7 +129,11 @@ class TestIntegrationPatterns:
     async def test_concurrent_user_integration(self, mock_config, mock_client):
         """Test handling multiple concurrent users."""
         bot = BibleBot(config=mock_config, client=mock_client)
-        bot.start_time = 1234567880
+
+        # Populate room ID set for testing (normally done in initialize())
+
+        bot._room_id_set = set(mock_config["matrix_room_ids"])
+        bot.start_time = 1234567880000  # Converted to milliseconds
 
         with patch("biblebot.bot.get_bible_text") as mock_get_bible:
             mock_get_bible.return_value = ("Test verse", "John 3:16")
@@ -134,7 +146,7 @@ class TestIntegrationPatterns:
                 event = MagicMock()
                 event.body = f"John 3:{i+16}"
                 event.sender = user
-                event.server_timestamp = 1234567890 + i
+                event.server_timestamp = 1234567890000  # Converted to milliseconds + i
 
                 room = MagicMock()
                 room.room_id = "!room1:matrix.org"
@@ -153,6 +165,10 @@ class TestIntegrationPatterns:
     async def test_error_recovery_integration(self, mock_config, mock_client):
         """Test error recovery in integrated workflow."""
         bot = BibleBot(config=mock_config, client=mock_client)
+
+        # Populate room ID set for testing (normally done in initialize())
+
+        bot._room_id_set = set(mock_config["matrix_room_ids"])
         bot.start_time = 1234567880000  # Set in milliseconds
         bot.api_keys = {}
 
@@ -220,6 +236,10 @@ class TestIntegrationPatterns:
                 }
 
                 bot = BibleBot(config=config, client=mock_client)
+
+                # Populate room ID set for testing (normally done in initialize())
+
+                bot._room_id_set = set(config["matrix_room_ids"])
                 assert bot.config["access_token"] == "integration_test_token"
 
         finally:
@@ -228,6 +248,10 @@ class TestIntegrationPatterns:
     async def test_room_joining_integration(self, mock_config, mock_client):
         """Test room joining workflow integration."""
         bot = BibleBot(config=mock_config, client=mock_client)
+
+        # Populate room ID set for testing (normally done in initialize())
+
+        bot._room_id_set = set(mock_config["matrix_room_ids"])
 
         # Mock successful room join
         mock_client.join.return_value = MagicMock(room_id="!newroom:matrix.org")
@@ -249,7 +273,11 @@ class TestIntegrationPatterns:
     async def test_message_formatting_integration(self, mock_config, mock_client):
         """Test message formatting in integrated workflow."""
         bot = BibleBot(config=mock_config, client=mock_client)
-        bot.start_time = 1234567880
+
+        # Populate room ID set for testing (normally done in initialize())
+
+        bot._room_id_set = set(mock_config["matrix_room_ids"])
+        bot.start_time = 1234567880000  # Converted to milliseconds
 
         with patch("biblebot.bot.get_bible_text") as mock_get_bible:
             mock_get_bible.return_value = (
@@ -260,7 +288,7 @@ class TestIntegrationPatterns:
             event = MagicMock()
             event.body = "John 1:1"
             event.sender = "@user:matrix.org"
-            event.server_timestamp = 1234567890
+            event.server_timestamp = 1234567890000  # Converted to milliseconds
 
             room = MagicMock()
             room.room_id = "!room1:matrix.org"
@@ -287,7 +315,11 @@ class TestIntegrationPatterns:
     async def test_api_integration_chain(self, mock_config, mock_client):
         """Test complete API integration chain."""
         bot = BibleBot(config=mock_config, client=mock_client)
-        bot.start_time = 1234567880
+
+        # Populate room ID set for testing (normally done in initialize())
+
+        bot._room_id_set = set(mock_config["matrix_room_ids"])
+        bot.start_time = 1234567880000  # Converted to milliseconds
 
         # Mock the entire API chain
         with patch("biblebot.bot.make_api_request") as mock_api:
@@ -300,7 +332,7 @@ class TestIntegrationPatterns:
             event = MagicMock()
             event.body = "Show me John 3:16"
             event.sender = "@user:matrix.org"
-            event.server_timestamp = 1234567890
+            event.server_timestamp = 1234567890000  # Converted to milliseconds
 
             room = MagicMock()
             room.room_id = "!room1:matrix.org"
@@ -339,6 +371,10 @@ class TestIntegrationPatterns:
         for config in configs:
             bot = BibleBot(config=config, client=mock_client)
 
+            # Populate room ID set for testing (normally done in initialize())
+
+            bot._room_id_set = set(config["matrix_room_ids"])
+
             # Should handle all configuration variants
             assert bot.config["homeserver"] == config["homeserver"]
             assert bot.config["user_id"] == config["user_id"]
@@ -347,11 +383,15 @@ class TestIntegrationPatterns:
         """Test complete bot lifecycle integration."""
         # Test initialization
         bot = BibleBot(config=mock_config, client=mock_client)
+
+        # Populate room ID set for testing (normally done in initialize())
+
+        bot._room_id_set = set(mock_config["matrix_room_ids"])
         assert bot.client is not None
         assert bot.config is not None
 
         # Test operation
-        bot.start_time = 1234567880
+        bot.start_time = 1234567880000  # Converted to milliseconds
 
         with patch("biblebot.bot.get_bible_text") as mock_get_bible:
             mock_get_bible.return_value = ("Test verse", "John 3:16")
@@ -359,7 +399,7 @@ class TestIntegrationPatterns:
             event = MagicMock()
             event.body = "John 3:16"
             event.sender = "@user:matrix.org"
-            event.server_timestamp = 1234567890
+            event.server_timestamp = 1234567890000  # Converted to milliseconds
 
             room = MagicMock()
             room.room_id = "!room1:matrix.org"
@@ -376,6 +416,10 @@ class TestIntegrationPatterns:
     async def test_stress_integration(self, mock_config, mock_client):
         """Test system under stress conditions."""
         bot = BibleBot(config=mock_config, client=mock_client)
+
+        # Populate room ID set for testing (normally done in initialize())
+
+        bot._room_id_set = set(mock_config["matrix_room_ids"])
         bot.start_time = 1234567880000  # Use milliseconds
         bot.api_keys = {}
 
@@ -408,6 +452,10 @@ class TestIntegrationPatterns:
     async def test_real_world_scenarios(self, mock_config, mock_client):
         """Test realistic real-world usage scenarios."""
         bot = BibleBot(config=mock_config, client=mock_client)
+
+        # Populate room ID set for testing (normally done in initialize())
+
+        bot._room_id_set = set(mock_config["matrix_room_ids"])
         bot.start_time = 1234567880000  # Use milliseconds
         bot.api_keys = {}
 

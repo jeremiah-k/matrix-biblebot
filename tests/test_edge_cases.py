@@ -38,7 +38,11 @@ class TestEdgeCases:
     async def test_empty_message_handling(self, mock_config, mock_client):
         """Test handling of empty messages."""
         bot = BibleBot(config=mock_config, client=mock_client)
-        bot.start_time = 1234567880
+
+        # Populate room ID set for testing (normally done in initialize())
+
+        bot._room_id_set = set(mock_config["matrix_room_ids"])
+        bot.start_time = 1234567880000  # Converted to milliseconds
 
         # Test various empty message scenarios
         empty_messages = [
@@ -53,7 +57,7 @@ class TestEdgeCases:
             event = MagicMock()
             event.body = empty_msg
             event.sender = "@user:matrix.org"
-            event.server_timestamp = 1234567890
+            event.server_timestamp = 1234567890000  # Converted to milliseconds
 
             room = MagicMock()
             room.room_id = "!room:matrix.org"
@@ -65,6 +69,10 @@ class TestEdgeCases:
     async def test_extremely_long_messages(self, mock_config, mock_client):
         """Test handling of extremely long messages."""
         bot = BibleBot(config=mock_config, client=mock_client)
+
+        # Populate room ID set for testing (normally done in initialize())
+
+        bot._room_id_set = set(mock_config["matrix_room_ids"])
         bot.start_time = 1234567880000  # Use milliseconds
         bot.api_keys = {}
 
@@ -94,7 +102,11 @@ class TestEdgeCases:
     async def test_unicode_and_special_characters(self, mock_config, mock_client):
         """Test handling of Unicode and special characters."""
         bot = BibleBot(config=mock_config, client=mock_client)
-        bot.start_time = 1234567880
+
+        # Populate room ID set for testing (normally done in initialize())
+
+        bot._room_id_set = set(mock_config["matrix_room_ids"])
+        bot.start_time = 1234567880000  # Converted to milliseconds
 
         with patch("biblebot.bot.get_bible_text") as mock_get_bible:
             mock_get_bible.return_value = ("Test verse", "John 3:16")
@@ -114,7 +126,7 @@ class TestEdgeCases:
                 event = MagicMock()
                 event.body = special_msg
                 event.sender = "@user:matrix.org"
-                event.server_timestamp = 1234567890
+                event.server_timestamp = 1234567890000  # Converted to milliseconds
 
                 room = MagicMock()
                 room.room_id = "!room:matrix.org"
@@ -125,6 +137,10 @@ class TestEdgeCases:
     async def test_malformed_bible_references(self, mock_config, mock_client):
         """Test handling of malformed Bible references."""
         bot = BibleBot(config=mock_config, client=mock_client)
+
+        # Populate room ID set for testing (normally done in initialize())
+
+        bot._room_id_set = set(mock_config["matrix_room_ids"])
         bot.start_time = 1234567880000  # Use milliseconds
         bot.api_keys = {}
 
@@ -162,7 +178,11 @@ class TestEdgeCases:
     async def test_rapid_message_bursts(self, mock_config, mock_client):
         """Test handling of rapid message bursts."""
         bot = BibleBot(config=mock_config, client=mock_client)
-        bot.start_time = 1234567880
+
+        # Populate room ID set for testing (normally done in initialize())
+
+        bot._room_id_set = set(mock_config["matrix_room_ids"])
+        bot.start_time = 1234567880000  # Converted to milliseconds
 
         with patch("biblebot.bot.get_bible_text") as mock_get_bible:
             mock_get_bible.return_value = ("Test verse", "John 3:16")
@@ -173,7 +193,7 @@ class TestEdgeCases:
                 event = MagicMock()
                 event.body = f"John 3:{i % 31 + 1}"  # Cycle through valid verses
                 event.sender = "@user:matrix.org"
-                event.server_timestamp = 1234567890 + i
+                event.server_timestamp = 1234567890000  # Converted to milliseconds + i
 
                 room = MagicMock()
                 room.room_id = "!room:matrix.org"
@@ -187,7 +207,11 @@ class TestEdgeCases:
     async def test_concurrent_same_user_messages(self, mock_config, mock_client):
         """Test concurrent messages from the same user."""
         bot = BibleBot(config=mock_config, client=mock_client)
-        bot.start_time = 1234567880
+
+        # Populate room ID set for testing (normally done in initialize())
+
+        bot._room_id_set = set(mock_config["matrix_room_ids"])
+        bot.start_time = 1234567880000  # Converted to milliseconds
 
         with patch("biblebot.bot.get_bible_text") as mock_get_bible:
             mock_get_bible.return_value = ("Test verse", "John 3:16")
@@ -200,7 +224,7 @@ class TestEdgeCases:
                 event = MagicMock()
                 event.body = f"John 3:{i + 1}"
                 event.sender = same_user
-                event.server_timestamp = 1234567890 + i
+                event.server_timestamp = 1234567890000  # Converted to milliseconds + i
 
                 room = MagicMock()
                 room.room_id = "!room:matrix.org"
@@ -214,7 +238,11 @@ class TestEdgeCases:
     async def test_message_timestamp_edge_cases(self, mock_config, mock_client):
         """Test edge cases with message timestamps."""
         bot = BibleBot(config=mock_config, client=mock_client)
-        bot.start_time = 1234567880
+
+        # Populate room ID set for testing (normally done in initialize())
+
+        bot._room_id_set = set(mock_config["matrix_room_ids"])
+        bot.start_time = 1234567880000  # Converted to milliseconds
 
         with patch("biblebot.bot.get_bible_text") as mock_get_bible:
             mock_get_bible.return_value = ("Test verse", "John 3:16")
@@ -243,7 +271,11 @@ class TestEdgeCases:
     async def test_room_id_edge_cases(self, mock_config, mock_client):
         """Test edge cases with room IDs."""
         bot = BibleBot(config=mock_config, client=mock_client)
-        bot.start_time = 1234567880
+
+        # Populate room ID set for testing (normally done in initialize())
+
+        bot._room_id_set = set(mock_config["matrix_room_ids"])
+        bot.start_time = 1234567880000  # Converted to milliseconds
 
         with patch("biblebot.bot.get_bible_text") as mock_get_bible:
             mock_get_bible.return_value = ("Test verse", "John 3:16")
@@ -262,7 +294,7 @@ class TestEdgeCases:
                 event = MagicMock()
                 event.body = "John 3:16"
                 event.sender = "@user:matrix.org"
-                event.server_timestamp = 1234567890
+                event.server_timestamp = 1234567890000  # Converted to milliseconds
 
                 room = MagicMock()
                 room.room_id = room_id
@@ -273,7 +305,11 @@ class TestEdgeCases:
     async def test_user_id_edge_cases(self, mock_config, mock_client):
         """Test edge cases with user IDs."""
         bot = BibleBot(config=mock_config, client=mock_client)
-        bot.start_time = 1234567880
+
+        # Populate room ID set for testing (normally done in initialize())
+
+        bot._room_id_set = set(mock_config["matrix_room_ids"])
+        bot.start_time = 1234567880000  # Converted to milliseconds
 
         with patch("biblebot.bot.get_bible_text") as mock_get_bible:
             mock_get_bible.return_value = ("Test verse", "John 3:16")
@@ -293,7 +329,7 @@ class TestEdgeCases:
                 event = MagicMock()
                 event.body = "John 3:16"
                 event.sender = user_id
-                event.server_timestamp = 1234567890
+                event.server_timestamp = 1234567890000  # Converted to milliseconds
 
                 room = MagicMock()
                 room.room_id = "!room:matrix.org"
@@ -304,6 +340,10 @@ class TestEdgeCases:
     async def test_api_response_edge_cases(self, mock_config, mock_client):
         """Test edge cases with API responses."""
         bot = BibleBot(config=mock_config, client=mock_client)
+
+        # Populate room ID set for testing (normally done in initialize())
+
+        bot._room_id_set = set(mock_config["matrix_room_ids"])
         bot.start_time = 1234567880000  # Use milliseconds
         bot.api_keys = {}
 
@@ -338,6 +378,10 @@ class TestEdgeCases:
     async def test_network_timeout_edge_cases(self, mock_config, mock_client):
         """Test edge cases with network timeouts."""
         bot = BibleBot(config=mock_config, client=mock_client)
+
+        # Populate room ID set for testing (normally done in initialize())
+
+        bot._room_id_set = set(mock_config["matrix_room_ids"])
         bot.start_time = 1234567880000  # Use milliseconds
         bot.api_keys = {}
 
@@ -372,7 +416,11 @@ class TestEdgeCases:
     async def test_memory_pressure_edge_cases(self, mock_config, mock_client):
         """Test behavior under memory pressure."""
         bot = BibleBot(config=mock_config, client=mock_client)
-        bot.start_time = 1234567880
+
+        # Populate room ID set for testing (normally done in initialize())
+
+        bot._room_id_set = set(mock_config["matrix_room_ids"])
+        bot.start_time = 1234567880000  # Converted to milliseconds
 
         # Simulate memory pressure by creating large objects
         large_objects = []
@@ -388,7 +436,7 @@ class TestEdgeCases:
                 event = MagicMock()
                 event.body = "John 3:16"
                 event.sender = "@user:matrix.org"
-                event.server_timestamp = 1234567890
+                event.server_timestamp = 1234567890000  # Converted to milliseconds
 
                 room = MagicMock()
                 room.room_id = "!room:matrix.org"
@@ -403,7 +451,11 @@ class TestEdgeCases:
     async def test_event_object_edge_cases(self, mock_config, mock_client):
         """Test edge cases with event objects."""
         bot = BibleBot(config=mock_config, client=mock_client)
-        bot.start_time = 1234567880
+
+        # Populate room ID set for testing (normally done in initialize())
+
+        bot._room_id_set = set(mock_config["matrix_room_ids"])
+        bot.start_time = 1234567880000  # Converted to milliseconds
 
         with patch("biblebot.bot.get_bible_text") as mock_get_bible:
             mock_get_bible.return_value = ("Test verse", "John 3:16")
@@ -412,7 +464,7 @@ class TestEdgeCases:
             minimal_event = MagicMock()
             minimal_event.body = "John 3:16"
             minimal_event.sender = "@user:matrix.org"
-            minimal_event.server_timestamp = 1234567890
+            minimal_event.server_timestamp = 1234567890000  # Converted to milliseconds
 
             room = MagicMock()
             room.room_id = "!room:matrix.org"
@@ -424,7 +476,7 @@ class TestEdgeCases:
             extended_event = MagicMock()
             extended_event.body = "John 3:16"
             extended_event.sender = "@user:matrix.org"
-            extended_event.server_timestamp = 1234567890
+            extended_event.server_timestamp = 1234567890000  # Converted to milliseconds
             extended_event.event_id = "$event123:matrix.org"
             extended_event.origin_server_ts = 1234567890
             extended_event.unsigned = {}
@@ -444,6 +496,10 @@ class TestEdgeCases:
         }
 
         bot = BibleBot(config=minimal_config, client=mock_client)
+
+        # Populate room ID set for testing (normally done in initialize())
+
+        bot._room_id_set = set(minimal_config["matrix_room_ids"])
         assert bot.config is not None
 
         # Test with configuration containing None values
@@ -457,6 +513,10 @@ class TestEdgeCases:
         }
 
         bot = BibleBot(config=none_config, client=mock_client)
+
+        # Populate room ID set for testing (normally done in initialize())
+
+        bot._room_id_set = set(none_config["matrix_room_ids"])
         assert bot.config is not None
 
         # Test with configuration containing empty values
@@ -470,4 +530,8 @@ class TestEdgeCases:
         }
 
         bot = BibleBot(config=empty_config, client=mock_client)
+
+        # Populate room ID set for testing (normally done in initialize())
+
+        bot._room_id_set = set(empty_config["matrix_room_ids"])
         assert bot.config is not None
