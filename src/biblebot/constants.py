@@ -103,13 +103,12 @@ ERROR_E2EE_DEPS_MISSING = "E2EE dependencies not installed"
 SUCCESS_CONFIG_GENERATED = "Configuration files generated successfully"
 
 # CLI messages
-MSG_CONFIG_EXISTS = "A config or .env file already exists at:"
-MSG_DELETE_EXISTING = "If you want to regenerate them, delete the existing files first."
-MSG_EDIT_FILES = "Please edit these files with your Matrix credentials and API keys."
+MSG_CONFIG_EXISTS = "A config file already exists at:"
+MSG_DELETE_EXISTING = "If you want to regenerate it, delete the existing file first."
+MSG_EDIT_FILES = "Please edit the config file with your Matrix room IDs and then run 'biblebot auth login'."
 MSG_GENERATED_CONFIG = "Generated sample config file at: {}"
-MSG_GENERATED_ENV = "Generated sample .env file at: {}"
 MSG_NO_CONFIG_PROMPT = (
-    "No config found. Generate sample config and .env here now? [y/N]: "
+    "No config found. Generate a sample config file here now? [y/N]: "
 )
 SUCCESS_LOGIN_COMPLETE = "Login completed successfully"
 SUCCESS_LOGOUT_COMPLETE = "Logout completed successfully"
