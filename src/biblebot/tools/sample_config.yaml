@@ -2,13 +2,12 @@
 # Matrix server and user details are handled by 'biblebot auth login'
 # Only configure room IDs and bot behavior here
 
-# Matrix Room Settings
-matrix_room_ids:
-  - "!your_room_id:your_homeserver_domain"
-  - "!your_other_room_id:your_homeserver_domain"
-
-# Matrix-specific settings (optional)
+# Matrix-specific settings
 matrix:
+  # List of Matrix room IDs or aliases where the bot should respond
+  room_ids:
+    - "!your_room_id:your_homeserver_domain"
+    - "!your_other_room_id:your_homeserver_domain"
   # End-to-End Encryption (E2EE) Settings
   # Requires: pip install matrix-nio[e2e]
   # Note: E2EE requires proper authentication via 'biblebot auth login'

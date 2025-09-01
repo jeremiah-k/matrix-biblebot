@@ -12,8 +12,8 @@ matrix:
   # Only enable if you understand the implications and have proper key management
   e2ee:
     enabled: false
-    # Store encryption keys in this directory (ensure proper permissions)
-    store_path: "./crypto_store"
+    # Optional: override store path (default: ~/.config/matrix-biblebot/e2ee-store)
+    store_path: null
 
 # Bot behavior configuration
 bot:
