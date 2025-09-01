@@ -394,7 +394,7 @@ class TestStressPerformance:
                     for book in book_names:
                         result = bot.normalize_book_name(book)
                         results.append(result)
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001
                 errors.append(e)
 
         # Create multiple threads
