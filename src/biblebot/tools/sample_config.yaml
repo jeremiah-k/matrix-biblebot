@@ -14,7 +14,7 @@ matrix_room_ids:
 # Manual access tokens do NOT support E2EE
 e2ee:
   enabled: false # Set to true to enable E2EE support
-  store_path: null # Optional: custom path for E2EE store (defaults to ~/.local/share/matrix-biblebot)
+  store_path: null # Optional: custom path for E2EE store (defaults to ~/.config/matrix-biblebot/e2ee-store)
   trust_on_first_use: true # Whether to trust new devices automatically
 
 # Bot Behavior Settings

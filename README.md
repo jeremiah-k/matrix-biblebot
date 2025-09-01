@@ -144,7 +144,7 @@ The bot supports End-to-End Encryption for secure communication in encrypted roo
    ```
 
 3. **First-time E2EE setup**:
-   - The bot will create an E2EE store at `~/.local/share/matrix-biblebot/`
+   - The bot will create an E2EE store at `~/.config/matrix-biblebot/e2ee-store`
    - On first run, the bot will generate and upload encryption keys
    - You may need to verify the bot's device in your Matrix client
 
