@@ -127,6 +127,24 @@ def generate_config(config_path):
 
 def interactive_main():
     """Interactive main function that guides users through setup/auth/start."""
+
+    def _run_bot(config_path: str, legacy: bool = False):
+        """Helper to run the bot and handle common exceptions."""
+        mode = " (legacy mode)" if legacy else ""
+        print(f"🚀 Starting Matrix BibleBot{mode}...")
+        try:
+            run_async(bot_main(str(config_path)))
+        except KeyboardInterrupt:
+            print("\n🛑 Bot stopped by user.")
+        except (RuntimeError, ConnectionError, FileNotFoundError) as e:
+            print(f"\n❌ Bot failed to start: {e}")
+            print("Check your configuration and try again.")
+            sys.exit(1)
+        except Exception as e:
+            print(f"\n❌ Unexpected error: {e}")
+            print("Check your configuration and try again.")
+            sys.exit(1)
+
     state, message = detect_configuration_state()
 
     print("🤖 Matrix BibleBot")
@@ -201,20 +219,7 @@ def interactive_main():
             print("\nCancelled.")
             return
         if response in ("y", "yes"):
-            print("🚀 Starting Matrix BibleBot (legacy mode)...")
-            try:
-                config_path = get_default_config_path()
-                run_async(bot_main(str(config_path)))
-            except KeyboardInterrupt:
-                print("\n🛑 Bot stopped by user.")
-            except (RuntimeError, ConnectionError, FileNotFoundError) as e:
-                print(f"\n❌ Bot failed to start: {e}")
-                print("Check your configuration and try again.")
-                sys.exit(1)
-            except Exception as e:
-                print(f"\n❌ Unexpected error: {e}")
-                print("Check your configuration and try again.")
-                sys.exit(1)
+            _run_bot(get_default_config_path(), legacy=True)
         else:
             print(
                 "Consider running 'biblebot auth login' to upgrade to modern authentication."
@@ -232,20 +237,7 @@ def interactive_main():
             print("\nCancelled.")
             return
         if response in ("", "y", "yes"):
-            print("🚀 Starting Matrix BibleBot...")
-            try:
-                config_path = get_default_config_path()
-                run_async(bot_main(str(config_path)))
-            except KeyboardInterrupt:
-                print("\n🛑 Bot stopped by user.")
-            except (RuntimeError, ConnectionError, FileNotFoundError) as e:
-                print(f"\n❌ Bot failed to start: {e}")
-                print("Check your configuration and try again.")
-                sys.exit(1)
-            except Exception as e:
-                print(f"\n❌ Unexpected error: {e}")
-                print("Check your configuration and try again.")
-                sys.exit(1)
+            _run_bot(get_default_config_path())
         else:
             print(
                 "Bot not started. Use 'biblebot' to start or 'biblebot --help' for options."
