@@ -187,6 +187,18 @@ CLI_HELP_INSTALL_SERVICE = "Install systemd user service"
 # CLI actions
 CLI_ACTION_STORE_TRUE = "store_true"
 CLI_ACTION_VERSION = "version"
+
+# Setup and installation constants
+EXECUTABLE_NAME = "biblebot"
+WARNING_EXECUTABLE_NOT_FOUND = "Warning: Could not find biblebot executable in PATH. Using current Python interpreter."
+DIR_TOOLS = "tools"
+DIR_SHARE = "share"
+SERVICE_FILE_NAME = "biblebot.service"
+FILE_MODE_READ = "r"
+
+# Systemctl commands
+SYSTEMCTL_ARG_USER = "--user"
+SYSTEMCTL_ARG_IS_ENABLED = "is-enabled"
 SUCCESS_SERVICE_INSTALLED = "Service installed successfully"
 
 # Info messages

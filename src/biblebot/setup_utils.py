@@ -16,14 +16,22 @@ from .constants import (
     APP_NAME,
     CONFIG_SUBDIR,
     DEFAULT_CONFIG_PATH,
+    DIR_SHARE,
+    DIR_TOOLS,
     ENV_USER,
     ENV_USERNAME,
+    EXECUTABLE_NAME,
+    FILE_MODE_READ,
     LOCAL_SHARE_DIR,
     PIPX_VENV_PATH,
+    SERVICE_FILE_NAME,
     SERVICE_NAME,
+    SYSTEMCTL_ARG_IS_ENABLED,
+    SYSTEMCTL_ARG_USER,
     SYSTEMCTL_COMMANDS,
     SYSTEMCTL_PATH,
     SYSTEMD_USER_DIR,
+    WARNING_EXECUTABLE_NOT_FOUND,
 )
 from .tools import get_service_template_path
 
@@ -34,14 +42,12 @@ def get_executable_path():
     This function tries to find the biblebot executable in the PATH,
     which works for both pipx and pip installations.
     """
-    biblebot_path = shutil.which("biblebot")
+    biblebot_path = shutil.which(EXECUTABLE_NAME)
     if biblebot_path:
         print(f"Found biblebot executable at: {biblebot_path}")
         return biblebot_path
     else:
-        print(
-            "Warning: Could not find biblebot executable in PATH. Using current Python interpreter."
-        )
+        print(WARNING_EXECUTABLE_NOT_FOUND)
         return sys.executable
 
 
@@ -85,36 +91,36 @@ def get_template_service_path():
         # Check in the package directory (where it should be after installation)
         os.path.join(package_dir, SERVICE_NAME),
         # Check in a tools subdirectory of the package
-        os.path.join(package_dir, "tools", SERVICE_NAME),
+        os.path.join(package_dir, DIR_TOOLS, SERVICE_NAME),
         # Check in the data files location (where it should be after installation)
-        os.path.join(sys.prefix, "share", APP_NAME, SERVICE_NAME),
-        os.path.join(sys.prefix, "share", APP_NAME, "tools", SERVICE_NAME),
+        os.path.join(sys.prefix, DIR_SHARE, APP_NAME, SERVICE_NAME),
+        os.path.join(sys.prefix, DIR_SHARE, APP_NAME, DIR_TOOLS, SERVICE_NAME),
         # Check in the user site-packages location
         os.path.join(
-            os.path.expanduser("~"), LOCAL_SHARE_DIR, "share", APP_NAME, SERVICE_NAME
+            os.path.expanduser("~"), LOCAL_SHARE_DIR, DIR_SHARE, APP_NAME, SERVICE_NAME
         ),
         os.path.join(
             os.path.expanduser("~"),
             LOCAL_SHARE_DIR,
-            "share",
+            DIR_SHARE,
             APP_NAME,
-            "tools",
+            DIR_TOOLS,
             SERVICE_NAME,
         ),
         # Check one level up from the package directory
-        os.path.join(os.path.dirname(package_dir), "tools", "biblebot.service"),
+        os.path.join(os.path.dirname(package_dir), DIR_TOOLS, SERVICE_FILE_NAME),
         # Check two levels up from the package directory (for development)
         os.path.join(
-            os.path.dirname(os.path.dirname(package_dir)), "tools", "biblebot.service"
+            os.path.dirname(os.path.dirname(package_dir)), DIR_TOOLS, SERVICE_FILE_NAME
         ),
         # Check in the repository root (for development)
         os.path.join(
             os.path.dirname(os.path.dirname(os.path.dirname(__file__))),
-            "tools",
-            "biblebot.service",
+            DIR_TOOLS,
+            SERVICE_FILE_NAME,
         ),
         # Check in the current directory (fallback)
-        os.path.join(os.getcwd(), "tools", "biblebot.service"),
+        os.path.join(os.getcwd(), DIR_TOOLS, SERVICE_FILE_NAME),
     ]
 
     # Try each path until we find one that exists
@@ -138,7 +144,7 @@ def get_template_service_content():
     if template_path and os.path.exists(template_path):
         # Read the template from file
         try:
-            with open(template_path, "r") as f:
+            with open(template_path, FILE_MODE_READ) as f:
                 service_template = f.read()
             return service_template
         except Exception as e:
@@ -160,7 +166,7 @@ def get_template_service_content():
         if template_path:
             # Read the template from file
             try:
-                with open(template_path, "r") as f:
+                with open(template_path, FILE_MODE_READ) as f:
                     service_template = f.read()
                 return service_template
             except Exception as e:
@@ -197,7 +203,12 @@ def is_service_enabled():
     """
     try:
         result = subprocess.run(
-            [SYSTEMCTL_PATH, "--user", "is-enabled", SERVICE_NAME],
+            [
+                SYSTEMCTL_PATH,
+                SYSTEMCTL_ARG_USER,
+                SYSTEMCTL_ARG_IS_ENABLED,
+                SERVICE_NAME,
+            ],
             check=False,  # Don't raise an exception if the service is not enabled
             capture_output=True,
             text=True,
