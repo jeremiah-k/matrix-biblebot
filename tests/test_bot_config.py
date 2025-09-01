@@ -157,6 +157,7 @@ class TestGetBibleTextConfiguration:
                     )
 
                     assert result[0] == "KJV text"
+                    mock_kjv.assert_called_once()
                     mock_cache_get.assert_called_once_with("John 3:16", "kjv", False)
                     mock_cache_set.assert_called_once_with(
                         "John 3:16", "kjv", ("KJV text", "John 3:16"), False
