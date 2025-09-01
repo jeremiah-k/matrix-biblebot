@@ -25,7 +25,10 @@ class TestServiceUtilities:
 
     def test_get_user_service_path(self):
         """Test getting user service path."""
-        with patch("pathlib.Path.home", return_value=Path("/home/user")):
+        with patch(
+            "biblebot.setup_utils.SYSTEMD_USER_DIR",
+            Path("/home/user/.config/systemd/user"),
+        ):
             path = setup_utils.get_user_service_path()
             expected = Path("/home/user/.config/systemd/user/biblebot.service")
             assert path == expected

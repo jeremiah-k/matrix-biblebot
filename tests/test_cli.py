@@ -838,12 +838,12 @@ class TestCLIBotOperation:
 class TestCLIUtilityFunctions:
     """Test CLI utility functions."""
 
-    @patch("biblebot.cli.Path.home")
-    def test_get_default_config_path_custom_home(self, mock_home, tmp_path):
+    @patch("biblebot.cli.CONFIG_DIR")
+    def test_get_default_config_path_custom_home(self, mock_config_dir, tmp_path):
         """Test default config path with custom home directory."""
-        mock_home.return_value = tmp_path
+        mock_config_dir.__truediv__ = lambda self, other: tmp_path / other
         path = cli.get_default_config_path()
-        expected = tmp_path / ".config" / "matrix-biblebot" / "config.yaml"
+        expected = tmp_path / "config.yaml"
         assert path == expected
 
     @patch("os.makedirs")

@@ -17,6 +17,7 @@ from .constants import (
     SERVICE_NAME,
     SERVICE_RESTART_SEC,
     SUCCESS_SERVICE_INSTALLED,
+    SYSTEMCTL_COMMANDS,
     SYSTEMD_USER_DIR,
 )
 from .tools import get_service_template_path
