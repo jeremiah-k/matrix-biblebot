@@ -4,6 +4,8 @@ import asyncio
 import time
 from unittest.mock import AsyncMock, patch
 
+import pytest
+
 from biblebot import bot
 
 
