@@ -331,6 +331,8 @@ class TestBibleBot:
                     "restore_login",
                     "access_token",
                     "rooms",
+                    "room_resolve_alias",
+                    "close",
                 ]
             )
             mock_client_class.return_value = mock_client
@@ -364,6 +366,8 @@ class TestBibleBot:
                     "restore_login",
                     "access_token",
                     "rooms",
+                    "room_resolve_alias",
+                    "close",
                 ]
             )
             mock_client_class.return_value = mock_client
@@ -396,6 +400,8 @@ class TestBibleBot:
                     "restore_login",
                     "access_token",
                     "rooms",
+                    "room_resolve_alias",
+                    "close",
                 ]
             )
             mock_client_class.return_value = mock_client

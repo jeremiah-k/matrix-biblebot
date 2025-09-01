@@ -283,9 +283,9 @@ class TestMessageTruncation:
             reaction_call = calls[0]
             message_call = calls[1]
 
-            # Check reaction event type
+            # Check reaction event type (reactions use m.relates_to, not msgtype)
             reaction_content = reaction_call[0][2]
-            assert reaction_content.get("msgtype") == "m.reaction"
+            assert "m.relates_to" in reaction_content
 
             # Check the message call (second call)
             content = message_call[0][2]
@@ -326,9 +326,9 @@ class TestMessageTruncation:
             reaction_call = calls[0]
             message_call = calls[1]
 
-            # Check reaction event type
+            # Check reaction event type (reactions use m.relates_to, not msgtype)
             reaction_content = reaction_call[0][2]
-            assert reaction_content.get("msgtype") == "m.reaction"
+            assert "m.relates_to" in reaction_content
 
             # Check the message call (second call)
             content = message_call[0][2]

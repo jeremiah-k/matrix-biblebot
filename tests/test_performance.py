@@ -264,10 +264,12 @@ class TestConfigPerformance:
         """
         # Create test config
         config_data = {
-            "matrix_homeserver": "https://matrix.org",
-            "matrix_user": "@testbot:matrix.org",
-            "matrix_room_ids": ["!room1:matrix.org", "!room2:matrix.org"],
-            "matrix": {"e2ee": {"enabled": False}},
+            "matrix": {
+                "homeserver": "https://matrix.org",
+                "bot_user_id": "@testbot:matrix.org",
+                "room_ids": ["!room1:matrix.org", "!room2:matrix.org"],
+                "e2ee": {"enabled": False},
+            },
         }
 
         import yaml
@@ -294,7 +296,7 @@ class TestConfigPerformance:
 
         # Measure environment loading performance
         # Create a minimal config for testing
-        config = {"matrix_room_ids": ["!test:matrix.org"]}
+        config = {"matrix": {"room_ids": ["!test:matrix.org"]}}
         start_time = time.perf_counter()
         for _ in range(100):
             matrix_token, api_keys = bot.load_environment(
