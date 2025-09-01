@@ -113,7 +113,8 @@ def load_environment(config_path):
     """
     # Load the config to get API keys
     config = load_config(config_path)
-    api_keys = {}
+    # Initialize with expected keys set to None
+    api_keys = {TRANSLATION_ESV: None}
 
     # Get API keys from config file first (new method)
     if config and "api_keys" in config:

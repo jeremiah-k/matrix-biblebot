@@ -135,11 +135,15 @@ def interactive_main():
         print("🔧 Setup Required")
         print("The bot needs to be configured before it can run.")
         print()
-        response = (
-            input("Would you like to generate sample configuration now? [Y/n]: ")
-            .strip()
-            .lower()
-        )
+        try:
+            response = (
+                input("Would you like to generate sample configuration now? [Y/n]: ")
+                .strip()
+                .lower()
+            )
+        except (EOFError, KeyboardInterrupt):
+            print("\nSetup cancelled.")
+            return
         if response in ("", "y", "yes"):
             config_path = get_default_config_path()
             if generate_config(str(config_path)):
@@ -160,7 +164,11 @@ def interactive_main():
         print("The bot uses secure session-based authentication that supports E2EE.")
         print("Manual access tokens are deprecated and don't support E2EE.")
         print()
-        response = input("Would you like to login now? [Y/n]: ").strip().lower()
+        try:
+            response = input("Would you like to login now? [Y/n]: ").strip().lower()
+        except (EOFError, KeyboardInterrupt):
+            print("\nAuthentication cancelled.")
+            return
         if response in ("", "y", "yes"):
             print("🔑 Starting interactive login...")
             try:
@@ -185,7 +193,11 @@ def interactive_main():
         print("  1. Run 'biblebot auth login' to use secure session-based auth")
         print("  2. This enables E2EE support and better security")
         print()
-        response = input("Start with legacy token anyway? [y/N]: ").strip().lower()
+        try:
+            response = input("Start with legacy token anyway? [y/N]: ").strip().lower()
+        except (EOFError, KeyboardInterrupt):
+            print("\nCancelled.")
+            return
         if response in ("y", "yes"):
             print("🚀 Starting Matrix BibleBot (legacy mode)...")
             try:
@@ -193,6 +205,9 @@ def interactive_main():
                 asyncio.run(bot_main(str(config_path)))
             except KeyboardInterrupt:
                 print("\n🛑 Bot stopped by user.")
+            except Exception as e:
+                print(f"\n❌ Bot failed to start: {e}")
+                print("Check your configuration and try again.")
         else:
             print(
                 "Consider running 'biblebot auth login' to upgrade to modern authentication."
@@ -202,7 +217,13 @@ def interactive_main():
         print("✅ Bot Ready")
         print("Configuration and credentials are valid.")
         print()
-        response = input("Would you like to start the bot now? [Y/n]: ").strip().lower()
+        try:
+            response = (
+                input("Would you like to start the bot now? [Y/n]: ").strip().lower()
+            )
+        except (EOFError, KeyboardInterrupt):
+            print("\nCancelled.")
+            return
         if response in ("", "y", "yes"):
             print("🚀 Starting Matrix BibleBot...")
             try:
@@ -210,6 +231,9 @@ def interactive_main():
                 asyncio.run(bot_main(str(config_path)))
             except KeyboardInterrupt:
                 print("\n🛑 Bot stopped by user.")
+            except Exception as e:
+                print(f"\n❌ Bot failed to start: {e}")
+                print("Check your configuration and try again.")
         else:
             print(
                 "Bot not started. Use 'biblebot' to start or 'biblebot --help' for options."

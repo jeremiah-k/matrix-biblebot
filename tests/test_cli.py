@@ -120,7 +120,7 @@ class TestGenerateConfig:
 
         assert result is False
         captured = capsys.readouterr()
-        assert "already exists" in captured.out
+        assert "Configuration files already exist" in captured.out
 
     @patch.object(cli, "get_sample_config_path")
     def test_generate_config_config_exists(
@@ -139,7 +139,7 @@ class TestGenerateConfig:
 
         assert result is False
         captured = capsys.readouterr()
-        assert "already exists" in captured.out
+        assert "Configuration files already exist" in captured.out
         assert str(config_path) in captured.out
 
     @patch.object(cli, "get_sample_config_path")
@@ -706,86 +706,112 @@ class TestCLIBotOperation:
     """Test CLI bot operation scenarios."""
 
     @patch("sys.argv", ["biblebot"])
-    @patch("os.path.exists")
+    @patch("biblebot.cli.detect_configuration_state")
+    @patch("builtins.input")
     @patch("biblebot.auth.load_credentials")
     @patch("biblebot.bot.main", new=lambda *a, **k: asyncio.sleep(0))  # async no-op
     @patch("biblebot.cli.asyncio.run")
-    def test_bot_run_with_config(self, mock_run, mock_load_creds, mock_exists):
+    def test_bot_run_with_config(
+        self, mock_run, mock_load_creds, mock_input, mock_detect_state
+    ):
         """Test running bot with existing config."""
-        mock_exists.return_value = True
+        # Mock configuration state to be ready
+        mock_detect_state.return_value = (
+            "ready",
+            "Bot is configured and ready to start.",
+        )
+
         mock_load_creds.return_value = Mock()
+        mock_input.return_value = "y"  # User chooses to start bot
         mock_run.side_effect = _consume_coroutine
 
         cli.main()
         mock_run.assert_called_once()
 
     @patch("sys.argv", ["biblebot"])
-    @patch("os.path.exists")
+    @patch("biblebot.cli.detect_configuration_state")
     @patch("builtins.input")
     @patch("biblebot.cli.generate_config")
-    @patch("sys.exit")
     def test_bot_no_config_generate_yes(
-        self, mock_exit, mock_generate, mock_input, mock_exists
+        self, mock_generate, mock_input, mock_detect_state
     ):
         """Test bot operation when no config exists and user chooses to generate."""
-        mock_exists.return_value = False
+        # Mock configuration state to need setup
+        mock_detect_state.return_value = (
+            "setup",
+            "No configuration found. Setup is required.",
+        )
+
         mock_input.return_value = "y"
         mock_generate.return_value = True
-        mock_exit.side_effect = SystemExit(0)
 
-        with pytest.raises(SystemExit):
-            cli.main()
+        # Should not raise SystemExit anymore - just returns
+        cli.main()
 
         mock_generate.assert_called_once()
-        mock_exit.assert_called_with(0)
 
     @patch("sys.argv", ["biblebot"])
-    @patch("os.path.exists")
+    @patch("biblebot.cli.detect_configuration_state")
     @patch("builtins.input")
-    @patch("sys.exit")
-    def test_bot_no_config_generate_no(self, mock_exit, mock_input, mock_exists):
+    def test_bot_no_config_generate_no(self, mock_input, mock_detect_state):
         """Test bot operation when no config exists and user chooses not to generate."""
-        mock_exists.return_value = False
+        # Mock configuration state to need setup
+        mock_detect_state.return_value = (
+            "setup",
+            "No configuration found. Setup is required.",
+        )
+
         mock_input.return_value = "n"
-        mock_exit.side_effect = SystemExit(1)
 
-        with pytest.raises(SystemExit):
-            cli.main()
-
-        mock_exit.assert_called_with(1)
+        # Should not raise SystemExit anymore - just returns
+        cli.main()
 
     @patch("sys.argv", ["biblebot"])
-    @patch("os.path.exists")
+    @patch("biblebot.cli.detect_configuration_state")
     @patch("builtins.input")
-    @patch("sys.exit")
-    def test_bot_no_config_eof_error(self, mock_exit, mock_input, mock_exists):
+    def test_bot_no_config_eof_error(self, mock_input, mock_detect_state):
         """Test bot operation when no config exists and user sends EOF."""
-        mock_exists.return_value = False
+        # Mock configuration state to need setup
+        mock_detect_state.return_value = (
+            "setup",
+            "No configuration found. Setup is required.",
+        )
+
         mock_input.side_effect = EOFError()
 
-        cli.main()
-        mock_exit.assert_called_with(1)
+        # Should handle EOFError gracefully without raising
+        cli.main()  # Should not raise EOFError
 
     @patch("sys.argv", ["biblebot"])
-    @patch("os.path.exists")
+    @patch("biblebot.cli.detect_configuration_state")
     @patch("builtins.input")
-    @patch("sys.exit")
-    def test_bot_no_config_keyboard_interrupt(self, mock_exit, mock_input, mock_exists):
+    def test_bot_no_config_keyboard_interrupt(self, mock_input, mock_detect_state):
         """Test bot operation when no config exists and user interrupts."""
-        mock_exists.return_value = False
+        # Mock configuration state to need auth
+        mock_detect_state.return_value = (
+            "auth",
+            "Configuration found but authentication required. Use 'biblebot auth login'.",
+        )
         mock_input.side_effect = KeyboardInterrupt()
 
+        # Should handle KeyboardInterrupt gracefully
         cli.main()
-        mock_exit.assert_called_with(1)
 
     @patch("sys.argv", ["biblebot"])
-    @patch("os.path.exists")
+    @patch("biblebot.cli.detect_configuration_state")
+    @patch("builtins.input")
     @patch("biblebot.auth.load_credentials")
     @patch("biblebot.bot.main", new=lambda *a, **k: asyncio.sleep(0))  # async no-op
     @patch("biblebot.cli.asyncio.run")
-    def test_bot_keyboard_interrupt(self, mock_run, mock_load_creds, mock_exists):
+    def test_bot_keyboard_interrupt(
+        self, mock_run, mock_load_creds, mock_input, mock_detect_state
+    ):
         """Test bot operation with keyboard interrupt."""
-        mock_exists.return_value = True
+        # Mock configuration state to be ready
+        mock_detect_state.return_value = (
+            "ready",
+            "Bot is configured and ready to start.",
+        )
         mock_load_creds.return_value = Mock()
 
         def _consume_then_interrupt(coro):
@@ -793,19 +819,26 @@ class TestCLIBotOperation:
             raise KeyboardInterrupt()
 
         mock_run.side_effect = _consume_then_interrupt
+        mock_input.return_value = "y"  # User chooses to start bot
 
         # CLI catches KeyboardInterrupt and handles it gracefully
         cli.main()  # Should not raise exception
 
     @patch("sys.argv", ["biblebot"])
-    @patch("os.path.exists")
+    @patch("biblebot.cli.detect_configuration_state")
+    @patch("builtins.input")
     @patch("biblebot.auth.load_credentials")
     @patch("biblebot.bot.main", new=lambda *a, **k: asyncio.sleep(0))  # async no-op
     @patch("biblebot.cli.asyncio.run")
-    @patch("sys.exit")
-    def test_bot_runtime_error(self, mock_exit, mock_run, mock_load_creds, mock_exists):
+    def test_bot_runtime_error(
+        self, mock_run, mock_load_creds, mock_input, mock_detect_state
+    ):
         """Test bot operation with runtime error."""
-        mock_exists.return_value = True
+        # Mock configuration state to be ready
+        mock_detect_state.return_value = (
+            "ready",
+            "Bot is configured and ready to start.",
+        )
         mock_load_creds.return_value = Mock()
 
         def _consume_then_error(coro):
@@ -813,13 +846,13 @@ class TestCLIBotOperation:
             raise Exception("Runtime error")
 
         mock_run.side_effect = _consume_then_error
-        mock_exit.side_effect = SystemExit(1)
+        mock_input.return_value = "y"  # User chooses to start bot
 
-        # CLI catches Exception, logs it, and calls sys.exit(1)
-        with pytest.raises(SystemExit):
-            cli.main()
+        # CLI should handle the exception gracefully
+        cli.main()
 
-        mock_exit.assert_called_with(1)
+        # Exception should be caught and handled gracefully
+        # No assertion needed - test passes if no exception is raised
 
 
 class TestCLIUtilityFunctions:
