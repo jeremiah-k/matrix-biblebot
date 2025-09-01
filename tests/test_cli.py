@@ -576,42 +576,37 @@ class TestCLIMainFunction:
         mock_load_config.assert_called_once()
         mock_print.assert_called()
 
-    async def _stub_interactive_login_success(*_a, **_k):
-        return True
-
-    @patch("os.path.exists", return_value=True)
     @patch("sys.argv", ["biblebot", "auth", "login"])
-    @patch("builtins.input", return_value="https://matrix.org")
-    @patch("getpass.getpass", return_value="password")
-    @patch("biblebot.auth.interactive_login", new=_stub_interactive_login_success)
+    @patch("biblebot.cli.interactive_login", new_callable=AsyncMock)
     @patch("sys.exit")
-    def test_auth_login_command(self, mock_exit, mock_getpass, mock_input, mock_exists):
+    def test_auth_login_command(self, mock_exit, mock_login):
         """Test auth login command."""
-        mock_exit.side_effect = SystemExit(0)
+        mock_login.return_value = True
 
-        with pytest.raises(SystemExit) as e:
+        # Mock sys.exit to prevent actual exit and capture the call
+        mock_exit.side_effect = SystemExit
+
+        with pytest.raises(SystemExit):
             cli.main()
 
-        assert e.value.code == 0
+        # Verify login was called and exit was called with success
+        mock_login.assert_called_once()
         mock_exit.assert_called_with(0)
 
-    @patch("os.path.exists", return_value=True)
-    async def _stub_interactive_logout_success(*_a, **_k):
-        return True
-
-    @patch("os.path.exists", return_value=True)
     @patch("sys.argv", ["biblebot", "auth", "logout"])
-    @patch("biblebot.auth.interactive_logout", new=_stub_interactive_logout_success)
+    @patch("biblebot.cli.interactive_logout", new_callable=AsyncMock)
     @patch("sys.exit")
-    def test_auth_logout_command(self, mock_exit, mock_exists):
+    def test_auth_logout_command(self, mock_exit, mock_logout):
         """Test auth logout command."""
-        mock_exit.side_effect = SystemExit(0)
+        mock_logout.return_value = True
 
-        with pytest.raises(SystemExit) as e:
+        # Mock sys.exit to prevent actual exit and capture the call
+        mock_exit.side_effect = SystemExit
+
+        with pytest.raises(SystemExit):
             cli.main()
 
-        assert e.value.code == 0
-        mock_run.assert_called_once()
+        mock_logout.assert_called_once()
         mock_exit.assert_called_with(0)
 
     @patch("sys.argv", ["biblebot", "auth", "status"])
@@ -716,13 +711,10 @@ class TestCLILegacyFlags:
 
     @patch("sys.argv", ["biblebot", "--auth-login"])
     @patch("builtins.input", return_value="https://matrix.org")
-    async def _stub_legacy_interactive_login(*_a, **_k):
-        return True
-
     @patch("sys.argv", ["biblebot", "--auth-login"])
     @patch("builtins.input", return_value="https://matrix.org")
     @patch("getpass.getpass", return_value="password")
-    @patch("biblebot.auth.interactive_login", new=_stub_legacy_interactive_login)
+    @patch("biblebot.auth.interactive_login", new_callable=AsyncMock)
     @patch("sys.exit")
     @patch("warnings.warn")
     @patch("os.path.exists")
@@ -731,31 +723,33 @@ class TestCLILegacyFlags:
         mock_exists,
         mock_warn,
         mock_exit,
+        mock_login,
         mock_getpass,
         mock_input,
     ):
         """Test legacy --auth-login flag."""
         mock_exists.return_value = True  # Config exists to avoid input prompt
+        mock_login.return_value = True
 
         cli.main()
         mock_warn.assert_called_once()
+        mock_login.assert_called_once()
         # Should call sys.exit, which prevents further execution
         mock_exit.assert_called_with(0)
 
-    async def _stub_legacy_interactive_logout(*_a, **_k):
-        return True
-
     @patch("sys.argv", ["biblebot", "--auth-logout"])
-    @patch("biblebot.auth.interactive_logout", new=_stub_legacy_interactive_logout)
+    @patch("biblebot.auth.interactive_logout", new_callable=AsyncMock)
     @patch("sys.exit")
     @patch("warnings.warn")
     @patch("os.path.exists")
-    def test_legacy_auth_logout(self, mock_exists, mock_warn, mock_exit):
+    def test_legacy_auth_logout(self, mock_exists, mock_warn, mock_exit, mock_logout):
         """Test legacy --auth-logout flag."""
         mock_exists.return_value = True  # Config exists to avoid input prompt
+        mock_logout.return_value = True
 
         cli.main()
         mock_warn.assert_called_once()
+        mock_logout.assert_called_once()
         # Should call sys.exit, which prevents further execution
         mock_exit.assert_called_with(0)
 
