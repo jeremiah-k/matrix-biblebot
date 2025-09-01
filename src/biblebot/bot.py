@@ -111,13 +111,13 @@ def load_config(config_file):
                 )
                 matrix_config = {}
 
-                # Move matrix-related keys under matrix section
+                # Copy matrix-related keys under matrix section (keep originals for compatibility)
                 if "matrix_homeserver" in config:
-                    matrix_config["homeserver"] = config.pop("matrix_homeserver")
+                    matrix_config["homeserver"] = config["matrix_homeserver"]
                 if "matrix_user" in config:
-                    matrix_config["user"] = config.pop("matrix_user")
+                    matrix_config["user"] = config["matrix_user"]
                 if "matrix_room_ids" in config:
-                    matrix_config["room_ids"] = config.pop("matrix_room_ids")
+                    matrix_config["room_ids"] = config["matrix_room_ids"]
 
                 config["matrix"] = matrix_config
 
@@ -125,7 +125,7 @@ def load_config(config_file):
             room_ids = None
             if "matrix" in config and isinstance(config["matrix"], dict):
                 room_ids = config["matrix"].get("room_ids")
-            elif CONFIG_MATRIX_ROOM_IDS in config:
+            if not room_ids and CONFIG_MATRIX_ROOM_IDS in config:
                 room_ids = config[CONFIG_MATRIX_ROOM_IDS]
 
             if not room_ids:
