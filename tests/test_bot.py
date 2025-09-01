@@ -661,8 +661,8 @@ class TestMainFunction:
 
     @pytest.mark.asyncio
     @patch.dict("os.environ", {}, clear=True)  # Clear environment variables
-    @patch("biblebot.auth.load_credentials")
-    @patch("biblebot.auth.get_store_dir")
+    @patch("biblebot.bot.load_credentials")
+    @patch("biblebot.bot.get_store_dir")
     @patch("biblebot.bot.load_config")
     @patch("biblebot.bot.load_environment")
     async def test_main_with_credentials(
@@ -703,18 +703,13 @@ class TestMainFunction:
 
                 # Should set access token directly (not restore_login since no credentials)
                 # Check that access_token was assigned
-                assert hasattr(mock_client, "access_token")
-                # The access_token should have been set to our test token
-                # We can't directly assert the value since it's a mock, but we can verify it was accessed
-
-                # Should start the bot
-                mock_bot.start.assert_called_once()
+                assert mock_client.access_token == "test_access_token"
 
                 # Should start the bot
                 mock_bot.start.assert_called_once()
 
     @pytest.mark.asyncio
-    @patch("biblebot.auth.load_credentials")
+    @patch("biblebot.bot.load_credentials")
     @patch("biblebot.bot.load_config")
     @patch("biblebot.bot.load_environment")
     async def test_main_with_access_token(
@@ -787,8 +782,8 @@ class TestMainFunction:
             mock_bot_class.assert_not_called()
 
     @pytest.mark.asyncio
-    @patch("biblebot.auth.load_credentials")
-    @patch("biblebot.auth.get_store_dir")
+    @patch("biblebot.bot.load_credentials")
+    @patch("biblebot.bot.get_store_dir")
     @patch("biblebot.bot.load_config")
     @patch("biblebot.bot.load_environment")
     async def test_main_with_e2ee_enabled(

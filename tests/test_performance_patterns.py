@@ -185,9 +185,12 @@ class TestPerformancePatterns:
 
             # Verify requests were processed
             assert len(request_times) == 5
-            # Check that requests were processed (concurrent execution means small time spread)
+            # Check that requests were processed concurrently (not sequentially)
             time_spread = max(request_times) - min(request_times)
-            assert time_spread >= 0.0  # All requests should be processed
+            # Sequential would be ~0.4s (4 * 0.1s delay between requests); concurrent should be much less
+            assert (
+                time_spread < 0.3
+            )  # Concurrent execution should have small time spread
 
     async def test_large_message_handling(self, mock_config, mock_client):
         """Test handling of large message content."""

@@ -172,14 +172,14 @@ def test_load_credentials_success():
         assert credentials.device_id == "TEST_DEVICE"
 
 
-@patch("biblebot.auth.os.path.exists")
-@patch("biblebot.auth.load_credentials")
-def test_load_credentials_file_not_exists(mock_load, mock_exists):
+@patch("biblebot.auth.credentials_path")
+def test_load_credentials_file_not_exists(mock_credentials_path):
     """Test credentials loading when file doesn't exist."""
-    mock_exists.return_value = False
-    mock_load.return_value = None  # Override the fixture
+    mock_file = MagicMock()
+    mock_file.exists.return_value = False
+    mock_credentials_path.return_value = mock_file
 
-    credentials = mock_load()
+    credentials = load_credentials()
 
     assert credentials is None
 

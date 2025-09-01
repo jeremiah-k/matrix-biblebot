@@ -335,18 +335,22 @@ async def interactive_logout() -> bool:
     creds = load_credentials()
     # Best-effort server logout if we have creds
     if creds:
+        client = AsyncClient(creds.homeserver, creds.user_id)
         try:
-            client = AsyncClient(creds.homeserver, creds.user_id)
             client.restore_login(
                 user_id=creds.user_id,
                 device_id=creds.device_id,
                 access_token=creds.access_token,
             )
             await client.logout()
-            await client.close()
             logger.info("Logged out from Matrix server")
         except Exception:
             logger.warning("Remote logout failed or skipped", exc_info=True)
+        finally:
+            try:
+                await client.close()
+            except Exception:
+                logger.debug("Failed to close client during logout", exc_info=True)
 
     # Remove credentials.json
     try:
