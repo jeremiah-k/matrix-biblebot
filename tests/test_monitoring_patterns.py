@@ -88,8 +88,8 @@ class TestMonitoringPatterns:
                 room = MagicMock()
                 room.room_id = mock_config["matrix_room_ids"][0]  # Use configured room
 
-                with pytest.raises((ValueError, TypeError, AttributeError)):
-                    await bot.on_room_message(room, event)
+                # Bot now handles exceptions gracefully and logs them
+                await bot.on_room_message(room, event)
                 # Should have logged the error
                 error_logs = [r for r in caplog.records if r.levelno >= logging.ERROR]
                 assert error_logs, "Expected at least one ERROR log"

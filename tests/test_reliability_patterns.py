@@ -92,7 +92,9 @@ class TestReliabilityPatterns:
             await asyncio.sleep(0.1)  # Simulate slow response
             raise asyncio.TimeoutError("API timeout")
 
-        with patch("biblebot.bot.get_bible_text", side_effect=timeout_api):
+        with patch(
+            "biblebot.bot.get_bible_text", new=AsyncMock(side_effect=timeout_api)
+        ):
             event = MagicMock()
             event.body = "John 3:16"
             event.sender = "@user:matrix.org"
@@ -102,8 +104,8 @@ class TestReliabilityPatterns:
             room.room_id = mock_config["matrix_room_ids"][0]  # Use configured room
 
             start_time = time.time()
-            with pytest.raises(asyncio.TimeoutError):
-                await bot.on_room_message(room, event)
+            # Bot now handles timeouts gracefully and sends generic error message
+            await bot.on_room_message(room, event)
             end_time = time.time()
 
             # Should not hang indefinitely
@@ -131,7 +133,10 @@ class TestReliabilityPatterns:
                 raise Exception("Service temporarily unavailable")
             return ("Available verse", f"John 3:{call_count}")
 
-        with patch("biblebot.bot.get_bible_text", side_effect=partial_failure_api):
+        with patch(
+            "biblebot.bot.get_bible_text",
+            new=AsyncMock(side_effect=partial_failure_api),
+        ):
             # Send multiple requests
             for i in range(6):
                 event = MagicMock()
@@ -174,7 +179,9 @@ class TestReliabilityPatterns:
 
         mock_client.room_send.side_effect = failing_room_send
 
-        with patch("biblebot.bot.get_bible_text") as mock_get_bible:
+        with patch(
+            "biblebot.bot.get_bible_text", new_callable=AsyncMock
+        ) as mock_get_bible:
             mock_get_bible.return_value = ("Test verse", "John 3:16")
 
             # Send requests during Matrix failures
@@ -286,7 +293,10 @@ class TestReliabilityPatterns:
             failure_started = True
             raise Exception("Initial failure")
 
-        with patch("biblebot.bot.get_bible_text", side_effect=cascading_failure_api):
+        with patch(
+            "biblebot.bot.get_bible_text",
+            new=AsyncMock(side_effect=cascading_failure_api),
+        ):
             # Send multiple requests that could cause cascading failures
             for i in range(3):
                 event = MagicMock()

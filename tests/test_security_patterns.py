@@ -320,7 +320,9 @@ class TestSecurityPatterns:
         bot.api_keys = {}
 
         # Mock API error with sensitive information
-        with patch("biblebot.bot.get_bible_text") as mock_get_bible:
+        with patch(
+            "biblebot.bot.get_bible_text", new_callable=AsyncMock
+        ) as mock_get_bible:
             mock_get_bible.side_effect = Exception(
                 "Database connection failed: password=secret123"
             )
@@ -414,7 +416,9 @@ class TestSecurityPatterns:
             "John 3:16\n" * 1000,  # Many newlines
         ]
 
-        with patch("biblebot.bot.get_bible_text") as mock_get_bible:
+        with patch(
+            "biblebot.bot.get_bible_text", new_callable=AsyncMock
+        ) as mock_get_bible:
             mock_get_bible.return_value = ("Test verse", "John 3:16")
 
             for intensive_input in resource_intensive_inputs:
@@ -459,7 +463,9 @@ class TestSecurityPatterns:
             "\\admin delete",
         ]
 
-        with patch("biblebot.bot.get_bible_text") as mock_get_bible:
+        with patch(
+            "biblebot.bot.get_bible_text", new_callable=AsyncMock
+        ) as mock_get_bible:
             mock_get_bible.return_value = ("Test verse", "John 3:16")
 
             for admin_attempt in admin_attempts:
