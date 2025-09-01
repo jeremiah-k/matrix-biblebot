@@ -76,7 +76,7 @@ class TestE2EEStatus:
 
                 assert status["dependencies_installed"] is True
                 assert status["available"] is True  # Dependencies available
-            assert status["ready"] is False  # But not ready (no creds)
+                assert status["ready"] is False  # But not ready (no creds)
 
     @patch("platform.system", return_value="Linux")
     def test_check_e2ee_status_fully_available(self, mock_system, mock_credentials):

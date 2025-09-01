@@ -209,7 +209,7 @@ def normalize_book_name(book_str: str) -> str:
 def load_config(config_file):
     """Load configuration from YAML file."""
     try:
-        with open(config_file, "r") as f:
+        with open(config_file, "r", encoding="utf-8") as f:
             config = yaml.safe_load(f) or {}
             # Basic validation
             required = ["matrix_homeserver", "matrix_user", "matrix_room_ids"]
