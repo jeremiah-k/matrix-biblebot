@@ -26,12 +26,21 @@ from nio import (
     DiscoveryInfoResponse,
 )
 
-logger = logging.getLogger("BibleBot")
+from .constants import (
+    APP_NAME,
+    CONFIG_DIR,
+    CONFIG_DIR_PERMISSIONS,
+    CREDENTIALS_FILE,
+    CREDENTIALS_FILE_PERMISSIONS,
+    E2EE_STORE_DIR,
+    ERROR_E2EE_DEPS_MISSING,
+    ERROR_E2EE_NOT_SUPPORTED,
+    LOGGER_NAME,
+    LOGIN_TIMEOUT_SEC,
+    MATRIX_DEVICE_NAME,
+)
 
-
-CONFIG_DIR = Path.home() / ".config" / "matrix-biblebot"
-CREDENTIALS_FILE = CONFIG_DIR / "credentials.json"
-E2EE_STORE_DIR = CONFIG_DIR / "e2ee-store"
+logger = logging.getLogger(LOGGER_NAME)
 
 
 @dataclass
@@ -62,7 +71,7 @@ class Credentials:
 def get_config_dir() -> Path:
     CONFIG_DIR.mkdir(parents=True, exist_ok=True)
     try:
-        os.chmod(CONFIG_DIR, 0o700)
+        os.chmod(CONFIG_DIR, CONFIG_DIR_PERMISSIONS)
     except OSError:
         logger.debug("Could not set config dir perms to 0700", exc_info=True)
     return CONFIG_DIR
@@ -97,7 +106,7 @@ def save_credentials(creds: Credentials) -> None:
         return
 
     try:
-        os.chmod(tmp_name, 0o600)
+        os.chmod(tmp_name, CREDENTIALS_FILE_PERMISSIONS)
         os.replace(tmp_name, path)
         logger.info(f"Saved credentials to {path}")
     except OSError:
@@ -147,9 +156,7 @@ def check_e2ee_status() -> dict:
 
     if platform.system() == "Windows":
         status["platform_supported"] = False
-        status["error"] = (
-            "E2EE is not supported on Windows due to python-olm limitations"
-        )
+        status["error"] = ERROR_E2EE_NOT_SUPPORTED
         return status
 
     # Check dependencies
@@ -163,7 +170,7 @@ def check_e2ee_status() -> dict:
         else:
             raise ImportError("E2EE dependencies not found")
     except ImportError as e:
-        status["error"] = f"E2EE dependencies not installed: {e}"
+        status["error"] = f"{ERROR_E2EE_DEPS_MISSING}: {e}"
         return status
 
     # Check store directory without creating it
@@ -299,8 +306,8 @@ async def interactive_login(
     logger.info(f"Logging in to {hs} as {user}")
     try:
         resp = await asyncio.wait_for(
-            client.login(password=pwd, device_name="biblebot"),
-            timeout=30,
+            client.login(password=pwd, device_name=MATRIX_DEVICE_NAME),
+            timeout=LOGIN_TIMEOUT_SEC,
         )
 
         if hasattr(resp, "access_token"):

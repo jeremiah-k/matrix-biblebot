@@ -12,6 +12,13 @@ import subprocess
 import sys
 from pathlib import Path
 
+from .constants import (
+    SERVICE_DESCRIPTION,
+    SERVICE_NAME,
+    SERVICE_RESTART_SEC,
+    SUCCESS_SERVICE_INSTALLED,
+    SYSTEMD_USER_DIR,
+)
 from .tools import get_service_template_path
 
 
@@ -34,8 +41,7 @@ def get_executable_path():
 
 def get_user_service_path():
     """Get the path to the user service file."""
-    service_dir = Path.home() / ".config" / "systemd" / "user"
-    return service_dir / "biblebot.service"
+    return SYSTEMD_USER_DIR / SERVICE_NAME
 
 
 def service_exists():
@@ -45,10 +51,10 @@ def service_exists():
 
 def print_service_commands():
     """Print the commands for controlling the systemd user service."""
-    print("  systemctl --user start biblebot.service    # Start the service")
-    print("  systemctl --user stop biblebot.service     # Stop the service")
-    print("  systemctl --user restart biblebot.service  # Restart the service")
-    print("  systemctl --user status biblebot.service   # Check service status")
+    print(f"  {SYSTEMCTL_COMMANDS['start']}    # Start the service")
+    print(f"  {SYSTEMCTL_COMMANDS['stop']}     # Stop the service")
+    print(f"  {SYSTEMCTL_COMMANDS['restart']}  # Restart the service")
+    print(f"  {SYSTEMCTL_COMMANDS['status']}   # Check service status")
 
 
 def read_service_file():
@@ -185,7 +191,7 @@ def is_service_enabled():
     """
     try:
         result = subprocess.run(
-            ["/usr/bin/systemctl", "--user", "is-enabled", "biblebot.service"],
+            ["/usr/bin/systemctl", "--user", "is-enabled", SERVICE_NAME],
             check=False,  # Don't raise an exception if the service is not enabled
             capture_output=True,
             text=True,
@@ -203,7 +209,7 @@ def is_service_active():
     """
     try:
         result = subprocess.run(
-            ["/usr/bin/systemctl", "--user", "is-active", "biblebot.service"],
+            ["/usr/bin/systemctl", "--user", "is-active", SERVICE_NAME],
             check=False,  # Don't raise an exception if the service is not active
             capture_output=True,
             text=True,
@@ -398,7 +404,7 @@ def start_service():
     """
     try:
         subprocess.run(
-            ["/usr/bin/systemctl", "--user", "start", "biblebot.service"], check=True
+            ["/usr/bin/systemctl", "--user", "start", SERVICE_NAME], check=True
         )
         return True
     except subprocess.CalledProcessError as e:
@@ -417,7 +423,7 @@ def show_service_status():
     """
     try:
         result = subprocess.run(
-            ["/usr/bin/systemctl", "--user", "status", "biblebot.service"],
+            ["/usr/bin/systemctl", "--user", "status", SERVICE_NAME],
             check=False,  # Don't raise an exception if the service is not active
             capture_output=True,
             text=True,
@@ -510,7 +516,7 @@ def install_service():
         ):
             try:
                 subprocess.run(
-                    ["/usr/bin/systemctl", "--user", "enable", "biblebot.service"],
+                    ["/usr/bin/systemctl", "--user", "enable", SERVICE_NAME],
                     check=True,
                 )
                 print("Service enabled successfully")
@@ -527,7 +533,7 @@ def install_service():
         if input("Do you want to restart the service? (y/n): ").lower().startswith("y"):
             try:
                 subprocess.run(
-                    ["/usr/bin/systemctl", "--user", "restart", "biblebot.service"],
+                    ["/usr/bin/systemctl", "--user", "restart", SERVICE_NAME],
                     check=True,
                 )
                 print("Service restarted successfully")

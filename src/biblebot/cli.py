@@ -13,22 +13,33 @@ from pathlib import Path
 from . import __version__
 from .auth import interactive_login, interactive_logout, load_credentials
 from .bot import main as bot_main
+from .constants import (
+    APP_NAME,
+    CONFIG_DIR,
+    DEFAULT_CONFIG_FILENAME,
+    DEFAULT_ENV_FILENAME,
+    DEFAULT_LOG_LEVEL,
+    LOG_LEVELS,
+    LOGGER_NAME,
+    SUCCESS_CONFIG_GENERATED,
+    SUCCESS_LOGIN_COMPLETE,
+    SUCCESS_LOGOUT_COMPLETE,
+)
 from .tools import get_sample_config_path, get_sample_env_path
 
 # Configure logging
-logger = logging.getLogger("BibleBot")
+logger = logging.getLogger(LOGGER_NAME)
 
 
 def get_default_config_path():
     """Get the default config path in the user's home directory."""
-    config_dir = Path.home() / ".config" / "matrix-biblebot"
-    return config_dir / "config.yaml"
+    return CONFIG_DIR / DEFAULT_CONFIG_FILENAME
 
 
 def generate_config(config_path):
     """Generate a sample config file at the specified path."""
     config_dir = os.path.dirname(config_path) or os.getcwd()
-    env_path = os.path.join(config_dir, ".env")
+    env_path = os.path.join(config_dir, DEFAULT_ENV_FILENAME)
 
     if os.path.exists(config_path) or os.path.exists(env_path):
         print("A config or .env file already exists at:")
@@ -51,6 +62,7 @@ def generate_config(config_path):
     print(f"Generated sample config file at: {config_path}")
     print(f"Generated sample .env file at: {env_path}")
     print("Please edit these files with your Matrix credentials and API keys.")
+    print(SUCCESS_CONFIG_GENERATED)
     return True
 
 

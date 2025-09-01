@@ -7,17 +7,28 @@ import pytest
 import yaml
 
 from biblebot import bot
+from tests.test_constants import (
+    MOCK_RESPONSE_DATA,
+    TEST_ACCESS_TOKEN,
+    TEST_BIBLE_REFERENCE,
+    TEST_BIBLE_TEXT,
+    TEST_CONFIG_YAML,
+    TEST_CREDENTIALS,
+    TEST_DEVICE_ID,
+    TEST_HOMESERVER,
+    TEST_MESSAGE_BODY,
+    TEST_MESSAGE_SENDER,
+    TEST_MESSAGE_TIMESTAMP,
+    TEST_ROOM_ID,
+    TEST_ROOM_IDS,
+    TEST_USER_ID,
+)
 
 
 @pytest.fixture
 def sample_config():
     """Sample configuration for testing."""
-    return {
-        "matrix_homeserver": "https://matrix.org",
-        "matrix_user": "@testbot:matrix.org",
-        "matrix_room_ids": ["!room1:matrix.org", "!room2:matrix.org"],
-        "matrix": {"e2ee": {"enabled": False}},
-    }
+    return TEST_CONFIG_YAML
 
 
 @pytest.fixture
@@ -34,8 +45,8 @@ def temp_env_file(tmp_path):
     """Create a temporary .env file."""
     env_file = tmp_path / ".env"
     env_file.write_text(
-        """
-MATRIX_ACCESS_TOKEN=test_token
+        f"""
+MATRIX_ACCESS_TOKEN={TEST_ACCESS_TOKEN}
 ESV_API_KEY=test_esv_key
 """
     )
@@ -50,8 +61,8 @@ class TestConfigLoading:
         config = bot.load_config(str(temp_config_file))
 
         assert config is not None
-        assert config["matrix_homeserver"] == "https://matrix.org"
-        assert config["matrix_user"] == "@testbot:matrix.org"
+        assert config["matrix_homeserver"] == TEST_HOMESERVER
+        assert config["matrix_user"] == TEST_USER_ID
         assert len(config["matrix_room_ids"]) == 2
 
     def test_load_config_file_not_found(self):
@@ -70,7 +81,7 @@ class TestConfigLoading:
     def test_load_config_missing_required_fields(self, tmp_path):
         """Test loading config with missing required fields."""
         incomplete_config = {
-            "matrix_homeserver": "https://matrix.org"
+            "matrix_homeserver": TEST_HOMESERVER
             # Missing matrix_user and matrix_room_ids
         }
 
@@ -366,7 +377,7 @@ class TestMessageHandling:
         with patch("biblebot.bot.AsyncClient") as mock_client_class:
             mock_client = AsyncMock()
             mock_client_class.return_value = mock_client
-            mock_client.user_id = "@testbot:matrix.org"
+            mock_client.user_id = TEST_USER_ID
 
             bot_instance = bot.BibleBot(sample_config)
             bot_instance.client = mock_client
@@ -398,17 +409,17 @@ class TestMessageHandling:
         with patch("biblebot.bot.AsyncClient") as mock_client_class:
             mock_client = AsyncMock()
             mock_client_class.return_value = mock_client
-            mock_client.user_id = "@testbot:matrix.org"
+            mock_client.user_id = TEST_USER_ID
 
             bot_instance = bot.BibleBot(sample_config)
             bot_instance.client = mock_client
             bot_instance.start_time = 1000
 
             mock_room = MagicMock()
-            mock_room.room_id = "!room1:matrix.org"
+            mock_room.room_id = TEST_ROOM_IDS[0]
 
             mock_event = MagicMock()
-            mock_event.sender = "@testbot:matrix.org"  # Same as bot
+            mock_event.sender = TEST_USER_ID  # Same as bot
             mock_event.server_timestamp = 2000
             mock_event.body = "John 3:16"
 
@@ -424,7 +435,7 @@ class TestMessageHandling:
         with patch("biblebot.bot.AsyncClient") as mock_client_class:
             mock_client = AsyncMock()
             mock_client_class.return_value = mock_client
-            mock_client.user_id = "@testbot:matrix.org"
+            mock_client.user_id = TEST_USER_ID
 
             bot_instance = bot.BibleBot(sample_config)
             bot_instance.client = mock_client
@@ -450,7 +461,7 @@ class TestMessageHandling:
         with patch("biblebot.bot.AsyncClient") as mock_client_class:
             mock_client = AsyncMock()
             mock_client_class.return_value = mock_client
-            mock_client.user_id = "@testbot:matrix.org"
+            mock_client.user_id = TEST_USER_ID
 
             bot_instance = bot.BibleBot(sample_config)
             bot_instance.client = mock_client
@@ -592,8 +603,8 @@ class TestE2EEFunctionality:
         with patch("biblebot.bot.AsyncClient") as mock_client_class:
             mock_client = AsyncMock()
             mock_client_class.return_value = mock_client
-            mock_client.user_id = "@testbot:matrix.org"
-            mock_client.device_id = "TEST_DEVICE"
+            mock_client.user_id = TEST_USER_ID
+            mock_client.device_id = TEST_DEVICE_ID
 
             # Mock request_room_key method
             mock_client.request_room_key = AsyncMock()
@@ -620,8 +631,8 @@ class TestE2EEFunctionality:
         with patch("biblebot.bot.AsyncClient") as mock_client_class:
             mock_client = AsyncMock()
             mock_client_class.return_value = mock_client
-            mock_client.user_id = "@testbot:matrix.org"
-            mock_client.device_id = "TEST_DEVICE"
+            mock_client.user_id = TEST_USER_ID
+            mock_client.device_id = TEST_DEVICE_ID
 
             # No request_room_key method available
             del mock_client.request_room_key
@@ -641,7 +652,7 @@ class TestE2EEFunctionality:
             # Should use fallback method
             mock_client.to_device.assert_called_once()
             mock_event.as_key_request.assert_called_once_with(
-                "@testbot:matrix.org", "TEST_DEVICE"
+                TEST_USER_ID, TEST_DEVICE_ID
             )
 
 
@@ -667,7 +678,7 @@ class TestMainFunction:
         # Setup mocks - ensure credentials are found
         mock_load_config.return_value = sample_config
         mock_load_env.return_value = (
-            "test_access_token",  # Provide access token instead of relying on credentials
+            TEST_ACCESS_TOKEN,  # Provide access token instead of relying on credentials
             {"esv": "test_key"},
         )
 
@@ -692,7 +703,7 @@ class TestMainFunction:
 
                 # Should set access token directly (not restore_login since no credentials)
                 # Check that access_token was assigned
-                assert mock_client.access_token == "test_access_token"
+                assert mock_client.access_token == TEST_ACCESS_TOKEN
 
                 # Should start the bot
                 mock_bot.start.assert_called_once()
@@ -707,7 +718,7 @@ class TestMainFunction:
         """Test main function with access token."""
         # Setup mocks
         mock_load_config.return_value = sample_config
-        mock_load_env.return_value = ("test_access_token", {"esv": "test_key"})
+        mock_load_env.return_value = (TEST_ACCESS_TOKEN, {"esv": "test_key"})
         mock_load_creds.return_value = None  # No saved credentials
 
         with patch("biblebot.bot.AsyncClient") as mock_client_class:

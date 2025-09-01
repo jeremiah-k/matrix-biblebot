@@ -22,180 +22,39 @@ from nio import (
 )
 
 from .auth import get_store_dir, load_credentials
+from .bible_constants import BOOK_ABBREVIATIONS
+from .constants import (
+    API_REQUEST_TIMEOUT_SEC,
+    CACHE_MAX_SIZE,
+    CACHE_TTL_SECONDS,
+    CONFIG_MATRIX_HOMESERVER,
+    CONFIG_MATRIX_ROOM_IDS,
+    CONFIG_MATRIX_USER,
+    DEFAULT_TRANSLATION,
+    ENV_ESV_API_KEY,
+    ENV_MATRIX_ACCESS_TOKEN,
+    ERROR_CONFIG_NOT_FOUND,
+    ERROR_INVALID_YAML,
+    ERROR_MISSING_CONFIG_KEYS,
+    ESV_API_URL,
+    INFO_API_KEY_FOUND,
+    INFO_LOADING_ENV,
+    INFO_NO_API_KEY,
+    INFO_NO_ENV_FILE,
+    INFO_RESOLVED_ALIAS,
+    KJV_API_URL_TEMPLATE,
+    LOGGER_NAME,
+    MESSAGE_SUFFIX,
+    REACTION_OK,
+    REFERENCE_PATTERNS,
+    REQUIRED_CONFIG_KEYS,
+    SYNC_TIMEOUT_MS,
+    WARN_COULD_NOT_RESOLVE_ALIAS,
+    WARN_OLD_MESSAGE,
+)
 
 # Configure logging
-logger = logging.getLogger("BibleBot")
-
-
-# Constants and defaults
-DEFAULT_TRANSLATION = "kjv"
-ESV_API_URL = "https://api.esv.org/v3/passage/text/"
-KJV_API_URL_TEMPLATE = "https://bible-api.com/{passage}?translation=kjv"
-REFERENCE_PATTERNS = [
-    re.compile(r"^([\w\s]+?)(\d+[:]\d+[-]?\d*)\s*(kjv|esv)?$", re.IGNORECASE)
-]
-SYNC_TIMEOUT_MS = 30000
-REACTION_OK = "✅"
-MESSAGE_SUFFIX = " 🕊️✝️"
-
-
-BOOK_ABBREVIATIONS = {
-    "gen": "Genesis",
-    "ge": "Genesis",
-    "gn": "Genesis",
-    "exo": "Exodus",
-    "ex": "Exodus",
-    "lev": "Leviticus",
-    "le": "Leviticus",
-    "lv": "Leviticus",
-    "num": "Numbers",
-    "nu": "Numbers",
-    "nm": "Numbers",
-    "deut": "Deuteronomy",
-    "de": "Deuteronomy",
-    "dt": "Deuteronomy",
-    "josh": "Joshua",
-    "jos": "Joshua",
-    "judg": "Judges",
-    "jdg": "Judges",
-    "jg": "Judges",
-    "ruth": "Ruth",
-    "ru": "Ruth",
-    "1 sam": "1 Samuel",
-    "1sa": "1 Samuel",
-    "1s": "1 Samuel",
-    "2 sam": "2 Samuel",
-    "2sa": "2 Samuel",
-    "2s": "2 Samuel",
-    "1 kings": "1 Kings",
-    "1ki": "1 Kings",
-    "1k": "1 Kings",
-    "2 kings": "2 Kings",
-    "2ki": "2 Kings",
-    "2k": "2 Kings",
-    "1 chron": "1 Chronicles",
-    "1ch": "1 Chronicles",
-    "2 chron": "2 Chronicles",
-    "2ch": "2 Chronicles",
-    "ezra": "Ezra",
-    "ezr": "Ezra",
-    "neh": "Nehemiah",
-    "ne": "Nehemiah",
-    "est": "Esther",
-    "es": "Esther",
-    "job": "Job",
-    "jb": "Job",
-    "psalm": "Psalms",
-    "psa": "Psalms",
-    "ps": "Psalms",
-    "prov": "Proverbs",
-    "pro": "Proverbs",
-    "pr": "Proverbs",
-    "eccles": "Ecclesiastes",
-    "ecc": "Ecclesiastes",
-    "ec": "Ecclesiastes",
-    "song": "Song of Solomon",
-    "sos": "Song of Solomon",
-    "so": "Song of Solomon",
-    "isa": "Isaiah",
-    "is": "Isaiah",
-    "jer": "Jeremiah",
-    "je": "Jeremiah",
-    "lam": "Lamentations",
-    "la": "Lamentations",
-    "ezek": "Ezekiel",
-    "eze": "Ezekiel",
-    "ez": "Ezekiel",
-    "dan": "Daniel",
-    "da": "Daniel",
-    "dn": "Daniel",
-    "hos": "Hosea",
-    "ho": "Hosea",
-    "joel": "Joel",
-    "joe": "Joel",
-    "jl": "Joel",
-    "amos": "Amos",
-    "am": "Amos",
-    "obad": "Obadiah",
-    "ob": "Obadiah",
-    "jonah": "Jonah",
-    "jon": "Jonah",
-    "mic": "Micah",
-    "mi": "Micah",
-    "nah": "Nahum",
-    "na": "Nahum",
-    "hab": "Habakkuk",
-    "ha": "Habakkuk",
-    "zeph": "Zephaniah",
-    "zep": "Zephaniah",
-    "zp": "Zephaniah",
-    "hag": "Haggai",
-    "hg": "Haggai",
-    "zech": "Zechariah",
-    "zec": "Zechariah",
-    "zc": "Zechariah",
-    "mal": "Malachi",
-    "ml": "Malachi",
-    "matt": "Matthew",
-    "mt": "Matthew",
-    "mark": "Mark",
-    "mar": "Mark",
-    "mk": "Mark",
-    "luke": "Luke",
-    "lk": "Luke",
-    "john": "John",
-    "jn": "John",
-    "acts": "Acts",
-    "ac": "Acts",
-    "rom": "Romans",
-    "ro": "Romans",
-    "1 cor": "1 Corinthians",
-    "1co": "1 Corinthians",
-    "2 cor": "2 Corinthians",
-    "2co": "2 Corinthians",
-    "gal": "Galatians",
-    "ga": "Galatians",
-    "eph": "Ephesians",
-    "ep": "Ephesians",
-    "phil": "Philippians",
-    "phi": "Philippians",
-    "php": "Philippians",
-    "col": "Colossians",
-    "co": "Colossians",
-    "1 thess": "1 Thessalonians",
-    "1th": "1 Thessalonians",
-    "2 thess": "2 Thessalonians",
-    "2th": "2 Thessalonians",
-    "1 tim": "1 Timothy",
-    "1ti": "1 Timothy",
-    "2 tim": "2 Timothy",
-    "2ti": "2 Timothy",
-    "titus": "Titus",
-    "ti": "Titus",
-    "philem": "Philemon",
-    "phm": "Philemon",
-    "pm": "Philemon",
-    "heb": "Hebrews",
-    "he": "Hebrews",
-    "james": "James",
-    "jm": "James",
-    "1 pet": "1 Peter",
-    "1pe": "1 Peter",
-    "1pt": "1 Peter",
-    "2 pet": "2 Peter",
-    "2pe": "2 Peter",
-    "2pt": "2 Peter",
-    "1 john": "1 John",
-    "1jn": "1 John",
-    "2 john": "2 John",
-    "2jn": "2 John",
-    "3 john": "3 John",
-    "3jn": "3 John",
-    "jude": "Jude",
-    "jd": "Jude",
-    "rev": "Revelation",
-    "re": "Revelation",
-}
+logger = logging.getLogger(LOGGER_NAME)
 
 
 def normalize_book_name(book_str: str) -> str:
@@ -212,11 +71,10 @@ def load_config(config_file):
         with open(config_file, "r", encoding="utf-8") as f:
             config = yaml.safe_load(f) or {}
             # Basic validation
-            required = ["matrix_homeserver", "matrix_user", "matrix_room_ids"]
-            missing = [k for k in required if k not in config]
+            missing = [k for k in REQUIRED_CONFIG_KEYS if k not in config]
             if missing:
                 logger.error(
-                    f"Missing required config keys: {', '.join(missing)} in {config_file}"
+                    f"{ERROR_MISSING_CONFIG_KEYS}: {', '.join(missing)} in {config_file}"
                 )
                 return None
             if not isinstance(config.get("matrix_room_ids"), list):
@@ -245,20 +103,20 @@ def load_environment(config_path):
 
     if os.path.exists(env_path):
         load_dotenv(env_path)
-        logger.info(f"Loaded environment variables from {env_path}")
+        logger.info(f"{INFO_LOADING_ENV} {env_path}")
     else:
         # Fall back to default .env in current directory if present
         cwd_env = os.path.join(os.getcwd(), ".env")
         if os.path.exists(cwd_env):
             load_dotenv(cwd_env)
-            logger.info(f"Loaded environment variables from {cwd_env}")
+            logger.info(f"{INFO_LOADING_ENV} {cwd_env}")
         else:
             # Still call load_dotenv to pick up any env already set or parent dirs
             load_dotenv()
-            logger.debug("No .env file found; relying on process environment")
+            logger.debug(INFO_NO_ENV_FILE)
 
     # Get access token and API keys
-    matrix_access_token = os.getenv("MATRIX_ACCESS_TOKEN")
+    matrix_access_token = os.getenv(ENV_MATRIX_ACCESS_TOKEN)
     if not matrix_access_token:
         logger.info(
             "MATRIX_ACCESS_TOKEN not set; will rely on saved credentials.json if available"
@@ -266,16 +124,16 @@ def load_environment(config_path):
 
     # Dictionary to hold API keys for different translations
     api_keys = {
-        "esv": os.getenv("ESV_API_KEY"),
+        "esv": os.getenv(ENV_ESV_API_KEY),
         # Add more translations here
     }
 
     # Log which API keys were found (without showing the actual keys)
     for translation, key in api_keys.items():
         if key:
-            logger.info(f"Found API key for {translation.upper()} translation")
+            logger.info(INFO_API_KEY_FOUND.format(translation.upper()))
         else:
-            logger.debug(f"No API key found for {translation.upper()} translation")
+            logger.debug(INFO_NO_API_KEY.format(translation.upper()))
 
     return matrix_access_token, api_keys
 
@@ -285,7 +143,9 @@ logging.getLogger("nio").setLevel(logging.WARNING)
 
 
 # Handles headers & parameters for API requests
-async def make_api_request(url, headers=None, params=None, session=None, timeout=10):
+async def make_api_request(
+    url, headers=None, params=None, session=None, timeout=API_REQUEST_TIMEOUT_SEC
+):
     """Make an API request and return the JSON response."""
 
     # Normalize timeout to ClientTimeout
@@ -421,11 +281,13 @@ class BibleBot:
                     resp = await self.client.room_resolve_alias(entry)
                     if hasattr(resp, "room_id"):
                         resolved_ids.append(resp.room_id)
-                        logger.info(f"Resolved alias {entry} to room ID {resp.room_id}")
+                        logger.info(INFO_RESOLVED_ALIAS.format(entry, resp.room_id))
                     else:
-                        logger.warning(f"Could not resolve alias: {entry}")
+                        logger.warning(f"{WARN_COULD_NOT_RESOLVE_ALIAS}: {entry}")
                 except RoomResolveAliasError:
-                    logger.warning(f"Could not resolve alias (exception): {entry}")
+                    logger.warning(
+                        f"{WARN_COULD_NOT_RESOLVE_ALIAS} (exception): {entry}"
+                    )
             else:
                 resolved_ids.append(entry)
         self.config["matrix_room_ids"] = list(dict.fromkeys(resolved_ids))
