@@ -99,7 +99,9 @@ api_keys:
 
                     # Test logout (cleanup)
                     with patch("biblebot.auth.AsyncClient") as mock_client_class:
-                        mock_client = MagicMock()
+                        mock_client = MagicMock(
+                            spec_set=["restore_login", "logout", "close"]
+                        )
                         mock_client.restore_login = MagicMock()  # Sync method
                         mock_client.logout = AsyncMock()  # Async method
                         mock_client.close = AsyncMock()  # Async method
@@ -288,11 +290,9 @@ class TestErrorScenarios:
             bot_instance.client = mock_client
             bot_instance.start_time = 1000
 
-            # The bot should handle sync errors gracefully
-            try:
-                await bot_instance.start()
-            except Exception:
-                pass  # Expected to be handled
+            # The bot should handle sync errors gracefully and continue to sync_forever
+            await bot_instance.start()
+            mock_client.sync_forever.assert_awaited_once()
 
 
 class TestCacheManagement:

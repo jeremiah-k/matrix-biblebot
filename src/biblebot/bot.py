@@ -33,6 +33,8 @@ from .constants import (
     CACHE_TTL_SECONDS,
     CHAR_COMMA,
     CHAR_DOT,
+    CONFIG_KEY_MATRIX,
+    CONFIG_MATRIX_E2EE,
     CONFIG_MATRIX_ROOM_IDS,
     DEFAULT_CONFIG_FILENAME_MAIN,
     DEFAULT_ENV_FILENAME,
@@ -409,7 +411,7 @@ class BibleBot:
 
     async def on_invite(self, room: MatrixRoom, event: InviteEvent):
         """Handle room invites for the bot."""
-        if room.room_id in self.config[CONFIG_MATRIX_ROOM_IDS]:
+        if room.room_id in self._room_id_set:
             logger.info(f"Received invite for configured room: {room.room_id}")
             await self.join_matrix_room(room.room_id)
         else:
@@ -475,9 +477,9 @@ class BibleBot:
         logger.info(f"Fetching scripture passage: {passage} ({translation.upper()})")
         try:
             result = await get_bible_text(passage, translation, self.api_keys)
-        except Exception as e:
-            # Log the specific error for debugging but send generic message to user
-            logger.error(f"Exception during passage lookup for {passage}: {e}")
+        except Exception:
+            # Log full traceback but send generic message to user
+            logger.exception(f"Exception during passage lookup for {passage}")
             await self.client.room_send(
                 room_id,
                 "m.room.message",
@@ -571,9 +573,13 @@ async def main(config_path=DEFAULT_CONFIG_FILENAME_MAIN):
 
     # Determine E2EE configuration from config
     matrix_section = (
-        config.get("matrix", {}) if isinstance(config.get("matrix"), dict) else {}
+        config.get(CONFIG_KEY_MATRIX, {})
+        if isinstance(config.get(CONFIG_KEY_MATRIX), dict)
+        else {}
     )
-    e2ee_cfg = matrix_section.get("e2ee") or matrix_section.get("encryption") or {}
+    e2ee_cfg = (
+        matrix_section.get(CONFIG_MATRIX_E2EE) or matrix_section.get("encryption") or {}
+    )
     e2ee_enabled = bool(e2ee_cfg.get("enabled", False))
 
     # Create AsyncClient with optional E2EE store

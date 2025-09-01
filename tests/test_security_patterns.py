@@ -49,7 +49,9 @@ class TestSecurityPatterns:
             "John 3:16",  # Valid reference (others won't match regex)
         ]
 
-        with patch("biblebot.bot.get_bible_text") as mock_get_bible:
+        with patch(
+            "biblebot.bot.get_bible_text", new_callable=AsyncMock
+        ) as mock_get_bible:
             mock_get_bible.return_value = ("For God so loved the world", "John 3:16")
 
             for malicious_input in malicious_inputs:
@@ -83,7 +85,9 @@ class TestSecurityPatterns:
         # Simulate rapid requests from same user
         user_id = "@spammer:matrix.org"
 
-        with patch("biblebot.bot.get_bible_text") as mock_get_bible:
+        with patch(
+            "biblebot.bot.get_bible_text", new_callable=AsyncMock
+        ) as mock_get_bible:
             mock_get_bible.return_value = ("Test verse", "John 3:16")
 
             # Send many rapid requests
@@ -213,7 +217,9 @@ class TestSecurityPatterns:
             "@user@matrix.org",  # Invalid format
         ]
 
-        with patch("biblebot.bot.get_bible_text") as mock_get_bible:
+        with patch(
+            "biblebot.bot.get_bible_text", new_callable=AsyncMock
+        ) as mock_get_bible:
             mock_get_bible.return_value = ("Test verse", "John 3:16")
 
             # Test with valid user IDs
@@ -240,6 +246,8 @@ class TestSecurityPatterns:
 
                 # Should not crash with invalid user IDs
                 await bot.on_room_message(MagicMock(), event)
+                assert not mock_client.room_send.called
+                mock_client.room_send.reset_mock()
 
     async def test_room_id_validation(self, mock_config, mock_client):
         """Test Matrix room ID validation."""
@@ -290,7 +298,9 @@ class TestSecurityPatterns:
             "John 3:16",  # Valid reference (others won't match regex)
         ]
 
-        with patch("biblebot.bot.get_bible_text") as mock_get_bible:
+        with patch(
+            "biblebot.bot.get_bible_text", new_callable=AsyncMock
+        ) as mock_get_bible:
             mock_get_bible.return_value = ("For God so loved the world", "John 3:16")
 
             for filtered_input in filtered_inputs:
@@ -367,7 +377,8 @@ class TestSecurityPatterns:
 
         for config in incomplete_configs:
             # Should handle incomplete configurations gracefully
-            BibleBot(config=config, client=mock_client)
+            bot = BibleBot(config=config, client=mock_client)
+            assert bot is not None
             # Bot should be created but may have validation warnings
 
     async def test_api_response_validation(self, mock_config, mock_client):
@@ -389,7 +400,9 @@ class TestSecurityPatterns:
         ]
 
         for response in malformed_responses:
-            with patch("biblebot.bot.get_bible_text") as mock_get_bible:
+            with patch(
+                "biblebot.bot.get_bible_text", new_callable=AsyncMock
+            ) as mock_get_bible:
                 mock_get_bible.return_value = response
 
                 event = MagicMock()

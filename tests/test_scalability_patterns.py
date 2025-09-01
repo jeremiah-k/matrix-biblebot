@@ -381,8 +381,10 @@ class TestScalabilityPatterns:
         bot._room_id_set = set(mock_config["matrix_room_ids"])
         bot.start_time = 1234567880000  # Converted to milliseconds
 
-        with patch("biblebot.bot.get_bible_text") as mock_get_bible:
-            mock_get_bible.return_value = ("Test verse", "John 3:16")
+        with patch(
+            "biblebot.bot.get_bible_text",
+            new=AsyncMock(return_value=("Test verse", "John 3:16")),
+        ):
 
             # Test different batch sizes
             throughput_results = []
@@ -432,8 +434,10 @@ class TestScalabilityPatterns:
         # Track resource allocation and cleanup
         allocated_resources = []
 
-        with patch("biblebot.bot.get_bible_text") as mock_get_bible:
-            mock_get_bible.return_value = ("Test verse", "John 3:16")
+        with patch(
+            "biblebot.bot.get_bible_text",
+            new=AsyncMock(return_value=("Test verse", "John 3:16")),
+        ):
 
             # Process messages in waves with cleanup between
             for wave in range(5):
@@ -478,8 +482,10 @@ class TestScalabilityPatterns:
         bot._room_id_set = set(mock_config["matrix_room_ids"])
         bot.start_time = 1234567880000  # Converted to milliseconds
 
-        with patch("biblebot.bot.get_bible_text") as mock_get_bible:
-            mock_get_bible.return_value = ("Test verse", "John 3:16")
+        with patch(
+            "biblebot.bot.get_bible_text",
+            new=AsyncMock(return_value=("Test verse", "John 3:16")),
+        ):
 
             # Simulate burst traffic (many requests in short time)
             burst_size = 40

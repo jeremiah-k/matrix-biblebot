@@ -26,7 +26,7 @@ KJV_API_URL_TEMPLATE = "https://bible-api.com/{passage}?translation=kjv"
 
 # Bible translation constants
 DEFAULT_TRANSLATION = "kjv"
-SUPPORTED_TRANSLATIONS = ["kjv", "esv"]
+SUPPORTED_TRANSLATIONS = ("kjv", "esv")
 
 # Message formatting
 REACTION_OK = "✅"
@@ -38,14 +38,15 @@ LOGIN_TIMEOUT_SEC = 30
 API_REQUEST_TIMEOUT_SEC = 10
 
 # Environment variable names
-ENV_MATRIX_ACCESS_TOKEN = "MATRIX_ACCESS_TOKEN"  # nosec B105
+ENV_MATRIX_ACCESS_TOKEN = "MATRIX_ACCESS_TOKEN"  # nosec B105  # noqa: S105
 ENV_ESV_API_KEY = "ESV_API_KEY"
 
 # Configuration keys
+CONFIG_KEY_MATRIX = "matrix"  # root section key
 CONFIG_MATRIX_HOMESERVER = "matrix_homeserver"
 CONFIG_MATRIX_USER = "matrix_user"
 CONFIG_MATRIX_ROOM_IDS = "matrix_room_ids"
-CONFIG_MATRIX_E2EE = "matrix"
+CONFIG_MATRIX_E2EE = "e2ee"
 
 # File permissions
 CONFIG_DIR_PERMISSIONS = 0o700
@@ -53,7 +54,7 @@ CREDENTIALS_FILE_PERMISSIONS = 0o600
 
 # Regular expression patterns
 REFERENCE_PATTERNS = [
-    # Book + chapter:verse[-–verse] [translation]
+    # Book + chapter:verse[-\u2013 verse] [translation]
     re.compile(
         r"^([\w\s]+?)\s+(\d+:\d+(?:[-\u2013]\d+)?)\s*(kjv|esv)?$", re.IGNORECASE
     ),
@@ -115,14 +116,14 @@ SUCCESS_LOGOUT_COMPLETE = "Logout completed successfully"
 
 # Bot error messages
 ERROR_NO_CREDENTIALS_AND_TOKEN = (
-    "No credentials.json and no MATRIX_ACCESS_TOKEN found."  # nosec B105
+    "No credentials.json and no MATRIX_ACCESS_TOKEN found."  # nosec B105  # noqa: S105
 )
 ERROR_AUTH_INSTRUCTIONS = (
     "Run 'biblebot auth login' (preferred) or set MATRIX_ACCESS_TOKEN in .env"
 )
 
 # Default values
-DEFAULT_CONFIG_FILENAME_MAIN = "config.yaml"
+DEFAULT_CONFIG_FILENAME_MAIN = DEFAULT_CONFIG_FILENAME
 
 # Auth prompts
 PROMPT_HOMESERVER = "Matrix homeserver (e.g. https://matrix.org): "
@@ -138,7 +139,7 @@ SAMPLE_CONFIG_FILENAME = "sample_config.yaml"
 # JSON/Dict keys for credentials
 CRED_KEY_HOMESERVER = "homeserver"
 CRED_KEY_USER_ID = "user_id"
-CRED_KEY_ACCESS_TOKEN = "access_token"  # nosec B105
+CRED_KEY_ACCESS_TOKEN = "access_token"  # nosec B105  # noqa: S105
 CRED_KEY_DEVICE_ID = "device_id"
 
 # E2EE status keys
@@ -169,7 +170,7 @@ RESPONSE_YES_PREFIX = "y"
 DISCOVERY_ATTR_HOMESERVER_URL = "homeserver_url"
 
 # CLI argument names and descriptions
-CLI_DESCRIPTION = "BibleBot for Matrix - A Bible verse bot with E2EE support"
+CLI_DESCRIPTION = APP_DESCRIPTION
 CLI_ARG_CONFIG = "--config"
 CLI_ARG_LOG_LEVEL = "--log-level"
 CLI_ARG_VERSION = "--version"
@@ -226,7 +227,7 @@ API_PARAM_FALSE = "false"
 LOGGER_NIO = "nio"
 
 # Warning messages
-WARN_MATRIX_ACCESS_TOKEN_NOT_SET = "MATRIX_ACCESS_TOKEN not set; will rely on saved credentials.json if available"  # nosec B105
+WARN_MATRIX_ACCESS_TOKEN_NOT_SET = "MATRIX_ACCESS_TOKEN not set; will rely on saved credentials.json if available"  # nosec B105  # noqa: S105
 SUCCESS_SERVICE_INSTALLED = "Service installed successfully"
 
 # Info messages
@@ -277,17 +278,8 @@ WARN_E2EE_DEPS_NOT_FOUND_LOGIN = (
 )
 URL_PREFIX_HTTP = "http://"
 URL_PREFIX_HTTPS = "https://"
-PROMPT_PASSWORD = "Password: "  # nosec B105
+PROMPT_PASSWORD = "Password: "  # nosec B105  # noqa: S105
+# DEPRECATED: use E2EE_KEY_* directly; aliases kept for compatibility. TODO: Remove after next minor release.
 STATUS_KEY_ERROR = E2EE_KEY_ERROR
 STATUS_KEY_AVAILABLE = E2EE_KEY_AVAILABLE
 STATUS_KEY_PLATFORM_SUPPORTED = E2EE_KEY_PLATFORM_SUPPORTED
-
-# CLI Messages for interactive mode
-MSG_CONFIG_EXISTS = "Configuration files already exist:"
-MSG_DELETE_EXISTING = "Delete existing files to regenerate them."
-MSG_GENERATED_CONFIG = "Generated config file: {}"
-MSG_GENERATED_ENV = "Generated .env file: {}"
-MSG_EDIT_FILES = (
-    "Please edit these files with your Matrix server details and credentials."
-)
-SUCCESS_CONFIG_GENERATED = "Configuration files generated successfully!"

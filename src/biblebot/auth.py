@@ -292,18 +292,13 @@ async def interactive_login(
     pwd = password or getpass.getpass(PROMPT_PASSWORD)
 
     # E2EE-aware client config
-    try:
-        import importlib.util
-
-        olm_spec = importlib.util.find_spec("olm")
-        e2ee_available = olm_spec is not None
-        if e2ee_available:
-            logger.debug("E2EE dependencies found, enabling encryption for login.")
-        else:
-            logger.debug(WARN_E2EE_DEPS_NOT_FOUND_LOGIN)
-    except ImportError:
-        e2ee_available = False
-        logger.debug(WARN_E2EE_DEPS_NOT_FOUND_LOGIN)
+    status = check_e2ee_status()
+    e2ee_available = bool(status.get(E2EE_KEY_AVAILABLE))
+    logger.debug(
+        "E2EE dependencies %s; encryption %s",
+        "found" if status.get(E2EE_KEY_DEPENDENCIES_INSTALLED) else "missing",
+        "enabled" if e2ee_available else "disabled",
+    )
 
     client_kwargs = {}
     if e2ee_available:
@@ -342,7 +337,7 @@ async def interactive_login(
             logger.error(f"Login failed: {resp}")
             return False
     except asyncio.TimeoutError:
-        logger.exception("Login timed out after 30 seconds")
+        logger.exception(f"Login timed out after {LOGIN_TIMEOUT_SEC} seconds")
         return False
     except (OSError, ValueError, RuntimeError):
         logger.exception("Login error")

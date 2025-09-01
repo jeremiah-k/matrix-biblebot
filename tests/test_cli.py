@@ -13,28 +13,19 @@ from biblebot import cli
 def _consume_coroutine(coro):
     """Helper to properly consume a coroutine in tests."""
     if asyncio.iscoroutine(coro):
-        # Try to use existing event loop if available
+        # Mirror asyncio.run behavior: always use a dedicated event loop
+        loop = asyncio.new_event_loop()
         try:
-            loop = asyncio.get_running_loop()
-            # If we have a running loop, we can't use run_until_complete
-            # Just close the coroutine to avoid warnings
-            coro.close()
-            return None
-        except RuntimeError:
-            # No running loop, create a new one
-            loop = asyncio.new_event_loop()
-            try:
-                return loop.run_until_complete(coro)
-            finally:
-                # Ensure all tasks are cleaned up
-                pending = asyncio.all_tasks(loop)
-                for task in pending:
-                    task.cancel()
-                if pending:
-                    loop.run_until_complete(
-                        asyncio.gather(*pending, return_exceptions=True)
-                    )
-                loop.close()
+            return loop.run_until_complete(coro)
+        finally:
+            pending = asyncio.all_tasks(loop)
+            for task in pending:
+                task.cancel()
+            if pending:
+                loop.run_until_complete(
+                    asyncio.gather(*pending, return_exceptions=True)
+                )
+            loop.close()
     return coro
 
 
@@ -526,7 +517,7 @@ class TestCLIMainFunction:
     def test_auth_login_command(self, mock_exit, mock_run, mock_login, mock_exists):
         """Test auth login command."""
         mock_login.return_value = True
-        mock_run.return_value = True
+        mock_run.side_effect = _consume_coroutine
         mock_exit.side_effect = SystemExit(0)
 
         with pytest.raises(SystemExit) as e:
@@ -669,7 +660,7 @@ class TestCLILegacyFlags:
         """Test legacy --auth-login flag."""
         mock_exists.return_value = True  # Config exists to avoid input prompt
         mock_login.return_value = True
-        mock_run.return_value = True
+        mock_run.side_effect = _consume_coroutine
 
         cli.main()
         mock_warn.assert_called_once()

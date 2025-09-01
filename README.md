@@ -100,12 +100,7 @@ matrix_room_ids:
   - "#room_alias:your_homeserver_domain" # Room aliases are supported
 ```
 
-2. **Edit the .env file** with your access token and optional API keys:
-
-```env
-MATRIX_ACCESS_TOKEN="your_bots_matrix_access_token_here"
-ESV_API_KEY="your_esv_api_key_here"  # Optional
-```
+2. **Optionally set API keys** in config.yaml (preferred) or environment variables if you must use legacy mode. See "Legacy Token Setup (Deprecated)" section below.
 
 The bot will automatically resolve room aliases to room IDs at startup. You can use either room IDs (starting with !) or room aliases (starting with #) in your configuration.
 
@@ -162,7 +157,7 @@ The bot supports End-to-End Encryption for secure communication in encrypted roo
 2. Run the bot: `biblebot` (it will guide you through setup)
 3. Follow the interactive prompts to:
    - Generate configuration file
-   - Edit your Matrix server details
+   - Edit your Matrix room IDs (server/user are handled by 'biblebot auth login')
    - Authenticate with your Matrix account
 4. The bot will start automatically once configured
 

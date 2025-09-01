@@ -151,7 +151,9 @@ class TestMonitoringPatterns:
         assert bot.start_time is not None  # Should have start time
 
         # Test component health
-        with patch("biblebot.bot.get_bible_text") as mock_get_bible:
+        with patch(
+            "biblebot.bot.get_bible_text", new_callable=AsyncMock
+        ) as mock_get_bible:
             mock_get_bible.return_value = ("Test verse", "John 3:16")
 
             # Simulate health check request
@@ -265,10 +267,8 @@ class TestMonitoringPatterns:
                 room.room_id = mock_config["matrix_room_ids"][0]  # Use configured room
 
                 # The real bot doesn't have try/catch, so exceptions will propagate
-                try:
+                with pytest.raises(Exception):
                     await bot.on_room_message(room, event)
-                except Exception:
-                    pass  # Expected for error cases
 
             # Should have tracked both successes and errors
             total_requests = success_count + error_count
@@ -293,7 +293,9 @@ class TestMonitoringPatterns:
         initial_memory = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
         initial_cpu = resource.getrusage(resource.RUSAGE_SELF).ru_utime
 
-        with patch("biblebot.bot.get_bible_text") as mock_get_bible:
+        with patch(
+            "biblebot.bot.get_bible_text", new_callable=AsyncMock
+        ) as mock_get_bible:
             mock_get_bible.return_value = ("Test verse", "John 3:16")
 
             # Process some requests
@@ -478,7 +480,9 @@ class TestMonitoringPatterns:
         bot._room_id_set = set(mock_config["matrix_room_ids"])
         bot.start_time = 1234567880000  # Converted to milliseconds
 
-        with patch("biblebot.bot.get_bible_text") as mock_get_bible:
+        with patch(
+            "biblebot.bot.get_bible_text", new_callable=AsyncMock
+        ) as mock_get_bible:
             mock_get_bible.return_value = ("Test verse", "John 3:16")
 
             # Process requests with structured logging

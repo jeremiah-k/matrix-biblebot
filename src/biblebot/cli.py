@@ -427,7 +427,9 @@ Legacy flags (deprecated):
                 from .auth import check_e2ee_status
 
                 e2ee_status = check_e2ee_status()
-                print(f"  E2EE support: {'✓' if e2ee_status['available'] else '✗'}")
+                print(
+                    f"  E2EE support: {'✓' if e2ee_status[E2EE_KEY_AVAILABLE] else '✗'}"
+                )
 
             except (KeyError, ValueError, TypeError) as e:
                 print(f"✗ Configuration validation failed: {e}")
