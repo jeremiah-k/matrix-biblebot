@@ -496,16 +496,21 @@ async def interactive_login(
     temp_client = AsyncClient(hs, "@temp:temp.com", **temp_client_kwargs)
 
     # Attempt server discovery to normalize homeserver URL
+    original_hs = hs
     hs = await discover_homeserver(temp_client, hs)
     await temp_client.close()
+
+    logger.info(f"Server discovery: {original_hs} -> {hs}")
 
     # Now construct the proper MXID if we have a localpart
     if localpart is not None:
         server_name = urlparse(hs).netloc
         user = f"@{localpart}:{server_name}"
-        logger.debug(
+        logger.info(
             f"Constructed MXID: {user} from localpart: {localpart} and server: {server_name}"
         )
+        logger.info(f"Final homeserver URL: {hs}")
+        logger.info(f"Server netloc: {server_name}")
 
     if not user:
         logger.error("Failed to determine user ID for login")
@@ -584,20 +589,31 @@ async def interactive_login(
         elif isinstance(resp, nio.LoginError):
             # Login failed with proper error response
             logger.error(f"Login failed: {resp.message}")
+            logger.info(f"Error status code: {resp.status_code}")
+            logger.info(f"Full error response: {resp}")
 
             # Provide user-friendly error messages based on the error
             error_message = resp.message.lower()
-            if resp.status_code == "M_FORBIDDEN" or "forbidden" in error_message:
+            if (
+                resp.status_code == "M_LIMIT_EXCEEDED"
+                or "limit" in error_message
+                or "too many" in error_message
+            ):
+                logger.error(
+                    "❌ Too many login attempts. Please wait a few minutes and try again."
+                )
+                if hasattr(resp, "retry_after_ms"):
+                    wait_time = resp.retry_after_ms / 1000 / 60  # Convert to minutes
+                    logger.error(
+                        f"   Server requests waiting {wait_time:.1f} minutes before retry."
+                    )
+            elif resp.status_code == "M_FORBIDDEN" or "forbidden" in error_message:
                 logger.error(
                     "❌ Invalid username or password. Please check your credentials and try again."
                 )
             elif "not found" in error_message or "unknown" in error_message:
                 logger.error(
                     "❌ User not found. Please check your username and homeserver."
-                )
-            elif "limit" in error_message or resp.status_code == "M_LIMIT_EXCEEDED":
-                logger.error(
-                    "❌ Too many login attempts. Please wait a few minutes and try again."
                 )
             else:
                 logger.error(f"❌ Login failed: {resp.message}")
