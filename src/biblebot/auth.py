@@ -695,6 +695,5 @@ async def interactive_logout() -> bool:
             logger.info(f"Cleared E2EE store at {store}")
     except OSError:
         logger.warning(f"Failed to remove E2EE store at {store}", exc_info=True)
-        logger.info(f"Cleared E2EE store at {store}")
 
     return True
