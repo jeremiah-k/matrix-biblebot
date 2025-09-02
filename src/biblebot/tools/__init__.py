@@ -1,7 +1,6 @@
 """Tools and resources for BibleBot."""
 
 import importlib.resources
-import pathlib
 
 from ..constants import SAMPLE_CONFIG_FILENAME
 
