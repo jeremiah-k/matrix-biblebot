@@ -638,12 +638,10 @@ async def interactive_logout() -> bool:
         logger.warning("Failed to remove credentials.json", exc_info=True)
 
     # Remove E2EE store dir
-    try:
-        store = E2EE_STORE_DIR
-        if store.exists():
-            shutil.rmtree(store, ignore_errors=True)
-            logger.info(f"Cleared E2EE store at {store}")
-    except OSError:
-        logger.warning("Failed cleaning E2EE store", exc_info=True)
+    # Remove E2EE store dir
+    store = E2EE_STORE_DIR
+    if store.exists():
+        shutil.rmtree(store, ignore_errors=True)
+        logger.info(f"Cleared E2EE store at {store}")
 
     return True

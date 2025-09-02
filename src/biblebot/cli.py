@@ -679,7 +679,13 @@ Legacy flags (deprecated):
         run_async(bot_main(args.config))
     except KeyboardInterrupt:
         logging.info("Bot stopped by user")
-    except (RuntimeError, ConnectionError, FileNotFoundError):
+    except FileNotFoundError:
+        logging.error(f"Configuration file not found: {args.config}")
+        logging.error(
+            "Please check the path or generate a new config with 'biblebot config generate'."
+        )
+        sys.exit(1)
+    except (RuntimeError, ConnectionError):
         logging.exception("Error running bot")
         sys.exit(1)
     except Exception:
