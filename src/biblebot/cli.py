@@ -8,6 +8,7 @@ import os
 import shutil
 import sys
 import warnings
+from pathlib import Path
 from typing import Awaitable, TypeVar
 
 from . import __version__
@@ -110,7 +111,9 @@ def detect_configuration_state():
     # Check for proper authentication (credentials.json from auth flow)
     if not credentials_path.exists():
         # Check for legacy environment token (deprecated)
-        if os.getenv("MATRIX_ACCESS_TOKEN"):
+        from .constants import ENV_MATRIX_ACCESS_TOKEN
+
+        if os.getenv(ENV_MATRIX_ACCESS_TOKEN):
             return (
                 "ready_legacy",
                 "Bot configured with legacy access token (E2EE not supported). Consider migrating to 'biblebot auth login'.",
@@ -146,20 +149,21 @@ def generate_config(config_path):
     Returns:
         bool: True if a new config file was created; False if the file already existed.
     """
-    config_dir = os.path.dirname(config_path) or os.getcwd()
+    config_path = Path(config_path)
+    config_dir = config_path.parent
 
-    if os.path.exists(config_path):
+    if config_path.exists():
         print(MSG_CONFIG_EXISTS)
         print(f"  {config_path}")
         print(MSG_DELETE_EXISTING)
         print("Otherwise, edit the current file in place.")
         return False
 
-    os.makedirs(config_dir, exist_ok=True)
+    config_dir.mkdir(parents=True, exist_ok=True)
 
     sample_config_path = get_sample_config_path()
 
-    shutil.copy2(sample_config_path, config_path)
+    shutil.copy2(sample_config_path, str(config_path))
 
     # Set restrictive permissions (readable/writable by owner only)
     os.chmod(config_path, 0o600)

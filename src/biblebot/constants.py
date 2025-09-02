@@ -268,17 +268,17 @@ PIPX_VENV_PATH = "%h/.local/pipx/venvs/matrix-biblebot/bin"
 DEFAULT_CONFIG_PATH = "%h/.config/matrix-biblebot/config.yaml"
 WORKING_DIRECTORY = "%h/.config/matrix-biblebot"
 EXEC_START_TEMPLATE = (
-    "%h/.local/bin/biblebot --config %h/.config/matrix-biblebot/config.yaml"
+    f"%h/{LOCAL_BIN_DIR}/bin/{EXECUTABLE_NAME} --config {DEFAULT_CONFIG_PATH}"
 )
 PATH_ENVIRONMENT = "%h/.local/bin:%h/.local/pipx/venvs/matrix-biblebot/bin:/usr/local/bin:/usr/bin:/bin"
 
 SYSTEMCTL_COMMANDS = {
-    "start": "systemctl --user start biblebot.service",
-    "stop": "systemctl --user stop biblebot.service",
-    "restart": "systemctl --user restart biblebot.service",
-    "status": "systemctl --user status biblebot.service",
-    "enable": "systemctl --user enable biblebot.service",
-    "disable": "systemctl --user disable biblebot.service",
+    "start": f"{SYSTEMCTL_PATH} {SYSTEMCTL_ARG_USER} start {SERVICE_NAME}",
+    "stop": f"{SYSTEMCTL_PATH} {SYSTEMCTL_ARG_USER} stop {SERVICE_NAME}",
+    "restart": f"{SYSTEMCTL_PATH} {SYSTEMCTL_ARG_USER} restart {SERVICE_NAME}",
+    "status": f"{SYSTEMCTL_PATH} {SYSTEMCTL_ARG_USER} status {SERVICE_NAME}",
+    "enable": f"{SYSTEMCTL_PATH} {SYSTEMCTL_ARG_USER} enable {SERVICE_NAME}",
+    "disable": f"{SYSTEMCTL_PATH} {SYSTEMCTL_ARG_USER} disable {SERVICE_NAME}",
 }
 
 # Additional auth constants

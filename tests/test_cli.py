@@ -12,7 +12,9 @@ from biblebot import cli
 
 def _consume_coroutine(coro):
     """Run a coroutine to completion (or return the value if not a coroutine)."""
-    return asyncio.run(coro) if asyncio.iscoroutine(coro) else coro
+    from biblebot.cli import run_async
+
+    return run_async(coro) if asyncio.iscoroutine(coro) else coro
 
 
 @pytest.fixture
@@ -437,12 +439,19 @@ class TestMainFunction:
             mock_config_path.exists.return_value = True
             mock_get_config_path.return_value = mock_config_path
             # Create proper Credentials object so bot starts directly
+            import random
+            import string
+
             from biblebot.auth import Credentials
+
+            TEST_ACCESS_TOKEN = "test_" + "".join(
+                random.choices(string.ascii_letters, k=20)
+            )
 
             mock_credentials = Credentials(
                 homeserver="https://matrix.org",
                 user_id="@test:matrix.org",
-                access_token="FAKE_TEST_TOKEN_12345",
+                access_token=TEST_ACCESS_TOKEN,
                 device_id="TEST_DEVICE",
             )
             with patch("biblebot.cli.CONFIG_DIR") as mock_config_dir:
@@ -921,29 +930,31 @@ class TestCLIUtilityFunctions:
         assert path == expected
 
     @patch("os.chmod")
-    @patch("os.makedirs")
+    @patch("pathlib.Path.mkdir")
+    @patch("pathlib.Path.exists")
     @patch("shutil.copy2")
     @patch("biblebot.tools.get_sample_config_path")
-    @patch("os.path.exists")
     def test_generate_config_success(
-        self, mock_exists, mock_get_config, mock_copy, mock_makedirs, mock_chmod
+        self, mock_get_config, mock_copy, mock_path_exists, mock_path_mkdir, mock_chmod
     ):
         """Test successful config generation."""
-        mock_exists.return_value = False  # No existing files
+        mock_path_exists.return_value = False  # No existing files
         mock_get_config.return_value = "/sample/config.yaml"
 
         result = cli.generate_config("/test/config.yaml")
 
         assert result is True
-        mock_makedirs.assert_called_once()
+        mock_path_mkdir.assert_called_once_with(parents=True, exist_ok=True)
         assert mock_copy.call_count == 1  # Only copies config.yaml now
-        mock_chmod.assert_called_once_with("/test/config.yaml", 0o600)
+        from pathlib import Path
+
+        mock_chmod.assert_called_once_with(Path("/test/config.yaml"), 0o600)
 
     @patch("builtins.print")
-    @patch("os.path.exists")
-    def test_generate_config_existing_files(self, mock_exists, mock_print):
+    @patch("pathlib.Path.exists")
+    def test_generate_config_existing_files(self, mock_path_exists, mock_print):
         """Test config generation when files already exist."""
-        mock_exists.return_value = True  # Files exist
+        mock_path_exists.return_value = True  # Files exist
 
         result = cli.generate_config("/test/config.yaml")
 

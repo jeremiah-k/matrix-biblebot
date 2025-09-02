@@ -136,7 +136,14 @@ def get_logger(name):
             backup_count = DEFAULT_LOG_BACKUP_COUNT
 
             if config is not None and "logging" in config:
-                max_bytes = config["logging"].get("max_log_size", max_bytes)
+                # Accept MB (int/float) and bytes (str ending with 'B')
+                val = config["logging"].get("max_log_size", None)
+                if isinstance(val, (int, float)):
+                    max_bytes = int(val * LOG_SIZE_BYTES_MULTIPLIER)
+                elif isinstance(val, str) and val.lower().endswith("b"):
+                    max_bytes = int(val[:-1])
+                elif val is not None:
+                    max_bytes = val
                 backup_count = config["logging"].get("backup_count", backup_count)
 
             file_handler = RotatingFileHandler(
@@ -151,10 +158,14 @@ def get_logger(name):
             )
             logger.addHandler(file_handler)
 
-        except Exception as e:
+        except (OSError, PermissionError) as e:
             # If file logging fails, continue with console only
             console.print(
                 f"[yellow]Warning: Could not create log file at {log_file}: {e}[/yellow]"
+            )
+            # Log with logging.exception for diagnostics
+            logging.getLogger(__name__).debug(
+                "File logging setup failed", exc_info=True
             )
 
     return logger

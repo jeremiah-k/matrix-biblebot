@@ -272,6 +272,11 @@ async def make_api_request(
         ) as response:
             if response.status == 200:
                 try:
+                    content_type = response.headers.get("Content-Type", "")
+                    if "application/json" not in content_type:
+                        logger.warning(
+                            f"Unexpected content-type '{content_type}' from {url}"
+                        )
                     return await response.json()
                 except (aiohttp.ContentTypeError, json.JSONDecodeError):
                     logger.exception(f"Invalid JSON from {url}")
@@ -919,7 +924,8 @@ class BibleBot:
         except Exception:
             # Log full traceback but send generic message to user
             logger.exception(
-                f"Unexpected exception during passage lookup for {passage}"
+                f"Unexpected exception during passage lookup for {passage} "
+                f"(translation={translation}, cache_enabled={self.cache_enabled})"
             )
             await self.client.room_send(
                 room_id,
@@ -1096,8 +1102,8 @@ async def main(config_path=DEFAULT_CONFIG_FILENAME_MAIN):
             if bot and hasattr(bot, "close") and hasattr(bot, "http_session"):
                 await bot.close()
         except Exception:
-            # Ignore cleanup errors (e.g., from mocked objects in tests)
-            pass
+            # Log cleanup errors at debug level for troubleshooting
+            logger.debug("Cleanup error during bot shutdown", exc_info=True)
         finally:
             if client:
                 await client.close()
