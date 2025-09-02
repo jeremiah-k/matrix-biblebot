@@ -14,7 +14,9 @@ CONFIG_DIR = Path.home() / ".config" / APP_NAME
 CREDENTIALS_FILE = CONFIG_DIR / "credentials.json"
 E2EE_STORE_DIR = CONFIG_DIR / "e2ee-store"
 DEFAULT_CONFIG_FILENAME = "config.yaml"
-DEFAULT_ENV_FILENAME = ".env"
+DEFAULT_ENV_FILENAME = (
+    ".env"  # DEPRECATED: no longer generated; kept for env-loading fallback only
+)
 
 # Service configuration
 SERVICE_NAME = "biblebot.service"
@@ -110,7 +112,7 @@ ERROR_E2EE_NOT_SUPPORTED = (
 ERROR_E2EE_DEPS_MISSING = "E2EE dependencies not installed"
 
 # Success messages
-SUCCESS_CONFIG_GENERATED = "Configuration files generated successfully"
+SUCCESS_CONFIG_GENERATED = "Configuration file generated successfully"
 
 # CLI messages
 MSG_CONFIG_EXISTS = "A config file already exists at:"

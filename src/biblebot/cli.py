@@ -223,13 +223,12 @@ def interactive_main():
         except KeyboardInterrupt:
             logger.info("Bot stopped by user.")
         except (RuntimeError, ConnectionError, FileNotFoundError) as e:
-            logger.error(f"Bot failed to start: {e}")
+            logger.exception(f"Bot failed to start: {e}")
             logger.error("Check your configuration and try again.")
             sys.exit(1)
         except Exception as e:
-            logger.error(f"Unexpected error: {e}")
+            logger.exception(f"Unexpected error: {e}")
             logger.error("Check your configuration and try again.")
-            logger.exception("Unexpected error starting bot")
             sys.exit(1)
 
     def _get_user_input(prompt: str, cancellation_message: str = "Cancelled.") -> str:
@@ -528,7 +527,10 @@ Legacy flags (deprecated):
             try:
                 print("✓ Configuration file is valid")
                 print(f"  Config file: {args.config}")
-                print(f"  Matrix rooms: {len(config.get('matrix_room_ids', []))}")
+                rooms = (config.get("matrix", {}) or {}).get("room_ids") or config.get(
+                    "matrix_room_ids", []
+                )
+                print(f"  Matrix rooms: {len(rooms or [])}")
                 from .bot import load_environment
 
                 _, api_keys = load_environment(config, args.config)

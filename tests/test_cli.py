@@ -10,13 +10,6 @@ import pytest
 from biblebot import cli
 
 
-def _consume_coroutine(coro):
-    """Run a coroutine to completion (or return the value if not a coroutine)."""
-    from biblebot.cli import run_async
-
-    return run_async(coro) if asyncio.iscoroutine(coro) else coro
-
-
 @pytest.fixture
 def temp_config_dir(tmp_path):
     """
@@ -439,14 +432,11 @@ class TestMainFunction:
             mock_config_path.exists.return_value = True
             mock_get_config_path.return_value = mock_config_path
             # Create proper Credentials object so bot starts directly
-            import random
-            import string
+            import secrets
 
             from biblebot.auth import Credentials
 
-            TEST_ACCESS_TOKEN = "test_" + "".join(
-                random.choices(string.ascii_letters, k=20)
-            )
+            TEST_ACCESS_TOKEN = secrets.token_urlsafe(24)
 
             mock_credentials = Credentials(
                 homeserver="https://matrix.org",

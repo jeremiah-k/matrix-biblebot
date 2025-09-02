@@ -617,11 +617,9 @@ class BibleBot:
                     )
             else:
                 logger.debug(f"Bot is already in room '{room_id_or_alias}'")
-        except (
-            nio.exceptions.LocalProtocolError,
-            nio.exceptions.RemoteProtocolError,
-            Exception,  # keep as last resort
-        ):
+        except (nio.exceptions.LocalProtocolError, nio.exceptions.RemoteProtocolError):
+            logger.exception(f"Error joining room '{room_id_or_alias}'")
+        except Exception:
             logger.exception(f"Error joining room '{room_id_or_alias}'")
 
     async def ensure_joined_rooms(self):
@@ -1086,16 +1084,6 @@ async def main(config_path=DEFAULT_CONFIG_FILENAME_MAIN):
             aiohttp.ClientError,
         ):
             logger.exception("Failed to upload E2EE keys")
-
-    # Upload keys if needed (E2EE)
-    if e2ee_enabled and creds:
-        try:
-            if client.should_upload_keys:
-                logger.debug("Uploading E2EE keys...")
-                await client.keys_upload()
-                logger.debug("E2EE keys uploaded successfully")
-        except Exception as e:
-            logger.warning(f"Failed to upload E2EE keys: {e}")
 
     # Register event handlers
     logger.debug("Registering event handlers")
