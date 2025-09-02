@@ -11,11 +11,9 @@ import re
 import shutil
 import subprocess
 import sys
-from pathlib import Path
 
 from .constants import (
     APP_NAME,
-    CONFIG_SUBDIR,
     DEFAULT_CONFIG_PATH,
     DIR_SHARE,
     DIR_TOOLS,

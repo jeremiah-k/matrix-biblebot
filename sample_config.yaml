@@ -18,7 +18,7 @@ matrix:
 # Bot behavior configuration
 bot:
   # Default Bible translation to use when none is specified
-  default_translation: "kjv" # Options: "kjv", "esv"
+  default_translation: kjv # Options: "kjv", "esv"
 
   # Enable or disable caching of Bible passages
   cache_enabled: true
@@ -31,4 +31,4 @@ bot:
 # These can also be set via environment variables
 api_keys:
   # ESV API key from https://api.esv.org/
-  esv: "your_esv_api_key_here"
+  esv: your_esv_api_key_here

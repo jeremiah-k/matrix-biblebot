@@ -1,5 +1,3 @@
-import asyncio
-
 import pytest
 
 from biblebot import bot as botmod

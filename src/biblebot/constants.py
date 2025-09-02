@@ -125,8 +125,8 @@ ERROR_AUTH_INSTRUCTIONS = (
 DEFAULT_CONFIG_FILENAME_MAIN = DEFAULT_CONFIG_FILENAME
 
 # Auth prompts
-PROMPT_HOMESERVER = "Matrix homeserver (e.g. https://matrix.org): "
-PROMPT_USERNAME = "Matrix username (e.g. @user:server.com): "
+PROMPT_HOMESERVER = "Matrix homeserver (e.g. matrix.org): "
+PROMPT_USERNAME = "Matrix username (just the username part, e.g. myusername): "
 
 # Environment variable names for system
 ENV_USER = "USER"

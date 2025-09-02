@@ -29,12 +29,12 @@ class TestSecurityPatterns:
     def mock_client(self):
         """
         Create a mocked Matrix client for security tests.
-        
+
         Returns a MagicMock configured with asynchronous stubs for common client methods:
         - room_send: AsyncMock used to assert outgoing messages
         - join: AsyncMock used to assert room joins
         - sync: AsyncMock used to simulate client sync behavior
-        
+
         Returns:
             MagicMock: Mocked client instance with AsyncMock attributes.
         """

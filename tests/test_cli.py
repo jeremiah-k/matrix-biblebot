@@ -414,19 +414,6 @@ class TestMainFunction:
     def test_main_run_bot(self):
         """Test running the bot when config exists."""
 
-        # ✅ CORRECT: Use explicit function replacement (mmrelay pattern)
-        def mock_exists(path):
-            """
-            Mock replacement for os.path.exists that always reports the given path exists.
-
-            Parameters:
-                path (str): Path to check (ignored by this mock).
-
-            Returns:
-                bool: Always returns True.
-            """
-            return True  # Config file exists
-
         def mock_load_credentials():
             """
             Simulate absence of stored credentials by returning None.
@@ -455,9 +442,7 @@ class TestMainFunction:
                 access_token="test_token",
                 device_id="TEST_DEVICE",
             )
-            with patch(
-                "biblebot.auth.load_credentials", return_value=mock_credentials
-            ) as mock_load_creds:
+            with patch("biblebot.auth.load_credentials", return_value=mock_credentials):
                 # Mock the config loading to avoid file system access
                 with patch("biblebot.bot.load_config", return_value=mock_config):
                     # Patch the entrypoint alias used by CLI
@@ -467,7 +452,7 @@ class TestMainFunction:
                         # Patch the CLI's async runner to consume the coroutine
                         with patch(
                             "biblebot.cli.run_async", side_effect=_consume_coroutine
-                        ) as run_patch:
+                        ):
                             with patch("sys.argv", ["biblebot"]):
                                 with patch(
                                     "builtins.input", return_value="n"

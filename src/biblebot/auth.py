@@ -14,7 +14,9 @@ import json
 import logging
 import os
 import shutil
+import ssl
 import tempfile
+import warnings
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Optional
@@ -64,7 +66,43 @@ from .constants import (
     URL_PREFIX_HTTPS,
 )
 
+# Try to import certifi for better SSL handling
+try:
+    import certifi
+except ImportError:
+    certifi = None
+
+# Suppress the specific nio validation warning that occurs when servers return error responses
+# that don't match the success schema (this is a library issue, not our code)
+warnings.filterwarnings(
+    "ignore", message=".*user_id.*required property.*", category=UserWarning
+)
+
 logger = logging.getLogger(LOGGER_NAME)
+
+
+def _create_ssl_context():
+    """
+    Create an SSLContext for Matrix client connections, preferring certifi's CA bundle when available.
+
+    Returns:
+        ssl.SSLContext | None: An SSLContext configured with certifi's CA file if certifi is present,
+        otherwise the system default SSLContext. Returns None only if context creation fails.
+    """
+    try:
+        if certifi:
+            return ssl.create_default_context(cafile=certifi.where())
+        else:
+            return ssl.create_default_context()
+    except Exception as e:
+        logger.warning(
+            f"Failed to create certifi-backed SSL context, falling back to system default: {e}"
+        )
+        try:
+            return ssl.create_default_context()
+        except Exception as fallback_e:
+            logger.error(f"Failed to create system default SSL context: {fallback_e}")
+            return None
 
 
 @dataclass
@@ -311,7 +349,7 @@ def print_e2ee_status():
     """
     status = check_e2ee_status()
 
-    print("\n🔐 E2EE (End-to-End Encryption) Status:")
+    print("\n🔐 Encryption (E2EE) Status:")
     print(f"  Platform Support: {'✓' if status[E2EE_KEY_PLATFORM_SUPPORTED] else '✗'}")
     print(f"  Dependencies: {'✓' if status[E2EE_KEY_DEPENDENCIES_INSTALLED] else '✗'}")
     print(f"  Store Directory: {'✓' if status[E2EE_KEY_STORE_EXISTS] else '✗'}")
@@ -322,10 +360,10 @@ def print_e2ee_status():
         print(f"  Error: {status[E2EE_KEY_ERROR]}")
 
     if not status[E2EE_KEY_AVAILABLE] and status[E2EE_KEY_PLATFORM_SUPPORTED]:
-        print("\n  To enable E2EE:")
+        print("\n  To enable encryption:")
         print('    pip install ".[e2e]"  # preferred')
         print("    # or: pip install -r requirements-e2e.txt")
-        print("    biblebot auth login  # Re-login to enable E2EE")
+        print("    biblebot auth login  # Re-login to enable encryption")
 
     print()
 
@@ -339,6 +377,7 @@ async def discover_homeserver(
     If discovery succeeds and returns a homeserver URL, that URL is returned. Any discovery errors, unexpected exceptions, or a timeout cause the function to return the original `homeserver` argument.
 
     Parameters:
+        client (AsyncClient): Matrix client to use for discovery.
         homeserver (str): Fallback homeserver URL to use if discovery fails or times out.
         timeout (float): Maximum seconds to wait for the discovery request (default 10.0).
 
@@ -346,13 +385,21 @@ async def discover_homeserver(
         str: The discovered homeserver URL, or the provided `homeserver` if discovery did not yield a URL.
     """
     try:
+        logger.debug(f"Attempting server discovery for {homeserver}")
         info = await asyncio.wait_for(client.discovery_info(), timeout=timeout)
-        if isinstance(info, DiscoveryInfoResponse) and getattr(
-            info, DISCOVERY_ATTR_HOMESERVER_URL, None
-        ):
-            return info.homeserver_url
-        if isinstance(info, DiscoveryInfoError):
-            logger.debug("DiscoveryInfoError, using provided homeserver URL")
+        if isinstance(info, DiscoveryInfoResponse):
+            discovered_url = getattr(info, DISCOVERY_ATTR_HOMESERVER_URL, None)
+            if discovered_url:
+                logger.debug(f"Server discovery successful: {discovered_url}")
+                return discovered_url
+            else:
+                logger.debug("Server discovery response missing homeserver URL")
+        elif isinstance(info, DiscoveryInfoError):
+            logger.debug(
+                f"DiscoveryInfoError: {info.message if hasattr(info, 'message') else 'Unknown error'}"
+            )
+        else:
+            logger.debug(f"Unexpected discovery response type: {type(info)}")
     except asyncio.TimeoutError:
         logger.debug("Server discovery timed out; using provided homeserver URL")
     except (
@@ -362,8 +409,13 @@ async def discover_homeserver(
     ) as e:
         logger.debug(
             f"{MSG_SERVER_DISCOVERY_FAILED}: {type(e).__name__}: {e}",
-            exc_info=True,
         )
+    except Exception as e:
+        logger.debug(
+            f"Unexpected error during server discovery: {type(e).__name__}: {e}"
+        )
+
+    logger.debug(f"Using original homeserver URL: {homeserver}")
     return homeserver
 
 
@@ -402,13 +454,18 @@ async def interactive_login(
         hs = URL_PREFIX_HTTPS + hs
 
     user_input = username or input(PROMPT_USERNAME).strip()
-    # If a bare localpart was provided, defer appending the server until after discovery.
+
+    # Handle username input - support both full MXIDs and bare localparts
     localpart: Optional[str] = None
     if user_input.startswith("@"):
+        # Full MXID provided (e.g., @user:server.com)
         user = user_input
+        localpart = None
     else:
+        # Bare localpart provided (e.g., "myusername")
         localpart = user_input
-        user = user_input  # provisional; corrected after discovery
+        # We'll construct the full MXID after server discovery
+        user = None
 
     pwd = password or getpass.getpass(PROMPT_PASSWORD)
 
@@ -421,9 +478,44 @@ async def interactive_login(
         "enabled" if e2ee_available else "disabled",
     )
 
+    # Create SSL context using certifi's certificates with system default fallback
+    ssl_context = _create_ssl_context()
+    if ssl_context is None:
+        logger.warning(
+            "Failed to create certifi/system SSL context; proceeding with AsyncClient defaults"
+        )
+
+    # First, we need to do server discovery to get the canonical homeserver URL
+    # Create a temporary client for discovery
+    temp_client_kwargs = {}
+    if ssl_context:
+        temp_client_kwargs["ssl"] = ssl_context
+
+    temp_client = AsyncClient(hs, "@temp:temp.com", **temp_client_kwargs)
+
+    # Attempt server discovery to normalize homeserver URL
+    hs = await discover_homeserver(temp_client, hs)
+    await temp_client.close()
+
+    # Now construct the proper MXID if we have a localpart
+    if localpart is not None:
+        server_name = urlparse(hs).netloc
+        user = f"@{localpart}:{server_name}"
+        logger.debug(
+            f"Constructed MXID: {user} from localpart: {localpart} and server: {server_name}"
+        )
+
+    if not user:
+        logger.error("Failed to determine user ID for login")
+        return False
+
+    # Create the actual client with the proper homeserver and user ID
     client_kwargs = {}
     if e2ee_available:
         client_kwargs["store_path"] = str(get_store_dir())
+    if ssl_context:
+        client_kwargs["ssl"] = ssl_context
+
     client = AsyncClient(
         hs,
         user,
@@ -433,28 +525,36 @@ async def interactive_login(
         **client_kwargs,
     )
 
-    # Attempt server discovery to normalize homeserver URL
-    hs = await discover_homeserver(client, hs)
-    client.homeserver = hs
-    if localpart is not None:
-        server_name = urlparse(hs).netloc
-        user = f"@{localpart}:{server_name}"
-        # Ensure client uses the corrected MXID for login
-        client.user = user
-
     logger.info(f"Logging in to {hs} as {user}")
     try:
-        resp = await asyncio.wait_for(
-            client.login(password=pwd, device_name=MATRIX_DEVICE_NAME),
-            timeout=LOGIN_TIMEOUT_SEC,
-        )
+        # Temporarily suppress nio validation warnings during login
+        with warnings.catch_warnings():
+            warnings.filterwarnings("ignore", message=".*user_id.*required property.*")
+            resp = await asyncio.wait_for(
+                client.login(password=pwd, device_name=MATRIX_DEVICE_NAME),
+                timeout=LOGIN_TIMEOUT_SEC,
+            )
 
-        if hasattr(resp, "access_token"):
+        # Check if login was successful by looking for access_token
+        if hasattr(resp, "access_token") and resp.access_token:
+            # Ensure we have a valid user_id - prefer response user_id, fallback to corrected user
+            response_user_id = getattr(resp, "user_id", None)
+            if not response_user_id:
+                # If response doesn't have user_id, use the corrected user from discovery
+                response_user_id = user
+
+            # Ensure device_id is present
+            device_id = getattr(resp, "device_id", None)
+            if not device_id:
+                logger.warning(
+                    "Login response missing device_id - this may affect E2EE functionality"
+                )
+
             creds = Credentials(
                 homeserver=hs,
-                user_id=getattr(resp, "user_id", user),
+                user_id=response_user_id,
                 access_token=resp.access_token,
-                device_id=resp.device_id,
+                device_id=device_id,
             )
             save_credentials(creds)
             logger.info("Login successful! Credentials saved.")
@@ -468,8 +568,32 @@ async def interactive_login(
     except (OSError, ValueError, RuntimeError):
         logger.exception("Login error")
         return False
-    except (nio.exceptions.LoginError, nio.exceptions.MatrixRequestError):
-        logger.exception("Matrix login error")
+    except (nio.exceptions.LoginError, nio.exceptions.MatrixRequestError) as e:
+        logger.error(f"Login failed: {e}")
+
+        # Provide clear, user-friendly error messages
+        error_message = str(e).lower()
+        if (
+            "forbidden" in error_message
+            or "invalid username or password" in error_message
+        ):
+            logger.error(
+                "❌ Invalid username or password. Please check your credentials and try again."
+            )
+        elif "not found" in error_message or "unknown" in error_message:
+            logger.error(
+                "❌ User not found. Please check your username and homeserver."
+            )
+        elif "limit" in error_message or "429" in error_message:
+            logger.error(
+                "❌ Too many login attempts. Please wait a few minutes and try again."
+            )
+        elif "network" in error_message or "connection" in error_message:
+            logger.error(
+                "❌ Network error. Please check your internet connection and try again."
+            )
+        else:
+            logger.error(f"❌ Login failed: {e}")
         return False
     except Exception:
         # Unexpected error

@@ -8,6 +8,7 @@ import os
 import shutil
 import sys
 import warnings
+from typing import Awaitable, TypeVar
 
 from . import __version__
 from .auth import interactive_login, interactive_logout, load_credentials
@@ -45,8 +46,6 @@ logger = logging.getLogger(LOGGER_NAME)
 
 
 # Wrapper to ease testing (tests can patch biblebot.cli.run_async)
-from typing import Awaitable, TypeVar
-
 T = TypeVar("T")
 
 
@@ -242,7 +241,7 @@ def interactive_main():
 
     state, message = detect_configuration_state()
 
-    print("🤖 Matrix BibleBot")
+    print("📖✝️ Matrix BibleBot ✝️")
     print(f"Status: {message}")
     print()
 
@@ -273,8 +272,10 @@ def interactive_main():
         print("🔐 Authentication Required")
         print("Configuration found but Matrix credentials are missing.")
         print()
-        print("The bot uses secure session-based authentication that supports E2EE.")
-        print("Manual access tokens are deprecated and don't support E2EE.")
+        print(
+            "The bot uses secure session-based authentication with encryption (E2EE) support."
+        )
+        print("Manual access tokens are deprecated and don't support encryption.")
         print()
         response = _get_user_input(
             "Would you like to login now? [Y/n]: ", "Authentication cancelled."
@@ -433,9 +434,24 @@ Legacy flags (deprecated):
     auth_parser = subparsers.add_parser("auth", help="Authentication management")
     auth_subparsers = auth_parser.add_subparsers(dest="auth_action")
 
-    auth_subparsers.add_parser(
+    # Login subcommand with optional arguments
+    login_parser = auth_subparsers.add_parser(
         "login", help="Interactive login to Matrix and save credentials"
     )
+    login_parser.add_argument(
+        "--homeserver",
+        help="Matrix homeserver URL (e.g., https://matrix.org). If provided, --username and --password are also required.",
+    )
+    login_parser.add_argument(
+        "--username",
+        help="Matrix username (with or without @ and :server). If provided, --homeserver and --password are also required.",
+    )
+    login_parser.add_argument(
+        "--password",
+        metavar="PWD",
+        help="Matrix password (can be empty). If provided, --homeserver and --username are also required. For security, prefer interactive mode.",
+    )
+
     auth_subparsers.add_parser(
         "logout", help="Logout and remove credentials and E2EE store"
     )
@@ -550,7 +566,55 @@ Legacy flags (deprecated):
 
     elif args.command == "auth":
         if args.auth_action == "login":
-            ok = run_async(interactive_login())
+            # Extract arguments if provided
+            homeserver = getattr(args, "homeserver", None)
+            username = getattr(args, "username", None)
+            password = getattr(args, "password", None)
+
+            # Validate argument combinations
+            provided_params = [
+                p for p in [homeserver, username, password] if p is not None
+            ]
+
+            if len(provided_params) > 0 and len(provided_params) < 3:
+                # Some but not all parameters provided - show error
+                missing_params = []
+                if homeserver is None:
+                    missing_params.append("--homeserver")
+                if username is None:
+                    missing_params.append("--username")
+                if password is None:
+                    missing_params.append("--password")
+
+                print(
+                    "❌ Error: All authentication parameters are required when using command-line options."
+                )
+                print(f"   Missing: {', '.join(missing_params)}")
+                print()
+                print("💡 Options:")
+                print("   • For secure interactive authentication: biblebot auth login")
+                print("   • For automated authentication: provide all three parameters")
+                print()
+                print(
+                    "⚠️  Security Note: Command-line passwords may be visible in process lists and shell history."
+                )
+                print("   Interactive mode is recommended for manual use.")
+                sys.exit(1)
+            elif len(provided_params) == 3:
+                # All parameters provided - validate required non-empty fields
+                if not homeserver or not homeserver.strip():
+                    print(
+                        "❌ Error: --homeserver must be non-empty for non-interactive login."
+                    )
+                    sys.exit(1)
+                if not username or not username.strip():
+                    print(
+                        "❌ Error: --username must be non-empty for non-interactive login."
+                    )
+                    sys.exit(1)
+                # Password may be empty (some flows may prompt)
+
+            ok = run_async(interactive_login(homeserver, username, password))
             sys.exit(0 if ok else 1)
         elif args.auth_action == "logout":
             ok = run_async(interactive_logout())
