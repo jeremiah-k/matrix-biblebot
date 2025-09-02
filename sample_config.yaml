@@ -1,7 +1,8 @@
 # Matrix server configuration
 matrix:
-  homeserver: https://your_homeserver_url_here
-  user: "@your_bot_username:your_homeserver_domain"
+  # Homeserver and user are discovered/saved during `biblebot auth login`.
+  # Do not set them here unless you know you need to override discovery.
+
   # List of Matrix room IDs where the bot should respond
   # Get room IDs from Element: Room Settings > Advanced > Internal room ID
   room_ids:

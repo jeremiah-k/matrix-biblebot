@@ -43,10 +43,19 @@ ENV_ESV_API_KEY = "ESV_API_KEY"
 
 # Configuration keys
 CONFIG_KEY_MATRIX = "matrix"  # root section key
-CONFIG_MATRIX_HOMESERVER = "matrix_homeserver"
-CONFIG_MATRIX_USER = "matrix_user"
-CONFIG_MATRIX_ROOM_IDS = "matrix_room_ids"
+
+# Nested subkey constants for matrix section
+CONFIG_MATRIX_SUBKEY_HOMESERVER = "homeserver"
+CONFIG_MATRIX_SUBKEY_USER = "user"
+CONFIG_MATRIX_SUBKEY_ROOM_IDS = "room_ids"
 CONFIG_MATRIX_E2EE = "e2ee"
+
+# DEPRECATED: Legacy flat keys - use nested structure instead
+CONFIG_MATRIX_HOMESERVER = "matrix_homeserver"  # DEPRECATED: use CONFIG_KEY_MATRIX + CONFIG_MATRIX_SUBKEY_HOMESERVER
+CONFIG_MATRIX_USER = (
+    "matrix_user"  # DEPRECATED: use CONFIG_KEY_MATRIX + CONFIG_MATRIX_SUBKEY_USER
+)
+CONFIG_MATRIX_ROOM_IDS = "matrix_room_ids"  # DEPRECATED: use CONFIG_KEY_MATRIX + CONFIG_MATRIX_SUBKEY_ROOM_IDS
 
 # File permissions
 CONFIG_DIR_PERMISSIONS = 0o700

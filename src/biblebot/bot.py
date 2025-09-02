@@ -755,7 +755,7 @@ class BibleBot:
             search_patterns = REFERENCE_PATTERNS
 
             passage = None
-            translation = DEFAULT_TRANSLATION  # Default translation
+            translation = self.default_translation  # Default translation
             for pattern in search_patterns:
                 match = pattern.search(event.body)
                 if match:
@@ -768,7 +768,9 @@ class BibleBot:
                     ):  # Check if the translation (esv or kjv) is specified
                         translation = match.group(3).lower()
                     else:
-                        translation = DEFAULT_TRANSLATION  # Fall back to default
+                        translation = (
+                            self.default_translation
+                        )  # Fall back to config default
                     logger.info(
                         f"Detected Bible reference: {passage} ({translation.upper()})"
                     )
