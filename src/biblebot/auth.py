@@ -527,80 +527,68 @@ async def interactive_login(
 
     logger.info(f"Logging in to {hs} as {user}")
     try:
-        # Temporarily suppress nio validation warnings during login
-        with warnings.catch_warnings():
-            warnings.filterwarnings("ignore", message=".*user_id.*required property.*")
-            resp = await asyncio.wait_for(
-                client.login(password=pwd, device_name=MATRIX_DEVICE_NAME),
-                timeout=LOGIN_TIMEOUT_SEC,
-            )
+        resp = await asyncio.wait_for(
+            client.login(password=pwd, device_name=MATRIX_DEVICE_NAME),
+            timeout=LOGIN_TIMEOUT_SEC,
+        )
 
-        # Check if login was successful by looking for access_token
-        if hasattr(resp, "access_token") and resp.access_token:
-            # Ensure we have a valid user_id - prefer response user_id, fallback to corrected user
-            response_user_id = getattr(resp, "user_id", None)
-            if not response_user_id:
-                # If response doesn't have user_id, use the corrected user from discovery
-                response_user_id = user
-
-            # Ensure device_id is present
-            device_id = getattr(resp, "device_id", None)
-            if not device_id:
-                logger.warning(
-                    "Login response missing device_id - this may affect E2EE functionality"
-                )
-
+        # Check if login was successful - nio returns LoginResponse on success, LoginError on failure
+        if isinstance(resp, nio.LoginResponse):
+            # LoginResponse has user_id, device_id, and access_token fields
             creds = Credentials(
                 homeserver=hs,
-                user_id=response_user_id,
+                user_id=resp.user_id,
                 access_token=resp.access_token,
-                device_id=device_id,
+                device_id=resp.device_id,
             )
             save_credentials(creds)
             logger.info("Login successful! Credentials saved.")
+            await client.close()
             return True
+        elif isinstance(resp, nio.LoginError):
+            logger.error(f"Login failed: {resp.message}")
+
+            # Provide user-friendly error messages based on the error
+            error_message = resp.message.lower()
+            if resp.status_code == "M_FORBIDDEN" or "forbidden" in error_message:
+                logger.error(
+                    "❌ Invalid username or password. Please check your credentials and try again."
+                )
+            elif "not found" in error_message or "unknown" in error_message:
+                logger.error(
+                    "❌ User not found. Please check your username and homeserver."
+                )
+            elif "limit" in error_message or resp.status_code == "M_LIMIT_EXCEEDED":
+                logger.error(
+                    "❌ Too many login attempts. Please wait a few minutes and try again."
+                )
+            else:
+                logger.error(f"❌ Login failed: {resp.message}")
+            return False
         else:
-            logger.error(f"Login failed: {resp}")
+            logger.error(f"Unexpected login response type: {type(resp)}")
+            await client.close()
             return False
     except asyncio.TimeoutError:
         logger.exception("Login timed out after %s seconds", LOGIN_TIMEOUT_SEC)
+        await client.close()
         return False
     except (OSError, ValueError, RuntimeError):
         logger.exception("Login error")
+        await client.close()
         return False
-    except (nio.exceptions.LoginError, nio.exceptions.MatrixRequestError) as e:
-        logger.error(f"Login failed: {e}")
-
-        # Provide clear, user-friendly error messages
-        error_message = str(e).lower()
-        if (
-            "forbidden" in error_message
-            or "invalid username or password" in error_message
-        ):
-            logger.error(
-                "❌ Invalid username or password. Please check your credentials and try again."
-            )
-        elif "not found" in error_message or "unknown" in error_message:
-            logger.error(
-                "❌ User not found. Please check your username and homeserver."
-            )
-        elif "limit" in error_message or "429" in error_message:
-            logger.error(
-                "❌ Too many login attempts. Please wait a few minutes and try again."
-            )
-        elif "network" in error_message or "connection" in error_message:
-            logger.error(
-                "❌ Network error. Please check your internet connection and try again."
-            )
-        else:
-            logger.error(f"❌ Login failed: {e}")
+    except (nio.exceptions.MatrixRequestError, aiohttp.ClientError) as e:
+        logger.error(f"Network/request error during login: {e}")
+        logger.error(
+            "❌ Network error. Please check your internet connection and homeserver URL."
+        )
+        await client.close()
         return False
     except Exception:
         # Unexpected error
         logger.exception("Unexpected login error")
-        return False
-    finally:
         await client.close()
+        return False
 
 
 async def interactive_logout() -> bool:

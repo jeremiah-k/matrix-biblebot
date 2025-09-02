@@ -393,10 +393,12 @@ class TestInteractiveLogin:
             mock_client = AsyncMock()
             mock_client_class.return_value = mock_client
 
-            mock_response = MagicMock()
-            mock_response.access_token = "test_token"
-            mock_response.device_id = "test_device"
-            mock_response.user_id = "@test:matrix.org"
+            # Create a proper nio.LoginResponse instance
+            mock_response = nio.LoginResponse(
+                user_id="@test:matrix.org",
+                device_id="test_device",
+                access_token="test_token",
+            )
             mock_client.login.return_value = mock_response
 
             # Mock importlib for E2EE check
