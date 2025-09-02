@@ -844,7 +844,10 @@ class BibleBot:
                             f"[Message too long]{html.escape(MESSAGE_SUFFIX)}"
                         )
 
-            logger.info(f"Sending scripture: {reference}")
+            if reference:
+                logger.info(f"Sending scripture: {reference}")
+            else:
+                logger.info("Sending scripture response")
 
             content = {
                 "msgtype": "m.text",

@@ -171,12 +171,20 @@ def get_template_service_content():
             mode="w+", suffix=".service", delete=False
         ) as temp_file:
             template_path = copy_service_template_to(temp_file.name)
-            with open(template_path, FILE_MODE_READ, encoding="utf-8") as f:
-                service_template = f.read()
-            os.unlink(template_path)  # Clean up temp file
-            return service_template
-    except Exception as e:
+            try:
+                with open(template_path, FILE_MODE_READ, encoding="utf-8") as f:
+                    service_template = f.read()
+                return service_template
+            finally:
+                # Ensure temp file is always cleaned up
+                try:
+                    os.unlink(template_path)
+                except OSError:
+                    pass  # File may not exist or be accessible
+    except (OSError, IOError, ValueError) as e:
         print(f"Error reading service template: {e}")
+    except Exception as e:
+        print(f"Unexpected error reading service template: {e}")
 
     # If the helper function failed, try using importlib.resources directly
     try:
@@ -197,7 +205,7 @@ def get_template_service_content():
                 with open(template_path, FILE_MODE_READ, encoding="utf-8") as f:
                     service_template = f.read()
                 return service_template
-            except Exception as e:
+            except (OSError, IOError) as e:
                 print(f"Error reading service template file: {e}")
 
     # If we couldn't find or read the template file, use a default template
@@ -245,7 +253,7 @@ def is_service_enabled():
             text=True,
         )
         return result.returncode == 0 and result.stdout.strip() == "enabled"
-    except Exception:
+    except (subprocess.SubprocessError, OSError, FileNotFoundError):
         return False
 
 
@@ -263,7 +271,7 @@ def is_service_active():
             text=True,
         )
         return result.returncode == 0 and result.stdout.strip() == "active"
-    except Exception:
+    except (subprocess.SubprocessError, OSError, FileNotFoundError):
         return False
 
 
@@ -318,6 +326,8 @@ def create_service_file():
     exec_cmd = executable_path
     if exec_cmd == sys.executable:
         exec_cmd = f"{shlex.quote(sys.executable)} -m biblebot"
+    else:
+        exec_cmd = shlex.quote(exec_cmd)
 
     # Replace ExecStart line to use discovered command and default config path
     exec_start_line = f'ExecStart={exec_cmd} --config "{DEFAULT_CONFIG_PATH}"'
@@ -435,7 +445,7 @@ def check_loginctl_available():
     """
     try:
         return shutil.which("loginctl") is not None
-    except Exception:
+    except (OSError, TypeError):
         return False
 
 
@@ -463,7 +473,7 @@ def check_lingering_enabled():
             text=True,
         )
         return result.returncode == 0 and "Linger=yes" in result.stdout
-    except Exception:
+    except (subprocess.SubprocessError, OSError, FileNotFoundError):
         return False
 
 
@@ -494,7 +504,7 @@ def enable_lingering():
         else:
             print(f"Error enabling lingering: {result.stderr}")
             return False
-    except Exception as e:
+    except (subprocess.SubprocessError, OSError, FileNotFoundError) as e:
         print(f"Error enabling lingering: {e}")
         return False
 
