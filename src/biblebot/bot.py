@@ -748,7 +748,13 @@ class BibleBot:
         - invokes handle_scripture_command(room_id, passage, translation, event) to produce a reply.
 
         Parameters are typed (MatrixRoom, RoomMessageText) and represent the source room and the received event.
+        This handles both unencrypted messages and successfully decrypted messages from encrypted rooms.
         """
+        # Log message reception for debugging encrypted room issues
+        logger.debug(
+            f"Received message in room {room.room_id} from {event.sender}: "
+            f"encrypted={room.encrypted}, decrypted={getattr(event, 'decrypted', False)}"
+        )
         if (
             room.room_id in self._room_id_set
             and event.sender != self.client.user_id
@@ -1060,13 +1066,15 @@ async def main(config_path=DEFAULT_CONFIG_FILENAME_MAIN):
     logger.debug("Registering event handlers")
     client.add_event_callback(bot.on_invite, InviteEvent)
     client.add_event_callback(bot.on_room_message, RoomMessageText)
-    # Register decryption failure handler for encrypted rooms
+
+    # Register encrypted message handlers for E2EE rooms
     if e2ee_enabled:
         try:
+            # Handle decryption failures for encrypted messages
             client.add_event_callback(bot.on_decryption_failure, MegolmEvent)
         except AttributeError:
             logger.debug(
-                "Decryption-failure callback registration not supported by this nio version",
+                "E2EE callback registration not supported by this nio version",
                 exc_info=True,
             )
 
