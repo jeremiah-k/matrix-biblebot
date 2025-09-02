@@ -535,13 +535,16 @@ class TestCLIMainFunction:
         return 0
 
     @patch("sys.argv", ["biblebot"])
-    @patch("builtins.input", return_value="y")
-    @patch("os.path.exists", return_value=True)
+    @patch("biblebot.cli.detect_configuration_state")
     @patch("biblebot.auth.load_credentials")
     @patch("biblebot.cli.bot_main", new=_stub_bot_main_log_level)
-    def test_log_level_setting(self, mock_load_creds, mock_exists, mock_input):
+    def test_log_level_setting(self, mock_load_creds, mock_detect_state):
         """Test log level setting."""
-        mock_exists.return_value = True
+        # Mock configuration state to be ready (config and auth exist)
+        mock_detect_state.return_value = (
+            "ready",
+            "Bot is configured and ready to start.",
+        )
         mock_load_creds.return_value = Mock()
 
         # Should not raise exception - just run the bot
