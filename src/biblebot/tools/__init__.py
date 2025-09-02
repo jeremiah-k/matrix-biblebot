@@ -13,8 +13,22 @@ def get_sample_config_path():
     """
     try:
         res = importlib.resources.files("biblebot.tools") / SAMPLE_CONFIG_FILENAME
+        import shutil
+        import tempfile
+
         with importlib.resources.as_file(res) as p:
-            return str(p)
+            # Copy to a permanent temporary file since as_file() may delete the original
+            temp_fd, temp_path = tempfile.mkstemp(suffix=f"_{SAMPLE_CONFIG_FILENAME}")
+            try:
+                with open(temp_fd, "wb") as temp_file:
+                    with open(p, "rb") as source_file:
+                        shutil.copyfileobj(source_file, temp_file)
+                return temp_path
+            except:
+                import os
+
+                os.unlink(temp_path)
+                raise
     except AttributeError:
         return str(pathlib.Path(__file__).parent / SAMPLE_CONFIG_FILENAME)
 
@@ -26,7 +40,21 @@ def get_service_template_path():
     """
     try:
         res = importlib.resources.files("biblebot.tools") / "biblebot.service"
+        import shutil
+        import tempfile
+
         with importlib.resources.as_file(res) as p:
-            return str(p)
+            # Copy to a permanent temporary file since as_file() may delete the original
+            temp_fd, temp_path = tempfile.mkstemp(suffix="_biblebot.service")
+            try:
+                with open(temp_fd, "wb") as temp_file:
+                    with open(p, "rb") as source_file:
+                        shutil.copyfileobj(source_file, temp_file)
+                return temp_path
+            except:
+                import os
+
+                os.unlink(temp_path)
+                raise
     except AttributeError:
         return str(pathlib.Path(__file__).parent / "biblebot.service")

@@ -240,8 +240,12 @@ class TestIntegrationPatterns:
                 # The real bot doesn't have try/catch, so exceptions will propagate
                 try:
                     await bot.on_room_message(room, event)
-                except Exception:
-                    pass  # Expected for first 2 calls
+                except PassageNotFound:
+                    pass  # Expected for first 2 calls with invalid passages
+                except Exception as e:
+                    # Don't swallow unexpected exceptions - they could indicate regressions
+                    if "Invalid passage" not in str(e):
+                        raise
 
             # Should have attempted all requests
             assert call_count == 5

@@ -852,6 +852,18 @@ class BibleBot:
         except (aiohttp.ClientError, asyncio.TimeoutError) as e:
             # Network or timeout errors - could be retried
             logger.warning(f"Network error during passage lookup for {passage}: {e}")
+            await self.client.room_send(
+                room_id,
+                "m.room.message",
+                {
+                    "msgtype": "m.text",
+                    "body": "Sorry, I'm having trouble connecting to the Bible API right now. Please try again later.",
+                    "format": "org.matrix.custom.html",
+                    "formatted_body": html.escape(
+                        "Sorry, I'm having trouble connecting to the Bible API right now. Please try again later."
+                    ),
+                },
+            )
         except Exception:
             # Log full traceback but send generic message to user
             logger.exception(
