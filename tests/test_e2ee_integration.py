@@ -27,34 +27,6 @@ def mock_credentials():
     )
 
 
-@pytest.fixture
-def e2ee_config():
-    """
-    Pytest fixture returning a sample E2EE-enabled Matrix configuration used in tests.
-
-    Returns:
-        dict: Configuration mapping with keys:
-            - "matrix": dict containing:
-                - "homeserver": test homeserver URL (TEST_HOMESERVER)
-                - "bot_user_id": test bot user id (TEST_USER_ID)
-                - "e2ee": dict with:
-                    - "enabled" (bool): whether E2EE is enabled (True)
-                    - "store_path" (str): path to the local E2EE store ("/test/store")
-            - "matrix_room_ids": list of test room IDs ([TEST_ROOM_ID])
-    """
-    return {
-        "matrix": {
-            "homeserver": TEST_HOMESERVER,
-            "bot_user_id": TEST_USER_ID,
-            "e2ee": {
-                "enabled": True,
-                "store_path": "/test/store",
-            },
-        },
-        "matrix_room_ids": [TEST_ROOM_ID],
-    }
-
-
 class TestE2EEStatus:
     """Test E2EE status checking functionality."""
 
@@ -229,7 +201,7 @@ class TestDiscoverHomeserver:
 
         # Mock AsyncClient with discovery error
         mock_client = MagicMock()
-        mock_client.discovery_info = AsyncMock(return_value=DiscoveryInfoError("Error"))
+        mock_client.discovery_info = AsyncMock(side_effect=DiscoveryInfoError("Error"))
 
         result = await discover_homeserver(mock_client, "invalid.server")
 

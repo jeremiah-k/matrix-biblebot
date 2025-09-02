@@ -237,15 +237,8 @@ class TestIntegrationPatterns:
                 room = MagicMock()
                 room.room_id = "!room1:matrix.org"
 
-                # The real bot doesn't have try/catch, so exceptions will propagate
-                try:
-                    await bot.on_room_message(room, event)
-                except PassageNotFound:
-                    pass  # Expected for first 2 calls with invalid passages
-                except Exception as e:
-                    # Don't swallow unexpected exceptions - they could indicate regressions
-                    if "Invalid passage" not in str(e):
-                        raise
+                # All calls should complete (bot handles errors internally)
+                await bot.on_room_message(room, event)
 
             # Should have attempted all requests
             assert call_count == 5

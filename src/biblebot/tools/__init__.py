@@ -8,53 +8,61 @@ from ..constants import SAMPLE_CONFIG_FILENAME
 
 def get_sample_config_path():
     """
-    Return the filesystem path to the bundled sample configuration file as a string.
-    Uses importlib.resources.files (Python 3.9+) to locate the resource; on older Python versions falls back to the package file location next to this module. The returned path points to the resource named by SAMPLE_CONFIG_FILENAME.
+    Return a filesystem path for the bundled sample config.
+    WARNING: Under zipped installs this may be ephemeral. Prefer copy_sample_config_to().
     """
     try:
         res = importlib.resources.files("biblebot.tools") / SAMPLE_CONFIG_FILENAME
-        import shutil
-        import tempfile
-
+        # Caller should prefer copy_sample_config_to(); this path may be ephemeral.
         with importlib.resources.as_file(res) as p:
-            # Copy to a permanent temporary file since as_file() may delete the original
-            temp_fd, temp_path = tempfile.mkstemp(suffix=f"_{SAMPLE_CONFIG_FILENAME}")
-            try:
-                with open(temp_fd, "wb") as temp_file:
-                    with open(p, "rb") as source_file:
-                        shutil.copyfileobj(source_file, temp_file)
-                return temp_path
-            except:
-                import os
-
-                os.unlink(temp_path)
-                raise
+            return str(p)
     except AttributeError:
         return str(pathlib.Path(__file__).parent / SAMPLE_CONFIG_FILENAME)
+
+
+def copy_sample_config_to(dst_path: str) -> str:
+    """
+    Copy the bundled sample configuration to dst_path and return dst_path.
+    Always yields a stable file even under zipped installs.
+    """
+    import shutil
+
+    try:
+        res = importlib.resources.files("biblebot.tools") / SAMPLE_CONFIG_FILENAME
+        with importlib.resources.as_file(res) as p:
+            shutil.copy2(p, dst_path)
+        return dst_path
+    except AttributeError:
+        src = pathlib.Path(__file__).parent / SAMPLE_CONFIG_FILENAME
+        shutil.copy2(src, dst_path)
+        return dst_path
 
 
 def get_service_template_path():
     """
     Return the filesystem path to the packaged service template file as a string.
-    Attempts to resolve the resource using importlib.resources.files (Python 3.9+). If that API is unavailable, falls back to locating "biblebot.service" relative to this module's file.
+    WARNING: Under zipped installs this may be ephemeral. Prefer copy_service_template_to().
     """
     try:
         res = importlib.resources.files("biblebot.tools") / "biblebot.service"
-        import shutil
-        import tempfile
-
         with importlib.resources.as_file(res) as p:
-            # Copy to a permanent temporary file since as_file() may delete the original
-            temp_fd, temp_path = tempfile.mkstemp(suffix="_biblebot.service")
-            try:
-                with open(temp_fd, "wb") as temp_file:
-                    with open(p, "rb") as source_file:
-                        shutil.copyfileobj(source_file, temp_file)
-                return temp_path
-            except:
-                import os
-
-                os.unlink(temp_path)
-                raise
+            return str(p)
     except AttributeError:
         return str(pathlib.Path(__file__).parent / "biblebot.service")
+
+
+def copy_service_template_to(dst_path: str) -> str:
+    """
+    Copy the packaged service template to dst_path and return dst_path.
+    """
+    import shutil
+
+    try:
+        res = importlib.resources.files("biblebot.tools") / "biblebot.service"
+        with importlib.resources.as_file(res) as p:
+            shutil.copy2(p, dst_path)
+        return dst_path
+    except AttributeError:
+        src = pathlib.Path(__file__).parent / "biblebot.service"
+        shutil.copy2(src, dst_path)
+        return dst_path

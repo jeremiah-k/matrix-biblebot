@@ -857,11 +857,9 @@ class BibleBot:
                 "m.room.message",
                 {
                     "msgtype": "m.text",
-                    "body": "Sorry, I'm having trouble connecting to the Bible API right now. Please try again later.",
+                    "body": ERROR_PASSAGE_NOT_FOUND,
                     "format": "org.matrix.custom.html",
-                    "formatted_body": html.escape(
-                        "Sorry, I'm having trouble connecting to the Bible API right now. Please try again later."
-                    ),
+                    "formatted_body": html.escape(ERROR_PASSAGE_NOT_FOUND),
                 },
             )
         except Exception:

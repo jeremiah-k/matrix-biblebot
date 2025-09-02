@@ -553,8 +553,6 @@ class TestCLIMainFunction:
         with pytest.raises(SystemExit):
             cli.main()
 
-    @patch("sys.argv", ["biblebot", "--log-level", "debug"])
-    @patch("os.path.exists")
     async def _stub_bot_main_log_level(*_a, **_k):
         return 0
 
@@ -777,7 +775,6 @@ class TestCLILegacyFlags:
 class TestCLIBotOperation:
     """Test CLI bot operation scenarios."""
 
-    @patch("sys.argv", ["biblebot"])
     async def _stub_bot_main_with_config(*_a, **_k):
         return 0
 
