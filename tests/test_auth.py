@@ -914,6 +914,37 @@ class TestDirectoryManagement:
         assert result == mock_creds_file
 
 
+class TestInputValidation:
+    """Test input validation in interactive login."""
+
+    @patch("builtins.input")
+    @patch("getpass.getpass")
+    @pytest.mark.asyncio
+    async def test_empty_homeserver_validation(self, mock_getpass, mock_input):
+        """Test that empty homeserver input is rejected."""
+        mock_input.return_value = ""  # Empty homeserver
+        mock_getpass.return_value = "password"
+
+        result = await auth.interactive_login()
+
+        assert result is False
+
+    @patch("builtins.input")
+    @patch("getpass.getpass")
+    @pytest.mark.asyncio
+    async def test_empty_username_validation(self, mock_getpass, mock_input):
+        """Test that empty username input is rejected."""
+        mock_input.side_effect = [
+            "https://matrix.org",
+            "",
+        ]  # Valid homeserver, empty username
+        mock_getpass.return_value = "password"
+
+        result = await auth.interactive_login()
+
+        assert result is False
+
+
 class TestDiscoverHomeserverExceptions:
     """Test homeserver discovery exception handling."""
 

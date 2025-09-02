@@ -450,10 +450,16 @@ async def interactive_login(
             return False
 
     hs = homeserver or input(PROMPT_HOMESERVER).strip()
+    if not hs:
+        logger.error("Homeserver cannot be empty.")
+        return False
     if not (hs.startswith(URL_PREFIX_HTTP) or hs.startswith(URL_PREFIX_HTTPS)):
         hs = URL_PREFIX_HTTPS + hs
 
     user_input = username or input(PROMPT_USERNAME).strip()
+    if not user_input:
+        logger.error("Username cannot be empty.")
+        return False
 
     # Handle username input - support both full MXIDs and bare localparts
     localpart: Optional[str] = None

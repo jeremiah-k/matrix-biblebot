@@ -210,8 +210,6 @@ def load_environment(config: dict, config_path: str):
             break  # Stop after finding the first .env file
 
     if not env_loaded:
-        # Still call load_dotenv to pick up any env already set or parent dirs
-        load_dotenv()
         logger.debug(INFO_NO_ENV_FILE)
 
     # Get access token from environment (legacy support with deprecation warning)
