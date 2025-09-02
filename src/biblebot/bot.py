@@ -103,7 +103,7 @@ def normalize_book_name(book_str: str) -> str:
 
 
 # Load config
-def load_config(config_file):
+def load_config(config_file, log_loading=True):
     """
     Load and validate the bot configuration from a YAML file.
 
@@ -114,6 +114,8 @@ def load_config(config_file):
 
     Parameters:
         config_file (str): Path to the YAML configuration file.
+        log_loading (bool): Whether to log the "Loaded configuration" message.
+                           Set to False to suppress duplicate logging.
 
     Returns:
         dict | None: Parsed configuration dictionary on success; None if the file
@@ -161,7 +163,8 @@ def load_config(config_file):
             # Ensure matrix_room_ids is available at top level for backward compatibility
             config[CONFIG_MATRIX_ROOM_IDS] = room_ids
 
-            logger.info(f"Loaded configuration from {config_file}")
+            if log_loading:
+                logger.info(f"Loaded configuration from {config_file}")
             return config
     except (OSError, yaml.YAMLError):
         logger.exception(f"Error loading config from {config_file}")
@@ -753,6 +756,24 @@ class BibleBot:
         except Exception:
             logger.warning("Failed to send reaction", exc_info=True)
 
+    async def _send_error_message(self, room_id: str, message: str):
+        """Send a formatted error message to a room."""
+        content = {
+            "msgtype": "m.text",
+            "body": message,
+            "format": "org.matrix.custom.html",
+            "formatted_body": html.escape(message),
+        }
+        try:
+            await self.client.room_send(
+                room_id,
+                "m.room.message",
+                content,
+                ignore_unverified_devices=True,
+            )
+        except Exception:
+            logger.exception(f"Failed to send error message to room {room_id}")
+
     async def on_room_message(self, room: MatrixRoom, event: RoomMessageText):
         """
         Handle incoming room message events, detect Bible verse references, and trigger scripture processing.
@@ -919,61 +940,36 @@ class BibleBot:
 
         except (PassageNotFound, APIKeyMissing) as e:
             logger.warning(f"Failed to retrieve passage: {passage} ({e})")
-            await self.client.room_send(
-                room_id,
-                "m.room.message",
-                {
-                    "msgtype": "m.text",
-                    "body": ERROR_PASSAGE_NOT_FOUND,
-                    "format": "org.matrix.custom.html",
-                    "formatted_body": html.escape(ERROR_PASSAGE_NOT_FOUND),
-                },
-                ignore_unverified_devices=True,
-            )
+            await self._send_error_message(room_id, ERROR_PASSAGE_NOT_FOUND)
         except (aiohttp.ClientError, asyncio.TimeoutError) as e:
             # Network or timeout errors - could be retried
             logger.warning(f"Network error during passage lookup for {passage}: {e}")
-            await self.client.room_send(
-                room_id,
-                "m.room.message",
-                {
-                    "msgtype": "m.text",
-                    "body": ERROR_PASSAGE_NOT_FOUND,
-                    "format": "org.matrix.custom.html",
-                    "formatted_body": html.escape(ERROR_PASSAGE_NOT_FOUND),
-                },
-                ignore_unverified_devices=True,
-            )
+            await self._send_error_message(room_id, ERROR_PASSAGE_NOT_FOUND)
         except Exception:
             # Log full traceback but send generic message to user
             logger.exception(
                 f"Unexpected exception during passage lookup for {passage} "
                 f"(translation={translation}, cache_enabled={self.cache_enabled})"
             )
-            await self.client.room_send(
-                room_id,
-                "m.room.message",
-                {
-                    "msgtype": "m.text",
-                    "body": ERROR_PASSAGE_NOT_FOUND,
-                    "format": "org.matrix.custom.html",
-                    "formatted_body": html.escape(ERROR_PASSAGE_NOT_FOUND),
-                },
-                ignore_unverified_devices=True,
-            )
+            await self._send_error_message(room_id, ERROR_PASSAGE_NOT_FOUND)
 
 
 # Run bot
-async def main(config_path=DEFAULT_CONFIG_FILENAME_MAIN):
+async def main(config_path=DEFAULT_CONFIG_FILENAME_MAIN, config=None):
     """
     Main entry point for the bot.
     Loads configuration, sets up the bot, and starts processing events.
+
+    Parameters:
+        config_path (str): Path to the configuration file.
+        config (dict, optional): Pre-loaded configuration. If provided, config_path is only used for environment loading.
     """
-    # Load config and environment variables
-    config = load_config(config_path)
-    if not config:
-        logger.error(f"Failed to load configuration from {config_path}")
-        raise RuntimeError(f"Failed to load configuration from {config_path}")
+    # Load config and environment variables (only if not already provided)
+    if config is None:
+        config = load_config(config_path)
+        if not config:
+            logger.error(f"Failed to load configuration from {config_path}")
+            raise RuntimeError(f"Failed to load configuration from {config_path}")
 
     matrix_access_token, api_keys = load_environment(config, config_path)
     creds = load_credentials()
@@ -1121,3 +1117,11 @@ async def main(config_path=DEFAULT_CONFIG_FILENAME_MAIN):
         finally:
             if client:
                 await client.close()
+
+
+async def main_with_config(config_path: str, config: dict):
+    """
+    Main entry point for the bot with pre-loaded configuration.
+    This avoids duplicate config loading when called from CLI.
+    """
+    return await main(config_path, config)

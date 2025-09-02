@@ -207,7 +207,9 @@ def interactive_main():
         try:
             from .bot import load_config
 
-            config = load_config(config_path)
+            # Load config without logging message to avoid duplicate logging
+            # (config was already loaded in detect_configuration_state)
+            config = load_config(config_path, log_loading=False)
             configure_logging(config)
         except (OSError, ValueError, TypeError):
             # If config loading fails, use default logging
@@ -219,7 +221,15 @@ def interactive_main():
         logger.info(f"Starting Matrix BibleBot{mode}...")
 
         try:
-            run_async(bot_main(str(config_path)))
+            # Import bot module after logging is configured
+            from biblebot import bot
+
+            # If we successfully loaded config above, pass it to avoid duplicate loading
+            if "config" in locals() and config is not None:
+                run_async(bot.main_with_config(str(config_path), config))
+            else:
+                # Fallback to original method if config loading failed
+                run_async(bot_main(str(config_path)))
         except KeyboardInterrupt:
             logger.info("Bot stopped by user.")
         except (RuntimeError, ConnectionError, FileNotFoundError) as e:

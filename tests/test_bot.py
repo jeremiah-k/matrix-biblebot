@@ -1103,6 +1103,32 @@ class TestE2EEFunctionality:
                 assert call.kwargs.get("ignore_unverified_devices") is True
 
     @pytest.mark.asyncio
+    async def test_send_error_message(self, sample_config):
+        """Test that _send_error_message helper method works correctly."""
+        # Create mock client
+        mock_client = AsyncMock()
+        mock_client.room_send = AsyncMock()
+
+        # Create bot instance
+        bot_instance = bot.BibleBot(sample_config, client=mock_client)
+
+        # Test _send_error_message method
+        await bot_instance._send_error_message("!room:matrix.org", "Test error message")
+
+        # Verify room_send was called with correct parameters
+        mock_client.room_send.assert_called_once_with(
+            "!room:matrix.org",
+            "m.room.message",
+            {
+                "msgtype": "m.text",
+                "body": "Test error message",
+                "format": "org.matrix.custom.html",
+                "formatted_body": "Test error message",  # HTML escaped (no special chars in this case)
+            },
+            ignore_unverified_devices=True,
+        )
+
+    @pytest.mark.asyncio
     async def test_on_decryption_failure(self, sample_config):
         """Test handling decryption failure events."""
         # Enable E2EE for this test
