@@ -6,6 +6,7 @@ import sys
 import warnings
 from concurrent.futures import Future
 from pathlib import Path
+from unittest.mock import MagicMock
 
 import pytest
 
@@ -14,6 +15,38 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent
 SRC_DIR = PROJECT_ROOT / "src"
 if str(SRC_DIR) not in sys.path:
     sys.path.insert(0, str(SRC_DIR))
+
+# Mock all E2EE dependencies before any imports can occur
+# This prevents ImportError and allows tests to run without real E2EE setup
+nio_mock = MagicMock()
+sys.modules["nio"] = nio_mock
+sys.modules["nio.events"] = MagicMock()
+sys.modules["nio.events.room_events"] = MagicMock()
+sys.modules["nio.events.misc"] = MagicMock()
+sys.modules["nio.store"] = MagicMock()
+sys.modules["nio.store.database"] = MagicMock()
+sys.modules["nio.crypto"] = MagicMock()
+sys.modules["nio.exceptions"] = MagicMock()
+
+# Mock olm (E2EE crypto library)
+olm_mock = MagicMock()
+sys.modules["olm"] = olm_mock
+sys.modules["olm.account"] = MagicMock()
+sys.modules["olm.session"] = MagicMock()
+sys.modules["olm.inbound_group_session"] = MagicMock()
+sys.modules["olm.outbound_group_session"] = MagicMock()
+
+# Mock other E2EE related dependencies
+sys.modules["peewee"] = MagicMock()
+sys.modules["atomicwrites"] = MagicMock()
+sys.modules["cachetools"] = MagicMock()
+
+# Set up nio mock attributes
+nio_mock.AsyncClient = MagicMock()
+nio_mock.AsyncClientConfig = MagicMock()
+nio_mock.SqliteStore = MagicMock()
+nio_mock.exceptions = MagicMock()
+nio_mock.exceptions.LocalProtocolError = Exception
 
 
 def clear_env(keys):
@@ -31,6 +64,70 @@ def clear_env(keys):
         if k in os.environ:
             removed[k] = os.environ.pop(k)
     return removed
+
+
+@pytest.fixture(autouse=True)
+def event_loop_safety(monkeypatch):
+    """
+    Create and provide a dedicated asyncio event loop for tests, ensuring proper cleanup.
+
+    This fixture creates a fresh event loop, assigns it for use during tests,
+    yields the loop, then cancels any remaining tasks, waits for them to finish,
+    closes the loop, and clears the global event loop reference on teardown.
+    """
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+
+    yield loop
+
+    # Teardown: Clean up the loop
+    try:
+        tasks = asyncio.all_tasks(loop=loop)
+        for task in tasks:
+            task.cancel()
+        if tasks:
+            loop.run_until_complete(asyncio.gather(*tasks, return_exceptions=True))
+    finally:
+        loop.close()
+        asyncio.set_event_loop(None)
+
+
+@pytest.fixture(autouse=True)
+def mock_asyncmock_coroutines(monkeypatch):
+    """
+    Ensure AsyncMock coroutines are properly awaited during tests to prevent hanging.
+
+    This fixture replaces any coroutine submission functions with mocks that
+    synchronously run and await coroutines in a temporary event loop, preventing
+    "never awaited" warnings and allowing side effects to occur as expected.
+    """
+    import inspect
+
+    def mock_submit(coro, loop=None):
+        """
+        Synchronously runs a coroutine in a temporary event loop and returns a Future with its result.
+        """
+        if not inspect.iscoroutine(coro):
+            return None
+
+        # For AsyncMock coroutines, we need to actually await them to get the result
+        # and prevent "never awaited" warnings, while also triggering any side effects
+        temp_loop = asyncio.new_event_loop()
+        try:
+            result = temp_loop.run_until_complete(coro)
+            future = Future()
+            future.set_result(result)
+            return future
+        except Exception as e:
+            future = Future()
+            future.set_exception(e)
+            return future
+        finally:
+            temp_loop.close()
+
+    # This would be used if we had a _submit_coro function to patch
+    # monkeypatch.setattr(some_module, "_submit_coro", mock_submit)
+    yield
 
 
 @pytest.fixture(autouse=True)

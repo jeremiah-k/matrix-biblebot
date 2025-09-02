@@ -1204,35 +1204,35 @@ class TestMainFunction:
 
         mock_get_store.return_value = tmp_path / "store"
 
-        with E2EETestFramework.mock_e2ee_dependencies():
-            with patch("biblebot.bot.AsyncClient") as mock_client_class:
-                mock_client = AsyncMock(
-                    spec=[
-                        "user_id",
-                        "device_id",
-                        "room_send",
-                        "join",
-                        "add_event_callback",
-                        "should_upload_keys",
-                        "restore_login",
-                        "access_token",
-                        "rooms",
-                        "room_resolve_alias",
-                        "keys_upload",
-                        "close",
-                        "sync_forever",
-                        "sync",
-                    ]
-                )
-                mock_client.restore_login = MagicMock()
-                mock_client.add_event_callback = MagicMock()
-                mock_client.should_upload_keys = False
-                mock_client.keys_upload = AsyncMock()
-                mock_client.sync_forever = AsyncMock()  # Prevent infinite loop
-                mock_client.sync = AsyncMock()
-                mock_client.close = AsyncMock()
-                mock_client.access_token = TEST_ACCESS_TOKEN
-                mock_client_class.return_value = mock_client
+        # E2EE dependencies are mocked upfront in conftest.py
+        with patch("biblebot.bot.AsyncClient") as mock_client_class:
+            mock_client = AsyncMock(
+                spec=[
+                    "user_id",
+                    "device_id",
+                    "room_send",
+                    "join",
+                    "add_event_callback",
+                    "should_upload_keys",
+                    "restore_login",
+                    "access_token",
+                    "rooms",
+                    "room_resolve_alias",
+                    "keys_upload",
+                    "close",
+                    "sync_forever",
+                    "sync",
+                ]
+            )
+            mock_client.restore_login = MagicMock()
+            mock_client.add_event_callback = MagicMock()
+            mock_client.should_upload_keys = False
+            mock_client.keys_upload = AsyncMock()
+            mock_client.sync_forever = AsyncMock()  # Prevent infinite loop
+            mock_client.sync = AsyncMock()
+            mock_client.close = AsyncMock()
+            mock_client.access_token = TEST_ACCESS_TOKEN
+            mock_client_class.return_value = mock_client
 
             with patch("biblebot.bot.BibleBot") as mock_bot_class:
                 mock_bot = MagicMock()
@@ -1277,24 +1277,24 @@ class TestMainFunction:
         mock_load_creds.return_value = None  # No saved credentials
         mock_get_store.return_value = tmp_path / "store"
 
-        with E2EETestFramework.mock_e2ee_dependencies():
-            with patch("biblebot.bot.AsyncClient") as mock_client_class:
-                mock_client = AsyncMock(
-                    spec=[
-                        "user_id",
-                        "device_id",
-                        "room_send",
-                        "join",
-                        "add_event_callback",
-                        "should_upload_keys",
-                        "restore_login",
-                        "access_token",
-                        "rooms",
-                        "room_resolve_alias",
-                        "close",
-                        "keys_upload",
-                    ]
-                )
+        # E2EE dependencies are mocked upfront in conftest.py
+        with patch("biblebot.bot.AsyncClient") as mock_client_class:
+            mock_client = AsyncMock(
+                spec=[
+                    "user_id",
+                    "device_id",
+                    "room_send",
+                    "join",
+                    "add_event_callback",
+                    "should_upload_keys",
+                    "restore_login",
+                    "access_token",
+                    "rooms",
+                    "room_resolve_alias",
+                    "close",
+                    "keys_upload",
+                ]
+            )
             mock_client.restore_login = MagicMock()
             mock_client.add_event_callback = MagicMock()
             mock_client.should_upload_keys = False  # Disable key upload for this test
@@ -1342,10 +1342,10 @@ class TestMainFunction:
         mock_load_creds.return_value = None  # No saved credentials
 
         # Use E2EE mocking framework to prevent ImportWarning
-        with E2EETestFramework.mock_e2ee_dependencies():
-            # The main function should raise RuntimeError for no auth
-            with pytest.raises(RuntimeError, match="No credentials found"):
-                await bot.main("test_config.yaml")
+        # E2EE dependencies are mocked upfront in conftest.py
+        # The main function should raise RuntimeError for no auth
+        with pytest.raises(RuntimeError, match="No credentials found"):
+            await bot.main("test_config.yaml")
 
         # Verify the mocks were called to check for auth
         mock_load_env.assert_called_once()
@@ -1392,25 +1392,25 @@ class TestMainFunction:
         mock_load_creds.return_value = None
         mock_get_store.return_value = tmp_path / "store"
 
-        with E2EETestFramework.mock_e2ee_dependencies():
-            with patch("biblebot.bot.AsyncClient") as mock_client_class:
-                with patch("biblebot.bot.AsyncClientConfig"):
-                    mock_client = AsyncMock(
-                        spec=[
-                            "user_id",
-                            "device_id",
-                            "room_send",
-                            "join",
-                            "add_event_callback",
-                            "should_upload_keys",
-                            "restore_login",
-                            "access_token",
-                            "rooms",
-                            "room_resolve_alias",
-                            "close",
-                            "keys_upload",
-                        ]
-                    )
+        # E2EE dependencies are mocked upfront in conftest.py
+        with patch("biblebot.bot.AsyncClient") as mock_client_class:
+            with patch("biblebot.bot.AsyncClientConfig"):
+                mock_client = AsyncMock(
+                    spec=[
+                        "user_id",
+                        "device_id",
+                        "room_send",
+                        "join",
+                        "add_event_callback",
+                        "should_upload_keys",
+                        "restore_login",
+                        "access_token",
+                        "rooms",
+                        "room_resolve_alias",
+                        "close",
+                        "keys_upload",
+                    ]
+                )
                 mock_client.restore_login = MagicMock()
                 mock_client.add_event_callback = MagicMock()
                 mock_client.keys_upload = AsyncMock()
