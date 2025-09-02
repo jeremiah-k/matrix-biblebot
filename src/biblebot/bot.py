@@ -205,10 +205,7 @@ def load_environment(config: dict, config_path: str):
     for env_path in env_paths_to_check:
         if os.path.exists(env_path):
             load_dotenv(env_path)
-            logger.warning(
-                "⚠️  .env file detected - this is deprecated. Consider moving API keys to config.yaml"
-            )
-            logger.info(f"{INFO_LOADING_ENV} {env_path}")
+            logger.debug(f"{INFO_LOADING_ENV} {env_path}")
             env_loaded = True
             break  # Stop after finding the first .env file
 
@@ -1056,8 +1053,8 @@ async def main(config_path=DEFAULT_CONFIG_FILENAME_MAIN):
     if creds:
         logger.info("Using saved credentials.json for Matrix session")
         if matrix_access_token:
-            logger.warning(
-                "⚠️  Found credentials.json, ignoring legacy MATRIX_ACCESS_TOKEN environment variable."
+            logger.debug(
+                "Found credentials.json, ignoring legacy MATRIX_ACCESS_TOKEN environment variable."
             )
         client.restore_login(
             user_id=creds.user_id,
