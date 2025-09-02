@@ -662,36 +662,6 @@ class BibleBot:
             await self.http_session.close()
             self.http_session = None
 
-    async def on_megolm_event(self, room: MatrixRoom, event: MegolmEvent) -> None:
-        """
-        Handle MegolmEvent that might contain decrypted message content.
-
-        This is a fallback handler for encrypted messages that might not be properly
-        converted to RoomMessageText events. It checks if the event has been decrypted
-        and contains message content, then processes it for scripture references.
-        """
-        logger.debug(
-            f"Received MegolmEvent in room {room.room_id}: decrypted={getattr(event, 'decrypted', False)}"
-        )
-
-        # Only process if the event has been decrypted and contains message content
-        if hasattr(event, "decrypted") and event.decrypted and hasattr(event, "body"):
-            logger.debug(
-                f"Processing decrypted MegolmEvent as message: {event.body[:50]}..."
-            )
-
-            # Create a mock RoomMessageText-like object for processing
-            class DecryptedMessage:
-                def __init__(self, megolm_event):
-                    self.body = megolm_event.body
-                    self.sender = megolm_event.sender
-                    self.server_timestamp = megolm_event.server_timestamp
-                    self.event_id = megolm_event.event_id
-                    self.decrypted = True
-
-            mock_event = DecryptedMessage(event)
-            await self._process_message_content(room, mock_event)
-
     async def on_decryption_failure(self, room: MatrixRoom, event: MegolmEvent) -> None:
         """
         Handle a Megolm event that failed to decrypt by requesting the missing session keys.
@@ -758,12 +728,31 @@ class BibleBot:
         except Exception:
             logger.warning("Failed to send reaction", exc_info=True)
 
-    async def _process_message_content(self, room: MatrixRoom, event) -> None:
+    async def on_room_message(self, room: MatrixRoom, event: RoomMessageText):
         """
-        Common message processing logic for both regular and decrypted messages.
+        Handle incoming room message events, detect Bible verse references, and trigger scripture processing.
 
-        Extracts scripture references from message content and triggers scripture processing.
+        Only processes messages that:
+        - originate in configured rooms,
+        - are not sent by the bot itself, and
+        - were sent after the bot's recorded start time.
+
+        Scans the message text with REFERENCE_PATTERNS. When a match is found it:
+        - normalizes the book name with normalize_book_name(),
+        - constructs a passage string "<Book> <Reference>",
+        - determines the requested translation (falls back to DEFAULT_TRANSLATION),
+        - logs the detected reference, and
+        - invokes handle_scripture_command(room_id, passage, translation, event) to produce a reply.
+
+        Parameters are typed (MatrixRoom, RoomMessageText) and represent the source room and the received event.
+        This handles both unencrypted messages and successfully decrypted messages from encrypted rooms.
         """
+        # Log message reception for debugging encrypted room issues
+        logger.debug(
+            f"Received RoomMessageText in room {room.room_id} from {event.sender}: "
+            f"encrypted={room.encrypted}, decrypted={getattr(event, 'decrypted', False)}"
+        )
+
         if (
             room.room_id in self._room_id_set
             and event.sender != self.client.user_id
@@ -790,7 +779,7 @@ class BibleBot:
                             self.default_translation
                         )  # Fall back to config default
                     logger.info(
-                        f"Detected Bible reference: {passage} ({translation.upper()})"
+                        f"Detected Bible reference: {passage} ({translation}) in room {room.room_id}"
                     )
                     break
 
@@ -798,25 +787,6 @@ class BibleBot:
                 await self.handle_scripture_command(
                     room.room_id, passage, translation, event
                 )
-
-    async def on_room_message(self, room: MatrixRoom, event: RoomMessageText):
-        """
-        Handle incoming room message events, detect Bible verse references, and trigger scripture processing.
-
-        Only processes messages that:
-        - originate in configured rooms,
-        - are not sent by the bot itself, and
-        - were sent after the bot's recorded start time.
-
-        This handles both unencrypted messages and successfully decrypted messages from encrypted rooms.
-        """
-        # Log message reception for debugging encrypted room issues
-        logger.debug(
-            f"Received RoomMessageText in room {room.room_id} from {event.sender}: "
-            f"encrypted={room.encrypted}, decrypted={getattr(event, 'decrypted', False)}"
-        )
-
-        await self._process_message_content(room, event)
 
     async def handle_scripture_command(self, room_id, passage, translation, event):
         """
@@ -1090,6 +1060,16 @@ async def main(config_path=DEFAULT_CONFIG_FILENAME_MAIN):
         ):
             logger.exception("Failed to upload E2EE keys")
 
+    # Upload keys if needed (E2EE)
+    if e2ee_enabled and creds:
+        try:
+            if client.should_upload_keys:
+                logger.debug("Uploading E2EE keys...")
+                await client.keys_upload()
+                logger.debug("E2EE keys uploaded successfully")
+        except Exception as e:
+            logger.warning(f"Failed to upload E2EE keys: {e}")
+
     # Register event handlers
     logger.debug("Registering event handlers")
     client.add_event_callback(bot.on_invite, InviteEvent)
@@ -1099,10 +1079,8 @@ async def main(config_path=DEFAULT_CONFIG_FILENAME_MAIN):
     if e2ee_enabled:
         try:
             # Handle decryption failures for encrypted messages
+            # Note: Successfully decrypted messages are automatically converted to RoomMessageText by matrix-nio
             client.add_event_callback(bot.on_decryption_failure, MegolmEvent)
-            # Also register for MegolmEvent to catch any edge cases where
-            # decrypted messages might not be properly converted to RoomMessageText
-            client.add_event_callback(bot.on_megolm_event, MegolmEvent)
         except AttributeError:
             logger.debug(
                 "E2EE callback registration not supported by this nio version",

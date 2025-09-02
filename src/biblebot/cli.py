@@ -304,10 +304,10 @@ def interactive_main():
 
     elif state == "ready_legacy":
         logger.warning("⚠️  Legacy Configuration Detected")
-        logger.warning(
+        logger.debug(
             "Bot is configured with a manual access token (deprecated, no E2EE support)."
         )
-        logger.warning(
+        logger.debug(
             "Consider running 'biblebot auth login' to upgrade to modern authentication."
         )
         logger.info("Starting bot with legacy token...")
