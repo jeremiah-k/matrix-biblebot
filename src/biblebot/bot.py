@@ -271,9 +271,6 @@ async def make_api_request(
             if response.status == 200:
                 try:
                     content_type = response.headers.get("Content-Type", "")
-                    # Handle case where content_type might be a coroutine in tests
-                    if hasattr(content_type, "__await__"):
-                        content_type = await content_type
                     if content_type and "application/json" not in content_type:
                         logger.warning(
                             f"Unexpected content-type '{content_type}' from {url}"
