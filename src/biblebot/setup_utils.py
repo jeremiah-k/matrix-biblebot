@@ -24,6 +24,7 @@ from .constants import (
     FILE_MODE_READ,
     LOCAL_SHARE_DIR,
     PIPX_VENV_PATH,
+    SERVICE_DESCRIPTION,
     SERVICE_NAME,
     SYSTEMCTL_ARG_IS_ENABLED,
     SYSTEMCTL_ARG_USER,
@@ -167,20 +168,12 @@ def get_template_service_content():
     import tempfile
 
     try:
-        with tempfile.NamedTemporaryFile(
-            mode="w+", suffix=".service", delete=False
-        ) as temp_file:
-            template_path = copy_service_template_to(temp_file.name)
-            try:
-                with open(template_path, FILE_MODE_READ, encoding="utf-8") as f:
-                    service_template = f.read()
-                return service_template
-            finally:
-                # Ensure temp file is always cleaned up
-                try:
-                    os.unlink(template_path)
-                except OSError:
-                    pass  # File may not exist or be accessible
+        with tempfile.TemporaryDirectory() as temp_dir:
+            temp_file_path = os.path.join(temp_dir, "service_template.service")
+            template_path = copy_service_template_to(temp_file_path)
+            with open(template_path, FILE_MODE_READ, encoding="utf-8") as f:
+                service_template = f.read()
+            return service_template
     except (OSError, IOError, ValueError) as e:
         print(f"Error reading service template: {e}")
     except Exception as e:
@@ -318,7 +311,7 @@ def create_service_file():
 
     # Fill optional description placeholder if present
     service_template = service_template.replace(
-        "{SERVICE_DESCRIPTION}", f"{APP_NAME} service"
+        "{SERVICE_DESCRIPTION}", SERVICE_DESCRIPTION
     )
 
     # Compute ExecStart command
@@ -542,10 +535,10 @@ def show_service_status():
         )
         print("\nService Status:")
         print(result.stdout)
-        return True
-    except subprocess.CalledProcessError as e:
-        print(f"Could not get service status: {e}")
-        return False
+        if result.stderr:
+            print("Errors:")
+            print(result.stderr)
+        return result.returncode == 0
     except OSError as e:
         print(f"Error: {e}")
         return False

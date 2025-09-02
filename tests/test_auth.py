@@ -655,6 +655,7 @@ class TestDirectoryManagement:
 class TestDiscoverHomeserverExceptions:
     """Test homeserver discovery exception handling."""
 
+    @pytest.mark.asyncio
     async def test_discover_homeserver_exception(self):
         """Test homeserver discovery with exception."""
         mock_client = AsyncMock()

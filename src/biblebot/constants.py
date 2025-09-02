@@ -6,6 +6,7 @@ from pathlib import Path
 # Application constants
 APP_NAME = "matrix-biblebot"
 APP_DESCRIPTION = "BibleBot for Matrix - A Bible verse bot with E2EE support"
+SERVICE_DESCRIPTION = f"{APP_NAME} service"
 LOGGER_NAME = "BibleBot"
 
 # Configuration paths
