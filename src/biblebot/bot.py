@@ -31,6 +31,7 @@ from .constants import (
     API_PARAM_INCLUDE_VERSE_NUMBERS,
     API_PARAM_Q,
     API_REQUEST_TIMEOUT_SEC,
+    APP_NAME,
     CACHE_MAX_SIZE,
     CACHE_TTL_SECONDS,
     CHAR_DOT,
@@ -266,8 +267,11 @@ async def make_api_request(
 
         Returns the decoded JSON object (typically a dict or list) on HTTP 200 with valid JSON, or None on non-200 responses or if the response body cannot be parsed as JSON. Side effects: logs warnings on non-200 status and logs exceptions when JSON decoding fails.
         """
+        # Merge a minimal default UA with caller-provided headers
+        _base_headers = {"User-Agent": APP_NAME}
+        _headers = {**_base_headers, **(headers or {})}
         async with sess.get(
-            url, headers=headers, params=params, timeout=req_timeout
+            url, headers=_headers, params=params, timeout=req_timeout
         ) as response:
             if response.status == 200:
                 try:
@@ -387,23 +391,24 @@ async def get_bible_text(
     """
     if translation is None:
         translation = default_translation
+    trans_norm = translation.lower()
 
     # Check cache first
-    cached = _cache_get(passage, translation, cache_enabled)
+    cached = _cache_get(passage, trans_norm, cache_enabled)
     if cached is not None:
         return cached
 
     api_key = None
     if api_keys:
-        api_key = api_keys.get(translation)
+        api_key = api_keys.get(trans_norm)
 
-    if translation == TRANSLATION_ESV:
+    if trans_norm == TRANSLATION_ESV:
         result = await get_esv_text(passage, api_key)
-    elif translation.lower() == TRANSLATION_KJV:
+    elif trans_norm == TRANSLATION_KJV:
         result = await get_kjv_text(passage)
     else:
         raise PassageNotFound(f"Unsupported translation: '{translation}'")
-    _cache_set(passage, translation, result, cache_enabled)
+    _cache_set(passage, trans_norm, result, cache_enabled)
     return result
 
 

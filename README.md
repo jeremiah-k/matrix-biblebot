@@ -70,7 +70,7 @@ biblebot auth login
 This will:
 
 1. Prompt for your Matrix homeserver, username, and password
-2. Log in and save encrypted credentials locally (`credentials.json`)
+2. Log in and save credentials locally (`credentials.json`) with owner-only permissions (0600)
 3. Enable E2EE support if dependencies are installed
 
 **Benefits of proper authentication:**
@@ -95,9 +95,10 @@ biblebot auth logout
 
 ```yaml
 # Matrix server and user details are handled by 'biblebot auth login'
-matrix_room_ids:
-  - "!your_room_id:your_homeserver_domain"
-  - "#room_alias:your_homeserver_domain" # Room aliases are supported
+matrix:
+  room_ids:
+    - "!your_room_id:your_homeserver_domain"
+    - "#room_alias:your_homeserver_domain" # Room aliases are supported
 ```
 
 2. **Optionally set API keys** in `config.yaml` (preferred). They can also be set as environment variables, which will take precedence over `config.yaml`.

@@ -5,6 +5,7 @@ This module provides functions for managing the systemd user service
 and related configuration tasks.
 """
 
+import getpass
 import importlib.resources
 import os
 import re
@@ -176,8 +177,7 @@ def get_template_service_content():
             return service_template
     except (OSError, IOError, ValueError) as e:
         print(f"Error reading service template: {e}")
-    except Exception as e:
-        print(f"Unexpected error reading service template: {e}")
+        # Let unexpected exceptions surface for better debugging
 
     # If the helper function failed, try using importlib.resources directly
     try:
@@ -245,7 +245,7 @@ def is_service_enabled():
             capture_output=True,
             text=True,
         )
-        return result.returncode == 0 and result.stdout.strip() == "enabled"
+        return result.returncode == 0
     except (subprocess.SubprocessError, OSError, FileNotFoundError):
         return False
 
@@ -445,8 +445,6 @@ def check_loginctl_available():
 
 def _get_current_username() -> str:
     """Get the current username from environment variables or system."""
-    import getpass
-
     return os.environ.get(ENV_USER) or os.environ.get(ENV_USERNAME) or getpass.getuser()
 
 
