@@ -213,7 +213,7 @@ def interactive_main():
             # If config loading fails, use default logging
             configure_logging(None)
 
-        logger = get_logger("biblebot.cli")
+        logger = get_logger(LOGGER_NAME)
 
         mode = " (legacy mode)" if legacy else ""
         logger.info(f"Starting Matrix BibleBot{mode}...")
@@ -255,7 +255,7 @@ def interactive_main():
 
     # Initialize basic logging for CLI messages
     configure_logging(None)
-    logger = get_logger("biblebot.cli")
+    logger = get_logger(LOGGER_NAME)
 
     state, message = detect_configuration_state()
 

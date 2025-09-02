@@ -15,11 +15,10 @@ matrix:
   e2ee:
     enabled: false # Set to true to enable E2EE support
     store_path: null # Optional: custom path for E2EE store (defaults to ~/.config/matrix-biblebot/e2ee-store)
-    trust_on_first_use: true # Whether to trust new devices automatically
 
 # Bot Behavior Settings
 bot:
-  default_translation: esv # Default Bible translation (esv, kjv)
+  default_translation: kjv # Default Bible translation (esv, kjv)
   cache_enabled: true # Enable verse caching for better performance
   max_message_length: 4000 # Maximum message length before truncation
 

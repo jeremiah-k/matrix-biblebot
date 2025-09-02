@@ -580,6 +580,15 @@ class BibleBot:
         Parameters:
             room_id_or_alias (str): A Matrix room ID (e.g. "!abc:example.org") or alias (e.g. "#room:example.org").
         """
+        # Skip placeholder room IDs from sample config
+        if (
+            "your_room_id" in room_id_or_alias
+            or "your_homeserver_domain" in room_id_or_alias
+            or "example.org" in room_id_or_alias
+        ):
+            logger.debug(f"Skipping placeholder room ID: {room_id_or_alias}")
+            return
+
         try:
             if room_id_or_alias.startswith("#"):
                 # If it's a room alias, resolve it to a room ID
@@ -673,6 +682,18 @@ class BibleBot:
 
         If the event cannot be decrypted, this will request the needed room key from the sender. As a side effect the event's `room_id` may be set/updated to the provided room's id. The method prefers the client's `request_room_key` API and falls back to creating and sending a to-device key request when necessary. Exceptions are logged and not propagated.
         """
+        # Check if E2EE is enabled in config
+        e2ee_config = self.config.get("matrix", {}).get("e2ee", {})
+        e2ee_enabled = e2ee_config.get("enabled", False)
+
+        if not e2ee_enabled:
+            logger.warning(
+                f"⚠️  Received encrypted message in room '{room.room_id}' but E2EE is disabled in config! "
+                f"Enable E2EE in your config.yaml under matrix.e2ee.enabled to decrypt messages. "
+                f"Event ID: {getattr(event, 'event_id', '?')}"
+            )
+            return
+
         logger.error(
             f"Failed to decrypt event '{getattr(event, 'event_id', '?')}' in room '{room.room_id}'. "
             f"This is usually temporary and resolves on its own. "
@@ -681,19 +702,16 @@ class BibleBot:
         try:
             # Set room_id on the event object for key request methods
             # This is necessary because MegolmEvent objects that failed to decrypt
-            # may not have room_id set, but both client.request_room_key() and
-            # event.as_key_request() require it to generate proper key requests
+            # may not have room_id set, but event.as_key_request() requires it
             event.room_id = room.room_id
 
-            # Use the preferred client.request_room_key method if available
-            if hasattr(self.client, "request_room_key"):
-                await self.client.request_room_key(event)
-            else:
-                # Fallback to manual key request creation
-                request = event.as_key_request(
-                    self.client.user_id, getattr(self.client, "device_id", None)
-                )
-                await self.client.to_device(request)
+            # Use manual key request creation (like mmrelay) to avoid duplicate request errors
+            # The client.request_room_key() method tracks requests and throws LocalProtocolError
+            # if a request is already pending for the same session_id
+            request = event.as_key_request(
+                self.client.user_id, getattr(self.client, "device_id", None)
+            )
+            await self.client.to_device(request)
             logger.info(
                 f"Requested keys for failed decryption of event {getattr(event, 'event_id', '?')}"
             )
