@@ -511,12 +511,24 @@ async def interactive_login(
         logger.error("Failed to determine user ID for login")
         return False
 
+    # Check for existing credentials to reuse device_id
+    existing_device_id = None
+    try:
+        if existing_creds and existing_creds.user_id == user:
+            existing_device_id = existing_creds.device_id
+            if existing_device_id:
+                logger.info(f"Reusing existing device_id: {existing_device_id}")
+    except Exception as e:
+        logger.debug(f"Could not check existing credentials: {e}")
+
     # Create the actual client with the proper homeserver and user ID
     client_kwargs = {}
     if e2ee_available:
         client_kwargs["store_path"] = str(get_store_dir())
     if ssl_context:
         client_kwargs["ssl"] = ssl_context
+    if existing_device_id:
+        client_kwargs["device_id"] = existing_device_id
 
     client = AsyncClient(
         hs,
@@ -527,16 +539,38 @@ async def interactive_login(
         **client_kwargs,
     )
 
+    # Set device_id on client if we have an existing one
+    if existing_device_id:
+        client.device_id = existing_device_id
+
     logger.info(f"Logging in to {hs} as {user}")
     try:
-        resp = await asyncio.wait_for(
-            client.login(password=pwd, device_name=MATRIX_DEVICE_NAME),
-            timeout=LOGIN_TIMEOUT_SEC,
-        )
+        # Temporarily suppress nio validation warnings for login responses
+        # This prevents "user_id required property" errors when the server returns error responses
+        with warnings.catch_warnings():
+            warnings.filterwarnings(
+                "ignore", message="Error validating response", category=UserWarning
+            )
+            warnings.filterwarnings(
+                "ignore", message=".*user_id.*required property.*", category=UserWarning
+            )
+            # Also suppress at the logger level
+            nio_logger = logging.getLogger("nio.responses")
+            original_level = nio_logger.level
+            nio_logger.setLevel(logging.ERROR)
 
-        # Check if login was successful - nio returns LoginResponse on success, LoginError on failure
+            try:
+                resp = await asyncio.wait_for(
+                    client.login(password=pwd, device_name=MATRIX_DEVICE_NAME),
+                    timeout=LOGIN_TIMEOUT_SEC,
+                )
+            finally:
+                # Restore original logging level
+                nio_logger.setLevel(original_level)
+
+        # Check response type explicitly to avoid validation issues
         if isinstance(resp, nio.LoginResponse):
-            # LoginResponse has user_id, device_id, and access_token fields
+            # Login successful
             creds = Credentials(
                 homeserver=hs,
                 user_id=resp.user_id,
@@ -548,6 +582,7 @@ async def interactive_login(
             await client.close()
             return True
         elif isinstance(resp, nio.LoginError):
+            # Login failed with proper error response
             logger.error(f"Login failed: {resp.message}")
 
             # Provide user-friendly error messages based on the error
@@ -566,9 +601,13 @@ async def interactive_login(
                 )
             else:
                 logger.error(f"❌ Login failed: {resp.message}")
+
+            await client.close()
             return False
         else:
-            logger.error(f"Unexpected login response type: {type(resp)}")
+            # Unexpected response type
+            logger.error(f"❌ Unexpected login response type: {type(resp)}")
+            logger.error(f"Response content: {resp}")
             await client.close()
             return False
     except asyncio.TimeoutError:
