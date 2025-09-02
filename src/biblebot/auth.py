@@ -477,7 +477,7 @@ async def interactive_login(
     logger.debug(
         "E2EE dependencies %s; encryption %s",
         "found" if status.get(E2EE_KEY_DEPENDENCIES_INSTALLED) else "missing",
-        "enabled" if e2ee_available else "disabled",
+        "available" if e2ee_available else "unavailable",
     )
 
     # Create SSL context using certifi's certificates with system default fallback
