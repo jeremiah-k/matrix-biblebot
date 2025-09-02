@@ -90,7 +90,17 @@ class E2EETestFramework:
 
         # Mock SqliteStore to avoid database connection issues
         class MockSqliteStore:
-            def __init__(self, *args, **kwargs):
+            def __init__(
+                self,
+                user_id=None,
+                device_id=None,
+                store_path=None,
+                pickle_key=None,
+                store_name=None,
+                *args,
+                **kwargs,
+            ):
+                # Accept all arguments that real SqliteStore expects but don't use them
                 pass
 
             def __post_init__(self):
@@ -120,8 +130,12 @@ class E2EETestFramework:
             )
 
             # Mock the store property to return our mock store
-            def mock_store_factory(path):
-                return MockSqliteStore(path)
+            def mock_store_factory(
+                user_id, device_id, store_path, pickle_key, store_name
+            ):
+                return MockSqliteStore(
+                    user_id, device_id, store_path, pickle_key, store_name
+                )
 
             object.__setattr__(self, "store", mock_store_factory)
 
