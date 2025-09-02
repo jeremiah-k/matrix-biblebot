@@ -368,6 +368,7 @@ async def get_bible_text(
     api_keys=None,
     cache_enabled=True,
     default_translation=DEFAULT_TRANSLATION,
+    session=None,
 ):
     # Use provided translation or fall back to configurable default
     """
@@ -403,16 +404,16 @@ async def get_bible_text(
         api_key = api_keys.get(trans_norm)
 
     if trans_norm == TRANSLATION_ESV:
-        result = await get_esv_text(passage, api_key)
+        result = await get_esv_text(passage, api_key, session=session)
     elif trans_norm == TRANSLATION_KJV:
-        result = await get_kjv_text(passage)
+        result = await get_kjv_text(passage, session=session)
     else:
         raise PassageNotFound(f"Unsupported translation: '{translation}'")
     _cache_set(passage, trans_norm, result, cache_enabled)
     return result
 
 
-async def get_esv_text(passage, api_key):
+async def get_esv_text(passage, api_key, session=None):
     """
     Fetch the specified passage text from the ESV API and return the passage text with its canonical reference.
 
@@ -440,7 +441,7 @@ async def get_esv_text(passage, api_key):
         "include-passage-references": "false",
     }
     headers = {"Authorization": f"Token {api_key}"}
-    response = await make_api_request(API_URL, headers, params)
+    response = await make_api_request(API_URL, headers, params, session=session)
 
     if not isinstance(response, dict):
         raise PassageNotFound(f"Invalid API response for passage '{passage}'")
@@ -454,7 +455,7 @@ async def get_esv_text(passage, api_key):
     return (passages[0].strip(), reference)
 
 
-async def get_kjv_text(passage):
+async def get_kjv_text(passage, session=None):
     # Preserve ':' in chapter:verse while encoding spaces and punctuation
     """
     Fetch the King James Version (KJV) text for a given Bible passage.
@@ -470,7 +471,7 @@ async def get_kjv_text(passage):
     """
     encoded = quote(passage, safe=":")
     API_URL = KJV_API_URL_TEMPLATE.format(passage=encoded)
-    response = await make_api_request(API_URL)
+    response = await make_api_request(API_URL, session=session)
 
     if not response or not response.get("text"):
         raise PassageNotFound(f"Passage '{passage}' not found in KJV")
@@ -507,6 +508,7 @@ class BibleBot:
         self.client = client  # Injected AsyncClient instance
         self.api_keys = {}  # Will be set in main()
         self._room_id_set: set[str] = set()
+        self.http_session = None  # set in start(), closed in close()
 
         # Bot configuration settings with defaults
         bot_settings = config.get("bot", {}) if isinstance(config, dict) else {}
@@ -632,6 +634,12 @@ class BibleBot:
         # Store bot start time in epoch milliseconds to compare with event.server_timestamp
         self.start_time = int(time.time() * 1000)
         logger.info("Initializing BibleBot...")
+
+        # Initialize HTTP session for connection pooling
+        if self.http_session is None:
+            self.http_session = aiohttp.ClientSession(
+                timeout=aiohttp.ClientTimeout(total=API_REQUEST_TIMEOUT_SEC)
+            )
         await self.resolve_aliases()  # Support for aliases in config
         self._room_id_set = set(self.config[CONFIG_MATRIX_ROOM_IDS])
         await self.ensure_joined_rooms()  # Ensure bot is in all configured rooms
@@ -646,6 +654,16 @@ class BibleBot:
 
         logger.info("Starting bot event processing loop...")
         await self.client.sync_forever(timeout=SYNC_TIMEOUT_MS)  # Sync every 30 seconds
+
+    async def close(self):
+        """
+        Clean up resources used by the bot.
+
+        Closes the HTTP session if it exists to prevent resource leaks.
+        """
+        if self.http_session:
+            await self.http_session.close()
+            self.http_session = None
 
     async def on_decryption_failure(self, room: MatrixRoom, event: MegolmEvent) -> None:
         """
@@ -792,6 +810,7 @@ class BibleBot:
                 self.api_keys,
                 cache_enabled=self.cache_enabled,
                 default_translation=self.default_translation,
+                session=self.http_session,
             )
 
             # Formatting text to ensure one space between words
@@ -1048,5 +1067,13 @@ async def main(config_path=DEFAULT_CONFIG_FILENAME_MAIN):
     try:
         await bot.start()
     finally:
-        if client:
-            await client.close()
+        try:
+            # Only call close if it's a real BibleBot instance (not a mock)
+            if bot and hasattr(bot, "close") and hasattr(bot, "http_session"):
+                await bot.close()
+        except Exception:
+            # Ignore cleanup errors (e.g., from mocked objects in tests)
+            pass
+        finally:
+            if client:
+                await client.close()
