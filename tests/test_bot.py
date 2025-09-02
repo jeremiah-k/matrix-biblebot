@@ -137,6 +137,9 @@ class E2EETestFramework:
             def save_outbound_group_sessions(self, sessions):
                 pass
 
+            def load_outgoing_key_requests(self):
+                return {}
+
         # Also need to mock the AsyncClientConfig E2EE dependency check
         def mock_client_config_init(self, *args, **kwargs):
             # Don't raise ImportWarning for E2EE dependencies in tests
