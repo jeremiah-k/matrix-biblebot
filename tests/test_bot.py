@@ -1113,38 +1113,38 @@ class TestE2EEFunctionality:
 
                 import nio
 
-            mock_client = MagicMock(
-                spec_set=["user_id", "device_id", "to_device", "request_room_key"]
-            )
-            mock_client.user_id = TEST_USER_ID
-            mock_client.device_id = TEST_DEVICE_ID
-            mock_client.to_device = _AsyncMock()
-            mock_client.request_room_key = _AsyncMock(
-                side_effect=nio.exceptions.LocalProtocolError("Duplicate request")
-            )
-            mock_client_class.return_value = mock_client
+                mock_client = MagicMock(
+                    spec_set=["user_id", "device_id", "to_device", "request_room_key"]
+                )
+                mock_client.user_id = TEST_USER_ID
+                mock_client.device_id = TEST_DEVICE_ID
+                mock_client.to_device = _AsyncMock()
+                mock_client.request_room_key = _AsyncMock(
+                    side_effect=nio.exceptions.LocalProtocolError("Duplicate request")
+                )
+                mock_client_class.return_value = mock_client
 
-            bot_instance = bot.BibleBot(e2ee_config)
-            bot_instance.client = mock_client
+                bot_instance = bot.BibleBot(e2ee_config)
+                bot_instance.client = mock_client
 
-            mock_room = MagicMock()
-            mock_room.room_id = "!room:matrix.org"
+                mock_room = MagicMock()
+                mock_room.room_id = "!room:matrix.org"
 
-            mock_event = MagicMock()
-            mock_event.event_id = "$failed_event:matrix.org"
-            mock_event.as_key_request.return_value = MagicMock()
+                mock_event = MagicMock()
+                mock_event.event_id = "$failed_event:matrix.org"
+                mock_event.as_key_request.return_value = MagicMock()
 
-            await bot_instance.on_decryption_failure(mock_room, mock_event)
+                await bot_instance.on_decryption_failure(mock_room, mock_event)
 
-            # Should try request_room_key first, then fall back to to_device
-            mock_client.request_room_key.assert_called_once_with(mock_event)
-            mock_client.to_device.assert_called_once()
-            mock_event.as_key_request.assert_called_once_with(
-                TEST_USER_ID, TEST_DEVICE_ID
-            )
-            mock_event.as_key_request.assert_called_once_with(
-                TEST_USER_ID, TEST_DEVICE_ID
-            )
+                # Should try request_room_key first, then fall back to to_device
+                mock_client.request_room_key.assert_called_once_with(mock_event)
+                mock_client.to_device.assert_called_once()
+                mock_event.as_key_request.assert_called_once_with(
+                    TEST_USER_ID, TEST_DEVICE_ID
+                )
+                mock_event.as_key_request.assert_called_once_with(
+                    TEST_USER_ID, TEST_DEVICE_ID
+                )
 
 
 class TestMainFunction:
