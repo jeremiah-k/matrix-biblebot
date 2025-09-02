@@ -115,65 +115,67 @@ def mock_submit_coro(monkeypatch):
 
 
 @pytest.fixture(autouse=True)
-def comprehensive_cleanup(request):
+def comprehensive_cleanup():
     """
-    Autouse pytest fixture that performs comprehensive cleanup of asynchronous resources and forces garbage collection after a test.
+    Comprehensive resource cleanup fixture for tests that create async resources.
 
-    After yielding to the test, this fixture checks the test file name and test name for indicators that the test may have created async resources (patterns: "test_bot", "test_integration", "async", "main_function"). If matched, it attempts to obtain the running asyncio event loop, cancel any pending tasks, and wait for their completion. Any exceptions during cleanup are suppressed to avoid affecting test isolation.
-
-    The fixture always suppresses specific RuntimeWarning/DeprecationWarning/ResourceWarning messages related to unawaited coroutines, missing event loops, and unclosed resources before calling gc.collect() to reclaim remaining resources.
-
-    Parameters:
-        request: pytest fixture request object used to determine the current test's file and name.
+    This fixture ensures all system resources are properly cleaned up after tests,
+    preventing resource warnings about unclosed sockets and event loops.
+    Particularly important for Python 3.10+ compatibility in CI environments.
     """
     yield
 
-    # Only perform async cleanup for tests that might need it
-    test_file = request.node.fspath.basename
-    test_name = request.node.name
-
-    # List of test files/patterns that use async resources
-    async_patterns = ["test_bot", "test_integration", "async", "main_function"]
-
-    needs_async_cleanup = any(
-        pattern in test_file.lower() or pattern in test_name.lower()
-        for pattern in async_patterns
-    )
-
-    if needs_async_cleanup:
-        # Force cleanup of all async tasks and event loops
+    # Force cleanup of all async tasks and event loops
+    try:
         try:
-            try:
-                loop = asyncio.get_running_loop()
-                if loop and not loop.is_closed():
-                    # Cancel all pending tasks
-                    pending_tasks = [
-                        task for task in asyncio.all_tasks(loop) if not task.done()
-                    ]
-                    for task in pending_tasks:
-                        task.cancel()
+            loop = asyncio.get_running_loop()
+        except RuntimeError:
+            loop = asyncio.get_event_loop_policy().get_event_loop()
 
-                    # Don't call run_until_complete on a running loop; let pytest-asyncio handle teardown
-                    if pending_tasks and not loop.is_running():
-                        with contextlib.suppress(Exception):
-                            loop.run_until_complete(
-                                asyncio.gather(*pending_tasks, return_exceptions=True)
-                            )
-            except RuntimeError:
-                pass  # No running event loop
+        if loop and not loop.is_closed():
+            # Cancel all pending tasks
+            pending_tasks = [
+                task for task in asyncio.all_tasks(loop) if not task.done()
+            ]
+            if pending_tasks:
+                for task in pending_tasks:
+                    task.cancel()
+                # Use a new loop to gather cancelled tasks
+                gather_loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(gather_loop)
+                gather_loop.run_until_complete(
+                    asyncio.gather(*pending_tasks, return_exceptions=True)
+                )
+                gather_loop.close()
 
-        except Exception:
-            pass  # Ignore any cleanup errors
+            # Shutdown any remaining executors
+            if hasattr(loop, "_default_executor") and loop._default_executor:
+                with contextlib.suppress(Exception):
+                    executor = loop._default_executor
+                    loop._default_executor = None
+                    executor.shutdown(wait=True)
+
+            # Close the original event loop if it's not the main one
+            if loop is not asyncio.get_event_loop_policy().get_event_loop():
+                with contextlib.suppress(Exception):
+                    loop.close()
+
+    except Exception:
+        # Suppress any errors during cleanup to avoid affecting test results
+        pass
+
+    # Ensure the main event loop is reset
+    asyncio.set_event_loop(None)
 
     # Force garbage collection to clean up any remaining resources
     with warnings.catch_warnings():
+        warnings.filterwarnings(
+            "ignore", category=ResourceWarning, message="unclosed.*"
+        )
         warnings.filterwarnings(
             "ignore", category=RuntimeWarning, message=".*never awaited.*"
         )
         warnings.filterwarnings(
             "ignore", category=DeprecationWarning, message=".*no current event loop.*"
-        )
-        warnings.filterwarnings(
-            "ignore", category=ResourceWarning, message=".*unclosed.*"
         )
         gc.collect()

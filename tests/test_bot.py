@@ -1220,17 +1220,19 @@ class TestMainFunction:
                         "room_resolve_alias",
                         "keys_upload",
                         "close",
+                        "sync_forever",
+                        "sync",
                     ]
                 )
-            mock_client.restore_login = MagicMock()
-            mock_client.add_event_callback = MagicMock()
-            mock_client.should_upload_keys = False
-            mock_client.keys_upload = AsyncMock()  # Ensure keys_upload is AsyncMock
-            # Set access_token as a regular attribute, not a MagicMock
-            mock_client.access_token = TEST_ACCESS_TOKEN
-            # Ensure close is AsyncMock
-            mock_client.close = AsyncMock()
-            mock_client_class.return_value = mock_client
+                mock_client.restore_login = MagicMock()
+                mock_client.add_event_callback = MagicMock()
+                mock_client.should_upload_keys = False
+                mock_client.keys_upload = AsyncMock()
+                mock_client.sync_forever = AsyncMock()  # Prevent infinite loop
+                mock_client.sync = AsyncMock()
+                mock_client.close = AsyncMock()
+                mock_client.access_token = TEST_ACCESS_TOKEN
+                mock_client_class.return_value = mock_client
 
             with patch("biblebot.bot.BibleBot") as mock_bot_class:
                 mock_bot = MagicMock()
