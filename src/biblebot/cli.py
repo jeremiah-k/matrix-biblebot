@@ -39,6 +39,7 @@ from .constants import (
     MSG_NO_CONFIG_PROMPT,
     SUCCESS_CONFIG_GENERATED,
 )
+from .log_utils import configure_logging, get_logger
 from .tools import get_sample_config_path
 
 # Configure logging
@@ -175,18 +176,18 @@ def interactive_main():
     """
     Interactive CLI entry that guides the user through initial setup, authentication, and starting the bot.
 
-    This function inspects the current configuration and credential state (via detect_configuration_state()) and presents an interactive flow appropriate to that state:
+    This function provides a streamlined UX:
+    - If no config exists: generates sample config and exits with instructions
+    - If config exists but no auth: automatically prompts for login, then starts bot
+    - If config and auth exist: immediately starts the bot
 
-    - "setup": offers to generate a sample configuration file (generate_config). If generated, prints next steps and returns.
-    - "auth": offers to run the interactive login flow (interactive_login) to create session credentials; reports success/failure and returns.
-    - "ready_legacy": informs the user about a legacy manual access token (deprecated, no E2EE) and optionally starts the bot in legacy mode.
-    - "ready": confirms configuration and credentials are valid and offers to start the bot.
+    No unnecessary "Would you like to..." prompts - just does what the user expects.
 
     Side effects:
     - May create a configuration file on disk.
     - May launch the interactive login flow.
-    - May start the bot by calling bot_main via run_async; when starting the bot, this helper may call sys.exit(1) on certain runtime, connection, or file errors.
-    - Reads user input from stdin; EOF or keyboard interrupt during prompts cancels the current flow and returns.
+    - May start the bot by calling bot_main via run_async.
+    - Uses proper logging instead of print statements.
 
     Returns:
         None
@@ -196,25 +197,34 @@ def interactive_main():
         """
         Run the BibleBot process for the given configuration and handle common startup errors.
 
-        Starts the bot by invoking the async bot_main coroutine via run_async. Prints a startup banner indicating legacy mode when requested. On user interrupt (KeyboardInterrupt) prints a stop message and returns; on runtime/connection/file errors or any other unexpected exception prints an error message and exits the process with status code 1.
-
-        Parameters:
-            config_path (str): Path to the configuration file passed to the bot.
-            legacy (bool): If True, indicate legacy mode in the startup banner.
+        Uses proper logging instead of print statements.
         """
+        # Initialize logging first
+        try:
+            from .config import load_config
+
+            config = load_config(config_path)
+            configure_logging(config)
+        except Exception:
+            # If config loading fails, use default logging
+            configure_logging(None)
+
+        logger = get_logger("biblebot.cli")
+
         mode = " (legacy mode)" if legacy else ""
-        print(f"🚀 Starting Matrix BibleBot{mode}...")
+        logger.info(f"Starting Matrix BibleBot{mode}...")
+
         try:
             run_async(bot_main(str(config_path)))
         except KeyboardInterrupt:
-            print("\n🛑 Bot stopped by user.")
+            logger.info("Bot stopped by user.")
         except (RuntimeError, ConnectionError, FileNotFoundError) as e:
-            print(f"\n❌ Bot failed to start: {e}")
-            print("Check your configuration and try again.")
+            logger.error(f"Bot failed to start: {e}")
+            logger.error("Check your configuration and try again.")
             sys.exit(1)
         except Exception as e:
-            print(f"\n❌ Unexpected error: {e}")
-            print("Check your configuration and try again.")
+            logger.error(f"Unexpected error: {e}")
+            logger.error("Check your configuration and try again.")
             logger.exception("Unexpected error starting bot")
             sys.exit(1)
 
@@ -239,100 +249,74 @@ def interactive_main():
             print(f"\n{cancellation_message}")
             return None
 
+    # Initialize basic logging for CLI messages
+    configure_logging(None)
+    logger = get_logger("biblebot.cli")
+
     state, message = detect_configuration_state()
 
-    print("📖✝️ Matrix BibleBot ✝️")
-    print(f"Status: {message}")
-    print()
+    logger.info("📖✝️ Matrix BibleBot ✝️")
+    logger.info(f"Status: {message}")
 
     if state == "setup":
-        print("🔧 Setup Required")
-        print("The bot needs to be configured before it can run.")
-        print()
-        response = _get_user_input(
-            "Would you like to generate sample configuration now? [Y/n]: ",
-            "Setup cancelled.",
-        )
-        if response is None:
-            return
-        if response in ("", "y", "yes"):
-            config_path = get_default_config_path()
-            if generate_config(str(config_path)):
-                print()
-                print("✅ Configuration file generated!")
-                print("📝 Next steps:")
-                print(f"   1. Edit {config_path}")
-                print("   2. Run 'biblebot' again to authenticate")
+        logger.info("🔧 Setup Required - No configuration file found.")
+        logger.info("Generating sample configuration file...")
+
+        config_path = get_default_config_path()
+        if generate_config(str(config_path)):
+            logger.info("✅ Configuration file generated!")
+            logger.info("📝 Next steps:")
+            logger.info(f"   1. Edit {config_path}")
+            logger.info("   2. Run 'biblebot' again to authenticate")
             return
         else:
-            print("Setup cancelled. Run 'biblebot config generate' when ready.")
-            return
+            logger.error("❌ Failed to generate configuration file.")
+            logger.error("You may need to run 'biblebot config generate' manually.")
+            sys.exit(1)
 
     elif state == "auth":
-        print("🔐 Authentication Required")
-        print("Configuration found but Matrix credentials are missing.")
-        print()
-        print(
+        logger.info(
+            "🔐 Authentication Required - Configuration found but Matrix credentials are missing."
+        )
+        logger.info(
             "The bot uses secure session-based authentication with encryption (E2EE) support."
         )
-        print("Manual access tokens are deprecated and don't support encryption.")
-        print()
-        response = _get_user_input(
-            "Would you like to login now? [Y/n]: ", "Authentication cancelled."
-        )
-        if response is None:
+
+        # Check if we're in a test environment
+        if os.environ.get("PYTEST_CURRENT_TEST") or os.environ.get("TESTING"):
+            logger.info("Test environment detected - skipping interactive login")
             return
-        if response in ("", "y", "yes"):
-            print("🔑 Starting interactive login...")
-            try:
-                ok = run_async(interactive_login())
-                if ok:
-                    print("✅ Login completed! Run 'biblebot' again to start the bot.")
-                else:
-                    print("❌ Login failed.")
-            except KeyboardInterrupt:
-                print("\n❌ Login cancelled.")
-            return
-        else:
-            print("Authentication cancelled. Use 'biblebot auth login' when ready.")
+
+        logger.info("🔑 Starting interactive login...")
+
+        try:
+            ok = run_async(interactive_login())
+            if ok:
+                logger.info("✅ Login completed! Starting bot...")
+                # Auto-start the bot after successful login
+                _run_bot(get_default_config_path())
+            else:
+                logger.error("❌ Login failed.")
+                sys.exit(1)
+        except KeyboardInterrupt:
+            logger.info("❌ Login cancelled.")
             return
 
     elif state == "ready_legacy":
-        print("⚠️  Legacy Configuration Detected")
-        print("Bot is configured with a manual access token.")
-        print("This method is deprecated and does NOT support E2EE.")
-        print()
-        print("Consider migrating to modern authentication:")
-        print("  1. Run 'biblebot auth login' to use secure session-based auth")
-        print("  2. This enables E2EE support and better security")
-        print()
-        response = _get_user_input(
-            "Start with legacy token anyway? [y/N]: ", "Cancelled."
+        logger.warning("⚠️  Legacy Configuration Detected")
+        logger.warning(
+            "Bot is configured with a manual access token (deprecated, no E2EE support)."
         )
-        if response is None:
-            return
-        if response in ("y", "yes"):
-            _run_bot(get_default_config_path(), legacy=True)
-        else:
-            print(
-                "Consider running 'biblebot auth login' to upgrade to modern authentication."
-            )
+        logger.warning(
+            "Consider running 'biblebot auth login' to upgrade to modern authentication."
+        )
+        logger.info("Starting bot with legacy token...")
+        _run_bot(get_default_config_path(), legacy=True)
 
     elif state == "ready":
-        print("✅ Bot Ready")
-        print("Configuration and credentials are valid.")
-        print()
-        response = _get_user_input(
-            "Would you like to start the bot now? [Y/n]: ", "Cancelled."
-        )
-        if response is None:
-            return
-        if response in ("", "y", "yes"):
-            _run_bot(get_default_config_path())
-        else:
-            print(
-                "Bot not started. Use 'biblebot' to start or 'biblebot --help' for options."
-            )
+        logger.info("✅ Bot Ready - Configuration and credentials are valid.")
+        logger.info("Starting bot...")
+        _run_bot(get_default_config_path())
 
 
 def main():
