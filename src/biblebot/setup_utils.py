@@ -8,6 +8,7 @@ and related configuration tasks.
 import importlib.resources
 import os
 import re
+import shlex
 import shutil
 import subprocess
 import sys
@@ -307,11 +308,16 @@ def create_service_file():
         print("Error: Could not find service template file")
         return False
 
+    # Fill optional description placeholder if present
+    service_template = service_template.replace(
+        "{SERVICE_DESCRIPTION}", f"{APP_NAME} service"
+    )
+
     # Compute ExecStart command
     # If get_executable_path returned the python interpreter, use module form
     exec_cmd = executable_path
     if exec_cmd == sys.executable:
-        exec_cmd = f"{sys.executable} -m biblebot"
+        exec_cmd = f"{shlex.quote(sys.executable)} -m biblebot"
 
     # Replace ExecStart line to use discovered command and default config path
     exec_start_line = f'ExecStart={exec_cmd} --config "{DEFAULT_CONFIG_PATH}"'
@@ -397,7 +403,7 @@ def service_needs_update():
     # Determine acceptable ExecStart patterns
     acceptable_snippets = []
     if executable_path == sys.executable:
-        acceptable_snippets.append(f"{sys.executable} -m biblebot")
+        acceptable_snippets.append(f"{shlex.quote(sys.executable)} -m biblebot")
     else:
         acceptable_snippets.append(executable_path)
 

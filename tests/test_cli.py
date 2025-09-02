@@ -445,20 +445,19 @@ class TestMainFunction:
             with patch("biblebot.auth.load_credentials", return_value=mock_credentials):
                 # Mock the config loading to avoid file system access
                 with patch("biblebot.bot.load_config", return_value=mock_config):
-                    # Patch the entrypoint alias used by CLI
-                    with patch(
-                        "biblebot.cli.bot_main", new=lambda *a, **k: asyncio.sleep(0)
-                    ):
-                        # Patch the CLI's async runner to consume the coroutine
-                        with patch(
-                            "biblebot.cli.run_async", side_effect=_consume_coroutine
-                        ):
-                            with patch("sys.argv", ["biblebot"]):
-                                with patch(
-                                    "builtins.input", return_value="n"
-                                ):  # Don't login interactively
-                                    # exercise the real cli.main - should return normally when user cancels
-                                    cli.main()
+                    # Patch the entrypoint alias with a real async stub and
+                    # let CLI's own runner consume it.
+                    called = []
+
+                    async def _stub_bot_main(*_a, **_k):
+                        called.append(True)
+                        return 0
+
+                    with patch("biblebot.cli.bot_main", new=_stub_bot_main):
+                        with patch("sys.argv", ["biblebot"]):
+                            with patch("builtins.input", return_value="n"):
+                                cli.main()
+                    assert len(called) == 1
 
         # Test passes if CLI handles the authentication cancellation gracefully
         # The test should verify that the CLI attempted to run the bot
