@@ -1083,21 +1083,27 @@ class TestE2EEFunctionality:
             bot_instance = bot.BibleBot(e2ee_config)
             bot_instance.client = mock_client
 
-            mock_room = MagicMock()
-            mock_room.room_id = TEST_ROOM_ID
+            try:
+                mock_room = MagicMock()
+                mock_room.room_id = TEST_ROOM_ID
 
-            mock_event = MagicMock()
-            mock_event.event_id = "$failed_event:matrix.org"
-            mock_event.as_key_request.return_value = MagicMock()
+                mock_event = MagicMock()
+                mock_event.event_id = "$failed_event:matrix.org"
+                mock_event.as_key_request.return_value = MagicMock()
 
-            await bot_instance.on_decryption_failure(mock_room, mock_event)
+                await bot_instance.on_decryption_failure(mock_room, mock_event)
 
-            # Should use high-level request_room_key first
-            mock_client.request_room_key.assert_called_once_with(mock_event)
-            # to_device should not be called since request_room_key succeeded
-            mock_client.to_device.assert_not_called()
-            # Event should have room_id set
-            assert mock_event.room_id == "!room:matrix.org"
+                # Should use high-level request_room_key first
+                mock_client.request_room_key.assert_called_once_with(mock_event)
+                # to_device should not be called since request_room_key succeeded
+                mock_client.to_device.assert_not_called()
+                # Event should have room_id set
+                assert mock_event.room_id == "!room:matrix.org"
+            finally:
+                # Explicitly clean up bot instance to prevent CI hanging
+                if hasattr(bot_instance, "client"):
+                    bot_instance.client = None
+                del bot_instance
 
     @pytest.mark.asyncio
     async def test_on_decryption_failure_fallback(self, sample_config):
@@ -1127,24 +1133,30 @@ class TestE2EEFunctionality:
                 bot_instance = bot.BibleBot(e2ee_config)
                 bot_instance.client = mock_client
 
-                mock_room = MagicMock()
-                mock_room.room_id = "!room:matrix.org"
+                try:
+                    mock_room = MagicMock()
+                    mock_room.room_id = "!room:matrix.org"
 
-                mock_event = MagicMock()
-                mock_event.event_id = "$failed_event:matrix.org"
-                mock_event.as_key_request.return_value = MagicMock()
+                    mock_event = MagicMock()
+                    mock_event.event_id = "$failed_event:matrix.org"
+                    mock_event.as_key_request.return_value = MagicMock()
 
-                await bot_instance.on_decryption_failure(mock_room, mock_event)
+                    await bot_instance.on_decryption_failure(mock_room, mock_event)
 
-                # Should try request_room_key first, then fall back to to_device
-                mock_client.request_room_key.assert_called_once_with(mock_event)
-                mock_client.to_device.assert_called_once()
-                mock_event.as_key_request.assert_called_once_with(
-                    TEST_USER_ID, TEST_DEVICE_ID
-                )
-                mock_event.as_key_request.assert_called_once_with(
-                    TEST_USER_ID, TEST_DEVICE_ID
-                )
+                    # Should try request_room_key first, then fall back to to_device
+                    mock_client.request_room_key.assert_called_once_with(mock_event)
+                    mock_client.to_device.assert_called_once()
+                    mock_event.as_key_request.assert_called_once_with(
+                        TEST_USER_ID, TEST_DEVICE_ID
+                    )
+                    mock_event.as_key_request.assert_called_once_with(
+                        TEST_USER_ID, TEST_DEVICE_ID
+                    )
+                finally:
+                    # Explicitly clean up bot instance to prevent CI hanging
+                    if hasattr(bot_instance, "client"):
+                        bot_instance.client = None
+                    del bot_instance
 
 
 class TestMainFunction:
