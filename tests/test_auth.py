@@ -2,7 +2,7 @@
 
 import json
 import os
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, Mock, patch
 
 import nio.exceptions
 import pytest
@@ -458,6 +458,268 @@ class TestInteractiveLogin:
                 assert result is False
                 # We now create two clients (temp for discovery + actual), so close is called twice
                 assert mock_client.close.call_count == 2
+
+    @pytest.mark.asyncio
+    @patch("builtins.input")
+    @patch("getpass.getpass")
+    @patch.object(auth, "load_credentials")
+    @patch.object(auth, "discover_homeserver", new_callable=AsyncMock)
+    @patch.object(auth, "get_store_dir")
+    async def test_interactive_login_rate_limited(
+        self,
+        mock_get_store,
+        mock_discover,
+        mock_load_creds,
+        mock_getpass,
+        mock_input,
+        temp_config_dir,
+    ):
+        """Test rate limiting error handling."""
+        mock_load_creds.return_value = None
+        mock_input.side_effect = ["https://matrix.org", "@test:matrix.org"]
+        mock_getpass.return_value = "password"
+        mock_discover.return_value = "https://matrix.org"
+        mock_get_store.return_value = temp_config_dir / "store"
+
+        with patch("biblebot.auth.AsyncClient") as mock_client_class:
+            mock_client = AsyncMock()
+            mock_client_class.return_value = mock_client
+
+            # Create rate limit error response
+            mock_response = nio.LoginError(
+                message="Too many requests", status_code="M_LIMIT_EXCEEDED"
+            )
+            mock_response.retry_after_ms = 60000  # 1 minute
+            mock_client.login.return_value = mock_response
+
+            with patch("importlib.util.find_spec") as mock_find_spec:
+                mock_find_spec.return_value = None
+
+                result = await auth.interactive_login()
+
+                assert result is False
+                assert mock_client.close.call_count >= 1
+
+    @pytest.mark.asyncio
+    @patch("builtins.input")
+    @patch("getpass.getpass")
+    @patch.object(auth, "load_credentials")
+    @patch.object(auth, "discover_homeserver", new_callable=AsyncMock)
+    @patch.object(auth, "get_store_dir")
+    async def test_interactive_login_rate_limited_no_retry_time(
+        self,
+        mock_get_store,
+        mock_discover,
+        mock_load_creds,
+        mock_getpass,
+        mock_input,
+        temp_config_dir,
+    ):
+        """Test rate limiting without retry_after_ms."""
+        mock_load_creds.return_value = None
+        mock_input.side_effect = ["https://matrix.org", "@test:matrix.org"]
+        mock_getpass.return_value = "password"
+        mock_discover.return_value = "https://matrix.org"
+        mock_get_store.return_value = temp_config_dir / "store"
+
+        with patch("biblebot.auth.AsyncClient") as mock_client_class:
+            mock_client = AsyncMock()
+            mock_client_class.return_value = mock_client
+
+            # Create rate limit error response without retry_after_ms
+            mock_response = nio.LoginError(
+                message="Too many requests", status_code="M_LIMIT_EXCEEDED"
+            )
+            # No retry_after_ms attribute
+            mock_client.login.return_value = mock_response
+
+            with patch("importlib.util.find_spec") as mock_find_spec:
+                mock_find_spec.return_value = None
+
+                result = await auth.interactive_login()
+
+                assert result is False
+                assert mock_client.close.call_count >= 1
+
+    @pytest.mark.asyncio
+    @patch("builtins.input")
+    @patch("getpass.getpass")
+    @patch.object(auth, "load_credentials")
+    @patch.object(auth, "discover_homeserver", new_callable=AsyncMock)
+    @patch.object(auth, "get_store_dir")
+    async def test_interactive_login_forbidden_error(
+        self,
+        mock_get_store,
+        mock_discover,
+        mock_load_creds,
+        mock_getpass,
+        mock_input,
+        temp_config_dir,
+    ):
+        """Test forbidden error handling."""
+        mock_load_creds.return_value = None
+        mock_input.side_effect = ["https://matrix.org", "@test:matrix.org"]
+        mock_getpass.return_value = "password"
+        mock_discover.return_value = "https://matrix.org"
+        mock_get_store.return_value = temp_config_dir / "store"
+
+        with patch("biblebot.auth.AsyncClient") as mock_client_class:
+            mock_client = AsyncMock()
+            mock_client_class.return_value = mock_client
+
+            # Create forbidden error response
+            mock_response = nio.LoginError(
+                message="Invalid username or password", status_code="M_FORBIDDEN"
+            )
+            mock_client.login.return_value = mock_response
+
+            with patch("importlib.util.find_spec") as mock_find_spec:
+                mock_find_spec.return_value = None
+
+                result = await auth.interactive_login()
+
+                assert result is False
+                assert mock_client.close.call_count >= 1
+
+    @pytest.mark.asyncio
+    @patch("builtins.input")
+    @patch("getpass.getpass")
+    @patch.object(auth, "load_credentials")
+    @patch.object(auth, "discover_homeserver", new_callable=AsyncMock)
+    @patch.object(auth, "get_store_dir")
+    async def test_interactive_login_user_not_found(
+        self,
+        mock_get_store,
+        mock_discover,
+        mock_load_creds,
+        mock_getpass,
+        mock_input,
+        temp_config_dir,
+    ):
+        """Test user not found error handling."""
+        mock_load_creds.return_value = None
+        mock_input.side_effect = ["https://matrix.org", "@test:matrix.org"]
+        mock_getpass.return_value = "password"
+        mock_discover.return_value = "https://matrix.org"
+        mock_get_store.return_value = temp_config_dir / "store"
+
+        with patch("biblebot.auth.AsyncClient") as mock_client_class:
+            mock_client = AsyncMock()
+            mock_client_class.return_value = mock_client
+
+            # Create not found error response
+            mock_response = nio.LoginError(
+                message="User not found", status_code="M_NOT_FOUND"
+            )
+            mock_client.login.return_value = mock_response
+
+            with patch("importlib.util.find_spec") as mock_find_spec:
+                mock_find_spec.return_value = None
+
+                result = await auth.interactive_login()
+
+                assert result is False
+                assert mock_client.close.call_count >= 1
+
+    @pytest.mark.asyncio
+    @patch("builtins.input")
+    @patch("getpass.getpass")
+    @patch.object(auth, "load_credentials")
+    @patch.object(auth, "discover_homeserver", new_callable=AsyncMock)
+    @patch.object(auth, "get_store_dir")
+    async def test_interactive_login_unexpected_response(
+        self,
+        mock_get_store,
+        mock_discover,
+        mock_load_creds,
+        mock_getpass,
+        mock_input,
+        temp_config_dir,
+    ):
+        """Test unexpected response type handling."""
+        mock_load_creds.return_value = None
+        mock_input.side_effect = ["https://matrix.org", "@test:matrix.org"]
+        mock_getpass.return_value = "password"
+        mock_discover.return_value = "https://matrix.org"
+        mock_get_store.return_value = temp_config_dir / "store"
+
+        with patch("biblebot.auth.AsyncClient") as mock_client_class:
+            mock_client = AsyncMock()
+            mock_client_class.return_value = mock_client
+
+            # Create unexpected response (not LoginResponse or LoginError)
+            mock_response = Mock()
+            mock_response.status_code = "UNKNOWN"
+            mock_response.message = "Unknown response"
+            mock_client.login.return_value = mock_response
+
+            with patch("importlib.util.find_spec") as mock_find_spec:
+                mock_find_spec.return_value = None
+
+                result = await auth.interactive_login()
+
+                assert result is False
+                assert mock_client.close.call_count >= 1
+
+    @pytest.mark.asyncio
+    @patch("builtins.input")
+    @patch("getpass.getpass")
+    @patch.object(auth, "load_credentials")
+    @patch.object(auth, "save_credentials")
+    @patch.object(auth, "discover_homeserver", new_callable=AsyncMock)
+    @patch.object(auth, "get_store_dir")
+    async def test_interactive_login_device_id_reuse(
+        self,
+        mock_get_store,
+        mock_discover,
+        mock_save_creds,
+        mock_load_creds,
+        mock_getpass,
+        mock_input,
+        temp_config_dir,
+    ):
+        """Test device ID reuse from existing credentials."""
+        # Setup existing credentials with same user
+        existing_creds = auth.Credentials(
+            homeserver="https://matrix.org",
+            user_id="@test:matrix.org",
+            access_token="old_token",
+            device_id="existing_device",
+        )
+        mock_load_creds.return_value = existing_creds
+        mock_input.side_effect = [
+            "y",
+            "https://matrix.org",
+            "@test:matrix.org",
+        ]  # Confirm re-login
+        mock_getpass.return_value = "password"
+        mock_discover.return_value = "https://matrix.org"
+        mock_get_store.return_value = temp_config_dir / "store"
+
+        with patch("biblebot.auth.AsyncClient") as mock_client_class:
+            mock_client = AsyncMock()
+            mock_client_class.return_value = mock_client
+
+            # Create successful login response
+            mock_response = nio.LoginResponse(
+                user_id="@test:matrix.org",
+                device_id="existing_device",
+                access_token="new_token",
+            )
+            mock_client.login.return_value = mock_response
+
+            with patch("importlib.util.find_spec") as mock_find_spec:
+                mock_find_spec.return_value = None
+
+                result = await auth.interactive_login()
+
+                assert result is True
+                # Verify device_id was passed to client constructor
+                mock_client_class.assert_called()
+                call_kwargs = mock_client_class.call_args[1]
+                assert call_kwargs.get("device_id") == "existing_device"
+                mock_save_creds.assert_called_once()
+                assert mock_client.close.call_count >= 1
 
 
 class TestInteractiveLogout:

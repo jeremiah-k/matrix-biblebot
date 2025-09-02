@@ -602,7 +602,7 @@ async def interactive_login(
                 logger.error(
                     "❌ Too many login attempts. Please wait a few minutes and try again."
                 )
-                if hasattr(resp, "retry_after_ms"):
+                if hasattr(resp, "retry_after_ms") and resp.retry_after_ms is not None:
                     wait_time = resp.retry_after_ms / 1000 / 60  # Convert to minutes
                     logger.error(
                         f"   Server requests waiting {wait_time:.1f} minutes before retry."
@@ -634,7 +634,7 @@ async def interactive_login(
         logger.exception("Login error")
         await client.close()
         return False
-    except (nio.exceptions.MatrixRequestError, aiohttp.ClientError) as e:
+    except (nio.exceptions.RemoteProtocolError, aiohttp.ClientError) as e:
         logger.error(f"Network/request error during login: {e}")
         logger.error(
             "❌ Network error. Please check your internet connection and homeserver URL."
