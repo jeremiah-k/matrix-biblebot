@@ -442,7 +442,7 @@ class TestMainFunction:
             mock_credentials = Credentials(
                 homeserver="https://matrix.org",
                 user_id="@test:matrix.org",
-                access_token="test_token",
+                access_token="FAKE_TEST_TOKEN_12345",
                 device_id="TEST_DEVICE",
             )
             with patch("biblebot.cli.CONFIG_DIR") as mock_config_dir:

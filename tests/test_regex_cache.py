@@ -63,7 +63,7 @@ def test_passage_cache(monkeypatch):
 
     calls = {"n": 0}
 
-    async def fake_req(url, headers=None, params=None, session=None, timeout=None):
+    async def fake_req(_url, headers=None, params=None, session=None, timeout=None):
         """
         Test helper that simulates an async HTTP request to a Bible API.
 

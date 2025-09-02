@@ -75,7 +75,7 @@ def mock_submit_coro(monkeypatch):
     """
     import inspect
 
-    def mock_submit(coro, loop=None):
+    def mock_submit(coro, _loop=None):  # noqa: ARG001
         """
         Run a coroutine to completion on a temporary event loop and return a Future containing its outcome.
 
