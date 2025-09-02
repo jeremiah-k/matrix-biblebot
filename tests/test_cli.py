@@ -3,7 +3,7 @@
 import argparse
 import asyncio
 import warnings
-from unittest.mock import AsyncMock, Mock, patch
+from unittest.mock import AsyncMock, MagicMock, Mock, patch
 
 import pytest
 
@@ -431,8 +431,11 @@ class TestMainFunction:
             "matrix_room_ids": ["!room:matrix.org"],
         }
 
-        with patch("os.path.exists") as mock_exists:
-            mock_exists.return_value = True  # Config exists
+        with patch("biblebot.cli.get_default_config_path") as mock_get_config_path:
+            # Create a mock Path object that returns True for exists()
+            mock_config_path = MagicMock()
+            mock_config_path.exists.return_value = True
+            mock_get_config_path.return_value = mock_config_path
             # Create proper Credentials object so bot starts directly
             from biblebot.auth import Credentials
 
@@ -442,22 +445,37 @@ class TestMainFunction:
                 access_token="test_token",
                 device_id="TEST_DEVICE",
             )
-            with patch("biblebot.auth.load_credentials", return_value=mock_credentials):
-                # Mock the config loading to avoid file system access
-                with patch("biblebot.bot.load_config", return_value=mock_config):
-                    # Patch the entrypoint alias with a real async stub and
-                    # let CLI's own runner consume it.
-                    called = []
+            with patch("biblebot.cli.CONFIG_DIR") as mock_config_dir:
+                # Mock credentials path to exist
+                mock_credentials_path = MagicMock()
+                mock_credentials_path.exists.return_value = True
+                mock_config_dir.__truediv__.return_value = mock_credentials_path
 
-                    async def _stub_bot_main(*_a, **_k):
-                        called.append(True)
-                        return 0
+                with patch(
+                    "biblebot.cli.load_credentials", return_value=mock_credentials
+                ):
+                    # Mock the config loading to avoid file system access
+                    with patch("biblebot.bot.load_config", return_value=mock_config):
+                        # Patch the entrypoint alias with a real async stub and
+                        # let CLI's own runner consume it.
+                        called = []
 
-                    with patch("biblebot.cli.bot_main", new=_stub_bot_main):
-                        with patch("sys.argv", ["biblebot"]):
-                            with patch("builtins.input", return_value="n"):
-                                cli.main()
-                    assert len(called) == 1
+                        async def _stub_bot_main(*_a, **_k):
+                            called.append(True)
+                            return 0
+
+                        with patch("biblebot.cli.bot_main", new=_stub_bot_main):
+                            # Run the bot directly instead of interactive mode
+                            with patch("sys.argv", ["biblebot"]):
+                                # Mock the config file path to point to our mocked config
+                                with patch(
+                                    "biblebot.cli.get_default_config_path",
+                                    return_value=mock_config_path,
+                                ):
+                                    # Mock user input to start the bot
+                                    with patch("builtins.input", return_value="y"):
+                                        cli.main()
+                        assert len(called) == 1
 
         # Test passes if CLI handles the authentication cancellation gracefully
         # The test should verify that the CLI attempted to run the bot
