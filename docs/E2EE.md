@@ -25,13 +25,13 @@ Requirements:
 
 Add an `e2ee` section under `matrix` in your config (usually `~/.config/matrix-biblebot/config.yaml`):
 
-```yaml
-matrix_homeserver: https://your-matrix-server.org
-matrix_user: "@your-bot:your-matrix-server.org"
-matrix_room_ids:
-  - "!roomid:your-matrix-server.org"
+The bot will use the homeserver and user from your 'biblebot auth login' session.
+You only need to configure the room IDs and E2EE settings:
 
+```yaml
 matrix:
+  room_ids:
+    - "!roomid:your-matrix-server.org"
   e2ee:
     enabled: true
     # Optional custom store path (default: ~/.config/matrix-biblebot/e2ee-store)

@@ -957,8 +957,16 @@ async def main(config_path=DEFAULT_CONFIG_FILENAME_MAIN):
             )
 
         # For legacy mode, we need homeserver and user from environment or config
-        homeserver = os.getenv("MATRIX_HOMESERVER") or config.get("matrix_homeserver")
-        user_id = os.getenv("MATRIX_USER_ID") or config.get("matrix_user")
+        homeserver = (
+            os.getenv("MATRIX_HOMESERVER")
+            or config.get("matrix_homeserver")
+            or config.get("matrix", {}).get("homeserver")
+        )
+        user_id = (
+            os.getenv("MATRIX_USER_ID")
+            or config.get("matrix_user")
+            or config.get("matrix", {}).get("user")
+        )
 
         if not homeserver or not user_id:
             logger.error(
