@@ -89,6 +89,7 @@ class E2EETestFramework:
             return _real_import(name, globals, locals, fromlist, level)
 
         # Mock SqliteStore to avoid database connection issues
+        # Implements ALL 27 public methods from MatrixStore base class
         class MockSqliteStore:
             def __init__(
                 self,
@@ -107,38 +108,95 @@ class E2EETestFramework:
                 # Don't connect to database
                 pass
 
+            # Account methods
             def load_account(self):
                 return None
 
             def save_account(self, account):
                 pass
 
+            # Device key methods
             def load_device_keys(self):
                 return {}
 
             def save_device_keys(self, device_keys):
                 pass
 
+            # Session methods
             def load_sessions(self):
                 return {}
 
-            def save_sessions(self, sessions):
+            def save_session(self, session):
                 pass
 
+            # Inbound group session methods
             def load_inbound_group_sessions(self):
                 return {}
 
-            def save_inbound_group_sessions(self, sessions):
+            def save_inbound_group_session(self, session):
                 pass
 
-            def load_outbound_group_sessions(self):
-                return {}
-
-            def save_outbound_group_sessions(self, sessions):
-                pass
-
+            # Outgoing key request methods
             def load_outgoing_key_requests(self):
                 return {}
+
+            def add_outgoing_key_request(self, request):
+                pass
+
+            def remove_outgoing_key_request(self, request):
+                pass
+
+            # Encrypted room methods
+            def load_encrypted_rooms(self):
+                return set()
+
+            def save_encrypted_rooms(self, rooms):
+                pass
+
+            def delete_encrypted_room(self, room_id):
+                pass
+
+            # Sync token methods
+            def load_sync_token(self):
+                return None
+
+            def save_sync_token(self, token):
+                pass
+
+            # Device verification methods
+            def verify_device(self, device):
+                pass
+
+            def unverify_device(self, device):
+                pass
+
+            def is_device_verified(self, device):
+                return False
+
+            def blacklist_device(self, device):
+                pass
+
+            def unblacklist_device(self, device):
+                pass
+
+            def is_device_blacklisted(self, device):
+                return False
+
+            def ignore_device(self, device):
+                pass
+
+            def unignore_device(self, device):
+                pass
+
+            def ignore_devices(self, devices):
+                pass
+
+            def is_device_ignored(self, device):
+                return False
+
+            # Upgrade method
+            def upgrade_to_v2(self):
+                pass
 
         # Also need to mock the AsyncClientConfig E2EE dependency check
         def mock_client_config_init(self, *args, **kwargs):
