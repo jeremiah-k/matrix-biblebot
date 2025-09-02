@@ -450,6 +450,13 @@ def check_loginctl_available():
         return False
 
 
+def _get_current_username() -> str:
+    """Get the current username from environment variables or system."""
+    import getpass
+
+    return os.environ.get(ENV_USER) or os.environ.get(ENV_USERNAME) or getpass.getuser()
+
+
 def check_lingering_enabled():
     """
     Return True if user lingering (systemd --user Linger) is enabled for the current user.
@@ -460,13 +467,7 @@ def check_lingering_enabled():
     results in False.
     """
     try:
-        import getpass
-
-        username = (
-            os.environ.get(ENV_USER)
-            or os.environ.get(ENV_USERNAME)
-            or getpass.getuser()
-        )
+        username = _get_current_username()
         result = subprocess.run(
             ["loginctl", "show-user", username, "--property=Linger"],
             check=False,
@@ -485,13 +486,7 @@ def enable_lingering():
     Determines the target username from the environment variables ENV_USER or ENV_USERNAME and invokes `sudo loginctl enable-linger`. Returns True if the command exits with status 0; returns False on nonzero exit status or on exceptions (e.g., missing environment variables or subprocess errors). Note: this function requires sudo privileges to succeed.
     """
     try:
-        import getpass
-
-        username = (
-            os.environ.get(ENV_USER)
-            or os.environ.get(ENV_USERNAME)
-            or getpass.getuser()
-        )
+        username = _get_current_username()
         print(f"Enabling lingering for user {username}...")
         result = subprocess.run(
             ["sudo", "loginctl", "enable-linger", username],

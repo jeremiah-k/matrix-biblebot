@@ -10,9 +10,11 @@ from __future__ import annotations
 
 import asyncio
 import getpass
+import importlib.util
 import json
 import logging
 import os
+import platform
 import shutil
 import ssl
 import tempfile
@@ -299,8 +301,6 @@ def check_e2ee_status() -> dict:
     }
 
     # Check platform support
-    import platform
-
     if platform.system() == PLATFORM_WINDOWS:
         status[E2EE_KEY_PLATFORM_SUPPORTED] = False
         status[E2EE_KEY_ERROR] = ERROR_E2EE_NOT_SUPPORTED
@@ -308,8 +308,6 @@ def check_e2ee_status() -> dict:
 
     # Check dependencies
     try:
-        import importlib.util
-
         olm_spec = importlib.util.find_spec("olm")
         nio_spec = importlib.util.find_spec("nio")
         if olm_spec is not None and nio_spec is not None:
@@ -325,10 +323,11 @@ def check_e2ee_status() -> dict:
     status[E2EE_KEY_STORE_EXISTS] = store_dir.exists()
 
     creds = load_credentials()
-    # Consider E2EE "available" when deps are present AND creds exist AND a store exists
+    # E2EE "available" means dependencies are installed and platform is supported
     status[E2EE_KEY_AVAILABLE] = bool(
         status[E2EE_KEY_DEPENDENCIES_INSTALLED] and status[E2EE_KEY_PLATFORM_SUPPORTED]
     )
+    # E2EE "ready" means available AND credentials exist AND store exists
     status[E2EE_KEY_READY] = bool(creds and status[E2EE_KEY_STORE_EXISTS])
 
     return status
