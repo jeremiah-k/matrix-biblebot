@@ -129,7 +129,10 @@ def get_config_dir() -> Path:
     try:
         os.chmod(CONFIG_DIR, CONFIG_DIR_PERMISSIONS)
     except OSError:
-        logger.debug("Could not set config dir perms to 0700", exc_info=True)
+        logger.debug(
+            f"Could not set config dir perms to {oct(CONFIG_DIR_PERMISSIONS)}",
+            exc_info=True,
+        )
     return CONFIG_DIR
 
 
@@ -229,7 +232,7 @@ def get_store_dir() -> Path:
     try:
         os.chmod(E2EE_STORE_DIR, 0o700)
     except OSError:
-        logger.debug("Could not set E2EE store perms to 0700", exc_info=True)
+        logger.debug("Could not set E2EE store perms to 0o700", exc_info=True)
     return E2EE_STORE_DIR
 
 
@@ -312,9 +315,8 @@ def print_e2ee_status():
     print(f"  Platform Support: {'✓' if status[E2EE_KEY_PLATFORM_SUPPORTED] else '✗'}")
     print(f"  Dependencies: {'✓' if status[E2EE_KEY_DEPENDENCIES_INSTALLED] else '✗'}")
     print(f"  Store Directory: {'✓' if status[E2EE_KEY_STORE_EXISTS] else '✗'}")
-    print(
-        f"  Overall Status: {'✓ Enabled' if status[E2EE_KEY_AVAILABLE] else '✗ Disabled'}"
-    )
+    print(f"  Available: {'✓' if status[E2EE_KEY_AVAILABLE] else '✗'}")
+    print(f"  Ready: {'✓' if status[E2EE_KEY_READY] else '✗'}")
 
     if status[E2EE_KEY_ERROR]:
         print(f"  Error: {status[E2EE_KEY_ERROR]}")

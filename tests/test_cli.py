@@ -459,18 +459,19 @@ class TestMainFunction:
             """
             return None  # No credentials
 
-        # ✅ CORRECT: Mock result object to be returned by bot.main
-        Mock()
+        # (removed unused local)
 
         with patch("os.path.exists", return_value=True):  # Config exists
             # Credentials present => CLI should start the bot
             with patch("biblebot.auth.load_credentials", return_value=Mock()):
-                # async no-op coroutine for the bot entrypoint
-                with patch("biblebot.bot.main", new=lambda *a, **k: asyncio.sleep(0)):
-                    # make asyncio.run execute the coroutine
+                # Patch the entrypoint alias used by CLI
+                with patch(
+                    "biblebot.cli.bot_main", new=lambda *a, **k: asyncio.sleep(0)
+                ):
+                    # Patch the CLI's async runner to consume the coroutine
                     with patch(
-                        "biblebot.cli.asyncio.run", side_effect=_consume_coroutine
-                    ) as mock_run:
+                        "biblebot.cli.run_async", side_effect=_consume_coroutine
+                    ) as run_patch:
                         with patch("sys.argv", ["biblebot"]):
                             with patch(
                                 "builtins.input", return_value="y"
@@ -478,7 +479,7 @@ class TestMainFunction:
                                 with patch("getpass.getpass", return_value="password"):
                                     # exercise the real cli.main
                                     cli.main()
-        mock_run.assert_called_once()
+        run_patch.assert_called_once()
         # The test should verify that the CLI attempted to run the bot
         # but since we're mocking input to say "n", it won't actually call asyncio.run
 

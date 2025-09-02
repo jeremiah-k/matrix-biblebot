@@ -314,7 +314,7 @@ def create_service_file():
     # Replace ExecStart line to use discovered command and default config path
     import re
 
-    exec_start_line = f"ExecStart={exec_cmd} --config {DEFAULT_CONFIG_PATH}"
+    exec_start_line = f'ExecStart={exec_cmd} --config "{DEFAULT_CONFIG_PATH}"'
     service_content, n = re.subn(
         r"^ExecStart=.*$", exec_start_line, service_template, flags=re.MULTILINE
     )
@@ -427,13 +427,7 @@ def check_loginctl_available():
         bool: True if loginctl is available, False otherwise.
     """
     try:
-        result = subprocess.run(
-            ["which", "loginctl"],
-            check=False,
-            capture_output=True,
-            text=True,
-        )
-        return result.returncode == 0
+        return shutil.which("loginctl") is not None
     except Exception:
         return False
 

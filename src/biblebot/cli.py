@@ -216,6 +216,7 @@ def interactive_main():
         except Exception as e:
             print(f"\n❌ Unexpected error: {e}")
             print("Check your configuration and try again.")
+            logger.exception("Unexpected error starting bot")
             sys.exit(1)
 
     def _get_user_input(prompt: str, cancellation_message: str = "Cancelled.") -> str:

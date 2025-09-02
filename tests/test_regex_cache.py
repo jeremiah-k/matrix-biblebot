@@ -3,6 +3,7 @@ import asyncio
 import pytest
 
 from biblebot import bot as botmod
+from biblebot.cli import run_async
 
 
 def test_reference_patterns_basic():
@@ -51,7 +52,7 @@ def test_reference_patterns_basic():
 def test_normalize_book_name(abbreviation, full_name):
     """
     Assert that a book abbreviation normalizes to the expected full book name.
-    
+
     The test passes the given abbreviation (which may include extra whitespace, punctuation, numeric prefixes like "1", and varying case) to normalize_book_name and verifies the returned canonical book name equals full_name.
     """
     assert botmod.normalize_book_name(abbreviation) == full_name
@@ -67,16 +68,16 @@ def test_passage_cache(monkeypatch):
     async def fake_req(url, headers=None, params=None):
         """
         Test helper that simulates an async HTTP request to a Bible API.
-        
+
         Increments the outer `calls["n"]` counter and returns a fixed payload mimicking a kjv
         response: a dict with "text" and "reference" keys (e.g., John 3:16). Intended for use
         in tests that need a predictable async API response and to verify caching or call counts.
-        
+
         Parameters:
             url (str): Requested URL (ignored).
             headers (dict|None): Request headers (ignored).
             params (dict|None): Query parameters (ignored).
-        
+
         Returns:
             dict: Fixed response payload with keys "text" and "reference".
         """
@@ -88,11 +89,11 @@ def test_passage_cache(monkeypatch):
 
     try:
         # First call populates cache
-        text1, ref1 = asyncio.run(
+        text1, ref1 = run_async(
             botmod.get_bible_text("John 3:16", translation="kjv", api_keys=None)
         )
         # Second call should be served from cache, no new request
-        text2, ref2 = asyncio.run(
+        text2, ref2 = run_async(
             botmod.get_bible_text("John 3:16", translation="kjv", api_keys=None)
         )
 

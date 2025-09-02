@@ -227,7 +227,7 @@ class TestPerformancePatterns:
 
             # Verify requests were processed
             assert len(request_times) == 5
-            # Sequential ≈ 0.5s (5 × 0.1); concurrent should be well under that.
+            # Sequential ≈ 0.5s (5 x 0.1); concurrent should be well under that.
             assert duration < 0.5
 
     async def test_large_message_handling(self, mock_config, mock_client):
@@ -246,7 +246,7 @@ class TestPerformancePatterns:
 
         # Create room mock with room_id to ensure events are processed
         room = MagicMock()
-        room.room_id = "!test:matrix.org"
+        room.room_id = mock_config["matrix_room_ids"][0]
 
         with patch("biblebot.bot.get_bible_text") as mock_get_bible:
             mock_get_bible.return_value = ("In the beginning was the Word", "John 1:1")
