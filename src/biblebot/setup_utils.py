@@ -33,7 +33,7 @@ from .constants import (
     SYSTEMD_USER_DIR,
     WARNING_EXECUTABLE_NOT_FOUND,
 )
-from .tools import get_service_template_path
+from .tools import copy_service_template_to
 
 
 def get_executable_path():
@@ -164,17 +164,20 @@ def get_template_service_content():
 
     If none of the sources can be read, returns a built-in default service template string suitable for a typical user install.
     """
-    # Use the helper function to get the service template path
-    template_path = get_service_template_path()
+    # Use the copy helper function to get a stable template file
+    import tempfile
 
-    if template_path and os.path.exists(template_path):
-        # Read the template from file
-        try:
+    try:
+        with tempfile.NamedTemporaryFile(
+            mode="w+", suffix=".service", delete=False
+        ) as temp_file:
+            template_path = copy_service_template_to(temp_file.name)
             with open(template_path, FILE_MODE_READ, encoding="utf-8") as f:
                 service_template = f.read()
+            os.unlink(template_path)  # Clean up temp file
             return service_template
-        except Exception as e:
-            print(f"Error reading service template file: {e}")
+    except Exception as e:
+        print(f"Error reading service template: {e}")
 
     # If the helper function failed, try using importlib.resources directly
     try:
