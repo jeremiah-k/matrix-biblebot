@@ -407,7 +407,8 @@ class TestInteractiveLogin:
 
                 assert result is True
                 mock_save_creds.assert_called_once()
-                mock_client.close.assert_called_once()
+                # We now create two clients (temp for discovery + actual), so close is called twice
+                assert mock_client.close.call_count == 2
 
     @pytest.mark.asyncio
     @patch("builtins.input")
@@ -453,7 +454,8 @@ class TestInteractiveLogin:
                 result = await auth.interactive_login()
 
                 assert result is False
-                mock_client.close.assert_called_once()
+                # We now create two clients (temp for discovery + actual), so close is called twice
+                assert mock_client.close.call_count == 2
 
 
 class TestInteractiveLogout:
