@@ -89,6 +89,11 @@ nio_mock.DiscoveryInfoResponse = MockDiscoveryInfoResponse
 nio_mock.DiscoveryInfoError = MockDiscoveryInfoError
 nio_mock.LoginResponse = MockLoginResponse
 
+# Set up proper __spec__ for nio module to support importlib.util.find_spec
+nio_mock.__spec__ = MagicMock()
+nio_mock.__spec__.name = "nio"
+nio_mock.__spec__.origin = "mocked"
+
 
 def clear_env(keys):
     """
