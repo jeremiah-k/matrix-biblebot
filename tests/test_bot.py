@@ -1162,11 +1162,17 @@ class TestMainFunction:
             mock_client.restore_login = MagicMock()
             mock_client.add_event_callback = MagicMock()
             mock_client.should_upload_keys = False  # Disable key upload for this test
+            mock_client.keys_upload = AsyncMock()  # Ensure keys_upload is AsyncMock
             # Ensure close is AsyncMock
             mock_client.close = AsyncMock()
             mock_client_class.return_value = mock_client
 
             with patch("biblebot.bot.BibleBot") as mock_bot_class:
+                # Mock BibleBot methods that might be called
+                mock_bot = AsyncMock()
+                mock_bot.start = AsyncMock()
+                mock_bot.close = AsyncMock()
+                mock_bot_class.return_value = mock_bot
                 mock_bot = MagicMock()
                 mock_bot_class.return_value = mock_bot
                 mock_bot.client = mock_client
