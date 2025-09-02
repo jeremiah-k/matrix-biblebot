@@ -186,6 +186,9 @@ class TestAPIRequests:
             mock_response = AsyncMock()
             mock_response.json.return_value = mock_response_data
             mock_response.status = 200
+            # ✅ CORRECT: Make headers a regular MagicMock to return strings, not coroutines
+            mock_response.headers = MagicMock()
+            mock_response.headers.get.return_value = "application/json"
             mock_get.return_value.__aenter__.return_value = mock_response
 
             result = await bot.make_api_request("/test")
@@ -198,6 +201,9 @@ class TestAPIRequests:
         with patch("aiohttp.ClientSession.get") as mock_get:
             mock_response = AsyncMock()
             mock_response.status = 404
+            # ✅ CORRECT: Make headers a regular MagicMock to return strings, not coroutines
+            mock_response.headers = MagicMock()
+            mock_response.headers.get.return_value = "text/html"
             mock_get.return_value.__aenter__.return_value = mock_response
 
             result = await bot.make_api_request("/test")
@@ -938,8 +944,10 @@ class TestMainFunction:
         tmp_path,
     ):
         """Test main function with access token from environment."""
-        # Setup mocks - ensure credentials are found
-        mock_load_config.return_value = sample_config
+        # Setup mocks - ensure credentials are found, disable E2EE for this test to avoid dependency issues
+        test_config = sample_config.copy()
+        test_config["matrix"]["e2ee"]["enabled"] = False
+        mock_load_config.return_value = test_config
         mock_load_env.return_value = (
             TEST_ACCESS_TOKEN,  # Provide access token instead of relying on credentials
             {"esv": "test_key"},
@@ -1056,8 +1064,10 @@ class TestMainFunction:
         self, mock_load_env, mock_load_config, mock_load_creds, sample_config
     ):
         """Test main function with no authentication."""
-        # Setup mocks to simulate no authentication available
-        mock_load_config.return_value = sample_config
+        # Setup mocks to simulate no authentication available, disable E2EE for this test to avoid dependency issues
+        test_config = sample_config.copy()
+        test_config["matrix"]["e2ee"]["enabled"] = False
+        mock_load_config.return_value = test_config
         mock_load_env.return_value = (None, {"esv": "test_key"})  # No access token
         mock_load_creds.return_value = None  # No saved credentials
 
