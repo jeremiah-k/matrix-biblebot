@@ -91,20 +91,18 @@ def _create_ssl_context():
         ssl.SSLContext | None: An SSLContext configured with certifi's CA file if certifi is present,
         otherwise the system default SSLContext. Returns None only if context creation fails.
     """
-    try:
-        if certifi:
-            return ssl.create_default_context(cafile=certifi.where())
-        else:
-            return ssl.create_default_context()
-    except Exception as e:
-        logger.warning(
-            f"Failed to create certifi-backed SSL context, falling back to system default: {e}"
-        )
+    if certifi:
         try:
-            return ssl.create_default_context()
-        except Exception as fallback_e:
-            logger.error(f"Failed to create system default SSL context: {fallback_e}")
-            return None
+            return ssl.create_default_context(cafile=certifi.where())
+        except Exception as e:
+            logger.warning(
+                f"Failed to create certifi-backed SSL context, falling back to system default: {e}"
+            )
+    try:
+        return ssl.create_default_context()
+    except Exception as e:
+        logger.error(f"Failed to create system default SSL context: {e}")
+        return None
 
 
 @dataclass
@@ -328,7 +326,9 @@ def check_e2ee_status() -> dict:
         status[E2EE_KEY_DEPENDENCIES_INSTALLED] and status[E2EE_KEY_PLATFORM_SUPPORTED]
     )
     # E2EE "ready" means available AND credentials exist AND store exists
-    status[E2EE_KEY_READY] = bool(creds and status[E2EE_KEY_STORE_EXISTS])
+    status[E2EE_KEY_READY] = bool(
+        status[E2EE_KEY_AVAILABLE] and creds and status[E2EE_KEY_STORE_EXISTS]
+    )
 
     return status
 
@@ -411,7 +411,8 @@ async def discover_homeserver(
         )
     except Exception as e:
         logger.debug(
-            f"Unexpected error during server discovery: {type(e).__name__}: {e}"
+            f"Unexpected error during server discovery: {type(e).__name__}: {e}",
+            exc_info=True,
         )
 
     logger.debug(f"Using original homeserver URL: {homeserver}")
@@ -588,7 +589,6 @@ async def interactive_login(
             )
             save_credentials(creds)
             logger.info("Login successful! Credentials saved.")
-            await client.close()
             return True
         elif isinstance(resp, nio.LoginError):
             # Login failed with proper error response
@@ -622,34 +622,32 @@ async def interactive_login(
             else:
                 logger.error(f"❌ Login failed: {resp.message}")
 
-            await client.close()
             return False
         else:
             # Unexpected response type
             logger.error(f"❌ Unexpected login response type: {type(resp)}")
             logger.error(f"Response content: {resp}")
-            await client.close()
             return False
     except asyncio.TimeoutError:
         logger.exception("Login timed out after %s seconds", LOGIN_TIMEOUT_SEC)
-        await client.close()
         return False
     except (OSError, ValueError, RuntimeError):
         logger.exception("Login error")
-        await client.close()
         return False
     except (nio.exceptions.RemoteProtocolError, aiohttp.ClientError) as e:
-        logger.error(f"Network/request error during login: {e}")
-        logger.error(
+        logger.exception(
             "❌ Network error. Please check your internet connection and homeserver URL."
         )
-        await client.close()
         return False
     except Exception:
         # Unexpected error
         logger.exception("Unexpected login error")
-        await client.close()
         return False
+    finally:
+        try:
+            await client.close()
+        except Exception:
+            logger.debug("Failed to close client after login", exc_info=True)
 
 
 async def interactive_logout() -> bool:
@@ -686,7 +684,6 @@ async def interactive_logout() -> bool:
     except OSError:
         logger.warning("Failed to remove credentials.json", exc_info=True)
 
-    # Remove E2EE store dir
     # Remove E2EE store dir
     store = E2EE_STORE_DIR
     try:

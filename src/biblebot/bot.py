@@ -722,11 +722,14 @@ class BibleBot:
                 "key": emoji,
             }
         }
-        await self.client.room_send(
-            room_id,
-            "m.reaction",
-            content,
-        )
+        try:
+            await self.client.room_send(
+                room_id,
+                "m.reaction",
+                content,
+            )
+        except Exception:
+            logger.warning("Failed to send reaction", exc_info=True)
 
     async def on_room_message(self, room: MatrixRoom, event: RoomMessageText):
         """
@@ -1048,6 +1051,8 @@ async def main(config_path=DEFAULT_CONFIG_FILENAME_MAIN):
         except (
             nio.exceptions.LocalProtocolError,
             nio.exceptions.RemoteProtocolError,
+            nio.exceptions.NioError,
+            aiohttp.ClientError,
         ):
             logger.exception("Failed to upload E2EE keys")
 
