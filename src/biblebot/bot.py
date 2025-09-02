@@ -849,6 +849,9 @@ class BibleBot:
                     "formatted_body": html.escape(ERROR_PASSAGE_NOT_FOUND),
                 },
             )
+        except (aiohttp.ClientError, asyncio.TimeoutError) as e:
+            # Network or timeout errors - could be retried
+            logger.warning(f"Network error during passage lookup for {passage}: {e}")
         except Exception:
             # Log full traceback but send generic message to user
             logger.exception(

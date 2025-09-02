@@ -7,6 +7,7 @@ and related configuration tasks.
 
 import importlib.resources
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -312,8 +313,6 @@ def create_service_file():
         exec_cmd = f"{sys.executable} -m biblebot"
 
     # Replace ExecStart line to use discovered command and default config path
-    import re
-
     exec_start_line = f'ExecStart={exec_cmd} --config "{DEFAULT_CONFIG_PATH}"'
     service_content, n = re.subn(
         r"^ExecStart=.*$", exec_start_line, service_template, flags=re.MULTILINE

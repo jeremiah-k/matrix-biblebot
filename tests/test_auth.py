@@ -484,7 +484,7 @@ class TestInteractiveLogout:
         store_dir.mkdir()
 
         with patch("biblebot.auth.AsyncClient") as mock_client_class:
-            mock_client = MagicMock()
+            mock_client = MagicMock(spec_set=["restore_login", "logout", "close"])
             mock_client.restore_login = MagicMock()  # Sync method
             mock_client.logout = AsyncMock()  # Async method
             mock_client.close = AsyncMock()  # Async method
@@ -523,7 +523,7 @@ class TestInteractiveLogout:
         mock_load_creds.return_value = creds
 
         with patch("biblebot.auth.AsyncClient") as mock_client_class:
-            mock_client = MagicMock()
+            mock_client = MagicMock(spec_set=["restore_login", "logout", "close"])
             mock_client.restore_login = MagicMock()  # Sync method
             mock_client.logout = AsyncMock(
                 side_effect=Exception("Server error")

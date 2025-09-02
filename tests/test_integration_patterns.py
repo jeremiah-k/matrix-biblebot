@@ -342,11 +342,11 @@ class TestIntegrationPatterns:
             await bot.on_room_message(room, event)
 
             # Check message formatting
-            message_call = [
-                call
-                for call in mock_client.room_send.call_args_list
-                if call[0][1] == "m.room.message"
-            ][0]
+            message_call = next(
+                c
+                for c in mock_client.room_send.call_args_list
+                if c[0][1] == "m.room.message"
+            )
             content = message_call[0][2]
 
             # Should have both plain and formatted content
