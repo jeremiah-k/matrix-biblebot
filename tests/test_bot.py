@@ -1002,8 +1002,10 @@ class TestMainFunction:
         self, mock_load_env, mock_load_config, mock_load_creds, sample_config
     ):
         """Test main function with access token."""
-        # Setup mocks
-        mock_load_config.return_value = sample_config
+        # Setup mocks - disable E2EE for this test to avoid dependency issues
+        test_config = sample_config.copy()
+        test_config["matrix"]["e2ee"]["enabled"] = False
+        mock_load_config.return_value = test_config
         mock_load_env.return_value = (TEST_ACCESS_TOKEN, {"esv": "test_key"})
         mock_load_creds.return_value = None  # No saved credentials
 
@@ -1021,6 +1023,7 @@ class TestMainFunction:
                     "rooms",
                     "room_resolve_alias",
                     "close",
+                    "keys_upload",
                 ]
             )
             mock_client.restore_login = MagicMock()
