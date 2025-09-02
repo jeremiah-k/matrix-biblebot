@@ -24,6 +24,100 @@ from tests.test_constants import (
 )
 
 
+class MockEncryptedRoom:
+    """Mock Matrix room that appears encrypted"""
+
+    def __init__(self, room_id, encrypted=True):
+        self.room_id = room_id
+        self.encrypted = encrypted
+        self.display_name = f"Test Room {room_id}"
+
+
+class MockUnencryptedRoom:
+    """Mock Matrix room that appears unencrypted"""
+
+    def __init__(self, room_id):
+        self.room_id = room_id
+        self.encrypted = False
+        self.display_name = f"Test Room {room_id}"
+
+
+class E2EETestFramework:
+    """Framework for testing E2EE encryption behavior following mmrelay patterns"""
+
+    @staticmethod
+    def create_mock_client(rooms=None, should_upload_keys=False):
+        """Create a mock Matrix client with E2EE capabilities"""
+        client = AsyncMock()
+        client.device_id = "TEST_DEVICE_ID"
+        client.user_id = "@test:example.org"
+        client.access_token = "test_token"
+
+        # Mock rooms
+        if rooms is None:
+            rooms = {
+                "!encrypted:example.org": MockEncryptedRoom(
+                    "!encrypted:example.org", encrypted=True
+                ),
+                "!unencrypted:example.org": MockUnencryptedRoom(
+                    "!unencrypted:example.org"
+                ),
+            }
+        client.rooms = rooms
+
+        # Mock E2EE methods
+        client.should_upload_keys = should_upload_keys
+        client.keys_upload = AsyncMock()
+        client.sync = AsyncMock()
+        client.room_send = AsyncMock()
+        client.close = AsyncMock()
+
+        return client
+
+    @staticmethod
+    def mock_e2ee_dependencies():
+        """Mock E2EE dependencies so tests can run without installation"""
+        import builtins
+        from contextlib import ExitStack
+
+        _real_import = builtins.__import__
+
+        def _mock_import(name, globals=None, locals=None, fromlist=(), level=0):
+            """Mock E2EE-related imports"""
+            if name in ("olm", "nio.crypto", "nio.store"):
+                return MagicMock()
+            return _real_import(name, globals, locals, fromlist, level)
+
+        # Also need to mock the AsyncClientConfig E2EE dependency check
+        def mock_client_config_init(self, *args, **kwargs):
+            # Don't raise ImportWarning for E2EE dependencies in tests
+            object.__setattr__(
+                self, "store_sync_tokens", kwargs.get("store_sync_tokens", True)
+            )
+            object.__setattr__(
+                self, "encryption_enabled", kwargs.get("encryption_enabled", False)
+            )
+
+        class E2EEMockContext:
+            def __enter__(self):
+                self.stack = ExitStack()
+                self.stack.enter_context(
+                    patch("builtins.__import__", side_effect=_mock_import)
+                )
+                self.stack.enter_context(
+                    patch("nio.AsyncClientConfig.__post_init__", lambda self: None)
+                )
+                self.stack.enter_context(
+                    patch("nio.AsyncClientConfig.__init__", mock_client_config_init)
+                )
+                return self
+
+            def __exit__(self, exc_type, exc_val, exc_tb):
+                self.stack.close()
+
+        return E2EEMockContext()
+
+
 @pytest.fixture
 def sample_config():
     """Sample configuration for testing."""
@@ -327,22 +421,23 @@ class TestBibleBot:
             "#alias:matrix.org",
         ]
 
-        with patch("biblebot.bot.AsyncClient") as mock_client_class:
-            mock_client = AsyncMock(
-                spec=[
-                    "user_id",
-                    "device_id",
-                    "room_send",
-                    "join",
-                    "add_event_callback",
-                    "should_upload_keys",
-                    "restore_login",
-                    "access_token",
-                    "rooms",
-                    "room_resolve_alias",
-                    "close",
-                ]
-            )
+        with E2EETestFramework.mock_e2ee_dependencies():
+            with patch("biblebot.bot.AsyncClient") as mock_client_class:
+                mock_client = AsyncMock(
+                    spec=[
+                        "user_id",
+                        "device_id",
+                        "room_send",
+                        "join",
+                        "add_event_callback",
+                        "should_upload_keys",
+                        "restore_login",
+                        "access_token",
+                        "rooms",
+                        "room_resolve_alias",
+                        "close",
+                    ]
+                )
             mock_client_class.return_value = mock_client
 
             # Mock alias resolution response
@@ -362,22 +457,23 @@ class TestBibleBot:
     @pytest.mark.asyncio
     async def test_join_matrix_room_success(self, sample_config):
         """Test successful room joining."""
-        with patch("biblebot.bot.AsyncClient") as mock_client_class:
-            mock_client = AsyncMock(
-                spec=[
-                    "user_id",
-                    "device_id",
-                    "room_send",
-                    "join",
-                    "add_event_callback",
-                    "should_upload_keys",
-                    "restore_login",
-                    "access_token",
-                    "rooms",
-                    "room_resolve_alias",
-                    "close",
-                ]
-            )
+        with E2EETestFramework.mock_e2ee_dependencies():
+            with patch("biblebot.bot.AsyncClient") as mock_client_class:
+                mock_client = AsyncMock(
+                    spec=[
+                        "user_id",
+                        "device_id",
+                        "room_send",
+                        "join",
+                        "add_event_callback",
+                        "should_upload_keys",
+                        "restore_login",
+                        "access_token",
+                        "rooms",
+                        "room_resolve_alias",
+                        "close",
+                    ]
+                )
             mock_client_class.return_value = mock_client
             mock_client.rooms = {}  # Bot not in room yet
 
@@ -396,22 +492,23 @@ class TestBibleBot:
     @pytest.mark.asyncio
     async def test_join_matrix_room_already_joined(self, sample_config):
         """Test joining room when already a member."""
-        with patch("biblebot.bot.AsyncClient") as mock_client_class:
-            mock_client = AsyncMock(
-                spec=[
-                    "user_id",
-                    "device_id",
-                    "room_send",
-                    "join",
-                    "add_event_callback",
-                    "should_upload_keys",
-                    "restore_login",
-                    "access_token",
-                    "rooms",
-                    "room_resolve_alias",
-                    "close",
-                ]
-            )
+        with E2EETestFramework.mock_e2ee_dependencies():
+            with patch("biblebot.bot.AsyncClient") as mock_client_class:
+                mock_client = AsyncMock(
+                    spec=[
+                        "user_id",
+                        "device_id",
+                        "room_send",
+                        "join",
+                        "add_event_callback",
+                        "should_upload_keys",
+                        "restore_login",
+                        "access_token",
+                        "rooms",
+                        "room_resolve_alias",
+                        "close",
+                    ]
+                )
             mock_client_class.return_value = mock_client
             mock_client.rooms = {TEST_ROOM_IDS[0]: MagicMock()}  # Already in room
 
@@ -426,22 +523,23 @@ class TestBibleBot:
     @pytest.mark.asyncio
     async def test_send_reaction(self, sample_config):
         """Test sending reaction to message."""
-        with patch("biblebot.bot.AsyncClient") as mock_client_class:
-            mock_client = AsyncMock(
-                spec=[
-                    "user_id",
-                    "device_id",
-                    "room_send",
-                    "join",
-                    "add_event_callback",
-                    "should_upload_keys",
-                    "restore_login",
-                    "access_token",
-                    "rooms",
-                    "room_resolve_alias",
-                    "close",
-                ]
-            )
+        with E2EETestFramework.mock_e2ee_dependencies():
+            with patch("biblebot.bot.AsyncClient") as mock_client_class:
+                mock_client = AsyncMock(
+                    spec=[
+                        "user_id",
+                        "device_id",
+                        "room_send",
+                        "join",
+                        "add_event_callback",
+                        "should_upload_keys",
+                        "restore_login",
+                        "access_token",
+                        "rooms",
+                        "room_resolve_alias",
+                        "close",
+                    ]
+                )
             mock_client_class.return_value = mock_client
             # Ensure room_send is AsyncMock
             mock_client.room_send = AsyncMock()
@@ -468,20 +566,21 @@ class TestMessageHandling:
     @pytest.mark.asyncio
     async def test_on_room_message_bible_reference(self, sample_config):
         """Test handling room message with Bible reference."""
-        with patch("biblebot.bot.AsyncClient") as mock_client_class:
-            mock_client = AsyncMock(
-                spec=[
-                    "user_id",
-                    "device_id",
-                    "room_send",
-                    "join",
-                    "add_event_callback",
-                    "should_upload_keys",
-                    "restore_login",
-                    "access_token",
-                    "rooms",
-                ]
-            )
+        with E2EETestFramework.mock_e2ee_dependencies():
+            with patch("biblebot.bot.AsyncClient") as mock_client_class:
+                mock_client = AsyncMock(
+                    spec=[
+                        "user_id",
+                        "device_id",
+                        "room_send",
+                        "join",
+                        "add_event_callback",
+                        "should_upload_keys",
+                        "restore_login",
+                        "access_token",
+                        "rooms",
+                    ]
+                )
             mock_client_class.return_value = mock_client
             mock_client.user_id = TEST_USER_ID
 
@@ -518,20 +617,21 @@ class TestMessageHandling:
     @pytest.mark.asyncio
     async def test_on_room_message_ignore_own_message(self, sample_config):
         """Test ignoring messages from the bot itself."""
-        with patch("biblebot.bot.AsyncClient") as mock_client_class:
-            mock_client = AsyncMock(
-                spec=[
-                    "user_id",
-                    "device_id",
-                    "room_send",
-                    "join",
-                    "add_event_callback",
-                    "should_upload_keys",
-                    "restore_login",
-                    "access_token",
-                    "rooms",
-                ]
-            )
+        with E2EETestFramework.mock_e2ee_dependencies():
+            with patch("biblebot.bot.AsyncClient") as mock_client_class:
+                mock_client = AsyncMock(
+                    spec=[
+                        "user_id",
+                        "device_id",
+                        "room_send",
+                        "join",
+                        "add_event_callback",
+                        "should_upload_keys",
+                        "restore_login",
+                        "access_token",
+                        "rooms",
+                    ]
+                )
             mock_client_class.return_value = mock_client
             mock_client.user_id = TEST_USER_ID
 
@@ -558,20 +658,21 @@ class TestMessageHandling:
     @pytest.mark.asyncio
     async def test_on_room_message_ignore_old_message(self, sample_config):
         """Test ignoring messages from before bot start."""
-        with patch("biblebot.bot.AsyncClient") as mock_client_class:
-            mock_client = AsyncMock(
-                spec=[
-                    "user_id",
-                    "device_id",
-                    "room_send",
-                    "join",
-                    "add_event_callback",
-                    "should_upload_keys",
-                    "restore_login",
-                    "access_token",
-                    "rooms",
-                ]
-            )
+        with E2EETestFramework.mock_e2ee_dependencies():
+            with patch("biblebot.bot.AsyncClient") as mock_client_class:
+                mock_client = AsyncMock(
+                    spec=[
+                        "user_id",
+                        "device_id",
+                        "room_send",
+                        "join",
+                        "add_event_callback",
+                        "should_upload_keys",
+                        "restore_login",
+                        "access_token",
+                        "rooms",
+                    ]
+                )
             mock_client_class.return_value = mock_client
             mock_client.user_id = TEST_USER_ID
 
@@ -598,20 +699,21 @@ class TestMessageHandling:
     @pytest.mark.asyncio
     async def test_on_room_message_wrong_room(self, sample_config):
         """Test ignoring messages from non-configured rooms."""
-        with patch("biblebot.bot.AsyncClient") as mock_client_class:
-            mock_client = AsyncMock(
-                spec=[
-                    "user_id",
-                    "device_id",
-                    "room_send",
-                    "join",
-                    "add_event_callback",
-                    "should_upload_keys",
-                    "restore_login",
-                    "access_token",
-                    "rooms",
-                ]
-            )
+        with E2EETestFramework.mock_e2ee_dependencies():
+            with patch("biblebot.bot.AsyncClient") as mock_client_class:
+                mock_client = AsyncMock(
+                    spec=[
+                        "user_id",
+                        "device_id",
+                        "room_send",
+                        "join",
+                        "add_event_callback",
+                        "should_upload_keys",
+                        "restore_login",
+                        "access_token",
+                        "rooms",
+                    ]
+                )
             mock_client_class.return_value = mock_client
             mock_client.user_id = TEST_USER_ID
 
@@ -638,22 +740,23 @@ class TestMessageHandling:
     @pytest.mark.asyncio
     async def test_handle_scripture_command_success(self, sample_config):
         """Test successful scripture command handling."""
-        with patch("biblebot.bot.AsyncClient") as mock_client_class:
-            mock_client = AsyncMock(
-                spec=[
-                    "user_id",
-                    "device_id",
-                    "room_send",
-                    "join",
-                    "add_event_callback",
-                    "should_upload_keys",
-                    "restore_login",
-                    "access_token",
-                    "rooms",
-                    "room_resolve_alias",
-                    "close",
-                ]
-            )
+        with E2EETestFramework.mock_e2ee_dependencies():
+            with patch("biblebot.bot.AsyncClient") as mock_client_class:
+                mock_client = AsyncMock(
+                    spec=[
+                        "user_id",
+                        "device_id",
+                        "room_send",
+                        "join",
+                        "add_event_callback",
+                        "should_upload_keys",
+                        "restore_login",
+                        "access_token",
+                        "rooms",
+                        "room_resolve_alias",
+                        "close",
+                    ]
+                )
             mock_client_class.return_value = mock_client
             # Ensure room_send is AsyncMock
             mock_client.room_send = AsyncMock()
@@ -695,22 +798,23 @@ class TestMessageHandling:
     @pytest.mark.asyncio
     async def test_handle_scripture_command_failure(self, sample_config):
         """Test scripture command handling when retrieval fails."""
-        with patch("biblebot.bot.AsyncClient") as mock_client_class:
-            mock_client = AsyncMock(
-                spec=[
-                    "user_id",
-                    "device_id",
-                    "room_send",
-                    "join",
-                    "add_event_callback",
-                    "should_upload_keys",
-                    "restore_login",
-                    "access_token",
-                    "rooms",
-                    "room_resolve_alias",
-                    "close",
-                ]
-            )
+        with E2EETestFramework.mock_e2ee_dependencies():
+            with patch("biblebot.bot.AsyncClient") as mock_client_class:
+                mock_client = AsyncMock(
+                    spec=[
+                        "user_id",
+                        "device_id",
+                        "room_send",
+                        "join",
+                        "add_event_callback",
+                        "should_upload_keys",
+                        "restore_login",
+                        "access_token",
+                        "rooms",
+                        "room_resolve_alias",
+                        "close",
+                    ]
+                )
             mock_client_class.return_value = mock_client
             # Ensure room_send is AsyncMock
             mock_client.room_send = AsyncMock()
@@ -754,20 +858,21 @@ class TestInviteHandling:
     @pytest.mark.asyncio
     async def test_on_invite_configured_room(self, sample_config):
         """Test handling invite to configured room."""
-        with patch("biblebot.bot.AsyncClient") as mock_client_class:
-            mock_client = AsyncMock(
-                spec=[
-                    "user_id",
-                    "device_id",
-                    "room_send",
-                    "join",
-                    "add_event_callback",
-                    "should_upload_keys",
-                    "restore_login",
-                    "access_token",
-                    "rooms",
-                ]
-            )
+        with E2EETestFramework.mock_e2ee_dependencies():
+            with patch("biblebot.bot.AsyncClient") as mock_client_class:
+                mock_client = AsyncMock(
+                    spec=[
+                        "user_id",
+                        "device_id",
+                        "room_send",
+                        "join",
+                        "add_event_callback",
+                        "should_upload_keys",
+                        "restore_login",
+                        "access_token",
+                        "rooms",
+                    ]
+                )
             mock_client_class.return_value = mock_client
 
             bot_instance = bot.BibleBot(sample_config)
@@ -790,20 +895,21 @@ class TestInviteHandling:
     @pytest.mark.asyncio
     async def test_on_invite_non_configured_room(self, sample_config):
         """Test handling invite to non-configured room."""
-        with patch("biblebot.bot.AsyncClient") as mock_client_class:
-            mock_client = AsyncMock(
-                spec=[
-                    "user_id",
-                    "device_id",
-                    "room_send",
-                    "join",
-                    "add_event_callback",
-                    "should_upload_keys",
-                    "restore_login",
-                    "access_token",
-                    "rooms",
-                ]
-            )
+        with E2EETestFramework.mock_e2ee_dependencies():
+            with patch("biblebot.bot.AsyncClient") as mock_client_class:
+                mock_client = AsyncMock(
+                    spec=[
+                        "user_id",
+                        "device_id",
+                        "room_send",
+                        "join",
+                        "add_event_callback",
+                        "should_upload_keys",
+                        "restore_login",
+                        "access_token",
+                        "rooms",
+                    ]
+                )
             mock_client_class.return_value = mock_client
 
             bot_instance = bot.BibleBot(sample_config)
@@ -833,22 +939,23 @@ class TestE2EEFunctionality:
         e2ee_config = sample_config.copy()
         e2ee_config["matrix"]["e2ee"]["enabled"] = True
 
-        with patch("biblebot.bot.AsyncClient") as mock_client_class:
-            mock_client = AsyncMock(
-                spec=[
-                    "user_id",
-                    "device_id",
-                    "room_send",
-                    "join",
-                    "add_event_callback",
-                    "should_upload_keys",
-                    "restore_login",
-                    "access_token",
-                    "rooms",
-                    "to_device",
-                    "request_room_key",
-                ]
-            )
+        with E2EETestFramework.mock_e2ee_dependencies():
+            with patch("biblebot.bot.AsyncClient") as mock_client_class:
+                mock_client = AsyncMock(
+                    spec=[
+                        "user_id",
+                        "device_id",
+                        "room_send",
+                        "join",
+                        "add_event_callback",
+                        "should_upload_keys",
+                        "restore_login",
+                        "access_token",
+                        "rooms",
+                        "to_device",
+                        "request_room_key",
+                    ]
+                )
             mock_client_class.return_value = mock_client
             mock_client.user_id = TEST_USER_ID
             mock_client.device_id = TEST_DEVICE_ID
@@ -879,11 +986,12 @@ class TestE2EEFunctionality:
         e2ee_config = sample_config.copy()
         e2ee_config["matrix"]["e2ee"]["enabled"] = True
 
-        with patch("biblebot.bot.AsyncClient") as mock_client_class:
-            from unittest.mock import AsyncMock as _AsyncMock
-            from unittest.mock import MagicMock
+        with E2EETestFramework.mock_e2ee_dependencies():
+            with patch("biblebot.bot.AsyncClient") as mock_client_class:
+                from unittest.mock import AsyncMock as _AsyncMock
+                from unittest.mock import MagicMock
 
-            import nio
+                import nio
 
             mock_client = MagicMock(
                 spec_set=["user_id", "device_id", "to_device", "request_room_key"]
@@ -944,38 +1052,48 @@ class TestMainFunction:
         tmp_path,
     ):
         """Test main function with access token from environment."""
-        # Setup mocks - ensure credentials are found, disable E2EE for this test to avoid dependency issues
-        test_config = sample_config.copy()
-        test_config["matrix"]["e2ee"]["enabled"] = False
-        mock_load_config.return_value = test_config
+        # Setup mocks - ensure credentials are found for proper E2EE testing
+        mock_load_config.return_value = sample_config
         mock_load_env.return_value = (
-            TEST_ACCESS_TOKEN,  # Provide access token instead of relying on credentials
+            None,  # No access token - use session-based auth for E2EE
             {"esv": "test_key"},
         )
 
-        mock_load_creds.return_value = None  # No saved credentials
+        # Mock session-based credentials for E2EE support
+        from biblebot.auth import Credentials
+
+        mock_credentials = Credentials(
+            homeserver=TEST_HOMESERVER,
+            user_id=TEST_USER_ID,
+            access_token=TEST_ACCESS_TOKEN,
+            device_id=TEST_DEVICE_ID,
+        )
+        mock_load_creds.return_value = mock_credentials
 
         mock_get_store.return_value = tmp_path / "store"
 
-        with patch("biblebot.bot.AsyncClient") as mock_client_class:
-            mock_client = AsyncMock(
-                spec=[
-                    "user_id",
-                    "device_id",
-                    "room_send",
-                    "join",
-                    "add_event_callback",
-                    "should_upload_keys",
-                    "restore_login",
-                    "access_token",
-                    "rooms",
-                    "room_resolve_alias",
-                    "close",
-                ]
-            )
+        with E2EETestFramework.mock_e2ee_dependencies():
+            with patch("biblebot.bot.AsyncClient") as mock_client_class:
+                mock_client = AsyncMock(
+                    spec=[
+                        "user_id",
+                        "device_id",
+                        "room_send",
+                        "join",
+                        "add_event_callback",
+                        "should_upload_keys",
+                        "restore_login",
+                        "access_token",
+                        "rooms",
+                        "room_resolve_alias",
+                        "close",
+                    ]
+                )
             mock_client.restore_login = MagicMock()
             mock_client.add_event_callback = MagicMock()
             mock_client.should_upload_keys = False
+            # Set access_token as a regular attribute, not a MagicMock
+            mock_client.access_token = TEST_ACCESS_TOKEN
             # Ensure close is AsyncMock
             mock_client.close = AsyncMock()
             mock_client_class.return_value = mock_client
@@ -988,8 +1106,8 @@ class TestMainFunction:
 
                 await bot.main("test_config.yaml")
 
-                # Should set access token directly (not restore_login since no credentials)
-                # Check that access_token was assigned
+                # Should restore login from session-based credentials for E2EE support
+                # Check that access_token was assigned from credentials
                 assert mock_client.access_token == TEST_ACCESS_TOKEN
 
                 # Should start the bot
@@ -1004,38 +1122,46 @@ class TestMainFunction:
         },
     )  # Set required environment variables for legacy mode
     @patch("biblebot.bot.load_credentials")
+    @patch("biblebot.bot.get_store_dir")
     @patch("biblebot.bot.load_config")
     @patch("biblebot.bot.load_environment")
     async def test_main_with_access_token(
-        self, mock_load_env, mock_load_config, mock_load_creds, sample_config
+        self,
+        mock_load_env,
+        mock_load_config,
+        mock_get_store,
+        mock_load_creds,
+        sample_config,
+        tmp_path,
     ):
         """Test main function with access token."""
-        # Setup mocks - disable E2EE for this test to avoid dependency issues
-        test_config = sample_config.copy()
-        test_config["matrix"]["e2ee"]["enabled"] = False
-        mock_load_config.return_value = test_config
+        # Setup mocks - keep E2EE enabled to test real functionality
+        mock_load_config.return_value = sample_config
         mock_load_env.return_value = (TEST_ACCESS_TOKEN, {"esv": "test_key"})
         mock_load_creds.return_value = None  # No saved credentials
+        mock_get_store.return_value = tmp_path / "store"
 
-        with patch("biblebot.bot.AsyncClient") as mock_client_class:
-            mock_client = AsyncMock(
-                spec=[
-                    "user_id",
-                    "device_id",
-                    "room_send",
-                    "join",
-                    "add_event_callback",
-                    "should_upload_keys",
-                    "restore_login",
-                    "access_token",
-                    "rooms",
-                    "room_resolve_alias",
-                    "close",
-                    "keys_upload",
-                ]
-            )
+        with E2EETestFramework.mock_e2ee_dependencies():
+            with patch("biblebot.bot.AsyncClient") as mock_client_class:
+                mock_client = AsyncMock(
+                    spec=[
+                        "user_id",
+                        "device_id",
+                        "room_send",
+                        "join",
+                        "add_event_callback",
+                        "should_upload_keys",
+                        "restore_login",
+                        "access_token",
+                        "rooms",
+                        "room_resolve_alias",
+                        "close",
+                        "keys_upload",
+                    ]
+                )
             mock_client.restore_login = MagicMock()
             mock_client.add_event_callback = MagicMock()
+            mock_client.should_upload_keys = False  # Disable key upload for this test
             # Ensure close is AsyncMock
             mock_client.close = AsyncMock()
             mock_client_class.return_value = mock_client
@@ -1064,10 +1190,8 @@ class TestMainFunction:
         self, mock_load_env, mock_load_config, mock_load_creds, sample_config
     ):
         """Test main function with no authentication."""
-        # Setup mocks to simulate no authentication available, disable E2EE for this test to avoid dependency issues
-        test_config = sample_config.copy()
-        test_config["matrix"]["e2ee"]["enabled"] = False
-        mock_load_config.return_value = test_config
+        # Setup mocks to simulate no authentication available
+        mock_load_config.return_value = sample_config
         mock_load_env.return_value = (None, {"esv": "test_key"})  # No access token
         mock_load_creds.return_value = None  # No saved credentials
 
@@ -1120,24 +1244,25 @@ class TestMainFunction:
         mock_load_creds.return_value = None
         mock_get_store.return_value = tmp_path / "store"
 
-        with patch("biblebot.bot.AsyncClient") as mock_client_class:
-            with patch("biblebot.bot.AsyncClientConfig"):
-                mock_client = AsyncMock(
-                    spec=[
-                        "user_id",
-                        "device_id",
-                        "room_send",
-                        "join",
-                        "add_event_callback",
-                        "should_upload_keys",
-                        "restore_login",
-                        "access_token",
-                        "rooms",
-                        "room_resolve_alias",
-                        "close",
-                        "keys_upload",
-                    ]
-                )
+        with E2EETestFramework.mock_e2ee_dependencies():
+            with patch("biblebot.bot.AsyncClient") as mock_client_class:
+                with patch("biblebot.bot.AsyncClientConfig"):
+                    mock_client = AsyncMock(
+                        spec=[
+                            "user_id",
+                            "device_id",
+                            "room_send",
+                            "join",
+                            "add_event_callback",
+                            "should_upload_keys",
+                            "restore_login",
+                            "access_token",
+                            "rooms",
+                            "room_resolve_alias",
+                            "close",
+                            "keys_upload",
+                        ]
+                    )
                 mock_client.restore_login = MagicMock()
                 mock_client.add_event_callback = MagicMock()
                 mock_client.keys_upload = AsyncMock()
