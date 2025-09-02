@@ -253,22 +253,26 @@ class TestReliabilityPatterns:
         bot.start_time = 1234567880000  # Converted to milliseconds
 
         # Mock random failures
-        import random
+
+        call_count = 0
 
         async def random_failure_api(*args, **kwargs):
             """
-            Simulate an unreliable external API: returns a verse tuple or randomly fails.
+            Simulate an unreliable external API: returns a verse tuple or deterministically fails.
 
-            This async helper imitates a flaky service with a 30% chance of raising Exception("Random service error").
+            This async helper imitates a flaky service that fails every 3rd call for reliable testing.
             On success it returns a (text, reference) tuple, e.g. ("Random verse", "John 3:16").
 
             Returns:
                 tuple[str, str]: (verse_text, verse_reference)
 
             Raises:
-                Exception: when the simulated service fails (30% probability).
+                Exception: when the simulated service fails (every 3rd call).
             """
-            if random.random() < 0.3:  # 30% failure rate
+            # Use deterministic failures for reliable testing
+            nonlocal call_count
+            call_count += 1
+            if call_count % 3 == 0:  # Fail every 3rd call deterministically
                 raise Exception("Random service error")
             return ("Random verse", "John 3:16")
 

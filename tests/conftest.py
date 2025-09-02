@@ -153,8 +153,8 @@ def comprehensive_cleanup(request):
                     for task in pending_tasks:
                         task.cancel()
 
-                    # Wait for cancelled tasks to complete
-                    if pending_tasks:
+                    # Don't call run_until_complete on a running loop; let pytest-asyncio handle teardown
+                    if pending_tasks and not loop.is_running():
                         with contextlib.suppress(Exception):
                             loop.run_until_complete(
                                 asyncio.gather(*pending_tasks, return_exceptions=True)

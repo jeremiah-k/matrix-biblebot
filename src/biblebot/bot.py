@@ -588,7 +588,8 @@ class BibleBot:
                 room_id = room_id_or_alias
 
             # Attempt to join the room if not already joined
-            if room_id not in self.client.rooms:
+            rooms = getattr(self.client, "rooms", {})
+            if room_id not in rooms:
                 response = await self.client.join(room_id)
                 if response and hasattr(response, "room_id"):
                     logger.info(f"Joined room '{room_id_or_alias}' successfully")

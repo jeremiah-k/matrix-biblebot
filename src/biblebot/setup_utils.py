@@ -412,7 +412,8 @@ def service_needs_update():
         return True, "Service file ExecStart does not match the current installation"
 
     # Check if the PATH environment includes pipx paths
-    if PIPX_VENV_PATH not in existing_service:
+    requires_pipx = "/pipx/" in executable_path
+    if requires_pipx and PIPX_VENV_PATH not in existing_service:
         return True, "Service file does not include pipx paths in PATH environment"
 
     # Check if the service file has been modified recently
