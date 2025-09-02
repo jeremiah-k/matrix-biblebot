@@ -88,6 +88,27 @@ class E2EETestFramework:
                 return MagicMock()
             return _real_import(name, globals, locals, fromlist, level)
 
+        # Mock SqliteStore to avoid database connection issues
+        class MockSqliteStore:
+            def __init__(self, *args, **kwargs):
+                pass
+
+            def __post_init__(self):
+                # Don't connect to database
+                pass
+
+            def load_account(self):
+                return None
+
+            def save_account(self, account):
+                pass
+
+            def load_device_keys(self):
+                return {}
+
+            def save_device_keys(self, device_keys):
+                pass
+
         # Also need to mock the AsyncClientConfig E2EE dependency check
         def mock_client_config_init(self, *args, **kwargs):
             # Don't raise ImportWarning for E2EE dependencies in tests
@@ -97,6 +118,12 @@ class E2EETestFramework:
             object.__setattr__(
                 self, "encryption_enabled", kwargs.get("encryption_enabled", False)
             )
+
+            # Mock the store property to return our mock store
+            def mock_store_factory(path):
+                return MockSqliteStore(path)
+
+            object.__setattr__(self, "store", mock_store_factory)
 
         class E2EEMockContext:
             def __enter__(self):
