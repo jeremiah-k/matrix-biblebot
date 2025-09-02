@@ -799,35 +799,42 @@ class TestCLIBotOperation:
 
     @patch("sys.argv", ["biblebot"])
     @patch("biblebot.cli.detect_configuration_state")
-    @patch("builtins.input")
-    def test_bot_no_config_generate_no(self, mock_input, mock_detect_state):
-        """Test bot operation when no config exists and user chooses not to generate."""
+    @patch("biblebot.cli.generate_config")
+    def test_bot_no_config_generate_no(self, mock_generate, mock_detect_state):
+        """Test bot operation when no config exists and config generation fails."""
         # Mock configuration state to need setup
         mock_detect_state.return_value = (
             "setup",
             "No configuration found. Setup is required.",
         )
 
-        mock_input.return_value = "n"
+        # Mock config generation failure
+        mock_generate.return_value = False
 
-        # Should not raise SystemExit anymore - just returns
-        cli.main()
+        # Should raise SystemExit(1) when config generation fails
+        import pytest
+
+        with pytest.raises(SystemExit) as exc_info:
+            cli.main()
+        assert exc_info.value.code == 1
 
     @patch("sys.argv", ["biblebot"])
     @patch("biblebot.cli.detect_configuration_state")
-    @patch("builtins.input")
-    def test_bot_no_config_eof_error(self, mock_input, mock_detect_state):
-        """Test bot operation when no config exists and user sends EOF."""
+    @patch("biblebot.cli.generate_config")
+    def test_bot_no_config_eof_error(self, mock_generate, mock_detect_state):
+        """Test bot operation when no config exists and config generation succeeds."""
         # Mock configuration state to need setup
         mock_detect_state.return_value = (
             "setup",
             "No configuration found. Setup is required.",
         )
 
-        mock_input.side_effect = EOFError()
+        # Mock successful config generation
+        mock_generate.return_value = True
 
-        # Should handle EOFError gracefully without raising
-        cli.main()  # Should not raise EOFError
+        # Should complete successfully without raising
+        cli.main()  # Should not raise any exceptions
+        mock_generate.assert_called_once()
 
     @patch("sys.argv", ["biblebot"])
     @patch("biblebot.cli.detect_configuration_state")
