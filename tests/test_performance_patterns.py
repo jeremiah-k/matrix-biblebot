@@ -297,7 +297,9 @@ class TestPerformancePatterns:
                 event.sender = f"@user{i}:matrix.org"
                 event.server_timestamp = int(time.time() * 1000)
 
-                task = bot.on_room_message(MagicMock(), event)
+                room = MagicMock()
+                room.room_id = mock_config["matrix_room_ids"][0]
+                task = bot.on_room_message(room, event)
                 tasks.append(task)
 
             # Should handle errors gracefully without hanging

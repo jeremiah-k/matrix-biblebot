@@ -63,6 +63,7 @@ from .constants import (
     REQUIRED_CONFIG_KEYS,
     SYNC_TIMEOUT_MS,
     TRANSLATION_ESV,
+    TRANSLATION_KJV,
     WARN_COULD_NOT_RESOLVE_ALIAS,
     WARN_MATRIX_ACCESS_TOKEN_NOT_SET,
 )
@@ -403,7 +404,7 @@ async def get_bible_text(
 
     if translation == TRANSLATION_ESV:
         result = await get_esv_text(passage, api_key)
-    elif translation.lower() == "kjv":
+    elif translation.lower() == TRANSLATION_KJV:
         result = await get_kjv_text(passage)
     else:
         raise PassageNotFound(f"Unsupported translation: '{translation}'")
@@ -600,7 +601,11 @@ class BibleBot:
                     )
             else:
                 logger.debug(f"Bot is already in room '{room_id_or_alias}'")
-        except Exception:
+        except (
+            nio.exceptions.LocalProtocolError,
+            nio.exceptions.RemoteProtocolError,
+            Exception,  # keep as last resort
+        ):
             logger.exception(f"Error joining room '{room_id_or_alias}'")
 
     async def ensure_joined_rooms(self):
@@ -801,20 +806,32 @@ class BibleBot:
             await self.send_reaction(room_id, event.event_id, REACTION_OK)
 
             # Format the scripture message
-            ref_str = reference or ""
-            plain_body = f"{text} - {ref_str}{MESSAGE_SUFFIX}"
-            formatted_body = f"{html.escape(text)} - {html.escape(ref_str)}{html.escape(MESSAGE_SUFFIX)}"
+            if reference:
+                plain_body = f"{text} - {reference}{MESSAGE_SUFFIX}"
+                formatted_body = f"{html.escape(text)} - {html.escape(reference)}{html.escape(MESSAGE_SUFFIX)}"
+            else:
+                plain_body = f"{text}{MESSAGE_SUFFIX}"
+                formatted_body = f"{html.escape(text)}{html.escape(MESSAGE_SUFFIX)}"
 
             # Apply message length truncation if needed
             if len(plain_body) > self.max_message_length:
                 # Calculate how much space we need for the suffix and truncation indicator
-                suffix_length = len(f" - {ref_str}{MESSAGE_SUFFIX}") + 3  # +3 for "..."
+                if reference:
+                    suffix_length = (
+                        len(f" - {reference}{MESSAGE_SUFFIX}") + 3
+                    )  # +3 for "..."
+                else:
+                    suffix_length = len(MESSAGE_SUFFIX) + 3  # +3 for "..."
                 max_text_length = self.max_message_length - suffix_length
 
                 if max_text_length > 0:
                     truncated_text = text[:max_text_length] + "..."
-                    plain_body = f"{truncated_text} - {ref_str}{MESSAGE_SUFFIX}"
-                    formatted_body = f"{html.escape(truncated_text)} - {html.escape(ref_str)}{html.escape(MESSAGE_SUFFIX)}"
+                    if reference:
+                        plain_body = f"{truncated_text} - {reference}{MESSAGE_SUFFIX}"
+                        formatted_body = f"{html.escape(truncated_text)} - {html.escape(reference)}{html.escape(MESSAGE_SUFFIX)}"
+                    else:
+                        plain_body = f"{truncated_text}{MESSAGE_SUFFIX}"
+                        formatted_body = f"{html.escape(truncated_text)}{html.escape(MESSAGE_SUFFIX)}"
                     logger.info(
                         f"Truncated message from {len(text)} to {len(truncated_text)} characters"
                     )

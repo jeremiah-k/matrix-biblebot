@@ -342,9 +342,9 @@ class TestIntegrationPatterns:
             message_call = next(
                 c
                 for c in mock_client.room_send.call_args_list
-                if c[0][1] == "m.room.message"
+                if c.args[1] == "m.room.message"
             )
-            content = message_call[0][2]
+            content = message_call.args[2]
 
             # Should have both plain and formatted content
             assert "body" in content

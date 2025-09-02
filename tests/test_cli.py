@@ -11,32 +11,8 @@ from biblebot import cli
 
 
 def _consume_coroutine(coro):
-    """
-    Execute a coroutine to completion using a fresh event loop, or return the input unchanged if it is not a coroutine.
-
-    If `coro` is an awaitable coroutine, this runs it in a newly created event loop (mirroring asyncio.run semantics), cancels any pending tasks on that loop, waits for their completion, closes the loop, and returns the coroutine's result. Non-coroutine inputs are returned as-is.
-
-    Parameters:
-        coro: A coroutine object or any other value. If a coroutine is provided, it will be executed and its result returned; otherwise the original value is returned.
-
-    Raises:
-        Any exception raised by the executed coroutine is propagated.
-    """
-    if asyncio.iscoroutine(coro):
-        # Mirror asyncio.run behavior: always use a dedicated event loop
-        loop = asyncio.new_event_loop()
-        try:
-            return loop.run_until_complete(coro)
-        finally:
-            pending = asyncio.all_tasks(loop)
-            for task in pending:
-                task.cancel()
-            if pending:
-                loop.run_until_complete(
-                    asyncio.gather(*pending, return_exceptions=True)
-                )
-            loop.close()
-    return coro
+    """Run a coroutine to completion (or return the value if not a coroutine)."""
+    return asyncio.run(coro) if asyncio.iscoroutine(coro) else coro
 
 
 @pytest.fixture
