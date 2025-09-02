@@ -18,7 +18,45 @@ if str(SRC_DIR) not in sys.path:
 
 # Mock all E2EE dependencies before any imports can occur
 # This prevents ImportError and allows tests to run without real E2EE setup
+
+
+# Create proper Exception classes for nio.exceptions
+class MockRemoteProtocolError(Exception):
+    pass
+
+
+class MockRemoteTransportError(Exception):
+    pass
+
+
+class MockLocalProtocolError(Exception):
+    pass
+
+
+class MockDiscoveryInfoError(Exception):
+    pass
+
+
+class MockDiscoveryInfoResponse:
+    def __init__(self, homeserver_url=None):
+        self.homeserver_url = homeserver_url
+
+
+class MockLoginResponse:
+    def __init__(self, user_id=None, device_id=None, access_token=None):
+        self.user_id = user_id
+        self.device_id = device_id
+        self.access_token = access_token
+
+
+# Create nio mock with proper exception classes
 nio_mock = MagicMock()
+nio_exceptions_mock = MagicMock()
+nio_exceptions_mock.RemoteProtocolError = MockRemoteProtocolError
+nio_exceptions_mock.RemoteTransportError = MockRemoteTransportError
+nio_exceptions_mock.LocalProtocolError = MockLocalProtocolError
+nio_exceptions_mock.DiscoveryInfoError = MockDiscoveryInfoError
+
 sys.modules["nio"] = nio_mock
 sys.modules["nio.events"] = MagicMock()
 sys.modules["nio.events.room_events"] = MagicMock()
@@ -26,10 +64,11 @@ sys.modules["nio.events.misc"] = MagicMock()
 sys.modules["nio.store"] = MagicMock()
 sys.modules["nio.store.database"] = MagicMock()
 sys.modules["nio.crypto"] = MagicMock()
-sys.modules["nio.exceptions"] = MagicMock()
+sys.modules["nio.exceptions"] = nio_exceptions_mock
 
 # Mock olm (E2EE crypto library)
 olm_mock = MagicMock()
+olm_mock.__spec__ = MagicMock()  # Required for importlib.util.find_spec
 sys.modules["olm"] = olm_mock
 sys.modules["olm.account"] = MagicMock()
 sys.modules["olm.session"] = MagicMock()
@@ -45,8 +84,10 @@ sys.modules["cachetools"] = MagicMock()
 nio_mock.AsyncClient = MagicMock()
 nio_mock.AsyncClientConfig = MagicMock()
 nio_mock.SqliteStore = MagicMock()
-nio_mock.exceptions = MagicMock()
-nio_mock.exceptions.LocalProtocolError = Exception
+nio_mock.exceptions = nio_exceptions_mock
+nio_mock.DiscoveryInfoResponse = MockDiscoveryInfoResponse
+nio_mock.DiscoveryInfoError = MockDiscoveryInfoError
+nio_mock.LoginResponse = MockLoginResponse
 
 
 def clear_env(keys):
