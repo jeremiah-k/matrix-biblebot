@@ -1,5 +1,6 @@
 from unittest.mock import AsyncMock, MagicMock, patch
 
+import nio
 import pytest
 
 from biblebot.auth import (
@@ -234,10 +235,12 @@ class TestInteractiveLogin:
 
         # Mock client login
         mock_client_instance = MagicMock()
-        mock_response = MagicMock()
-        mock_response.access_token = "test_token"
-        mock_response.device_id = "TEST_DEVICE"
-        mock_response.user_id = "@biblebot:matrix.org"
+        # Create a proper nio.LoginResponse instance
+        mock_response = nio.LoginResponse(
+            user_id="@biblebot:matrix.org",
+            device_id="TEST_DEVICE",
+            access_token="test_token",
+        )
         mock_client_instance.login = AsyncMock(return_value=mock_response)
         mock_client_instance.close = AsyncMock()
         mock_client.return_value = mock_client_instance
