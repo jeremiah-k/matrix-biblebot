@@ -425,7 +425,6 @@ async def get_esv_text(passage, api_key):
         PassageNotFound: If the API response is invalid or the passage could not be found.
     """
     if api_key is None:
-        logger.warning("ESV API key not found")
         raise APIKeyMissing(f"ESV API key is required for passage '{passage}'")
 
     API_URL = ESV_API_URL

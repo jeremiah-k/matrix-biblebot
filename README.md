@@ -100,7 +100,7 @@ matrix_room_ids:
   - "#room_alias:your_homeserver_domain" # Room aliases are supported
 ```
 
-2. **Optionally set API keys** in config.yaml (preferred) or environment variables if you must use legacy mode. See "Legacy Token Setup (Deprecated)" section below.
+2. **Optionally set API keys** in `config.yaml` (preferred). They can also be set as environment variables, which will take precedence over `config.yaml`.
 
 The bot will automatically resolve room aliases to room IDs at startup. You can use either room IDs (starting with !) or room aliases (starting with #) in your configuration.
 
