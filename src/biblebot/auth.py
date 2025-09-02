@@ -640,7 +640,7 @@ async def interactive_login(
     except (OSError, ValueError, RuntimeError):
         logger.exception("Login error")
         return False
-    except (nio.exceptions.RemoteProtocolError, aiohttp.ClientError) as e:
+    except (nio.exceptions.RemoteProtocolError, aiohttp.ClientError):
         logger.exception(
             "❌ Network error. Please check your internet connection and homeserver URL."
         )

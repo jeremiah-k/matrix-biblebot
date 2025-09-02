@@ -6,7 +6,6 @@ similar to mmrelay's logging approach.
 """
 
 import logging
-import os
 from logging.handlers import RotatingFileHandler
 from pathlib import Path
 
