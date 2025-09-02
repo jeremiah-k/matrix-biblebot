@@ -59,8 +59,11 @@ class TestMonitoringPatterns:
         ) as mock_get_bible:
             mock_get_bible.return_value = ("Test verse", "John 3:16")
 
-            # Enable debug logging
-            with caplog.at_level(logging.DEBUG):
+            # Enable debug logging and ensure it's captured by caplog
+            import logging
+
+            logger = logging.getLogger("BibleBot")
+            with caplog.at_level(logging.DEBUG, logger="BibleBot"):
                 event = MagicMock()
                 event.body = "John 3:16"
                 event.sender = "@user:matrix.org"
@@ -92,7 +95,7 @@ class TestMonitoringPatterns:
         ) as mock_get_bible:
             mock_get_bible.side_effect = Exception("Test API error")
 
-            with caplog.at_level(logging.ERROR):
+            with caplog.at_level(logging.ERROR, logger="BibleBot"):
                 event = MagicMock()
                 event.body = "John 3:16"
                 event.sender = "@user:matrix.org"
@@ -574,7 +577,7 @@ class TestMonitoringPatterns:
             mock_get_bible.return_value = ("Test verse", "John 3:16")
 
             # Process requests with structured logging
-            with caplog.at_level(logging.INFO):
+            with caplog.at_level(logging.INFO, logger="BibleBot"):
                 for i in range(3):
                     event = MagicMock()
                     event.body = f"John 3:{i+16}"

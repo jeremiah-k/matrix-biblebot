@@ -823,6 +823,10 @@ class TestE2EEFunctionality:
     @pytest.mark.asyncio
     async def test_on_decryption_failure(self, sample_config):
         """Test handling decryption failure events."""
+        # Enable E2EE for this test
+        e2ee_config = sample_config.copy()
+        e2ee_config["matrix"]["e2ee"]["enabled"] = True
+
         with patch("biblebot.bot.AsyncClient") as mock_client_class:
             mock_client = AsyncMock(
                 spec=[
@@ -835,16 +839,14 @@ class TestE2EEFunctionality:
                     "restore_login",
                     "access_token",
                     "rooms",
+                    "to_device",
                 ]
             )
             mock_client_class.return_value = mock_client
             mock_client.user_id = TEST_USER_ID
             mock_client.device_id = TEST_DEVICE_ID
 
-            # Mock request_room_key method
-            mock_client.request_room_key = AsyncMock()
-
-            bot_instance = bot.BibleBot(sample_config)
+            bot_instance = bot.BibleBot(e2ee_config)
             bot_instance.client = mock_client
 
             mock_room = MagicMock()
@@ -852,17 +854,25 @@ class TestE2EEFunctionality:
 
             mock_event = MagicMock()
             mock_event.event_id = "$failed_event:matrix.org"
+            mock_event.as_key_request.return_value = MagicMock()
 
             await bot_instance.on_decryption_failure(mock_room, mock_event)
 
-            # Should request room key
-            mock_client.request_room_key.assert_called_once_with(mock_event)
+            # Should use manual key request approach
+            mock_client.to_device.assert_called_once()
+            mock_event.as_key_request.assert_called_once_with(
+                TEST_USER_ID, TEST_DEVICE_ID
+            )
             # Event should have room_id set
             assert mock_event.room_id == "!room:matrix.org"
 
     @pytest.mark.asyncio
     async def test_on_decryption_failure_fallback(self, sample_config):
         """Test decryption failure fallback when request_room_key not available."""
+        # Enable E2EE for this test
+        e2ee_config = sample_config.copy()
+        e2ee_config["matrix"]["e2ee"]["enabled"] = True
+
         with patch("biblebot.bot.AsyncClient") as mock_client_class:
             # Only provide the attributes used in this test; no request_room_key present.
             from unittest.mock import AsyncMock as _AsyncMock
@@ -874,7 +884,7 @@ class TestE2EEFunctionality:
             mock_client.to_device = _AsyncMock()
             mock_client_class.return_value = mock_client
 
-            bot_instance = bot.BibleBot(sample_config)
+            bot_instance = bot.BibleBot(e2ee_config)
             bot_instance.client = mock_client
 
             mock_room = MagicMock()
