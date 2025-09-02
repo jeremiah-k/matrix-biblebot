@@ -128,7 +128,7 @@ def detect_configuration_state():
         creds = load_credentials()
         if not creds:
             return "auth", "Invalid credentials found. Re-authentication required."
-    except Exception:
+    except (OSError, ValueError, TypeError):
         return "auth", "Cannot load credentials. Re-authentication required."
 
     return "ready", "Bot is configured and ready to start."
@@ -205,11 +205,11 @@ def interactive_main():
         """
         # Initialize logging first
         try:
-            from .config import load_config
+            from .bot import load_config
 
             config = load_config(config_path)
             configure_logging(config)
-        except Exception:
+        except (OSError, ValueError, TypeError):
             # If config loading fails, use default logging
             configure_logging(None)
 

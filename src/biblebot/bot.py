@@ -706,16 +706,21 @@ class BibleBot:
             # may not have room_id set, but event.as_key_request() requires it
             event.room_id = room.room_id
 
-            # Use manual key request creation (like mmrelay) to avoid duplicate request errors
-            # The client.request_room_key() method tracks requests and throws LocalProtocolError
-            # if a request is already pending for the same session_id
-            request = event.as_key_request(
-                self.client.user_id, getattr(self.client, "device_id", None)
-            )
-            await self.client.to_device(request)
-            logger.info(
-                f"Requested keys for failed decryption of event {getattr(event, 'event_id', '?')}"
-            )
+            # Try the high-level API first
+            try:
+                await self.client.request_room_key(event)
+                logger.info(
+                    f"Requested keys via client.request_room_key for event {getattr(event, 'event_id', '?')}"
+                )
+            except nio.exceptions.LocalProtocolError:
+                # Duplicate/pending request — fall back to manual to-device path
+                request = event.as_key_request(
+                    self.client.user_id, getattr(self.client, "device_id", None)
+                )
+                await self.client.to_device(request)
+                logger.info(
+                    f"Requested keys via to_device for event {getattr(event, 'event_id', '?')}"
+                )
         except Exception:
             logger.exception(
                 f"Failed to request keys for event {getattr(event, 'event_id', '?')}"
