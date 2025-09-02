@@ -460,25 +460,36 @@ class TestMainFunction:
             return None  # No credentials
 
         # (removed unused local)
+        mock_config = {
+            "homeserver": "https://matrix.org",
+            "user_id": "@test:matrix.org",
+            "access_token": "test_token",
+            "device_id": "TEST_DEVICE",
+            "matrix_room_ids": ["!room:matrix.org"],
+        }
 
         with patch("os.path.exists", return_value=True):  # Config exists
             # Credentials present => CLI should start the bot
             with patch("biblebot.auth.load_credentials", return_value=Mock()):
-                # Patch the entrypoint alias used by CLI
-                with patch(
-                    "biblebot.cli.bot_main", new=lambda *a, **k: asyncio.sleep(0)
-                ):
-                    # Patch the CLI's async runner to consume the coroutine
+                # Mock the config loading to avoid file system access
+                with patch("biblebot.bot.load_config", return_value=mock_config):
+                    # Patch the entrypoint alias used by CLI
                     with patch(
-                        "biblebot.cli.run_async", side_effect=_consume_coroutine
-                    ) as run_patch:
-                        with patch("sys.argv", ["biblebot"]):
-                            with patch(
-                                "builtins.input", return_value="y"
-                            ):  # User chooses to login
-                                with patch("getpass.getpass", return_value="password"):
-                                    # exercise the real cli.main
-                                    cli.main()
+                        "biblebot.cli.bot_main", new=lambda *a, **k: asyncio.sleep(0)
+                    ):
+                        # Patch the CLI's async runner to consume the coroutine
+                        with patch(
+                            "biblebot.cli.run_async", side_effect=_consume_coroutine
+                        ) as run_patch:
+                            with patch("sys.argv", ["biblebot"]):
+                                with patch(
+                                    "builtins.input", return_value="y"
+                                ):  # User chooses to login
+                                    with patch(
+                                        "getpass.getpass", return_value="password"
+                                    ):
+                                        # exercise the real cli.main
+                                        cli.main()
         run_patch.assert_called_once()
         # The test should verify that the CLI attempted to run the bot
         # but since we're mocking input to say "n", it won't actually call asyncio.run
@@ -712,16 +723,12 @@ class TestCLILegacyFlags:
 
     @patch("sys.argv", ["biblebot", "--auth-login"])
     @patch("builtins.input", return_value="https://matrix.org")
-    @patch("sys.argv", ["biblebot", "--auth-login"])
-    @patch("builtins.input", return_value="https://matrix.org")
     @patch("getpass.getpass", return_value="password")
     @patch("biblebot.cli.interactive_login", new_callable=AsyncMock)
     @patch("sys.exit")
     @patch("warnings.warn")
-    @patch("os.path.exists")
     def test_legacy_auth_login(
         self,
-        mock_exists,
         mock_warn,
         mock_exit,
         mock_login,
@@ -729,29 +736,32 @@ class TestCLILegacyFlags:
         mock_input,
     ):
         """Test legacy --auth-login flag."""
-        mock_exists.return_value = True  # Config exists to avoid input prompt
         mock_login.return_value = True
+        mock_exit.side_effect = SystemExit(0)
 
-        cli.main()
+        with pytest.raises(SystemExit) as exc_info:
+            cli.main()
+
+        assert exc_info.value.code == 0
         mock_warn.assert_called_once()
         mock_login.assert_called_once()
-        # Should call sys.exit, which prevents further execution
         mock_exit.assert_called_with(0)
 
     @patch("sys.argv", ["biblebot", "--auth-logout"])
     @patch("biblebot.cli.interactive_logout", new_callable=AsyncMock)
     @patch("sys.exit")
     @patch("warnings.warn")
-    @patch("os.path.exists")
-    def test_legacy_auth_logout(self, mock_exists, mock_warn, mock_exit, mock_logout):
+    def test_legacy_auth_logout(self, mock_warn, mock_exit, mock_logout):
         """Test legacy --auth-logout flag."""
-        mock_exists.return_value = True  # Config exists to avoid input prompt
         mock_logout.return_value = True
+        mock_exit.side_effect = SystemExit(0)
 
-        cli.main()
+        with pytest.raises(SystemExit) as exc_info:
+            cli.main()
+
+        assert exc_info.value.code == 0
         mock_warn.assert_called_once()
         mock_logout.assert_called_once()
-        # Should call sys.exit, which prevents further execution
         mock_exit.assert_called_with(0)
 
 

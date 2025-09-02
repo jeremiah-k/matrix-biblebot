@@ -235,8 +235,10 @@ class TestPerformancePatterns:
         bot = BibleBot(config=mock_config, client=mock_client)
 
         # Populate room ID set for testing (normally done in initialize())
-
         bot._room_id_set = set(mock_config["matrix_room_ids"])
+        bot.start_time = int(
+            (time.time() - 100) * 1000
+        )  # Set start_time for message filtering
 
         # Create event with large message content
         event = MagicMock()

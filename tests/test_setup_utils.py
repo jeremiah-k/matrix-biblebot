@@ -238,10 +238,10 @@ class TestServiceTemplateHandling:
         result = setup_utils.check_loginctl_available()
         assert result is True
 
-    @patch("subprocess.run")
-    def test_check_loginctl_available_false(self, mock_run):
+    @patch("shutil.which")
+    def test_check_loginctl_available_false(self, mock_which):
         """Test loginctl availability check - not available."""
-        mock_run.side_effect = Exception("Command not found")
+        mock_which.return_value = None
 
         result = setup_utils.check_loginctl_available()
         assert result is False

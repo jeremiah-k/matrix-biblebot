@@ -13,7 +13,7 @@ from tests.test_constants import TEST_HOMESERVER, TEST_ROOM_ID, TEST_USER_ID
 def mock_credentials():
     """
     Pytest fixture that returns a Credentials object populated with deterministic test values for E2EE tests.
-    
+
     Returns:
         biblebot.auth.Credentials: Credentials with TEST_HOMESERVER, TEST_USER_ID, access_token "test_token", and device_id "TEST_DEVICE".
     """
@@ -31,7 +31,7 @@ def mock_credentials():
 def e2ee_config():
     """
     Pytest fixture returning a sample E2EE-enabled Matrix configuration used in tests.
-    
+
     Returns:
         dict: Configuration mapping with keys:
             - "matrix": dict containing:
@@ -149,6 +149,7 @@ class TestPrintE2EEStatus:
                 "dependencies_installed": True,
                 "store_exists": True,
                 "available": True,
+                "ready": True,
                 "error": None,
             }
 
@@ -156,7 +157,8 @@ class TestPrintE2EEStatus:
 
             captured = capsys.readouterr()
             assert "E2EE" in captured.out
-            assert "Enabled" in captured.out
+            assert "Available: ✓" in captured.out
+            assert "Ready: ✓" in captured.out
 
     def test_print_e2ee_status_with_error(self, capsys):
         """Test printing E2EE status with error information."""
@@ -169,6 +171,7 @@ class TestPrintE2EEStatus:
                 "dependencies_installed": False,
                 "store_exists": False,
                 "available": False,
+                "ready": False,
                 "error": "E2EE not supported on Windows",
             }
 
@@ -176,7 +179,8 @@ class TestPrintE2EEStatus:
 
             captured = capsys.readouterr()
             assert "E2EE" in captured.out
-            assert "Disabled" in captured.out
+            assert "Available: ✗" in captured.out
+            assert "Ready: ✗" in captured.out
             assert "Windows" in captured.out
 
 

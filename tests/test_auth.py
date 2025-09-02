@@ -267,6 +267,7 @@ class TestPrintE2EEStatus:
             "dependencies_installed": True,
             "store_exists": True,
             "platform_supported": True,
+            "ready": True,
             "error": None,
         }
 
@@ -295,6 +296,7 @@ class TestPrintE2EEStatus:
             "dependencies_installed": False,
             "store_exists": False,
             "platform_supported": True,
+            "ready": False,
             "error": "Dependencies not installed",
         }
 
