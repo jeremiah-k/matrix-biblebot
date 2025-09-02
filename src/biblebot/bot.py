@@ -194,29 +194,27 @@ def load_environment(config: dict, config_path: str):
             api_keys[TRANSLATION_ESV] = config_api_keys["esv"]
             logger.info(INFO_API_KEY_FOUND.format(TRANSLATION_ESV.upper()))
 
-    # Try to load .env from the same directory as the config file (legacy support)
-    config_dir = os.path.dirname(config_path)
-    env_path = os.path.join(config_dir, DEFAULT_ENV_FILENAME)
+    # Try to load .env from a list of possible locations (legacy support)
+    env_paths_to_check = [
+        os.path.join(os.path.dirname(config_path), DEFAULT_ENV_FILENAME),
+        os.path.join(os.getcwd(), DEFAULT_ENV_FILENAME),
+    ]
 
-    if os.path.exists(env_path):
-        load_dotenv(env_path)
-        logger.warning(
-            "⚠️  .env file detected - this is deprecated. Consider moving API keys to config.yaml"
-        )
-        logger.info(f"{INFO_LOADING_ENV} {env_path}")
-    else:
-        # Fall back to default .env in current directory if present
-        cwd_env = os.path.join(os.getcwd(), DEFAULT_ENV_FILENAME)
-        if os.path.exists(cwd_env):
-            load_dotenv(cwd_env)
+    env_loaded = False
+    for env_path in env_paths_to_check:
+        if os.path.exists(env_path):
+            load_dotenv(env_path)
             logger.warning(
                 "⚠️  .env file detected - this is deprecated. Consider moving API keys to config.yaml"
             )
-            logger.info(f"{INFO_LOADING_ENV} {cwd_env}")
-        else:
-            # Still call load_dotenv to pick up any env already set or parent dirs
-            load_dotenv()
-            logger.debug(INFO_NO_ENV_FILE)
+            logger.info(f"{INFO_LOADING_ENV} {env_path}")
+            env_loaded = True
+            break  # Stop after finding the first .env file
+
+    if not env_loaded:
+        # Still call load_dotenv to pick up any env already set or parent dirs
+        load_dotenv()
+        logger.debug(INFO_NO_ENV_FILE)
 
     # Get access token from environment (legacy support with deprecation warning)
     matrix_access_token = os.getenv(ENV_MATRIX_ACCESS_TOKEN)

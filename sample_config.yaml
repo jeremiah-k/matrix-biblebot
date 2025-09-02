@@ -31,4 +31,4 @@ bot:
 # These can also be set via environment variables
 api_keys:
   # ESV API key from https://api.esv.org/
-  esv: your_esv_api_key_here
+  esv: null

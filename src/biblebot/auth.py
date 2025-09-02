@@ -466,7 +466,10 @@ async def interactive_login(
         # We'll construct the full MXID after server discovery
         user = None
 
-    pwd = password or getpass.getpass(PROMPT_PASSWORD)
+    if password is not None:
+        pwd = password
+    else:
+        pwd = getpass.getpass(PROMPT_PASSWORD)
 
     # E2EE-aware client config
     status = check_e2ee_status()
@@ -627,8 +630,12 @@ async def interactive_logout() -> bool:
     # Remove E2EE store dir
     # Remove E2EE store dir
     store = E2EE_STORE_DIR
-    if store.exists():
-        shutil.rmtree(store, ignore_errors=True)
+    try:
+        if store.exists():
+            shutil.rmtree(store)
+            logger.info(f"Cleared E2EE store at {store}")
+    except OSError:
+        logger.warning(f"Failed to remove E2EE store at {store}", exc_info=True)
         logger.info(f"Cleared E2EE store at {store}")
 
     return True
