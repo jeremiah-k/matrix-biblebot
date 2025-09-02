@@ -1206,12 +1206,14 @@ class TestMainFunction:
                         "access_token",
                         "rooms",
                         "room_resolve_alias",
+                        "keys_upload",
                         "close",
                     ]
                 )
             mock_client.restore_login = MagicMock()
             mock_client.add_event_callback = MagicMock()
             mock_client.should_upload_keys = False
+            mock_client.keys_upload = AsyncMock()  # Ensure keys_upload is AsyncMock
             # Set access_token as a regular attribute, not a MagicMock
             mock_client.access_token = TEST_ACCESS_TOKEN
             # Ensure close is AsyncMock
@@ -1325,9 +1327,11 @@ class TestMainFunction:
         mock_load_env.return_value = (None, {"esv": "test_key"})  # No access token
         mock_load_creds.return_value = None  # No saved credentials
 
-        # The main function should raise RuntimeError for no auth
-        with pytest.raises(RuntimeError, match="No credentials found"):
-            await bot.main("test_config.yaml")
+        # Use E2EE mocking framework to prevent ImportWarning
+        with E2EETestFramework.mock_e2ee_dependencies():
+            # The main function should raise RuntimeError for no auth
+            with pytest.raises(RuntimeError, match="No credentials found"):
+                await bot.main("test_config.yaml")
 
         # Verify the mocks were called to check for auth
         mock_load_env.assert_called_once()
