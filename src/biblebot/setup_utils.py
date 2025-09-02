@@ -416,6 +416,7 @@ def service_needs_update():
         acceptable_snippets.append(f"{shlex.quote(sys.executable)} -m biblebot")
     else:
         acceptable_snippets.append(executable_path)
+        acceptable_snippets.append(shlex.quote(executable_path))
 
     # Check if the ExecStart uses a valid command
     if not any(snippet in existing_service for snippet in acceptable_snippets):

@@ -201,7 +201,11 @@ class TestDiscoverHomeserver:
 
         # Mock AsyncClient with discovery error
         mock_client = MagicMock()
-        mock_client.discovery_info = AsyncMock(side_effect=DiscoveryInfoError("Error"))
+
+        async def _discovery_error(*args, **kwargs):
+            raise DiscoveryInfoError("Error")
+
+        mock_client.discovery_info = _discovery_error
 
         result = await discover_homeserver(mock_client, "invalid.server")
 

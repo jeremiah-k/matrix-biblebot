@@ -125,10 +125,10 @@ class TestReliabilityPatterns:
             room = MagicMock()
             room.room_id = mock_config["matrix_room_ids"][0]  # Use configured room
 
-            start_time = time.time()
+            start_time = time.monotonic()
             # Bot now handles timeouts gracefully and sends generic error message
             await bot.on_room_message(room, event)
-            end_time = time.time()
+            end_time = time.monotonic()
 
             # Should not hang indefinitely
             assert end_time - start_time < 5.0
@@ -420,9 +420,9 @@ class TestReliabilityPatterns:
             room.room_id = "!room:matrix.org"
 
             # Should still provide service, albeit degraded
-            start_time = time.time()
+            start_time = time.monotonic()
             await bot.on_room_message(room, event)
-            end_time = time.time()
+            end_time = time.monotonic()
 
             # Should take longer but still complete
             assert end_time - start_time >= 0.2
@@ -564,7 +564,7 @@ class TestReliabilityPatterns:
 
         # Mock service that recovers after a delay
         recovery_time = 0.3
-        start_time = time.time()
+        start_time = time.monotonic()
 
         async def recovering_api(*args, **kwargs):
             """
@@ -576,13 +576,13 @@ class TestReliabilityPatterns:
             Returns:
                 tuple[str, str]: A successful response as (verse_text, verse_ref) after recovery (e.g., ("Recovered verse", "John 3:16")).
             """
-            if time.time() - start_time < recovery_time:
+            if time.monotonic() - start_time < recovery_time:
                 raise Exception("Service recovering")
             return ("Recovered verse", "John 3:16")
 
         with patch("biblebot.bot.get_bible_text", side_effect=recovering_api):
             # Send requests during recovery period
-            recovery_start = time.time()
+            recovery_start = time.monotonic()
 
             for i in range(3):
                 event = MagicMock()
@@ -600,7 +600,7 @@ class TestReliabilityPatterns:
                     pass  # Expected for recovery cases
                 await asyncio.sleep(0.15)  # Space out requests
 
-            recovery_end = time.time()
+            recovery_end = time.monotonic()
 
             # Should have completed within reasonable time
             assert recovery_end - recovery_start < 1.0
