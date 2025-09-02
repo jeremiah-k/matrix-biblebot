@@ -497,20 +497,24 @@ async def interactive_login(
 
     # Attempt server discovery to normalize homeserver URL
     original_hs = hs
-    hs = await discover_homeserver(temp_client, hs)
+    discovered_hs = await discover_homeserver(temp_client, hs)
     await temp_client.close()
 
-    logger.info(f"Server discovery: {original_hs} -> {hs}")
+    logger.info(f"Server discovery: {original_hs} -> {discovered_hs}")
 
     # Now construct the proper MXID if we have a localpart
+    # IMPORTANT: Use the ORIGINAL server domain for MXID, not the discovered API endpoint
     if localpart is not None:
-        server_name = urlparse(hs).netloc
-        user = f"@{localpart}:{server_name}"
+        original_server_name = urlparse(original_hs).netloc
+        user = f"@{localpart}:{original_server_name}"
         logger.info(
-            f"Constructed MXID: {user} from localpart: {localpart} and server: {server_name}"
+            f"Constructed MXID: {user} from localpart: {localpart} and original server: {original_server_name}"
         )
-        logger.info(f"Final homeserver URL: {hs}")
-        logger.info(f"Server netloc: {server_name}")
+        logger.info(f"Discovered homeserver URL: {discovered_hs}")
+        logger.info(f"Original server domain: {original_server_name}")
+
+    # Use the discovered homeserver URL for API calls
+    hs = discovered_hs
 
     if not user:
         logger.error("Failed to determine user ID for login")
