@@ -541,23 +541,23 @@ class TestBibleBot:
             "#alias:matrix.org",
         ]
 
-        with E2EETestFramework.mock_e2ee_dependencies():
-            with patch("biblebot.bot.AsyncClient") as mock_client_class:
-                mock_client = AsyncMock(
-                    spec=[
-                        "user_id",
-                        "device_id",
-                        "room_send",
-                        "join",
-                        "add_event_callback",
-                        "should_upload_keys",
-                        "restore_login",
-                        "access_token",
-                        "rooms",
-                        "room_resolve_alias",
-                        "close",
-                    ]
-                )
+        # E2EE dependencies are mocked upfront in conftest.py
+        with patch("biblebot.bot.AsyncClient") as mock_client_class:
+            mock_client = AsyncMock(
+                spec=[
+                    "user_id",
+                    "device_id",
+                    "room_send",
+                    "join",
+                    "add_event_callback",
+                    "should_upload_keys",
+                    "restore_login",
+                    "access_token",
+                    "rooms",
+                    "room_resolve_alias",
+                    "close",
+                ]
+            )
             mock_client_class.return_value = mock_client
 
             # Mock alias resolution response
@@ -577,23 +577,23 @@ class TestBibleBot:
     @pytest.mark.asyncio
     async def test_join_matrix_room_success(self, sample_config):
         """Test successful room joining."""
-        with E2EETestFramework.mock_e2ee_dependencies():
-            with patch("biblebot.bot.AsyncClient") as mock_client_class:
-                mock_client = AsyncMock(
-                    spec=[
-                        "user_id",
-                        "device_id",
-                        "room_send",
-                        "join",
-                        "add_event_callback",
-                        "should_upload_keys",
-                        "restore_login",
-                        "access_token",
-                        "rooms",
-                        "room_resolve_alias",
-                        "close",
-                    ]
-                )
+        # E2EE dependencies are mocked upfront in conftest.py
+        with patch("biblebot.bot.AsyncClient") as mock_client_class:
+            mock_client = AsyncMock(
+                spec=[
+                    "user_id",
+                    "device_id",
+                    "room_send",
+                    "join",
+                    "add_event_callback",
+                    "should_upload_keys",
+                    "restore_login",
+                    "access_token",
+                    "rooms",
+                    "room_resolve_alias",
+                    "close",
+                ]
+            )
             mock_client_class.return_value = mock_client
             mock_client.rooms = {}  # Bot not in room yet
 
