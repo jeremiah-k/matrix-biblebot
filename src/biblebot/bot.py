@@ -837,8 +837,14 @@ class BibleBot:
                     )
                 else:
                     # Message is too long even with minimal text, use a short error message
-                    plain_body = f"[Message too long] - {ref_str}{MESSAGE_SUFFIX}"
-                    formatted_body = f"[Message too long] - {html.escape(ref_str)}{html.escape(MESSAGE_SUFFIX)}"
+                    if reference:
+                        plain_body = f"[Message too long] - {reference}{MESSAGE_SUFFIX}"
+                        formatted_body = f"[Message too long] - {html.escape(reference)}{html.escape(MESSAGE_SUFFIX)}"
+                    else:
+                        plain_body = f"[Message too long]{MESSAGE_SUFFIX}"
+                        formatted_body = (
+                            f"[Message too long]{html.escape(MESSAGE_SUFFIX)}"
+                        )
 
             logger.info(f"Sending scripture: {reference}")
 
