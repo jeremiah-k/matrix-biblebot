@@ -1053,6 +1053,56 @@ class TestE2EEFunctionality:
     """Test E2EE-related functionality."""
 
     @pytest.mark.asyncio
+    async def test_room_send_ignore_unverified_devices(self, sample_config):
+        """Test that all room_send calls include ignore_unverified_devices=True for E2EE compatibility."""
+        # Create mock client
+        mock_client = AsyncMock()
+        mock_client.room_send = AsyncMock()
+
+        # Create bot instance
+        bot_instance = bot.BibleBot(sample_config, client=mock_client)
+
+        # Test send_reaction method
+        await bot_instance.send_reaction("!room:matrix.org", "$event:matrix.org", "✅")
+
+        # Verify room_send was called with ignore_unverified_devices=True
+        mock_client.room_send.assert_called_with(
+            "!room:matrix.org",
+            "m.reaction",
+            {
+                "m.relates_to": {
+                    "rel_type": "m.annotation",
+                    "event_id": "$event:matrix.org",
+                    "key": "✅",
+                }
+            },
+            ignore_unverified_devices=True,
+        )
+
+        # Reset mock for next test
+        mock_client.room_send.reset_mock()
+
+        # Test handle_scripture_command method (successful case)
+        with patch(
+            "biblebot.bot.get_bible_text", new_callable=AsyncMock
+        ) as mock_get_bible:
+            mock_get_bible.return_value = ("For God so loved the world...", "John 3:16")
+
+            # Create mock event
+            mock_event = MagicMock()
+            mock_event.event_id = "$event:matrix.org"
+
+            await bot_instance.handle_scripture_command(
+                "!room:matrix.org", "John 3:16", "kjv", mock_event
+            )
+
+            # Should have been called with ignore_unverified_devices=True
+            assert mock_client.room_send.call_count >= 1
+            for call in mock_client.room_send.call_args_list:
+                # Check that ignore_unverified_devices=True is in the call
+                assert call.kwargs.get("ignore_unverified_devices") is True
+
+    @pytest.mark.asyncio
     async def test_on_decryption_failure(self, sample_config):
         """Test handling decryption failure events."""
         # Enable E2EE for this test

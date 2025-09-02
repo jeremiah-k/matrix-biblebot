@@ -748,6 +748,7 @@ class BibleBot:
                 room_id,
                 "m.reaction",
                 content,
+                ignore_unverified_devices=True,
             )
         except Exception:
             logger.warning("Failed to send reaction", exc_info=True)
@@ -913,6 +914,7 @@ class BibleBot:
                 room_id,
                 "m.room.message",
                 content,
+                ignore_unverified_devices=True,
             )
 
         except (PassageNotFound, APIKeyMissing) as e:
@@ -926,6 +928,7 @@ class BibleBot:
                     "format": "org.matrix.custom.html",
                     "formatted_body": html.escape(ERROR_PASSAGE_NOT_FOUND),
                 },
+                ignore_unverified_devices=True,
             )
         except (aiohttp.ClientError, asyncio.TimeoutError) as e:
             # Network or timeout errors - could be retried
@@ -939,6 +942,7 @@ class BibleBot:
                     "format": "org.matrix.custom.html",
                     "formatted_body": html.escape(ERROR_PASSAGE_NOT_FOUND),
                 },
+                ignore_unverified_devices=True,
             )
         except Exception:
             # Log full traceback but send generic message to user
@@ -955,6 +959,7 @@ class BibleBot:
                     "format": "org.matrix.custom.html",
                     "formatted_body": html.escape(ERROR_PASSAGE_NOT_FOUND),
                 },
+                ignore_unverified_devices=True,
             )
 
 
