@@ -876,8 +876,15 @@ class BibleBot:
                 session=self.http_session,
             )
 
-            # Formatting text to ensure one space between words
-            text = " ".join(text.replace("\n", " ").split())
+            # Preserve line breaks for poetic texts (Psalms, etc.) but clean up excessive whitespace
+            # Replace multiple spaces with single spaces while preserving newlines
+            import re
+
+            text = re.sub(r"[ \t]+", " ", text)  # Multiple spaces/tabs -> single space
+            text = re.sub(
+                r"\n\s*\n", "\n\n", text
+            )  # Multiple newlines -> double newline
+            text = text.strip()  # Remove leading/trailing whitespace
 
             # Check if text is empty after cleaning
             if not text:
@@ -888,12 +895,15 @@ class BibleBot:
             await self.send_reaction(room_id, event.event_id, REACTION_OK)
 
             # Format the scripture message
+            # Convert newlines to <br /> tags for HTML formatting while preserving plain text
+            html_text = html.escape(text).replace("\n", "<br />")
+
             if reference:
                 plain_body = f"{text} - {reference}{MESSAGE_SUFFIX}"
-                formatted_body = f"{html.escape(text)} - {html.escape(reference)}{html.escape(MESSAGE_SUFFIX)}"
+                formatted_body = f"{html_text} - {html.escape(reference)}{html.escape(MESSAGE_SUFFIX)}"
             else:
                 plain_body = f"{text}{MESSAGE_SUFFIX}"
-                formatted_body = f"{html.escape(text)}{html.escape(MESSAGE_SUFFIX)}"
+                formatted_body = f"{html_text}{html.escape(MESSAGE_SUFFIX)}"
 
             # Apply message length truncation if needed
             if len(plain_body) > self.max_message_length:
@@ -918,9 +928,12 @@ class BibleBot:
                 else:
                     truncated_text = "[Message too long]"
 
-                # Reconstruct the bodies
+                # Reconstruct the bodies with proper HTML formatting
+                html_truncated_text = html.escape(truncated_text).replace(
+                    "\n", "<br />"
+                )
                 plain_body = f"{truncated_text}{plain_suffix}"
-                formatted_body = f"{html.escape(truncated_text)}{formatted_suffix}"
+                formatted_body = f"{html_truncated_text}{formatted_suffix}"
 
             if reference:
                 logger.info(f"Sending scripture: {reference}")

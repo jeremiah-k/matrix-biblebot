@@ -251,8 +251,8 @@ def interactive_main():
         except (RuntimeError, ConnectionError, FileNotFoundError):
             logger.exception("Bot failed to start")
             sys.exit(1)
-        except Exception:  # consider narrowing to (OSError, ValueError, TypeError)
-            logger.exception("Unexpected error starting bot")
+        except (OSError, ValueError, TypeError) as e:
+            logger.exception(f"Unexpected error starting bot: {type(e).__name__}")
             sys.exit(1)
 
     def _get_user_input(
@@ -688,8 +688,8 @@ Legacy flags (deprecated):
     except (RuntimeError, ConnectionError):
         logging.exception("Error running bot")
         sys.exit(1)
-    except Exception:
-        logging.exception("Unexpected error running bot")
+    except (ValueError, TypeError, OSError, ImportError) as e:
+        logging.exception(f"Unexpected error running bot: {type(e).__name__}")
         sys.exit(1)
 
 
