@@ -1608,3 +1608,90 @@ class TestEnvironmentLoadingExtra:
         # Should return (string/None, dict)
         assert matrix_token is None or isinstance(matrix_token, str)
         assert isinstance(api_keys, dict)
+
+
+class TestTextFormatting:
+    """Test text formatting functionality."""
+
+    def test_format_text_default_mode(self):
+        """Test text formatting with default settings (collapse whitespace)."""
+        config = {"bot": {"preserve_poetry_formatting": False}}
+        bible_bot = bot.BibleBot(config)
+
+        # Test text with newlines and extra spaces
+        input_text = "Line 1\n\nLine 2   with   spaces\nLine 3"
+        expected_plain = "Line 1 Line 2 with spaces Line 3"
+        expected_html = "Line 1 Line 2 with spaces Line 3"
+
+        plain_text, html_text = bible_bot._format_text_for_display(input_text)
+
+        assert plain_text == expected_plain
+        assert html_text == expected_html
+
+    def test_format_text_poetry_mode(self):
+        """Test text formatting with poetry preservation enabled."""
+        config = {"bot": {"preserve_poetry_formatting": True}}
+        bible_bot = bot.BibleBot(config)
+
+        # Test text with newlines and extra spaces
+        input_text = "Line 1\n\nLine 2   with   spaces\nLine 3"
+        expected_plain = "Line 1\n\nLine 2 with spaces\nLine 3"
+        expected_html = "Line 1<br /><br />Line 2 with spaces<br />Line 3"
+
+        plain_text, html_text = bible_bot._format_text_for_display(input_text)
+
+        assert plain_text == expected_plain
+        assert html_text == expected_html
+
+    def test_format_text_default_mode_no_config(self):
+        """Test text formatting with no explicit configuration (should default to False)."""
+        config = {"bot": {}}  # No preserve_poetry_formatting specified
+        bible_bot = bot.BibleBot(config)
+
+        # Should default to False (original behavior)
+        assert bible_bot.preserve_poetry_formatting is False
+
+        input_text = "Line 1\nLine 2\nLine 3"
+        expected_plain = "Line 1 Line 2 Line 3"
+
+        plain_text, html_text = bible_bot._format_text_for_display(input_text)
+
+        assert plain_text == expected_plain
+        assert html_text == expected_plain  # No <br /> tags in default mode
+
+    def test_format_text_poetry_mode_complex(self):
+        """Test poetry mode with complex formatting scenarios."""
+        config = {"bot": {"preserve_poetry_formatting": True}}
+        bible_bot = bot.BibleBot(config)
+
+        # Test with tabs, multiple spaces, and multiple newlines
+        input_text = "  Psalm 1:1  \n\n\n  Blessed is the man\t\twho walks not\n  in the counsel of the wicked  "
+        expected_plain = "Psalm 1:1 \n\n Blessed is the man who walks not\n in the counsel of the wicked"
+        expected_html = "Psalm 1:1 <br /><br /> Blessed is the man who walks not<br /> in the counsel of the wicked"
+
+        plain_text, html_text = bible_bot._format_text_for_display(input_text)
+
+        assert plain_text == expected_plain
+        assert html_text == expected_html
+
+    def test_configuration_loading(self):
+        """Test that configuration is loaded correctly."""
+        # Test with explicit True
+        config_true = {"bot": {"preserve_poetry_formatting": True}}
+        bot_true = bot.BibleBot(config_true)
+        assert bot_true.preserve_poetry_formatting is True
+
+        # Test with explicit False
+        config_false = {"bot": {"preserve_poetry_formatting": False}}
+        bot_false = bot.BibleBot(config_false)
+        assert bot_false.preserve_poetry_formatting is False
+
+        # Test with no bot section
+        config_no_bot = {}
+        bot_no_bot = bot.BibleBot(config_no_bot)
+        assert bot_no_bot.preserve_poetry_formatting is False
+
+        # Test with invalid config type
+        config_invalid = "not a dict"
+        bot_invalid = bot.BibleBot(config_invalid)
+        assert bot_invalid.preserve_poetry_formatting is False

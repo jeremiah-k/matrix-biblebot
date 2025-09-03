@@ -40,6 +40,7 @@ from .constants import (
     CONFIG_MATRIX_HOMESERVER,
     CONFIG_MATRIX_ROOM_IDS,
     CONFIG_MATRIX_USER,
+    CONFIG_PRESERVE_POETRY_FORMATTING,
     DEFAULT_CONFIG_FILENAME_MAIN,
     DEFAULT_ENV_FILENAME,
     DEFAULT_TRANSLATION,
@@ -524,6 +525,9 @@ class BibleBot:
         )
         self.cache_enabled = bot_settings.get("cache_enabled", True)
         self.max_message_length = bot_settings.get("max_message_length", 2000)
+        self.preserve_poetry_formatting = bot_settings.get(
+            CONFIG_PRESERVE_POETRY_FORMATTING, False
+        )
 
         # Validate settings
         if self.max_message_length <= 0:
@@ -842,6 +846,37 @@ class BibleBot:
                     room.room_id, passage, translation, event
                 )
 
+    def _format_text_for_display(self, text: str) -> tuple[str, str]:
+        """
+        Format text for both plain and HTML display based on configuration.
+
+        Parameters:
+            text (str): Raw text to format
+
+        Returns:
+            tuple[str, str]: (formatted_plain_text, formatted_html_text)
+        """
+        if self.preserve_poetry_formatting:
+            # Poetry mode: preserve newlines, clean excess whitespace
+            import re
+
+            formatted_text = re.sub(
+                r"[ \t]+", " ", text
+            )  # Multiple spaces/tabs -> single space
+            formatted_text = re.sub(
+                r"\n\s*\n", "\n\n", formatted_text
+            )  # Multiple newlines -> double newline
+            formatted_text = (
+                formatted_text.strip()
+            )  # Remove leading/trailing whitespace
+            html_text = html.escape(formatted_text).replace("\n", "<br />")
+        else:
+            # Default mode: collapse all whitespace (original behavior)
+            formatted_text = " ".join(text.replace("\n", " ").split())
+            html_text = html.escape(formatted_text)
+
+        return formatted_text, html_text
+
     async def handle_scripture_command(self, room_id, passage, translation, event):
         """
         Handle a detected Bible verse reference by fetching the passage text and posting it to the room.
@@ -876,15 +911,8 @@ class BibleBot:
                 session=self.http_session,
             )
 
-            # Preserve line breaks for poetic texts (Psalms, etc.) but clean up excessive whitespace
-            # Replace multiple spaces with single spaces while preserving newlines
-            import re
-
-            text = re.sub(r"[ \t]+", " ", text)  # Multiple spaces/tabs -> single space
-            text = re.sub(
-                r"\n\s*\n", "\n\n", text
-            )  # Multiple newlines -> double newline
-            text = text.strip()  # Remove leading/trailing whitespace
+            # Format text based on configuration
+            text, html_text = self._format_text_for_display(text)
 
             # Check if text is empty after cleaning
             if not text:
@@ -895,9 +923,6 @@ class BibleBot:
             await self.send_reaction(room_id, event.event_id, REACTION_OK)
 
             # Format the scripture message
-            # Convert newlines to <br /> tags for HTML formatting while preserving plain text
-            html_text = html.escape(text).replace("\n", "<br />")
-
             if reference:
                 plain_body = f"{text} - {reference}{MESSAGE_SUFFIX}"
                 formatted_body = f"{html_text} - {html.escape(reference)}{html.escape(MESSAGE_SUFFIX)}"
@@ -928,10 +953,8 @@ class BibleBot:
                 else:
                     truncated_text = "[Message too long]"
 
-                # Reconstruct the bodies with proper HTML formatting
-                html_truncated_text = html.escape(truncated_text).replace(
-                    "\n", "<br />"
-                )
+                # Reconstruct the bodies with proper formatting
+                _, html_truncated_text = self._format_text_for_display(truncated_text)
                 plain_body = f"{truncated_text}{plain_suffix}"
                 formatted_body = f"{html_truncated_text}{formatted_suffix}"
 
