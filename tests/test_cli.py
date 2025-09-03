@@ -547,6 +547,7 @@ class TestCLIMainFunction:
         mock_detect_state.return_value = (
             "ready",
             "Bot is configured and ready to start.",
+            {"test": "config"},
         )
         mock_load_creds.return_value = Mock()
         mock_load_config.return_value = {"test": "config"}  # Return valid config
@@ -769,6 +770,7 @@ class TestCLIBotOperation:
         mock_detect_state.return_value = (
             "ready",
             "Bot is configured and ready to start.",
+            {"test": "config"},
         )
 
         mock_load_creds.return_value = Mock()
@@ -790,6 +792,7 @@ class TestCLIBotOperation:
         mock_detect_state.return_value = (
             "setup",
             "No configuration found. Setup is required.",
+            None,
         )
 
         mock_input.return_value = "y"
@@ -809,6 +812,7 @@ class TestCLIBotOperation:
         mock_detect_state.return_value = (
             "setup",
             "No configuration found. Setup is required.",
+            None,
         )
 
         # Mock config generation failure
@@ -830,6 +834,7 @@ class TestCLIBotOperation:
         mock_detect_state.return_value = (
             "setup",
             "No configuration found. Setup is required.",
+            None,
         )
 
         # Mock successful config generation
@@ -852,6 +857,7 @@ class TestCLIBotOperation:
         mock_detect_state.return_value = (
             "auth",
             "Configuration found but authentication required. Use 'biblebot auth login'.",
+            {"test": "config"},
         )
         mock_input.side_effect = KeyboardInterrupt()
 
@@ -875,6 +881,7 @@ class TestCLIBotOperation:
         mock_detect_state.return_value = (
             "ready",
             "Bot is configured and ready to start.",
+            {"test": "config"},
         )
         mock_load_creds.return_value = Mock()
         mock_input.return_value = "y"  # User chooses to start bot
@@ -901,6 +908,7 @@ class TestCLIBotOperation:
         mock_detect_state.return_value = (
             "ready",
             "Bot is configured and ready to start.",
+            {"test": "config"},
         )
         mock_load_creds.return_value = Mock()
         mock_input.return_value = "y"  # User chooses to start bot
