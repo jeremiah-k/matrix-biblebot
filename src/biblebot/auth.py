@@ -641,10 +641,10 @@ async def interactive_login(
     except asyncio.TimeoutError:
         logger.exception("Login timed out after %s seconds", LOGIN_TIMEOUT_SEC)
         return False
-    except (OSError, ValueError, RuntimeError):
+    except (OSError, ValueError, RuntimeError, ssl.SSLError):
         logger.exception("Login error")
         return False
-    except (nio.exceptions.RemoteProtocolError, aiohttp.ClientError):
+    except (nio.exceptions.ProtocolError, aiohttp.ClientError, LoginError):
         logger.exception(
             "❌ Network error. Please check your internet connection and homeserver URL."
         )
