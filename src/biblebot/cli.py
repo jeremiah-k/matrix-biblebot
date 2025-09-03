@@ -7,7 +7,6 @@ import logging
 import os
 import shutil
 import sys
-import warnings
 from pathlib import Path
 from typing import Awaitable, TypeVar
 
