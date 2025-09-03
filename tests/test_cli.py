@@ -537,8 +537,11 @@ class TestCLIMainFunction:
     @patch("sys.argv", ["biblebot"])
     @patch("biblebot.cli.detect_configuration_state")
     @patch("biblebot.auth.load_credentials")
+    @patch("biblebot.bot.load_config")
     @patch("biblebot.bot.main_with_config", new=_stub_bot_main_log_level)
-    def test_log_level_setting(self, mock_load_creds, mock_detect_state):
+    def test_log_level_setting(
+        self, mock_load_config, mock_load_creds, mock_detect_state
+    ):
         """Test log level setting."""
         # Mock configuration state to be ready (config and auth exist)
         mock_detect_state.return_value = (
@@ -546,6 +549,7 @@ class TestCLIMainFunction:
             "Bot is configured and ready to start.",
         )
         mock_load_creds.return_value = Mock()
+        mock_load_config.return_value = {"test": "config"}  # Return valid config
 
         # Should not raise exception - just run the bot
         cli.main()
@@ -767,8 +771,11 @@ class TestCLIBotOperation:
     @patch("biblebot.cli.detect_configuration_state")
     @patch("builtins.input")
     @patch("biblebot.auth.load_credentials")
+    @patch("biblebot.bot.load_config")
     @patch("biblebot.bot.main_with_config", new=_stub_bot_main_with_config)
-    def test_bot_run_with_config(self, mock_load_creds, mock_input, mock_detect_state):
+    def test_bot_run_with_config(
+        self, mock_load_config, mock_load_creds, mock_input, mock_detect_state
+    ):
         """Test running bot with existing config."""
         # Mock configuration state to be ready
         mock_detect_state.return_value = (
@@ -778,6 +785,7 @@ class TestCLIBotOperation:
 
         mock_load_creds.return_value = Mock()
         mock_input.return_value = "y"  # User chooses to start bot
+        mock_load_config.return_value = {"test": "config"}  # Return valid config
 
         cli.main()
         # Bot should have been invoked (no specific assertion needed as we stub it)
@@ -869,9 +877,10 @@ class TestCLIBotOperation:
     @patch("biblebot.cli.detect_configuration_state")
     @patch("builtins.input")
     @patch("biblebot.auth.load_credentials")
+    @patch("biblebot.bot.load_config")
     @patch("biblebot.bot.main_with_config", new=_stub_bot_main_keyboard_interrupt)
     def test_bot_keyboard_interrupt(
-        self, mock_load_creds, mock_input, mock_detect_state
+        self, mock_load_config, mock_load_creds, mock_input, mock_detect_state
     ):
         """Test bot operation with keyboard interrupt."""
         # Mock configuration state to be ready
@@ -881,6 +890,7 @@ class TestCLIBotOperation:
         )
         mock_load_creds.return_value = Mock()
         mock_input.return_value = "y"  # User chooses to start bot
+        mock_load_config.return_value = {"test": "config"}  # Return valid config
 
         # CLI catches KeyboardInterrupt and handles it gracefully
         cli.main()  # Should not raise exception
