@@ -633,6 +633,7 @@ class BibleBot:
         except (
             nio.exceptions.LocalProtocolError,
             nio.exceptions.RemoteProtocolError,
+            nio.exceptions.RemoteTransportError,
             aiohttp.ClientError,
             RoomResolveAliasError,
             asyncio.TimeoutError,

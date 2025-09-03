@@ -44,11 +44,17 @@ class MockLoginError(Exception):
         self.status_code = status_code
         self.errcode = errcode
 
+    def __repr__(self):
+        return f"MockLoginError(message={self.message!r}, status_code={self.status_code!r}, errcode={self.errcode!r})"
+
 
 class MockRoomResolveAliasError(Exception):
     def __init__(self, message=""):
         super().__init__(message)
         self.message = message
+
+    def __repr__(self):
+        return f"MockRoomResolveAliasError(message={self.message!r})"
 
 
 class MockDiscoveryInfoResponse:
