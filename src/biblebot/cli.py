@@ -232,16 +232,16 @@ def interactive_main():
                 run_async(bot_main(str(config_path)))
         except KeyboardInterrupt:
             logger.info("Bot stopped by user.")
-        except (RuntimeError, ConnectionError, FileNotFoundError) as e:
-            logger.exception(f"Bot failed to start: {e}")
-            logger.error("Check your configuration and try again.")
+        except (RuntimeError, ConnectionError, FileNotFoundError):
+            logger.exception("Bot failed to start")
             sys.exit(1)
-        except Exception as e:
-            logger.exception(f"Unexpected error: {e}")
-            logger.error("Check your configuration and try again.")
+        except Exception:
+            logger.exception("Unexpected error starting bot")
             sys.exit(1)
 
-    def _get_user_input(prompt: str, cancellation_message: str = "Cancelled.") -> str:
+    def _get_user_input(
+        prompt: str, cancellation_message: str = "Cancelled."
+    ) -> str | None:
         """
         Prompt the user for input, returning the trimmed, lowercased response or None if the user cancels.
 
@@ -296,7 +296,11 @@ def interactive_main():
         )
 
         # Check if we're in a test environment
-        if os.environ.get("PYTEST_CURRENT_TEST") or os.environ.get("TESTING"):
+        if (
+            os.environ.get("PYTEST_CURRENT_TEST")
+            or os.environ.get("TESTING")
+            or os.environ.get("CI")
+        ):
             logger.info("Test environment detected - skipping interactive login")
             return
 
@@ -472,11 +476,6 @@ Legacy flags (deprecated):
 
     # Handle legacy flags with deprecation warnings
     if args.generate_config:
-        warnings.warn(
-            "--generate-config is deprecated. Use 'biblebot config generate' instead.",
-            DeprecationWarning,
-            stacklevel=2,
-        )
         logging.warning(
             "--generate-config is deprecated. Use 'biblebot config generate' instead."
         )
@@ -484,11 +483,6 @@ Legacy flags (deprecated):
         return
 
     if args.install_service:
-        warnings.warn(
-            "--install-service is deprecated. Use 'biblebot service install' instead.",
-            DeprecationWarning,
-            stacklevel=2,
-        )
         logging.warning(
             "--install-service is deprecated. Use 'biblebot service install' instead."
         )
@@ -498,11 +492,6 @@ Legacy flags (deprecated):
         return
 
     if args.auth_login:
-        warnings.warn(
-            "--auth-login is deprecated. Use 'biblebot auth login' instead.",
-            DeprecationWarning,
-            stacklevel=2,
-        )
         logging.warning(
             "--auth-login is deprecated. Use 'biblebot auth login' instead."
         )
@@ -510,11 +499,6 @@ Legacy flags (deprecated):
         sys.exit(0 if ok else 1)
 
     if args.auth_logout:
-        warnings.warn(
-            "--auth-logout is deprecated. Use 'biblebot auth logout' instead.",
-            DeprecationWarning,
-            stacklevel=2,
-        )
         logging.warning(
             "--auth-logout is deprecated. Use 'biblebot auth logout' instead."
         )
@@ -680,9 +664,9 @@ Legacy flags (deprecated):
     except KeyboardInterrupt:
         logging.info("Bot stopped by user")
     except FileNotFoundError:
-        logging.error(f"Configuration file not found: {args.config}")
-        logging.error(
-            "Please check the path or generate a new config with 'biblebot config generate'."
+        logging.exception(
+            f"Configuration file not found: {args.config}. "
+            "Run 'biblebot config generate' to create one."
         )
         sys.exit(1)
     except (RuntimeError, ConnectionError):

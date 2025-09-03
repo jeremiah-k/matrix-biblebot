@@ -113,7 +113,7 @@ def clear_env(keys):
 
 
 @pytest.fixture(autouse=True)
-def event_loop_safety(monkeypatch):
+def event_loop_safety():
     """
     Create and provide a dedicated asyncio event loop for tests, ensuring proper cleanup.
 
@@ -139,7 +139,7 @@ def event_loop_safety(monkeypatch):
 
 
 @pytest.fixture(autouse=True)
-def mock_asyncmock_coroutines(monkeypatch):
+def mock_asyncmock_coroutines():
     """
     Ensure AsyncMock coroutines are properly awaited during tests to prevent hanging.
 
@@ -149,7 +149,7 @@ def mock_asyncmock_coroutines(monkeypatch):
     """
     import inspect
 
-    def mock_submit(coro, loop=None):
+    def mock_submit(coro):
         """
         Synchronously runs a coroutine in a temporary event loop and returns a Future with its result.
         """
@@ -171,8 +171,6 @@ def mock_asyncmock_coroutines(monkeypatch):
         finally:
             temp_loop.close()
 
-    # This would be used if we had a _submit_coro function to patch
-    # monkeypatch.setattr(some_module, "_submit_coro", mock_submit)
     yield
 
 
@@ -194,6 +192,9 @@ def cleanup_asyncmock_objects(request):
         "test_bot",
         "test_auth",
         "test_integration",
+        "run_bot",
+        "main_run_bot",
+        "main",
     ]
 
     if any(pattern in test_file for pattern in asyncmock_patterns):
@@ -218,7 +219,7 @@ def mock_submit_coro(monkeypatch):
     """
     import inspect
 
-    def mock_submit(coro, _loop=None):  # noqa: ARG001
+    def mock_submit(coro):
         """
         Run a coroutine to completion on a temporary event loop and return a Future containing its outcome.
 
@@ -303,8 +304,9 @@ def comprehensive_cleanup():
                     loop.close()
 
     except Exception:
-        # Suppress any errors during cleanup to avoid affecting test results
-        pass
+        # Suppress cleanup errors to avoid affecting test results
+        with contextlib.suppress(Exception):
+            pass
 
     # Ensure the main event loop is reset
     asyncio.set_event_loop(None)

@@ -109,6 +109,8 @@ def _fake_run(coro, *a, **k):
         loop.close()
 ```
 
+- CLI tests: Don't patch `asyncio.run` in tests like `test_main_run_bot`; patch the async entrypoint invoked by the CLI instead (see "Do not patch asyncio.run").
+
 ### Matrix Client Mocking Pattern
 
 For Matrix client operations, use this standard pattern:
@@ -157,10 +159,10 @@ class TestBibleBot:
 
 The project uses comprehensive cleanup fixtures in `tests/conftest.py`:
 
-- `event_loop_safety`: Creates dedicated event loops for tests
-- `mock_asyncmock_coroutines`: Handles AsyncMock coroutine cleanup
-- `cleanup_asyncmock_objects`: Forces garbage collection for AsyncMock cleanup
-- `comprehensive_cleanup`: Aggressive resource cleanup for CI environments
+- `event_loop_safety`: Create a dedicated event loop per test
+- `mock_asyncmock_coroutines`: Ensure AsyncMock coroutines are awaited
+- `cleanup_asyncmock_objects`: Force GC to finalize AsyncMock objects
+- `comprehensive_cleanup`: Perform aggressive cleanup for CI environments
 
 ## Bible API Testing Patterns
 

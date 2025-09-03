@@ -1397,10 +1397,7 @@ class TestMainFunction:
                 # that lines 1037-1042 (AsyncClient creation) and 1067 (access token assignment)
                 # are reached, which is the core functionality we're testing.
 
-                # Verify the bot was started (this is what we can actually test)
-                mock_bot.start.assert_called_once()
-
-                # Should start the bot
+                # Verify the bot was started
                 mock_bot.start.assert_called_once()
 
     @pytest.mark.asyncio

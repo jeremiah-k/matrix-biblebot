@@ -694,42 +694,35 @@ class TestCLILegacyFlags:
 
     @patch("sys.argv", ["biblebot", "--generate-config"])
     @patch("biblebot.cli.generate_config")
-    @patch("warnings.warn")
-    def test_legacy_generate_config(self, mock_warn, mock_generate):
+    def test_legacy_generate_config(self, mock_generate):
         """Test legacy --generate-config flag."""
         mock_generate.return_value = True
 
         cli.main()
-        mock_warn.assert_called_once()
         mock_generate.assert_called_once()
 
     @patch("sys.argv", ["biblebot", "--install-service"])
     @patch("biblebot.setup_utils.install_service")
-    @patch("warnings.warn")
-    def test_legacy_install_service(self, mock_warn, mock_install):
+    def test_legacy_install_service(self, mock_install):
         """Test legacy --install-service flag."""
         mock_install.return_value = True
 
         cli.main()
-        mock_warn.assert_called_once()
         mock_install.assert_called_once()
 
     @patch("sys.argv", ["biblebot", "--auth-login"])
     @patch("builtins.input", return_value="https://matrix.org")
     @patch("getpass.getpass", return_value="password")
-    @patch("biblebot.cli.interactive_login")
+    @patch("biblebot.cli.interactive_login", new_callable=AsyncMock)
     @patch("sys.exit")
-    @patch("warnings.warn")
     def test_legacy_auth_login(
         self,
-        mock_warn,
         mock_exit,
         mock_login,
         mock_getpass,
         mock_input,
     ):
         """Test legacy --auth-login flag."""
-        # ✅ CORRECT: Direct return value for async function called via asyncio.run()
         mock_login.return_value = True
         mock_exit.side_effect = SystemExit(0)
 
@@ -737,17 +730,14 @@ class TestCLILegacyFlags:
             cli.main()
 
         assert exc_info.value.code == 0
-        mock_warn.assert_called_once()
         mock_login.assert_called_once()
         mock_exit.assert_called_with(0)
 
     @patch("sys.argv", ["biblebot", "--auth-logout"])
-    @patch("biblebot.cli.interactive_logout")
+    @patch("biblebot.cli.interactive_logout", new_callable=AsyncMock)
     @patch("sys.exit")
-    @patch("warnings.warn")
-    def test_legacy_auth_logout(self, mock_warn, mock_exit, mock_logout):
+    def test_legacy_auth_logout(self, mock_exit, mock_logout):
         """Test legacy --auth-logout flag."""
-        # ✅ CORRECT: Direct return value for async function called via asyncio.run()
         mock_logout.return_value = True
         mock_exit.side_effect = SystemExit(0)
 
@@ -755,7 +745,6 @@ class TestCLILegacyFlags:
             cli.main()
 
         assert exc_info.value.code == 0
-        mock_warn.assert_called_once()
         mock_logout.assert_called_once()
         mock_exit.assert_called_with(0)
 

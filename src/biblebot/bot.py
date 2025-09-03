@@ -284,7 +284,7 @@ async def make_api_request(
                     return None
             try:
                 snippet = (await response.text())[:200]
-            except Exception:
+            except (aiohttp.ClientError, UnicodeDecodeError):
                 snippet = "<unavailable>"
             logger.warning(
                 f"HTTP {response.status} fetching {url} - body[:200]={snippet!r}"
@@ -615,8 +615,6 @@ class BibleBot:
                     )
             else:
                 logger.debug(f"Bot is already in room '{room_id_or_alias}'")
-        except (nio.exceptions.LocalProtocolError, nio.exceptions.RemoteProtocolError):
-            logger.exception(f"Error joining room '{room_id_or_alias}'")
         except Exception:
             logger.exception(f"Error joining room '{room_id_or_alias}'")
 
@@ -693,7 +691,7 @@ class BibleBot:
             )
             return
 
-        logger.error(
+        logger.warning(
             f"Failed to decrypt event '{getattr(event, 'event_id', '?')}' in room '{room.room_id}'. "
             f"This is usually temporary and resolves on its own. "
             f"If this persists, the bot's session may be corrupt."
