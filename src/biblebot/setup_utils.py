@@ -16,6 +16,7 @@ import sys
 
 from .constants import (
     APP_NAME,
+    CONFIG_DIR,
     DEFAULT_CONFIG_PATH,
     DIR_SHARE,
     DIR_TOOLS,
@@ -159,7 +160,7 @@ def get_template_service_content():
     Return the systemd service template content to use when creating the user service.
 
     Tries the following sources in order and returns the first successfully read content:
-    1. Path returned by get_service_template_path().
+    1. A stable copy provided by copy_service_template_to(...).
     2. The packaged resource `biblebot.tools:biblebot.service` via importlib.resources.
     3. A path found by get_template_service_path().
 
@@ -228,7 +229,7 @@ def is_service_enabled():
     """
     Return True if the user systemd service is enabled to start at boot.
 
-    Performs `systemctl --user is-enabled <SERVICE_NAME>` using the configured SYSTEMCTL_PATH; returns True only when the command exits successfully and prints "enabled". Any execution error or unexpected output yields False.
+    Performs `systemctl --user is-enabled <SERVICE_NAME>` using SYSTEMCTL_PATH; returns True when the command exits successfully (exit code 0). Any execution error yields False.
 
     Returns:
         bool: True when the service is enabled, False otherwise (including on errors).
@@ -298,8 +299,6 @@ def create_service_file():
     service_dir.mkdir(parents=True, exist_ok=True)
 
     # Create config directory if it doesn't exist
-    from .constants import CONFIG_DIR
-
     config_dir = CONFIG_DIR
     config_dir.mkdir(parents=True, exist_ok=True)
 

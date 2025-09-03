@@ -653,8 +653,8 @@ class BibleBot:
                 self.http_session = aiohttp.ClientSession(
                     timeout=aiohttp.ClientTimeout(total=API_REQUEST_TIMEOUT_SEC)
                 )
-            except aiohttp.ClientError as e:
-                logger.error(f"Failed to create HTTP session: {e}")
+            except aiohttp.ClientError:
+                logger.exception("Failed to create HTTP session")
                 raise
         await self.resolve_aliases()  # Support for aliases in config
         self._room_id_set = set(self.config[CONFIG_MATRIX_ROOM_IDS])

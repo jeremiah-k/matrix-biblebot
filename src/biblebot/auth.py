@@ -31,6 +31,8 @@ from nio import (
     AsyncClientConfig,
     DiscoveryInfoError,
     DiscoveryInfoResponse,
+    LoginError,
+    LoginResponse,
 )
 
 from .constants import (
@@ -586,7 +588,7 @@ async def interactive_login(
                 nio_logger.setLevel(original_level)
 
         # Check response type explicitly to avoid validation issues
-        if isinstance(resp, nio.LoginResponse):
+        if isinstance(resp, LoginResponse):
             # Login successful
             creds = Credentials(
                 homeserver=hs,
@@ -597,7 +599,7 @@ async def interactive_login(
             save_credentials(creds)
             logger.info("Login successful! Credentials saved.")
             return True
-        elif isinstance(resp, nio.LoginError):
+        elif isinstance(resp, LoginError):
             # Login failed with proper error response
             logger.error(f"Login failed: {resp.message}")
             logger.info(f"Error status code: {resp.status_code}")
@@ -699,6 +701,6 @@ async def interactive_logout() -> bool:
             shutil.rmtree(store)
             logger.info(f"Cleared E2EE store at {store}")
     except OSError:
-        logger.warning(f"Failed to remove E2EE store at {store}", exc_info=True)
+        logger.exception(f"Failed to remove E2EE store at {store}")
 
     return True

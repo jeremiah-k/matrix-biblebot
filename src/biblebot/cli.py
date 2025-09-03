@@ -238,7 +238,7 @@ def interactive_main():
             from biblebot import bot
 
             # If we successfully loaded config above, pass it to avoid duplicate loading
-            if "config" in locals() and config is not None:
+            if config is not None:
                 main_with_config = getattr(bot, "main_with_config", None)
                 if main_with_config:
                     run_async(main_with_config(str(config_path), config))
@@ -251,7 +251,7 @@ def interactive_main():
         except (RuntimeError, ConnectionError, FileNotFoundError):
             logger.exception("Bot failed to start")
             sys.exit(1)
-        except Exception:
+        except Exception:  # consider narrowing to (OSError, ValueError, TypeError)
             logger.exception("Unexpected error starting bot")
             sys.exit(1)
 

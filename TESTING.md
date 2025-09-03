@@ -344,7 +344,7 @@ If tests hang indefinitely:
 
 If tests fail with import errors:
 
-1. **Check sys.path setup**: Ensure src/ is in Python path
+1. **Check sys.path setup**: Ensure src/ is on the Python path
 2. **Verify mock timing**: Ensure mocks are applied before imports
 3. **Check module specs**: Ensure `__spec__` is set for mocked modules
 
