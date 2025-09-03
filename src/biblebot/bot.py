@@ -897,36 +897,30 @@ class BibleBot:
 
             # Apply message length truncation if needed
             if len(plain_body) > self.max_message_length:
-                # Calculate how much space we need for the suffix and truncation indicator
-                if reference:
-                    suffix_length = (
-                        len(f" - {reference}{MESSAGE_SUFFIX}") + 3
-                    )  # +3 for "..."
-                else:
-                    suffix_length = len(MESSAGE_SUFFIX) + 3  # +3 for "..."
-                max_text_length = self.max_message_length - suffix_length
+                # Calculate suffix and its length
+                plain_suffix = (
+                    f" - {reference}{MESSAGE_SUFFIX}" if reference else MESSAGE_SUFFIX
+                )
+                formatted_suffix = (
+                    f" - {html.escape(reference)}{html.escape(MESSAGE_SUFFIX)}"
+                    if reference
+                    else html.escape(MESSAGE_SUFFIX)
+                )
+                suffix_len = len(plain_suffix) + 3  # for "..."
 
-                if max_text_length > 0:
-                    truncated_text = text[:max_text_length] + "..."
-                    if reference:
-                        plain_body = f"{truncated_text} - {reference}{MESSAGE_SUFFIX}"
-                        formatted_body = f"{html.escape(truncated_text)} - {html.escape(reference)}{html.escape(MESSAGE_SUFFIX)}"
-                    else:
-                        plain_body = f"{truncated_text}{MESSAGE_SUFFIX}"
-                        formatted_body = f"{html.escape(truncated_text)}{html.escape(MESSAGE_SUFFIX)}"
+                # Determine truncated text
+                max_text_len = self.max_message_length - suffix_len
+                if max_text_len > 0:
+                    truncated_text = text[:max_text_len] + "..."
                     logger.info(
                         f"Truncated message from {len(text)} to {len(truncated_text)} characters"
                     )
                 else:
-                    # Message is too long even with minimal text, use a short error message
-                    if reference:
-                        plain_body = f"[Message too long] - {reference}{MESSAGE_SUFFIX}"
-                        formatted_body = f"[Message too long] - {html.escape(reference)}{html.escape(MESSAGE_SUFFIX)}"
-                    else:
-                        plain_body = f"[Message too long]{MESSAGE_SUFFIX}"
-                        formatted_body = (
-                            f"[Message too long]{html.escape(MESSAGE_SUFFIX)}"
-                        )
+                    truncated_text = "[Message too long]"
+
+                # Reconstruct the bodies
+                plain_body = f"{truncated_text}{plain_suffix}"
+                formatted_body = f"{html.escape(truncated_text)}{formatted_suffix}"
 
             if reference:
                 logger.info(f"Sending scripture: {reference}")
