@@ -947,7 +947,7 @@ class BibleBot:
         except APIKeyMissing as e:
             logger.warning(f"Failed to retrieve passage: {passage} ({e})")
             # Send helpful message about missing API key
-            api_key_error = f"ESV translation requires an API key. Please configure one in your config.yaml or use KJV instead. (Try: {passage.replace('esv', 'kjv').replace('ESV', 'KJV')})"
+            api_key_error = f"ESV translation requires an API key. Please configure one in your config.yaml or use KJV instead. (Try: {passage} kjv)"
             await self._send_error_message(room_id, api_key_error)
         except PassageNotFound as e:
             logger.warning(f"Failed to retrieve passage: {passage} ({e})")
