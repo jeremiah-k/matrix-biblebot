@@ -635,6 +635,7 @@ class BibleBot:
             nio.exceptions.RemoteProtocolError,
             aiohttp.ClientError,
             RoomResolveAliasError,
+            asyncio.TimeoutError,
         ):
             logger.exception(f"Error joining room '{room_id_or_alias}'")
 

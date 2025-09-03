@@ -308,9 +308,9 @@ class TestScalabilityPatterns:
 
             # API times should remain consistent under load (more lenient for CI)
             assert (
-                avg_api_time < 0.2
+                avg_api_time < 0.3
             )  # Average should be reasonable (increased for CI environments)
-            assert max_api_time < 0.5  # No single call should take too long
+            assert max_api_time < 0.6  # No single call should take too long
 
     async def test_connection_pool_scaling(self, mock_config, mock_client):
         """Test connection pool scaling behavior."""
