@@ -451,6 +451,8 @@ class TestMainFunction:
 
                 with patch(
                     "biblebot.cli.load_credentials", return_value=mock_credentials
+                ), patch(
+                    "biblebot.bot.load_credentials", return_value=mock_credentials
                 ):
                     # Mock the config loading to avoid file system access
                     with patch("biblebot.bot.load_config", return_value=mock_config):
@@ -462,7 +464,7 @@ class TestMainFunction:
                             called.append(True)
                             return 0
 
-                        with patch("biblebot.cli.bot_main", new=_stub_bot_main):
+                        with patch("biblebot.bot.main_with_config", new=_stub_bot_main):
                             # Run the bot directly instead of interactive mode
                             with patch("sys.argv", ["biblebot"]):
                                 # Mock the config file path to point to our mocked config
@@ -535,7 +537,7 @@ class TestCLIMainFunction:
     @patch("sys.argv", ["biblebot"])
     @patch("biblebot.cli.detect_configuration_state")
     @patch("biblebot.auth.load_credentials")
-    @patch("biblebot.cli.bot_main", new=_stub_bot_main_log_level)
+    @patch("biblebot.bot.main_with_config", new=_stub_bot_main_log_level)
     def test_log_level_setting(self, mock_load_creds, mock_detect_state):
         """Test log level setting."""
         # Mock configuration state to be ready (config and auth exist)
@@ -765,7 +767,7 @@ class TestCLIBotOperation:
     @patch("biblebot.cli.detect_configuration_state")
     @patch("builtins.input")
     @patch("biblebot.auth.load_credentials")
-    @patch("biblebot.cli.bot_main", new=_stub_bot_main_with_config)
+    @patch("biblebot.bot.main_with_config", new=_stub_bot_main_with_config)
     def test_bot_run_with_config(self, mock_load_creds, mock_input, mock_detect_state):
         """Test running bot with existing config."""
         # Mock configuration state to be ready
@@ -867,7 +869,7 @@ class TestCLIBotOperation:
     @patch("biblebot.cli.detect_configuration_state")
     @patch("builtins.input")
     @patch("biblebot.auth.load_credentials")
-    @patch("biblebot.cli.bot_main", new=_stub_bot_main_keyboard_interrupt)
+    @patch("biblebot.bot.main_with_config", new=_stub_bot_main_keyboard_interrupt)
     def test_bot_keyboard_interrupt(
         self, mock_load_creds, mock_input, mock_detect_state
     ):
