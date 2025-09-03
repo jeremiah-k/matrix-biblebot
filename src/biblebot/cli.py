@@ -5,10 +5,9 @@ import argparse
 import asyncio
 import logging
 import os
-import shutil
 import sys
 from pathlib import Path
-from typing import Awaitable, TypeVar
+from typing import Awaitable, Optional, TypeVar
 
 from . import __version__
 from .auth import interactive_login, interactive_logout, load_credentials
@@ -40,7 +39,7 @@ from .constants import (
     SUCCESS_CONFIG_GENERATED,
 )
 from .log_utils import configure_logging, get_logger
-from .tools import get_sample_config_path
+from .tools import copy_sample_config_to
 
 # Configure logging
 logger = logging.getLogger(LOGGER_NAME)
@@ -168,9 +167,7 @@ def generate_config(config_path):
 
     config_dir.mkdir(parents=True, exist_ok=True)
 
-    sample_config_path = get_sample_config_path()
-
-    shutil.copy2(sample_config_path, str(config_path))
+    copy_sample_config_to(str(config_path))
 
     # Set restrictive permissions (readable/writable by owner only)
     os.chmod(config_path, 0o600)
@@ -260,7 +257,7 @@ def interactive_main():
 
     def _get_user_input(
         prompt: str, cancellation_message: str = "Cancelled."
-    ) -> str | None:
+    ) -> Optional[str]:
         """
         Prompt the user for input, returning the trimmed, lowercased response or None if the user cancels.
 

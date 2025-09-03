@@ -61,25 +61,40 @@ When testing functions that call async code, using `AsyncMock` incorrectly can l
 
 ### Solution: Proper AsyncMock Usage
 
-**✅ CORRECT PATTERN** - Mock async methods as AsyncMock:
+**✅ CORRECT PATTERN** - Mock async methods as AsyncMock, sync methods as MagicMock:
 
 ```python
 @patch("biblebot.bot.AsyncClient")
 def test_main_function(mock_client_class):
-    mock_client = AsyncMock(spec=["sync_forever", "keys_upload", "close"])
+    mock_client = AsyncMock()
+    # Async methods - use AsyncMock
     mock_client.sync_forever = AsyncMock()  # Prevent infinite loop
     mock_client.keys_upload = AsyncMock()
     mock_client.close = AsyncMock()
+    mock_client.login = AsyncMock()
+    mock_client.room_send = AsyncMock()
+
+    # Sync methods/properties - use MagicMock
+    mock_client.add_event_callback = MagicMock()
+    mock_client.restore_login = MagicMock()
+    mock_client.room_resolve_alias = MagicMock()
+    mock_client.user_id = "test_user"
+    mock_client.device_id = "test_device"
+    mock_client.rooms = {}
+
     mock_client_class.return_value = mock_client
 
     # Test code that calls bot.main()
 ```
 
-**❌ INCORRECT PATTERN** - Don't use regular Mock for async methods:
+**❌ INCORRECT PATTERN** - Don't use AsyncMock for sync methods or MagicMock for async methods:
 
 ```python
+# ❌ DON'T DO THIS - causes RuntimeWarnings about unawaited coroutines
+mock_client.add_event_callback = AsyncMock()  # Should be MagicMock (sync method)
+
 # ❌ DON'T DO THIS - causes hanging when async method called
-mock_client.sync_forever = MagicMock()  # Should be AsyncMock
+mock_client.sync_forever = MagicMock()  # Should be AsyncMock (async method)
 ```
 
 ### Do not patch `asyncio.run`
@@ -109,6 +124,14 @@ def _fake_run(coro, *a, **k):
         loop.close()
 ```
 
+#### Quick checklist (prevents "AsyncMockMixin.\_execute_mock_call was never awaited")
+
+1. **Do not patch `asyncio.run`** in CLI tests; patch the coroutine the CLI invokes.
+2. **Only AsyncMock true async defs**; use MagicMock for sync methods:
+   - **nio.AsyncClient sync methods**: `add_event_callback`, `restore_login`, `room_resolve_alias` (returns response), attribute access like `rooms`, `user_id`, `device_id`.
+   - **nio.AsyncClient async methods**: `login`, `logout`, `close`, `sync`, `sync_forever`, `join`, `keys_upload`, `room_send`, `to_device`, `request_room_key`.
+3. **If a test still needs to intercept the loop runner**, your stub must actually await the coro (see `_fake_run` above).
+
 - CLI tests: Don't patch `asyncio.run` in tests like `test_main_run_bot`; patch the async entrypoint invoked by the CLI instead (see "Do not patch asyncio.run").
 
 ### Matrix Client Mocking Pattern
@@ -116,16 +139,25 @@ def _fake_run(coro, *a, **k):
 For Matrix client operations, use this standard pattern:
 
 ```python
-mock_client = AsyncMock(spec=[
-    "user_id", "device_id", "room_send", "join", "add_event_callback",
-    "should_upload_keys", "restore_login", "access_token", "rooms",
-    "room_resolve_alias", "keys_upload", "close", "sync_forever", "sync"
-])
-mock_client.restore_login = MagicMock()  # Sync method
-mock_client.add_event_callback = MagicMock()  # Sync method
-mock_client.sync_forever = AsyncMock()  # Async method - prevents hanging
-mock_client.keys_upload = AsyncMock()  # Async method
-mock_client.close = AsyncMock()  # Async method
+mock_client = AsyncMock()
+
+# Sync methods/properties - use MagicMock
+mock_client.restore_login = MagicMock()
+mock_client.add_event_callback = MagicMock()
+mock_client.room_resolve_alias = MagicMock()
+mock_client.user_id = "test_user"
+mock_client.device_id = "test_device"
+mock_client.access_token = "test_token"
+mock_client.rooms = {}
+mock_client.should_upload_keys = True
+
+# Async methods - use AsyncMock
+mock_client.sync_forever = AsyncMock()  # Prevents hanging
+mock_client.keys_upload = AsyncMock()
+mock_client.close = AsyncMock()
+mock_client.room_send = AsyncMock()
+mock_client.join = AsyncMock()
+mock_client.sync = AsyncMock()
 ```
 
 ## Test Organization

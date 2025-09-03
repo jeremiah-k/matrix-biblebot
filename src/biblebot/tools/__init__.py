@@ -3,6 +3,7 @@
 import importlib.resources
 import pathlib
 import shutil
+import warnings
 from contextlib import contextmanager
 
 from ..constants import SAMPLE_CONFIG_FILENAME
@@ -22,8 +23,17 @@ def open_sample_config():
 def get_sample_config_path():
     """
     Return a filesystem path for the bundled sample config.
-    WARNING: Under zipped installs this may be ephemeral. Prefer copy_sample_config_to().
+
+    .. deprecated::
+        This function may return ephemeral paths under zipped installs.
+        Use copy_sample_config_to() or open_sample_config() instead.
     """
+    warnings.warn(
+        "get_sample_config_path() may return ephemeral paths under zipped installs. "
+        "Use copy_sample_config_to() or open_sample_config() instead.",
+        DeprecationWarning,
+        stacklevel=2,
+    )
     res = importlib.resources.files(__package__) / SAMPLE_CONFIG_FILENAME
     # Caller should prefer copy_sample_config_to(); this path may be ephemeral.
     with importlib.resources.as_file(res) as p:
