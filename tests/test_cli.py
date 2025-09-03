@@ -961,3 +961,128 @@ class TestCLIUtilityFunctions:
 
         assert result is False
         mock_print.assert_called()
+
+
+class TestDetectConfigurationState:
+    """Test detect_configuration_state function coverage."""
+
+    @patch("biblebot.cli.get_default_config_path")
+    @patch("pathlib.Path.exists")
+    def test_no_config_file(self, mock_exists, mock_get_path):
+        """Test when config file doesn't exist."""
+        from pathlib import Path
+
+        mock_get_path.return_value = Path("/tmp/config.yaml")
+        mock_exists.return_value = False
+
+        state, message, config = cli.detect_configuration_state()
+        assert state == "setup"
+        assert "No configuration found" in message
+        assert config is None
+
+    @patch("biblebot.cli.get_default_config_path")
+    @patch("pathlib.Path.exists")
+    @patch("biblebot.bot.load_config")
+    def test_invalid_config(self, mock_load_config, mock_exists, mock_get_path):
+        """Test when config is invalid."""
+        from pathlib import Path
+
+        mock_get_path.return_value = Path("/tmp/config.yaml")
+        mock_exists.return_value = True
+        mock_load_config.return_value = None
+
+        state, message, config = cli.detect_configuration_state()
+        assert state == "setup"
+        assert "Invalid configuration" in message
+        assert config is None
+
+    @patch("biblebot.cli.get_default_config_path")
+    @patch("pathlib.Path.exists")
+    @patch("biblebot.bot.load_config")
+    def test_config_load_error(self, mock_load_config, mock_exists, mock_get_path):
+        """Test when config loading raises an exception."""
+        from pathlib import Path
+
+        mock_get_path.return_value = Path("/tmp/config.yaml")
+        mock_exists.return_value = True
+        mock_load_config.side_effect = ValueError("Invalid YAML")
+
+        state, message, config = cli.detect_configuration_state()
+        assert state == "setup"
+        assert "Configuration error: Invalid YAML" in message
+        assert config is None
+
+    @patch("biblebot.cli.get_default_config_path")
+    @patch("pathlib.Path.exists")
+    @patch("biblebot.bot.load_config")
+    @patch("os.getenv")
+    def test_legacy_token_present(
+        self, mock_getenv, mock_load_config, mock_exists, mock_get_path
+    ):
+        """Test when legacy MATRIX_ACCESS_TOKEN is present."""
+        from pathlib import Path
+
+        mock_get_path.return_value = Path("/tmp/config.yaml")
+        # First call for config file exists, second call for credentials file doesn't exist
+        mock_exists.side_effect = [True, False]
+        mock_load_config.return_value = {"test": "config"}
+        mock_getenv.return_value = "legacy_token"
+
+        state, message, config = cli.detect_configuration_state()
+        assert state == "ready_legacy"
+        assert "legacy access token" in message
+        assert config == {"test": "config"}
+
+    @patch("biblebot.cli.get_default_config_path")
+    @patch("pathlib.Path.exists")
+    @patch("biblebot.bot.load_config")
+    @patch("os.getenv")
+    @patch("biblebot.cli.load_credentials")
+    def test_invalid_credentials(
+        self,
+        mock_load_creds,
+        mock_getenv,
+        mock_load_config,
+        mock_exists,
+        mock_get_path,
+    ):
+        """Test when credentials are invalid."""
+        from pathlib import Path
+
+        mock_get_path.return_value = Path("/tmp/config.yaml")
+        mock_exists.return_value = True
+        mock_load_config.return_value = {"test": "config"}
+        mock_getenv.return_value = None
+        mock_load_creds.return_value = None
+
+        state, message, config = cli.detect_configuration_state()
+        assert state == "auth"
+        assert "Invalid credentials found" in message
+        assert config == {"test": "config"}
+
+    @patch("biblebot.cli.get_default_config_path")
+    @patch("pathlib.Path.exists")
+    @patch("biblebot.bot.load_config")
+    @patch("os.getenv")
+    @patch("biblebot.cli.load_credentials")
+    def test_credentials_load_error(
+        self,
+        mock_load_creds,
+        mock_getenv,
+        mock_load_config,
+        mock_exists,
+        mock_get_path,
+    ):
+        """Test when credentials loading raises an exception."""
+        from pathlib import Path
+
+        mock_get_path.return_value = Path("/tmp/config.yaml")
+        mock_exists.return_value = True
+        mock_load_config.return_value = {"test": "config"}
+        mock_getenv.return_value = None
+        mock_load_creds.side_effect = OSError("Cannot read credentials")
+
+        state, message, config = cli.detect_configuration_state()
+        assert state == "auth"
+        assert "Cannot load credentials" in message
+        assert config == {"test": "config"}
