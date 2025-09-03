@@ -225,9 +225,12 @@ def interactive_main():
 
             # If we successfully loaded config above, pass it to avoid duplicate loading
             if "config" in locals() and config is not None:
-                run_async(bot.main_with_config(str(config_path), config))
+                main_with_config = getattr(bot, "main_with_config", None)
+                if main_with_config:
+                    run_async(main_with_config(str(config_path), config))
+                else:
+                    run_async(bot_main(str(config_path)))
             else:
-                # Fallback to original method if config loading failed
                 run_async(bot_main(str(config_path)))
         except KeyboardInterrupt:
             logger.info("Bot stopped by user.")

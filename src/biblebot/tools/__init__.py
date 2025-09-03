@@ -66,8 +66,6 @@ def copy_service_template_to(dst_path: str) -> str:
     """
     Copy the packaged service template to dst_path and return dst_path.
     """
-    import shutil
-
     res = importlib.resources.files(__package__) / "biblebot.service"
     with importlib.resources.as_file(res) as p:
         shutil.copy2(p, dst_path)

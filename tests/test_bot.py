@@ -1225,9 +1225,6 @@ class TestE2EEFunctionality:
                 mock_event.as_key_request.assert_called_once_with(
                     TEST_USER_ID, TEST_DEVICE_ID
                 )
-                mock_event.as_key_request.assert_called_once_with(
-                    TEST_USER_ID, TEST_DEVICE_ID
-                )
             finally:
                 # Explicitly clean up bot instance to prevent CI hanging
                 if hasattr(bot_instance, "client"):

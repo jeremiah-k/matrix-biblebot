@@ -605,20 +605,21 @@ async def interactive_login(
 
             # Provide user-friendly error messages based on the error
             error_message = resp.message.lower()
+            errcode = getattr(resp, "errcode", None) or getattr(resp, "code", None)
             if (
-                resp.status_code == "M_LIMIT_EXCEEDED"
+                errcode == "M_LIMIT_EXCEEDED"
                 or "limit" in error_message
                 or "too many" in error_message
             ):
                 logger.error(
                     "❌ Too many login attempts. Please wait a few minutes and try again."
                 )
-                if hasattr(resp, "retry_after_ms") and resp.retry_after_ms is not None:
+                if getattr(resp, "retry_after_ms", None) is not None:
                     wait_time = resp.retry_after_ms / 1000 / 60  # Convert to minutes
                     logger.error(
                         f"   Server requests waiting {wait_time:.1f} minutes before retry."
                     )
-            elif resp.status_code == "M_FORBIDDEN" or "forbidden" in error_message:
+            elif errcode == "M_FORBIDDEN" or "forbidden" in error_message:
                 logger.error(
                     "❌ Invalid username or password. Please check your credentials and try again."
                 )

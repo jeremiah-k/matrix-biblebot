@@ -139,42 +139,6 @@ def event_loop_safety():
 
 
 @pytest.fixture(autouse=True)
-def mock_asyncmock_coroutines():
-    """
-    Ensure AsyncMock coroutines are properly awaited during tests to prevent hanging.
-
-    This fixture replaces any coroutine submission functions with mocks that
-    synchronously run and await coroutines in a temporary event loop, preventing
-    "never awaited" warnings and allowing side effects to occur as expected.
-    """
-    import inspect
-
-    def mock_submit(coro):
-        """
-        Synchronously runs a coroutine in a temporary event loop and returns a Future with its result.
-        """
-        if not inspect.iscoroutine(coro):
-            return None
-
-        # For AsyncMock coroutines, we need to actually await them to get the result
-        # and prevent "never awaited" warnings, while also triggering any side effects
-        temp_loop = asyncio.new_event_loop()
-        try:
-            result = temp_loop.run_until_complete(coro)
-            future = Future()
-            future.set_result(result)
-            return future
-        except Exception as e:
-            future = Future()
-            future.set_exception(e)
-            return future
-        finally:
-            temp_loop.close()
-
-    yield
-
-
-@pytest.fixture(autouse=True)
 def cleanup_asyncmock_objects(request):
     """
     Force garbage collection after tests that commonly create AsyncMock objects to prevent "never awaited" RuntimeWarning messages.

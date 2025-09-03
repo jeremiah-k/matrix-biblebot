@@ -85,14 +85,14 @@ mock_client.sync_forever = MagicMock()  # Should be AsyncMock
 ### Do not patch `asyncio.run`
 
 When the CLI calls `asyncio.run(<async_entrypoint>(...))`, avoid patching `asyncio.run`.
-Instead, monkeypatch the async entrypoint to a no-op async function:
+Instead, monkeypatch the async entrypoint the CLI actually calls (e.g., `biblebot.cli.bot_main`) to a no-op async function:
 
 ```python
 async def _noop_async(*_a, **_k):
     return 0
 
 def test_main_run_bot(monkeypatch):
-    monkeypatch.setattr("biblebot.bot.run_async", _noop_async)  # or actual target used by the CLI
+    monkeypatch.setattr("biblebot.cli.bot_main", _noop_async)  # target used by the CLI
     from biblebot.cli import main
     main(["run"])
 ```

@@ -187,7 +187,6 @@ def load_environment(config: dict, config_path: str):
             - matrix_access_token (str | None): value of the ENV_MATRIX_ACCESS_TOKEN environment variable if set, otherwise None.
             - api_keys (dict): mapping of translation keys to API keys (contains at least the TRANSLATION_ESV key, which may be None).
     """
-    # The config is now passed in directly, no need to load it again
     # Initialize with expected keys set to None
     api_keys = {TRANSLATION_ESV: None}
 
@@ -208,6 +207,9 @@ def load_environment(config: dict, config_path: str):
     for env_path in env_paths_to_check:
         if os.path.exists(env_path):
             load_dotenv(env_path)
+            logger.warning(
+                "⚠️  .env file detected - this is deprecated. Consider moving API keys to config.yaml"
+            )
             logger.debug(f"{INFO_LOADING_ENV} {env_path}")
             env_loaded = True
             break  # Stop after finding the first .env file
@@ -645,9 +647,13 @@ class BibleBot:
 
         # Initialize HTTP session for connection pooling
         if self.http_session is None:
-            self.http_session = aiohttp.ClientSession(
-                timeout=aiohttp.ClientTimeout(total=API_REQUEST_TIMEOUT_SEC)
-            )
+            try:
+                self.http_session = aiohttp.ClientSession(
+                    timeout=aiohttp.ClientTimeout(total=API_REQUEST_TIMEOUT_SEC)
+                )
+            except aiohttp.ClientError as e:
+                logger.error(f"Failed to create HTTP session: {e}")
+                raise
         await self.resolve_aliases()  # Support for aliases in config
         self._room_id_set = set(self.config[CONFIG_MATRIX_ROOM_IDS])
         await self.ensure_joined_rooms()  # Ensure bot is in all configured rooms
@@ -751,8 +757,10 @@ class BibleBot:
                 content,
                 ignore_unverified_devices=True,
             )
+        except (nio.exceptions.MatrixRequestError, aiohttp.ClientError) as e:
+            logger.warning(f"Failed to send reaction: {e}", exc_info=True)
         except Exception:
-            logger.warning("Failed to send reaction", exc_info=True)
+            logger.exception("Unexpected error sending reaction")
 
     async def _send_error_message(self, room_id: str, message: str):
         """Send a formatted error message to a room."""
@@ -1109,9 +1117,11 @@ async def main(config_path=DEFAULT_CONFIG_FILENAME_MAIN, config=None):
             # Only call close if it's a real BibleBot instance (not a mock)
             if bot and hasattr(bot, "close") and hasattr(bot, "http_session"):
                 await bot.close()
+        except (AttributeError, TypeError) as e:
+            # Handle mock objects or missing attributes gracefully
+            logger.debug(f"Cleanup skipped for mock/test object: {e}")
         except Exception:
-            # Log cleanup errors at debug level for troubleshooting
-            logger.debug("Cleanup error during bot shutdown", exc_info=True)
+            logger.debug("Unexpected cleanup error during bot shutdown", exc_info=True)
         finally:
             if client:
                 await client.close()
