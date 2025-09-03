@@ -1,5 +1,41 @@
-matrix_homeserver: https://your_homeserver_url_here
-matrix_user: "@your_bot_username:your_homeserver_domain"
-matrix_room_ids:
-  - "!your_room_id:your_homeserver_domain"
-  - "!your_other_room_id:your_homeserver_domain"
+# Matrix server configuration
+version: 1
+matrix:
+  # Homeserver and user are discovered/saved during `biblebot auth login`.
+  # Do not set them here unless you know you need to override discovery.
+  # Advanced override (uncomment to force values; typically leave unset)
+  # homeserver: https://matrix.example.org
+  # user: "@bot:example.org"
+
+  # List of Matrix room IDs where the bot should respond
+  # Get room IDs from Element: Room Settings > Advanced > Internal room ID
+  # Use internal IDs beginning with "!" (not room aliases beginning with "#")
+  room_ids:
+    - "!your_room_id:your_homeserver_domain"
+    - "!your_other_room_id:your_homeserver_domain"
+
+  # End-to-end encryption settings (optional)
+  # Only enable if you understand the implications and have proper key management
+  e2ee:
+    enabled: false
+    # Optional: override store path (default: ~/.config/matrix-biblebot/e2ee-store)
+    # Ensure this directory is private (0700) to protect keys.
+    store_path: null
+
+# Bot behavior configuration
+bot:
+  # Default Bible translation to use when none is specified
+  default_translation: kjv # Options: "kjv", "esv" (ESV requires api_keys.esv)
+
+  # Enable or disable caching of Bible passages
+  cache_enabled: true
+
+  # Maximum length for bot messages (characters)
+  # Messages longer than this will be truncated with "..."
+  max_message_length: 2000
+
+# API Keys for Bible translations (optional)
+# These can also be set via environment variables
+api_keys:
+  # ESV API key from https://api.esv.org/
+  esv: null

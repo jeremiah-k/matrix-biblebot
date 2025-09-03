@@ -16,10 +16,18 @@ A simple Matrix bot that fetches Bible verses using APIs from [bible-api.com](ht
 pipx install matrix-biblebot
 ```
 
+To enable Matrix end-to-end encryption (E2EE):
+
+```bash
+pipx install 'matrix-biblebot[e2e]'
+```
+
 ### Option 2: Install with pip
 
 ```bash
 pip install matrix-biblebot
+# or with E2EE support
+pip install 'matrix-biblebot[e2e]'
 ```
 
 ### Option 3: Install from Source
@@ -42,7 +50,8 @@ The easiest way to get started is to generate the configuration files:
 biblebot --generate-config
 ```
 
-This will create both a sample config file (`config.yaml`) and a sample `.env` file in the `~/.config/matrix-biblebot/` directory.
+This will create a sample config file (`config.yaml`) in the `~/.config/matrix-biblebot/` directory.
+If a config file is missing when you run `biblebot`, the CLI will offer to generate this starter file for you.
 
 You can also specify a custom location:
 
@@ -50,24 +59,49 @@ You can also specify a custom location:
 biblebot --generate-config --config /path/to/your/config.yaml
 ```
 
+### Authentication
+
+The bot uses secure session-based authentication that supports E2EE:
+
+```bash
+biblebot auth login
+```
+
+This will:
+
+1. Prompt for your Matrix homeserver, username, and password
+2. Log in and save credentials locally (`credentials.json`) with owner-only permissions (0600)
+3. Enable E2EE support if dependencies are installed
+
+**Benefits of proper authentication:**
+
+- ✅ Supports End-to-End Encryption (E2EE)
+- ✅ Secure credential storage
+- ✅ Automatic session management
+- ✅ Device verification support
+
+To delete credentials and the E2EE store:
+
+```bash
+biblebot auth logout
+```
+
+**Legacy Token Setup (Deprecated):**
+⚠️ Manual access tokens are deprecated and do NOT support E2EE. If you have existing `MATRIX_ACCESS_TOKEN` environment variables, consider migrating to `biblebot auth login` for E2EE support.
+
 ### Edit Configuration Files
 
-1. **Edit the config.yaml file** with your Matrix homeserver and room information:
+1. **Edit the config.yaml file** with your Matrix room information:
 
 ```yaml
-matrix_homeserver: "https://your_homeserver_url_here"
-matrix_user: "@your_bot_username:your_homeserver_domain"
-matrix_room_ids:
-  - "!your_room_id:your_homeserver_domain"
-  - "#room_alias:your_homeserver_domain" # Room aliases are supported
+# Matrix server and user details are handled by 'biblebot auth login'
+matrix:
+  room_ids:
+    - "!your_room_id:your_homeserver_domain"
+    - "#room_alias:your_homeserver_domain" # Room aliases are supported
 ```
 
-2. **Edit the .env file** with your access token and optional API keys:
-
-```env
-MATRIX_ACCESS_TOKEN="your_bots_matrix_access_token_here"
-ESV_API_KEY="your_esv_api_key_here"  # Optional
-```
+2. **Optionally set API keys** in `config.yaml` (preferred). They can also be set as environment variables, which will take precedence over `config.yaml`.
 
 The bot will automatically resolve room aliases to room IDs at startup. You can use either room IDs (starting with !) or room aliases (starting with #) in your configuration.
 
@@ -76,7 +110,7 @@ The bot will automatically resolve room aliases to room IDs at startup. You can 
 By default, the bot looks for:
 
 - Configuration file: `~/.config/matrix-biblebot/config.yaml`
-- Environment file: `~/.config/matrix-biblebot/.env`
+- Credentials file: `~/.config/matrix-biblebot/credentials.json` (created by `biblebot auth login`)
 
 You can specify a different config location when running the bot:
 
@@ -84,14 +118,49 @@ You can specify a different config location when running the bot:
 biblebot --config /path/to/your/config.yaml
 ```
 
+### End-to-End Encryption (E2EE) Configuration
+
+The bot supports End-to-End Encryption for secure communication in encrypted rooms. To enable E2EE:
+
+1. **Install E2EE dependencies** (if not already installed):
+
+   ```bash
+   pip install 'matrix-biblebot[e2e]'
+   ```
+
+2. **Enable E2EE in your config.yaml**:
+
+   ```yaml
+   # E2EE Configuration
+   e2ee:
+     enabled: true # Enable E2EE support
+     store_path: null # Optional: custom path for E2EE store
+     trust_on_first_use: true # Trust new devices automatically
+   ```
+
+3. **First-time E2EE setup**:
+   - The bot will create an E2EE store at `~/.config/matrix-biblebot/e2ee-store`
+   - On first run, the bot will generate and upload encryption keys
+   - You may need to verify the bot's device in your Matrix client
+
+**E2EE Notes:**
+
+- E2EE requires additional system dependencies (libolm)
+- The bot can work in both encrypted and unencrypted rooms simultaneously
+- E2EE store contains sensitive cryptographic keys - keep it secure
+- If you lose the E2EE store, the bot won't be able to decrypt old messages
+
 ## Usage
 
 ### Quick Start
 
 1. Install the bot: `pipx install matrix-biblebot`
-2. Generate config files: `biblebot --generate-config`
-3. Edit the config files in `~/.config/matrix-biblebot/`
-4. Run the bot: `biblebot`
+2. Run the bot: `biblebot` (it will guide you through setup)
+3. Follow the interactive prompts to:
+   - Generate configuration file
+   - Edit your Matrix room IDs (server/user are handled by 'biblebot auth login')
+   - Authenticate with your Matrix account
+4. The bot will start automatically once configured
 
 ### Running the Bot
 
@@ -106,6 +175,10 @@ biblebot --config /path/to/config.yaml
 
 # Run with debug logging
 biblebot --log-level debug
+
+### Encrypted Rooms (Optional)
+
+To use encrypted Matrix rooms, install with the `e2e` extra and enable E2EE in config. See docs/E2EE.md for a full guide.
 ```
 
 ### Running as a Service (Recommended)
@@ -149,13 +222,14 @@ options:
 ### Interacting with the Bot
 
 1. **Invite the bot** to the rooms listed in your `config.yaml` file
-2. **Send Bible verse references** in any of these formats:
+2. **Send Bible verse references** in any of these formats. The bot understands many common book abbreviations (e.g., `jn` for John, `1co` for 1 Corinthians).
 
 | Format           | Example         | Description                        |
 | ---------------- | --------------- | ---------------------------------- |
 | Simple reference | `John 3:16`     | Single verse (uses KJV by default) |
 | Range reference  | `1 Cor 15:1-4`  | Multiple verses                    |
 | With translation | `John 3:16 esv` | Specify translation (KJV or ESV)   |
+| Abbreviated      | `jn 3:16`       | Book names can be abbreviated      |
 
 The bot will respond with the requested scripture passage and add a ✅ reaction to your message.
 
