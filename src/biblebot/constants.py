@@ -68,7 +68,7 @@ CREDENTIALS_FILE_PERMISSIONS = 0o600
 REFERENCE_PATTERNS = [
     # Book + chapter:verse[-\u2013 verse] [translation]
     re.compile(
-        r"^([\w\s]+?)\s+(\d+:\d+(?:[-\u2013]\d+)?)\s*(kjv|esv)?$", re.IGNORECASE
+        r"^([\w\s]+?)\s+(\d+:\d+(?:\s*[-\u2013]\s*\d+)?)\s*(kjv|esv)?$", re.IGNORECASE
     ),
     # Book + chapter [translation]
     re.compile(r"^([\w\s]+?)\s+(\d+)\s*(kjv|esv)?$", re.IGNORECASE),
