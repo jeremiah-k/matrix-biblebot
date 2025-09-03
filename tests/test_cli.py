@@ -304,12 +304,10 @@ class TestModernCommands:
         assert "API keys configured: 1" in captured.out
         assert "E2EE support: ✓" in captured.out
 
-    async def _stub_interactive_login(*_a, **_k):
-        return True
-
-    @patch("biblebot.cli.interactive_login", new=_stub_interactive_login)
-    def test_auth_login_command(self):
+    @patch("biblebot.cli.interactive_login", new_callable=AsyncMock)
+    def test_auth_login_command(self, mock_login):
         """Test 'biblebot auth login' command."""
+        mock_login.return_value = True
         with patch("sys.argv", ["biblebot", "auth", "login"]):
             with patch("builtins.input", return_value="https://matrix.org"):
                 with patch("getpass.getpass", return_value="password"):
@@ -466,15 +464,11 @@ class TestMainFunction:
                 ):
                     # Mock the config loading to avoid file system access
                     with patch("biblebot.bot.load_config", return_value=mock_config):
-                        # Patch the entrypoint alias with a real async stub and
-                        # let CLI's own runner consume it.
-                        called = []
-
-                        async def _stub_bot_main(*_a, **_k):
-                            called.append(True)
-                            return 0
-
-                        with patch("biblebot.bot.main_with_config", new=_stub_bot_main):
+                        # Patch the async entrypoint with AsyncMock following testing guide
+                        with patch(
+                            "biblebot.bot.main_with_config", new_callable=AsyncMock
+                        ) as mock_main:
+                            mock_main.return_value = 0
                             # Run the bot directly instead of interactive mode
                             with patch("sys.argv", ["biblebot"]):
                                 # Mock the config file path to point to our mocked config
@@ -485,7 +479,7 @@ class TestMainFunction:
                                     # Mock user input to start the bot
                                     with patch("builtins.input", return_value="y"):
                                         cli.main()
-                        assert len(called) == 1
+                            mock_main.assert_awaited_once()
 
         # Test passes if CLI handles the authentication cancellation gracefully
         # The test should verify that the CLI attempted to run the bot
@@ -541,16 +535,13 @@ class TestCLIMainFunction:
         with pytest.raises(SystemExit):
             cli.main()
 
-    async def _stub_bot_main_log_level(*_a, **_k):
-        return 0
-
     @patch("sys.argv", ["biblebot"])
     @patch("biblebot.cli.detect_configuration_state")
     @patch("biblebot.auth.load_credentials")
     @patch("biblebot.bot.load_config")
-    @patch("biblebot.bot.main_with_config", new=_stub_bot_main_log_level)
+    @patch("biblebot.bot.main_with_config", new_callable=AsyncMock)
     def test_log_level_setting(
-        self, mock_load_config, mock_load_creds, mock_detect_state
+        self, mock_main, mock_load_config, mock_load_creds, mock_detect_state
     ):
         """Test log level setting."""
         # Mock configuration state to be ready (config and auth exist)
@@ -561,9 +552,11 @@ class TestCLIMainFunction:
         )
         mock_load_creds.return_value = Mock()
         mock_load_config.return_value = {"test": "config"}  # Return valid config
+        mock_main.return_value = 0
 
         # Should not raise exception - just run the bot
         cli.main()
+        mock_main.assert_awaited_once()
 
     @patch("sys.argv", ["biblebot", "config", "generate"])
     @patch("biblebot.cli.generate_config")
@@ -763,17 +756,19 @@ class TestCLILegacyFlags:
 class TestCLIBotOperation:
     """Test CLI bot operation scenarios."""
 
-    async def _stub_bot_main_with_config(*_a, **_k):
-        return 0
-
     @patch("sys.argv", ["biblebot"])
     @patch("biblebot.cli.detect_configuration_state")
     @patch("builtins.input")
     @patch("biblebot.auth.load_credentials")
     @patch("biblebot.bot.load_config")
-    @patch("biblebot.bot.main_with_config", new=_stub_bot_main_with_config)
+    @patch("biblebot.bot.main_with_config", new_callable=AsyncMock)
     def test_bot_run_with_config(
-        self, mock_load_config, mock_load_creds, mock_input, mock_detect_state
+        self,
+        mock_main,
+        mock_load_config,
+        mock_load_creds,
+        mock_input,
+        mock_detect_state,
     ):
         """Test running bot with existing config."""
         # Mock configuration state to be ready
@@ -786,9 +781,10 @@ class TestCLIBotOperation:
         mock_load_creds.return_value = Mock()
         mock_input.return_value = "y"  # User chooses to start bot
         mock_load_config.return_value = {"test": "config"}  # Return valid config
+        mock_main.return_value = 0
 
         cli.main()
-        # Bot should have been invoked (no specific assertion needed as we stub it)
+        mock_main.assert_awaited_once()
 
     @patch("sys.argv", ["biblebot"])
     @patch("biblebot.cli.detect_configuration_state")
@@ -874,17 +870,19 @@ class TestCLIBotOperation:
         # Should handle KeyboardInterrupt gracefully
         cli.main()
 
-    async def _stub_bot_main_keyboard_interrupt(*_a, **_k):
-        raise KeyboardInterrupt()
-
     @patch("sys.argv", ["biblebot"])
     @patch("biblebot.cli.detect_configuration_state")
     @patch("builtins.input")
     @patch("biblebot.auth.load_credentials")
     @patch("biblebot.bot.load_config")
-    @patch("biblebot.bot.main_with_config", new=_stub_bot_main_keyboard_interrupt)
+    @patch("biblebot.bot.main_with_config", new_callable=AsyncMock)
     def test_bot_keyboard_interrupt(
-        self, mock_load_config, mock_load_creds, mock_input, mock_detect_state
+        self,
+        mock_main,
+        mock_load_config,
+        mock_load_creds,
+        mock_input,
+        mock_detect_state,
     ):
         """Test bot operation with keyboard interrupt."""
         # Mock configuration state to be ready
@@ -896,19 +894,20 @@ class TestCLIBotOperation:
         mock_load_creds.return_value = Mock()
         mock_input.return_value = "y"  # User chooses to start bot
         mock_load_config.return_value = {"test": "config"}  # Return valid config
+        mock_main.side_effect = KeyboardInterrupt()
 
         # CLI catches KeyboardInterrupt and handles it gracefully
         cli.main()  # Should not raise exception
-
-    async def _stub_bot_main_runtime_error(*_a, **_k):
-        raise RuntimeError("Runtime error")
+        mock_main.assert_awaited_once()
 
     @patch("sys.argv", ["biblebot"])
     @patch("biblebot.cli.detect_configuration_state")
     @patch("builtins.input")
     @patch("biblebot.auth.load_credentials")
-    @patch("biblebot.cli.bot_main", new=_stub_bot_main_runtime_error)
-    def test_bot_runtime_error(self, mock_load_creds, mock_input, mock_detect_state):
+    @patch("biblebot.bot.main_with_config", new_callable=AsyncMock)
+    def test_bot_runtime_error(
+        self, mock_main, mock_load_creds, mock_input, mock_detect_state
+    ):
         """
         Verify CLI handles a runtime error during bot startup by exiting with code 1.
 
@@ -922,11 +921,13 @@ class TestCLIBotOperation:
         )
         mock_load_creds.return_value = Mock()
         mock_input.return_value = "y"  # User chooses to start bot
+        mock_main.side_effect = RuntimeError("Runtime error")
 
         # CLI should handle the exception gracefully and exit with code 1
         with pytest.raises(SystemExit) as exc_info:
             cli.main()
         assert exc_info.value.code == 1
+        mock_main.assert_awaited_once()
 
 
 class TestCLIUtilityFunctions:
