@@ -179,3 +179,13 @@ def configure_logging(config_dict=None):
     """
     global config
     config = config_dict
+
+    # Configure Matrix nio library logging to be less verbose
+    # Reduce timeout/sync messages that clutter logs
+    nio_logger = logging.getLogger("nio")
+    nio_logger.setLevel(logging.WARNING)  # Only show warnings and errors
+
+    # Also configure specific nio loggers that are particularly verbose
+    logging.getLogger("nio.client").setLevel(logging.WARNING)
+    logging.getLogger("nio.responses").setLevel(logging.WARNING)
+    logging.getLogger("nio.http").setLevel(logging.WARNING)

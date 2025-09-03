@@ -944,7 +944,12 @@ class BibleBot:
                 ignore_unverified_devices=True,
             )
 
-        except (PassageNotFound, APIKeyMissing) as e:
+        except APIKeyMissing as e:
+            logger.warning(f"Failed to retrieve passage: {passage} ({e})")
+            # Send helpful message about missing API key
+            api_key_error = f"ESV translation requires an API key. Please configure one in your config.yaml or use KJV instead. (Try: {passage.replace('esv', 'kjv').replace('ESV', 'KJV')})"
+            await self._send_error_message(room_id, api_key_error)
+        except PassageNotFound as e:
             logger.warning(f"Failed to retrieve passage: {passage} ({e})")
             await self._send_error_message(room_id, ERROR_PASSAGE_NOT_FOUND)
         except (aiohttp.ClientError, asyncio.TimeoutError) as e:

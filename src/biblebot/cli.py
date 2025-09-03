@@ -82,20 +82,22 @@ def detect_configuration_state():
     """
     Determine the CLI's current configuration/authentication state.
 
-    Returns a 2-tuple (state, message) where `state` is one of:
+    Returns a 3-tuple (state, message, config) where `state` is one of:
     - "setup": no valid config present; user should run configuration setup.
     - "auth": configuration exists but credentials are missing or invalid; user should authenticate.
     - "ready_legacy": a legacy MATRIX_ACCESS_TOKEN environment token is present (E2EE not supported); user may migrate to the modern auth flow.
     - "ready": configuration and credentials are present and valid; bot can be started.
 
-    The accompanying `message` is a user-facing string describing the detected condition and recommended next steps. Errors encountered while loading or validating the configuration or credentials are mapped to the appropriate state ("setup" or "auth") with an explanatory message rather than being raised.
+    The accompanying `message` is a user-facing string describing the detected condition and recommended next steps.
+    The `config` is the loaded configuration dictionary if available, None otherwise.
+    Errors encountered while loading or validating the configuration or credentials are mapped to the appropriate state ("setup" or "auth") with an explanatory message rather than being raised.
     """
     config_path = get_default_config_path()
     credentials_path = CONFIG_DIR / "credentials.json"
 
     # Check if config file exists
     if not config_path.exists():
-        return "setup", "No configuration found. Setup is required."
+        return "setup", "No configuration found. Setup is required.", None
 
     # Try to load and validate config
     try:
@@ -103,9 +105,9 @@ def detect_configuration_state():
 
         config = bot.load_config(str(config_path))
         if not config:
-            return "setup", "Invalid configuration. Setup is required."
+            return "setup", "Invalid configuration. Setup is required.", None
     except (ValueError, KeyError, TypeError, OSError) as e:
-        return "setup", f"Configuration error: {e}"
+        return "setup", f"Configuration error: {e}", None
 
     # Check for proper authentication (credentials.json from auth flow)
     if not credentials_path.exists():
@@ -116,21 +118,27 @@ def detect_configuration_state():
             return (
                 "ready_legacy",
                 "Bot configured with legacy access token (E2EE not supported). Consider migrating to 'biblebot auth login'.",
+                config,
             )
         return (
             "auth",
             "Configuration found but authentication required. Use 'biblebot auth login'.",
+            config,
         )
 
     # Verify credentials are valid
     try:
         creds = load_credentials()
         if not creds:
-            return "auth", "Invalid credentials found. Re-authentication required."
+            return (
+                "auth",
+                "Invalid credentials found. Re-authentication required.",
+                config,
+            )
     except (OSError, ValueError, TypeError):
-        return "auth", "Cannot load credentials. Re-authentication required."
+        return "auth", "Cannot load credentials. Re-authentication required.", config
 
-    return "ready", "Bot is configured and ready to start."
+    return "ready", "Bot is configured and ready to start.", config
 
 
 def generate_config(config_path):
@@ -196,23 +204,32 @@ def interactive_main():
         None
     """
 
-    def _run_bot(config_path: str, legacy: bool = False):
+    def _run_bot(config_path: str, legacy: bool = False, config: dict = None):
         """
         Run the BibleBot process for the given configuration and handle common startup errors.
 
         Uses proper logging instead of print statements.
+
+        Parameters:
+            config_path (str): Path to the configuration file.
+            legacy (bool): Whether to run in legacy mode.
+            config (dict): Pre-loaded configuration to avoid duplicate loading.
         """
         # Initialize logging first
-        try:
-            from .bot import load_config
+        if config is None:
+            try:
+                from .bot import load_config
 
-            # Load config without logging message to avoid duplicate logging
-            # (config was already loaded in detect_configuration_state)
-            config = load_config(config_path, log_loading=False)
+                # Load config without logging message to avoid duplicate logging
+                # (config was already loaded in detect_configuration_state)
+                config = load_config(config_path, log_loading=False)
+                configure_logging(config)
+            except (OSError, ValueError, TypeError):
+                # If config loading fails, use default logging
+                configure_logging(None)
+        else:
+            # Use provided config
             configure_logging(config)
-        except (OSError, ValueError, TypeError):
-            # If config loading fails, use default logging
-            configure_logging(None)
 
         logger = get_logger(LOGGER_NAME)
 
@@ -268,7 +285,7 @@ def interactive_main():
     configure_logging(None)
     logger = get_logger(LOGGER_NAME)
 
-    state, message = detect_configuration_state()
+    state, message, config = detect_configuration_state()
 
     logger.info("📖✝️ Matrix BibleBot ✝️")
     logger.info(f"Status: {message}")
@@ -313,7 +330,7 @@ def interactive_main():
             if ok:
                 logger.info("✅ Login completed! Starting bot...")
                 # Auto-start the bot after successful login
-                _run_bot(get_default_config_path())
+                _run_bot(get_default_config_path(), config=config)
             else:
                 logger.error("❌ Login failed.")
                 sys.exit(1)
@@ -330,12 +347,12 @@ def interactive_main():
             "Consider running 'biblebot auth login' to upgrade to modern authentication."
         )
         logger.info("Starting bot with legacy token...")
-        _run_bot(get_default_config_path(), legacy=True)
+        _run_bot(get_default_config_path(), legacy=True, config=config)
 
     elif state == "ready":
         logger.info("✅ Bot Ready - Configuration and credentials are valid.")
         logger.info("Starting bot...")
-        _run_bot(get_default_config_path())
+        _run_bot(get_default_config_path(), config=config)
 
 
 def main():
