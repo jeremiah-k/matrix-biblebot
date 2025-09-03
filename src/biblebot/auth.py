@@ -94,14 +94,14 @@ def _create_ssl_context():
     if certifi:
         try:
             return ssl.create_default_context(cafile=certifi.where())
-        except Exception:
+        except (ssl.SSLError, OSError):
             logger.warning(
                 "Failed to create certifi-backed SSL context, falling back to system default",
                 exc_info=True,
             )
     try:
         return ssl.create_default_context()
-    except Exception:
+    except (ssl.SSLError, OSError):
         logger.exception("Failed to create system default SSL context")
         return None
 

@@ -37,7 +37,9 @@ from .constants import (
     CHAR_DOT,
     CONFIG_KEY_MATRIX,
     CONFIG_MATRIX_E2EE,
+    CONFIG_MATRIX_HOMESERVER,
     CONFIG_MATRIX_ROOM_IDS,
+    CONFIG_MATRIX_USER,
     DEFAULT_CONFIG_FILENAME_MAIN,
     DEFAULT_ENV_FILENAME,
     DEFAULT_TRANSLATION,
@@ -135,12 +137,12 @@ def load_config(config_file, log_loading=True):
                 matrix_config = {}
 
                 # Copy matrix-related keys under matrix section (keep originals for compatibility)
-                if "matrix_homeserver" in config:
-                    matrix_config["homeserver"] = config["matrix_homeserver"]
-                if "matrix_user" in config:
-                    matrix_config["user"] = config["matrix_user"]
-                if "matrix_room_ids" in config:
-                    matrix_config["room_ids"] = config["matrix_room_ids"]
+                if CONFIG_MATRIX_HOMESERVER in config:
+                    matrix_config["homeserver"] = config[CONFIG_MATRIX_HOMESERVER]
+                if CONFIG_MATRIX_USER in config:
+                    matrix_config["user"] = config[CONFIG_MATRIX_USER]
+                if CONFIG_MATRIX_ROOM_IDS in config:
+                    matrix_config["room_ids"] = config[CONFIG_MATRIX_ROOM_IDS]
 
                 config["matrix"] = matrix_config
 

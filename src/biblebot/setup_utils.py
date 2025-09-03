@@ -175,7 +175,7 @@ def get_template_service_content():
             with open(template_path, FILE_MODE_READ, encoding="utf-8") as f:
                 service_template = f.read()
             return service_template
-    except (OSError, IOError, ValueError) as e:
+    except (OSError, ValueError) as e:
         print(f"Error reading service template: {e}")
         # Let unexpected exceptions surface for better debugging
 
@@ -198,7 +198,7 @@ def get_template_service_content():
                 with open(template_path, FILE_MODE_READ, encoding="utf-8") as f:
                     service_template = f.read()
                 return service_template
-            except (OSError, IOError) as e:
+            except OSError as e:
                 print(f"Error reading service template file: {e}")
 
     # If we couldn't find or read the template file, use a default template
