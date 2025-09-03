@@ -1,6 +1,7 @@
 """Tests for the tools module."""
 
 import os
+import warnings
 from pathlib import Path
 from unittest.mock import patch
 
@@ -9,12 +10,19 @@ import pytest
 from biblebot import tools
 
 
+def _get_sample_config_path_no_warnings():
+    """Helper to get sample config path without deprecation warnings."""
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", DeprecationWarning)
+        return tools.get_sample_config_path()
+
+
 class TestSampleFilePaths:
     """Test sample file path functions."""
 
     def test_get_sample_config_path(self):
         """Test getting sample config path."""
-        path_str = tools.get_sample_config_path()
+        path_str = _get_sample_config_path_no_warnings()
         path = Path(path_str)
 
         assert path.name == "sample_config.yaml"
@@ -23,7 +31,7 @@ class TestSampleFilePaths:
 
     def test_sample_config_content(self):
         """Test that sample config contains expected content."""
-        path_str = tools.get_sample_config_path()
+        path_str = _get_sample_config_path_no_warnings()
         path = Path(path_str)
         content = path.read_text()
 
@@ -63,7 +71,7 @@ class TestFilePermissions:
 
     def test_sample_files_readable(self):
         """Test that sample files are readable."""
-        config_path_str = tools.get_sample_config_path()
+        config_path_str = _get_sample_config_path_no_warnings()
         config_path = Path(config_path_str)
 
         # Should be able to read the config file
@@ -79,7 +87,7 @@ class TestFilePermissions:
     )
     def test_sample_files_permissions(self):
         """Test that sample files have appropriate permissions."""
-        config_path_str = tools.get_sample_config_path()
+        config_path_str = _get_sample_config_path_no_warnings()
         config_path = Path(config_path_str)
 
         # Get file permissions
@@ -96,7 +104,7 @@ class TestSampleConfigValidation:
         """Test that sample config is valid YAML."""
         import yaml
 
-        config_path_str = tools.get_sample_config_path()
+        config_path_str = _get_sample_config_path_no_warnings()
 
         try:
             with open(config_path_str, "r") as f:
@@ -111,7 +119,7 @@ class TestSampleConfigValidation:
         """Test that sample config contains all required fields."""
         import yaml
 
-        config_path_str = tools.get_sample_config_path()
+        config_path_str = _get_sample_config_path_no_warnings()
 
         with open(config_path_str, "r") as f:
             config = yaml.safe_load(f)
@@ -133,7 +141,7 @@ class TestSampleConfigValidation:
         """Test that sample config contains placeholder values."""
         import yaml
 
-        config_path_str = tools.get_sample_config_path()
+        config_path_str = _get_sample_config_path_no_warnings()
 
         with open(config_path_str, "r") as f:
             config = yaml.safe_load(f)
@@ -160,7 +168,7 @@ class TestErrorHandling:
         mock_exists.return_value = False
 
         # Should still return path even if file doesn't exist
-        config_path_str = tools.get_sample_config_path()
+        config_path_str = _get_sample_config_path_no_warnings()
 
         assert isinstance(config_path_str, str)
         assert "sample_config.yaml" in config_path_str
@@ -172,12 +180,10 @@ class TestIntegration:
     def test_tools_importable_from_cli(self):
         """Test that tools module can be imported by CLI module."""
         try:
-            from biblebot.cli import get_sample_config_path
+            from biblebot.cli import copy_sample_config_to
 
-            # Should be able to call the function
-            config_path_str = get_sample_config_path()
-
-            assert isinstance(config_path_str, str)
+            # Should be able to import the function
+            assert callable(copy_sample_config_to)
 
         except ImportError as e:
             pytest.fail(f"Could not import tools functions from CLI: {e}")
@@ -192,7 +198,7 @@ class TestIntegration:
             temp_path = Path(temp_dir)
 
             # Get sample config file path
-            sample_config_str = tools.get_sample_config_path()
+            sample_config_str = _get_sample_config_path_no_warnings()
             sample_config = Path(sample_config_str)
 
             # Copy sample config file (simulating CLI generate_config)

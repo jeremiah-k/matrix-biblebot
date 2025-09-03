@@ -74,31 +74,36 @@ class TestGetDefaultConfigPath:
 class TestGenerateConfig:
     """Test config file generation."""
 
-    @patch.object(cli, "get_sample_config_path")
+    @patch("biblebot.cli.copy_sample_config_to")
+    @patch("os.chmod")
     def test_generate_config_success(
-        self, mock_get_config, temp_config_dir, mock_sample_files
+        self, mock_chmod, mock_copy_config, temp_config_dir, mock_sample_files
     ):
         """Test successful config generation."""
         sample_config, _ = mock_sample_files
-        mock_get_config.return_value = sample_config
-
         config_path = temp_config_dir / "config.yaml"
+
+        # Mock copy function to actually create the file
+        def create_file(path):
+            from pathlib import Path
+
+            Path(path).write_text("sample config content")
+            return path
+
+        mock_copy_config.side_effect = create_file
 
         result = cli.generate_config(str(config_path))
 
         assert result is True
-        assert config_path.exists()
+        mock_copy_config.assert_called_once_with(str(config_path))
+        mock_chmod.assert_called_once_with(config_path, 0o600)
         # Only generates config.yaml, no .env file
         assert not (temp_config_dir / ".env").exists()
 
-    @patch.object(cli, "get_sample_config_path")
     def test_generate_config_files_exist(
-        self, mock_get_config, temp_config_dir, mock_sample_files, capsys
+        self, temp_config_dir, mock_sample_files, capsys
     ):
         """Test config generation when files already exist."""
-        sample_config, _ = mock_sample_files
-        mock_get_config.return_value = sample_config
-
         config_path = temp_config_dir / "config.yaml"
 
         # Create existing config file
@@ -110,14 +115,10 @@ class TestGenerateConfig:
         captured = capsys.readouterr()
         assert "A config file already exists at:" in captured.out
 
-    @patch.object(cli, "get_sample_config_path")
     def test_generate_config_config_exists(
-        self, mock_get_config, temp_config_dir, mock_sample_files, capsys
+        self, temp_config_dir, mock_sample_files, capsys
     ):
         """Test config generation when config.yaml already exists."""
-        sample_config, _ = mock_sample_files
-        mock_get_config.return_value = sample_config
-
         config_path = temp_config_dir / "config.yaml"
 
         # Create existing file
@@ -130,20 +131,29 @@ class TestGenerateConfig:
         assert "A config file already exists at:" in captured.out
         assert str(config_path) in captured.out
 
-    @patch.object(cli, "get_sample_config_path")
+    @patch("biblebot.cli.copy_sample_config_to")
+    @patch("os.chmod")
     def test_generate_config_env_exists(
-        self, mock_get_config, temp_config_dir, mock_sample_files, capsys
+        self, mock_chmod, mock_copy_config, temp_config_dir, mock_sample_files, capsys
     ):
         """Test config generation when config doesn't exist (no longer checks .env)."""
-        sample_config, _ = mock_sample_files
-        mock_get_config.return_value = sample_config
-
         config_path = temp_config_dir / "config.yaml"
+
+        # Mock copy function to actually create the file
+        def create_file(path):
+            from pathlib import Path
+
+            Path(path).write_text("sample config content")
+            return path
+
+        mock_copy_config.side_effect = create_file
 
         # No existing config file - should succeed
         result = cli.generate_config(str(config_path))
 
         assert result is True
+        mock_copy_config.assert_called_once_with(str(config_path))
+        mock_chmod.assert_called_once_with(config_path, 0o600)
         captured = capsys.readouterr()
         assert "Generated sample config file at:" in captured.out
 
