@@ -28,6 +28,8 @@ from .constants import (
     API_PARAM_FALSE,
     API_PARAM_INCLUDE_FOOTNOTES,
     API_PARAM_INCLUDE_HEADINGS,
+    API_PARAM_INCLUDE_PASSAGE_REFERENCES,
+    API_PARAM_INCLUDE_SHORT_COPYRIGHT,
     API_PARAM_INCLUDE_VERSE_NUMBERS,
     API_PARAM_Q,
     API_REQUEST_TIMEOUT_SEC,
@@ -149,8 +151,10 @@ def load_config(config_file, log_loading=True):
 
             # Basic validation - check for room_ids in either location
             room_ids = None
-            if "matrix" in config and isinstance(config["matrix"], dict):
-                room_ids = config["matrix"].get("room_ids")
+            if CONFIG_KEY_MATRIX in config and isinstance(
+                config[CONFIG_KEY_MATRIX], dict
+            ):
+                room_ids = config[CONFIG_KEY_MATRIX].get("room_ids")
             if not room_ids and CONFIG_MATRIX_ROOM_IDS in config:
                 room_ids = config[CONFIG_MATRIX_ROOM_IDS]
 
@@ -271,7 +275,7 @@ async def make_api_request(
         Returns the decoded JSON object (typically a dict or list) on HTTP 200 with valid JSON, or None on non-200 responses or if the response body cannot be parsed as JSON. Side effects: logs warnings on non-200 status and logs exceptions when JSON decoding fails.
         """
         # Merge a minimal default UA with caller-provided headers
-        _base_headers = {"User-Agent": APP_NAME}
+        _base_headers = {"User-Agent": APP_NAME, "Accept": "application/json"}
         _headers = {**_base_headers, **(headers or {})}
         async with sess.get(
             url, headers=_headers, params=params, timeout=req_timeout
@@ -445,8 +449,8 @@ async def get_esv_text(passage, api_key, session=None):
         API_PARAM_INCLUDE_HEADINGS: API_PARAM_FALSE,
         API_PARAM_INCLUDE_FOOTNOTES: API_PARAM_FALSE,
         API_PARAM_INCLUDE_VERSE_NUMBERS: API_PARAM_FALSE,
-        "include-short-copyright": "false",
-        "include-passage-references": "false",
+        API_PARAM_INCLUDE_SHORT_COPYRIGHT: API_PARAM_FALSE,
+        API_PARAM_INCLUDE_PASSAGE_REFERENCES: API_PARAM_FALSE,
     }
     headers = {"Authorization": f"Token {api_key}"}
     response = await make_api_request(API_URL, headers, params, session=session)
@@ -576,8 +580,11 @@ class BibleBot:
                 resolved_ids.append(entry)
         # Update configuration with resolved IDs (support both schemas)
         unique_ids = list(dict.fromkeys(resolved_ids))
-        if "matrix" in self.config and "room_ids" in self.config["matrix"]:
-            self.config["matrix"]["room_ids"] = unique_ids
+        if (
+            CONFIG_KEY_MATRIX in self.config
+            and "room_ids" in self.config[CONFIG_KEY_MATRIX]
+        ):
+            self.config[CONFIG_KEY_MATRIX]["room_ids"] = unique_ids
         else:
             self.config[CONFIG_MATRIX_ROOM_IDS] = unique_ids
 
@@ -623,7 +630,12 @@ class BibleBot:
                     )
             else:
                 logger.debug(f"Bot is already in room '{room_id_or_alias}'")
-        except Exception:
+        except (
+            nio.exceptions.LocalProtocolError,
+            nio.exceptions.RemoteProtocolError,
+            aiohttp.ClientError,
+            RoomResolveAliasError,
+        ):
             logger.exception(f"Error joining room '{room_id_or_alias}'")
 
     async def ensure_joined_rooms(self):
@@ -712,6 +724,7 @@ class BibleBot:
             # Set room_id on the event object for key request methods
             # This is necessary because MegolmEvent objects that failed to decrypt
             # may not have room_id set, but event.as_key_request() requires it
+            # Note: This mutates the event object to ensure proper key request functionality
             event.room_id = room.room_id
 
             # Try the high-level API first
@@ -947,7 +960,7 @@ class BibleBot:
                 max_text_len = self.max_message_length - suffix_len
                 if max_text_len > 0:
                     truncated_text = text[:max_text_len] + "..."
-                    logger.info(
+                    logger.debug(
                         f"Truncated message from {len(text)} to {len(truncated_text)} characters"
                     )
                 else:
@@ -1161,7 +1174,12 @@ async def main(config_path=DEFAULT_CONFIG_FILENAME_MAIN, config=None):
             logger.debug("Unexpected cleanup error during bot shutdown", exc_info=True)
         finally:
             if client:
-                await client.close()
+                try:
+                    await client.close()
+                except Exception:
+                    logger.debug(
+                        "Ignoring client.close() error during shutdown", exc_info=True
+                    )
 
 
 async def main_with_config(config_path: str, config: dict):

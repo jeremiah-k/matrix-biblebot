@@ -96,6 +96,9 @@ class TestFilePermissions:
         # Should be readable by owner and group (at minimum)
         assert config_stat.st_mode & 0o400  # Owner read
 
+        # For stronger security, ensure group/other don't have write access
+        assert not (config_stat.st_mode & 0o022)  # No group/other write
+
 
 class TestSampleConfigValidation:
     """Test that sample config is valid YAML and contains required fields."""

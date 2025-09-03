@@ -235,6 +235,8 @@ API_PARAM_Q = "q"
 API_PARAM_INCLUDE_HEADINGS = "include-headings"
 API_PARAM_INCLUDE_FOOTNOTES = "include-footnotes"
 API_PARAM_INCLUDE_VERSE_NUMBERS = "include-verse-numbers"
+API_PARAM_INCLUDE_SHORT_COPYRIGHT = "include-short-copyright"
+API_PARAM_INCLUDE_PASSAGE_REFERENCES = "include-passage-references"
 API_PARAM_FALSE = "false"
 
 # Logger names

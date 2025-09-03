@@ -413,9 +413,8 @@ async def discover_homeserver(
             f"{MSG_SERVER_DISCOVERY_FAILED}: {type(e).__name__}: {e}",
         )
     except Exception as e:
-        logger.debug(
-            f"Unexpected error during server discovery: {type(e).__name__}: {e}",
-            exc_info=True,
+        logger.exception(
+            f"Unexpected error during server discovery: {type(e).__name__}: {e}"
         )
 
     logger.debug(f"Using original homeserver URL: {homeserver}")
@@ -696,11 +695,11 @@ async def interactive_logout() -> bool:
 
     # Remove E2EE store dir
     store = E2EE_STORE_DIR
-    try:
-        if store.exists():
+    if store.exists():
+        try:
             shutil.rmtree(store)
             logger.info(f"Cleared E2EE store at {store}")
-    except OSError:
-        logger.exception(f"Failed to remove E2EE store at {store}")
+        except OSError:
+            logger.exception(f"Failed to remove E2EE store at {store}")
 
     return True
