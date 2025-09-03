@@ -82,6 +82,33 @@ def test_main_function(mock_client_class):
 mock_client.sync_forever = MagicMock()  # Should be AsyncMock
 ```
 
+### Do not patch `asyncio.run`
+
+When the CLI calls `asyncio.run(<async_entrypoint>(...))`, avoid patching `asyncio.run`.
+Instead, monkeypatch the async entrypoint to a no-op async function:
+
+```python
+async def _noop_async(*_a, **_k):
+    return 0
+
+def test_main_run_bot(monkeypatch):
+    monkeypatch.setattr("biblebot.bot.run_async", _noop_async)  # or actual target used by the CLI
+    from biblebot.cli import main
+    main(["run"])
+```
+
+If you must intercept `asyncio.run`, ensure your stub awaits the coroutine:
+
+```python
+def _fake_run(coro, *a, **k):
+    import asyncio
+    loop = asyncio.new_event_loop()
+    try:
+        return loop.run_until_complete(coro)
+    finally:
+        loop.close()
+```
+
 ### Matrix Client Mocking Pattern
 
 For Matrix client operations, use this standard pattern:

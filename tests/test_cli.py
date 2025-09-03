@@ -2,7 +2,7 @@
 
 import argparse
 import warnings
-from unittest.mock import MagicMock, Mock, patch
+from unittest.mock import AsyncMock, MagicMock, Mock, patch
 
 import pytest
 
@@ -581,11 +581,11 @@ class TestCLIMainFunction:
         mock_print.assert_called()
 
     @patch("sys.argv", ["biblebot", "auth", "login"])
-    @patch("biblebot.cli.interactive_login")
+    @patch("biblebot.cli.interactive_login", new_callable=AsyncMock)
     @patch("sys.exit")
     def test_auth_login_command(self, mock_exit, mock_login):
         """Test auth login command."""
-        # ✅ CORRECT: Direct return value for async function called via asyncio.run()
+        # Return True from awaited coroutine
         mock_login.return_value = True
 
         # Mock sys.exit to prevent actual exit and capture the call
@@ -599,11 +599,10 @@ class TestCLIMainFunction:
         mock_exit.assert_called_with(0)
 
     @patch("sys.argv", ["biblebot", "auth", "logout"])
-    @patch("biblebot.cli.interactive_logout")
+    @patch("biblebot.cli.interactive_logout", new_callable=AsyncMock)
     @patch("sys.exit")
     def test_auth_logout_command(self, mock_exit, mock_logout):
         """Test auth logout command."""
-        # ✅ CORRECT: Direct return value for async function called via asyncio.run()
         mock_logout.return_value = True
 
         # Mock sys.exit to prevent actual exit and capture the call

@@ -283,13 +283,12 @@ def comprehensive_cleanup():
             if pending_tasks:
                 for task in pending_tasks:
                     task.cancel()
-                # Use a new loop to gather cancelled tasks
-                gather_loop = asyncio.new_event_loop()
-                asyncio.set_event_loop(gather_loop)
-                gather_loop.run_until_complete(
-                    asyncio.gather(*pending_tasks, return_exceptions=True)
-                )
-                gather_loop.close()
+                # Only drive the loop if it is not currently running
+                if not loop.is_running():
+                    with contextlib.suppress(Exception):
+                        loop.run_until_complete(
+                            asyncio.gather(*pending_tasks, return_exceptions=True)
+                        )
 
             # Shutdown any remaining executors
             if hasattr(loop, "_default_executor") and loop._default_executor:
