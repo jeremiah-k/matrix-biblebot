@@ -1097,3 +1097,34 @@ class TestDetectConfigurationState:
         assert state == "auth"
         assert "Cannot load credentials" in message
         assert config == {"test": "config"}
+
+
+class TestCLIErrorHandling:
+    """Test CLI error handling scenarios."""
+
+    @patch("sys.argv", ["biblebot", "--config", "nonexistent.yaml"])
+    @patch("biblebot.cli.detect_configuration_state")
+    @patch("builtins.input", return_value="n")  # Mock user input to avoid stdin issues
+    def test_invalid_config_handling(self, mock_input, mock_detect):
+        """Test handling of invalid configuration."""
+        mock_detect.return_value = ("no_config", "Config not found", None)
+
+        result = cli.main()
+        assert result == 0  # Should exit gracefully when user says no
+
+    @patch("sys.argv", ["biblebot"])
+    @patch("biblebot.cli.detect_configuration_state")
+    @patch("biblebot.bot.main", side_effect=KeyboardInterrupt())
+    def test_keyboard_interrupt_handling(self, mock_main, mock_detect):
+        """Test handling of keyboard interrupt."""
+        mock_detect.return_value = ("ready", "Ready", {"test": "config"})
+
+        result = cli.main()
+        assert result == 0  # Should exit gracefully
+
+    def test_cli_module_functions_exist(self):
+        """Test that expected CLI functions exist."""
+        assert hasattr(cli, "main")
+        assert hasattr(cli, "detect_configuration_state")
+        assert hasattr(cli, "generate_config")
+        assert callable(cli.main)
