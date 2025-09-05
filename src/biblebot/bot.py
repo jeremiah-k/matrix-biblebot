@@ -3,6 +3,8 @@ import html
 import json
 import logging
 import os
+import random
+import textwrap
 import time
 from collections import OrderedDict
 from time import monotonic
@@ -73,6 +75,14 @@ from .constants import (
 
 # Configure logging
 logger = logging.getLogger(LOGGER_NAME)
+
+# Constants
+FALLBACK_MESSAGE_TOO_LONG = "[Message too long]"
+MIN_PRACTICAL_CHUNK_SIZE = 8  # Minimum reasonable chunk size for splitting
+MAX_RATE_LIMIT_RETRIES = 3  # Maximum number of rate limit retries
+DEFAULT_RETRY_AFTER_MS = 1000  # Default retry delay in milliseconds
+TRUNCATION_INDICATOR = "..."  # Indicator for truncated text
+REFERENCE_SEPARATOR_LEN = 3  # Length of " - " separator
 
 
 # Custom exceptions for Bible text retrieval
@@ -504,7 +514,8 @@ class BibleBot:
 
         Parameters:
             config (dict): Configuration mapping (expected keys: "bot" with optional "default_translation",
-                "cache_enabled", and "max_message_length"; also contains matrix room IDs elsewhere in the config).
+                "cache_enabled", "max_message_length", and "split_message_length" in characters; the final chunk includes the reference/suffix and
+                must also respect max_message_length; also contains matrix room IDs elsewhere in the config).
             client: Optional injected AsyncClient used for Matrix interactions (omitted from detailed param docs as a common service).
 
         Behavior:
@@ -514,7 +525,9 @@ class BibleBot:
                 - default_translation: translation to use when none is specified (defaults to DEFAULT_TRANSLATION).
                 - cache_enabled: whether passage caching is enabled (defaults to True).
                 - max_message_length: maximum allowed length for outgoing messages (defaults to 2000).
+                - split_message_length: length at which to split long messages into multiple messages (defaults to 0, disabled).
             - Validates max_message_length and resets it to 2000 if a non-positive value is supplied.
+            - Validates split_message_length, coerces to int, resets to 0 if negative, and caps to max_message_length.
         """
         self.config = config
         self.client = client  # Injected AsyncClient instance
@@ -532,6 +545,15 @@ class BibleBot:
         self.preserve_poetry_formatting = bot_settings.get(
             CONFIG_PRESERVE_POETRY_FORMATTING, False
         )
+        # Type-validate and coerce split_message_length
+        raw_split_len = bot_settings.get("split_message_length", 0)
+        try:
+            self.split_message_length = int(raw_split_len)
+        except (TypeError, ValueError):
+            logger.warning(
+                f"Invalid split_message_length type: {raw_split_len!r}, disabling message splitting"
+            )
+            self.split_message_length = 0
 
         # Validate settings
         if self.max_message_length <= 0:
@@ -539,6 +561,23 @@ class BibleBot:
                 f"Invalid max_message_length: {self.max_message_length}, using default 2000"
             )
             self.max_message_length = 2000
+
+        if self.split_message_length < 0:
+            logger.warning(
+                f"Invalid split_message_length: {self.split_message_length}, disabling message splitting"
+            )
+            self.split_message_length = 0
+
+        # Cap to max_message_length to avoid generating oversize chunks
+        if (
+            self.split_message_length
+            and self.split_message_length > self.max_message_length
+        ):
+            logger.info(
+                f"split_message_length {self.split_message_length} exceeds max_message_length "
+                f"{self.max_message_length}; capping to max."
+            )
+            self.split_message_length = self.max_message_length
 
     def __repr__(self):
         """
@@ -880,13 +919,12 @@ class BibleBot:
 
     def _format_text_for_display(self, text: str) -> tuple[str, str]:
         """
-        Format text for both plain and HTML display based on configuration.
+        Format a passage for plain-text and HTML-safe display according to the bot's poetry-preservation setting.
 
-        Parameters:
-            text (str): Raw text to format
+        When preserve_poetry_formatting is True, this preserves paragraph/newline structure (collapsing multiple blank lines to a single blank line), normalizes internal spaces, strips leading/trailing whitespace, and converts newlines to HTML <br /> tags for the HTML output. When False, all whitespace (including newlines) is collapsed to single spaces. Both returned strings are HTML-escaped where appropriate.
 
         Returns:
-            tuple[str, str]: (formatted_plain_text, formatted_html_text)
+            tuple[str, str]: (plain_text, html_text) — the normalized plain-text string and an HTML-safe representation suitable for sending as formatted message content.
         """
         if self.preserve_poetry_formatting:
             # Poetry mode: preserve newlines, clean excess whitespace
@@ -909,23 +947,168 @@ class BibleBot:
 
         return formatted_text, html_text
 
+    def _split_text_into_chunks(self, text, max_length):
+        """
+        Split text into chunks of specified maximum length, preferring word boundaries.
+
+        Parameters:
+            text (str): The text to split
+            max_length (int): Maximum length for each chunk
+
+        Returns:
+            list[str]: List of text chunks
+        """
+        return textwrap.wrap(
+            text,
+            width=max_length,
+            break_long_words=True,
+            replace_whitespace=False,
+            break_on_hyphens=True,
+        )
+
+    def _trim_reference_for_suffix(self, reference, reserve_fallback_space=False):
+        """
+        Ensure a Bible reference fits when appended with the message suffix by trimming or dropping it.
+
+        If the full reference would cause the final message (text + " - " + reference + MESSAGE_SUFFIX) to exceed the bot's max_message_length, this returns a truncated reference that fits (using "..." when space allows) or None if the reference must be omitted.
+
+        Parameters:
+            reference (str | None): The canonical Bible reference to trim; None or empty returns None.
+            reserve_fallback_space (bool): When True, reserve space for the worst-case fallback message
+                (FALLBACK_MESSAGE_TOO_LONG) instead of assuming at least one character of text. Use this
+                when preparing a single-message response that may need to replace the passage text with a
+                fallback placeholder.
+
+        Returns:
+            str | None: A reference string guaranteed to fit with the suffix and reserved text, or None
+            when no acceptable reference can be included.
+        """
+        if not reference:
+            return None
+
+        # Calculate budget for reference (reserve space for " - ", MESSAGE_SUFFIX, and text)
+        if reserve_fallback_space:
+            # Reserve space for fallback text in single-message path. This is conservative,
+            # reserving space for the worst-case scenario where the message text itself is
+            # so long it must be replaced by FALLBACK_MESSAGE_TOO_LONG. This guarantees
+            # the final combined message (text + reference + suffix) will not exceed max_message_length.
+            reserved_text_len = len(FALLBACK_MESSAGE_TOO_LONG)
+        else:
+            # Reserve space for at least 1 character of text in splitting path
+            reserved_text_len = 1
+
+        budget = (
+            self.max_message_length
+            - len(MESSAGE_SUFFIX)
+            - REFERENCE_SEPARATOR_LEN
+            - reserved_text_len
+        )
+        if budget <= 0:
+            # Not enough space even for minimal reference, drop it entirely
+            return None
+
+        # Check if full reference fits within budget
+        if len(reference) <= budget:
+            return reference
+
+        # Truncate reference with truncation indicator if needed
+        if budget >= len(TRUNCATION_INDICATOR):  # Need space for truncation indicator
+            keep = max(0, budget - len(TRUNCATION_INDICATOR))
+            return reference[:keep] + TRUNCATION_INDICATOR if keep > 0 else None
+        else:
+            return None
+
+    async def _send_message_parts(self, room_id, text_parts, reference):
+        """
+        Send a sequence of message parts to a room, appending the reference and message suffix only to the final part.
+
+        Each part is formatted for both plain text and HTML (using _format_text_for_display). The last part will include " - {reference}{MESSAGE_SUFFIX}" when a reference is provided; otherwise it will include MESSAGE_SUFFIX alone. Messages are sent via the Matrix client with guarded handling for 429 (rate-limited) responses: on 429 the method will perform exponential backoff with jitter and retry up to three times before propagating the error.
+
+        Parameters:
+            room_id (str): Matrix room ID to send the messages to.
+            text_parts (list[str]): Ordered list of message body parts to send.
+            reference (str | None): Bible reference to append to the final message, or None to omit.
+
+        Raises:
+            nio.exceptions.MatrixRequestError: If a send fails for reasons other than handled rate limiting.
+            Exception: Propagates other unexpected exceptions from the Matrix client.
+        """
+        for i, text_part in enumerate(text_parts):
+            # Format the text part
+            formatted_text, html_text = self._format_text_for_display(text_part)
+
+            # Only add reference and suffix to the last message
+            if i == len(text_parts) - 1:
+                if reference:
+                    plain_body = f"{formatted_text} - {reference}{MESSAGE_SUFFIX}"
+                    formatted_body = f"{html_text} - {html.escape(reference)}{html.escape(MESSAGE_SUFFIX)}"
+                else:
+                    plain_body = f"{formatted_text}{MESSAGE_SUFFIX}"
+                    formatted_body = f"{html_text}{html.escape(MESSAGE_SUFFIX)}"
+            else:
+                plain_body = formatted_text
+                formatted_body = html_text
+
+            content = {
+                "msgtype": "m.text",
+                "body": plain_body,
+                "format": "org.matrix.custom.html",
+                "formatted_body": formatted_body,
+            }
+
+            # Send with enhanced rate limit handling
+            retries = MAX_RATE_LIMIT_RETRIES
+            while True:
+                try:
+                    await self.client.room_send(
+                        room_id,
+                        "m.room.message",
+                        content,
+                        ignore_unverified_devices=True,
+                    )
+                    break  # Success
+                except nio.exceptions.MatrixRequestError as e:
+                    # Enhanced handling for rate limiting with bounded retries
+                    if retries > 0 and getattr(e, "status", None) == 429:
+                        retry_ms = int(
+                            getattr(e, "retry_after_ms", DEFAULT_RETRY_AFTER_MS)
+                        )
+                        base_delay = (
+                            retry_ms
+                            / 1000.0
+                            * (2 ** (MAX_RATE_LIMIT_RETRIES - retries))
+                        )  # Exponential backoff
+                        # Add ±20% jitter to avoid thundering herd
+                        delay = base_delay * random.uniform(
+                            0.8, 1.2
+                        )  # nosec B311 - not cryptographic
+                        logger.warning(
+                            f"Rate limited; backing off for {delay:.1f}s (attempt {MAX_RATE_LIMIT_RETRIES + 1 - retries}/{MAX_RATE_LIMIT_RETRIES})"
+                        )
+                        await asyncio.sleep(delay)
+                        retries -= 1
+                    else:
+                        raise
+
     async def handle_scripture_command(self, room_id, passage, translation, event):
         """
-        Handle a detected Bible verse reference by fetching the passage text and posting it to the room.
+        Handle a detected Bible reference: fetch the passage and post a formatted response to the given room.
 
-        Fetches the requested passage (using the configured/default translation and cache), normalizes whitespace,
-        reacts to the triggering event with a checkmark, and sends a formatted HTML/plain text message containing
-        the verse and its canonical reference. If the assembled message exceeds the bot's max_message_length it will
-        be truncated with an ellipsis; if it cannot be truncated to fit, a short "[Message too long]" placeholder is sent.
+        Fetches the requested passage (using the provided or default translation and cache), formats it for plain and HTML display, reacts to the triggering event with a checkmark, and sends the passage text plus its canonical reference to the room. If the passage exceeds configured length limits the bot will either:
+        - split the text into multiple parts (when split_message_length is enabled) and append the reference only to the final part, or
+        - truncate the text and append an ellipsis and reference, or
+        - fall back to a short placeholder when truncation cannot produce a valid message.
 
-        On failure to retrieve the passage (e.g., passage not found or missing API key) a user-facing error message is posted.
-        Unexpected exceptions are logged and the same generic error message is sent.
+        On failures the function posts a user-facing error message for missing API keys, not-found passages, or network errors. Unexpected exceptions are logged and result in the same generic error message being posted.
 
         Parameters:
             room_id (str): Matrix room ID where the response should be posted.
-            passage (str): Bible passage reference as detected (e.g., "John 3:16").
-            translation (str | None): Requested translation code (if None, the bot's default_translation is used).
-            event: The original Matrix event object that triggered the command; used to send a reaction.
+            passage (str): Detected Bible passage reference (e.g., "John 3:16").
+            translation (str | None): Translation code to use; if None the bot's default_translation is used.
+            event: The original Matrix event that triggered the command (used to send a reaction).
+
+        Returns:
+            None
         """
         # Use configured default translation if none specified
         if translation is None:
@@ -944,7 +1127,7 @@ class BibleBot:
             )
 
             # Format text based on configuration
-            text, html_text = self._format_text_for_display(text)
+            text, _ = self._format_text_for_display(text)
 
             # Check if text is empty after cleaning
             if not text:
@@ -954,59 +1137,84 @@ class BibleBot:
             # Send a checkmark reaction to the original message
             await self.send_reaction(room_id, event.event_id, REACTION_OK)
 
-            # Format the scripture message
-            if reference:
-                plain_body = f"{text} - {reference}{MESSAGE_SUFFIX}"
-                formatted_body = f"{html_text} - {html.escape(reference)}{html.escape(MESSAGE_SUFFIX)}"
-            else:
-                plain_body = f"{text}{MESSAGE_SUFFIX}"
-                formatted_body = f"{html_text}{html.escape(MESSAGE_SUFFIX)}"
-
-            # Apply message length truncation if needed
-            if len(plain_body) > self.max_message_length:
-                # Calculate suffix and its length
+            # Check if message splitting is enabled and needed
+            if (
+                self.split_message_length
+                and self.split_message_length > 0
+                and len(text) > self.split_message_length
+            ):
+                # Trim reference if needed for splitting context
+                trimmed_reference = self._trim_reference_for_suffix(
+                    reference, reserve_fallback_space=False
+                )
                 plain_suffix = (
-                    f" - {reference}{MESSAGE_SUFFIX}" if reference else MESSAGE_SUFFIX
+                    f" - {trimmed_reference}{MESSAGE_SUFFIX}"
+                    if trimmed_reference
+                    else MESSAGE_SUFFIX
                 )
-                formatted_suffix = (
-                    f" - {html.escape(reference)}{html.escape(MESSAGE_SUFFIX)}"
-                    if reference
-                    else html.escape(MESSAGE_SUFFIX)
+                reserved_last = len(plain_suffix)
+                chunk_limit = min(self.split_message_length, self.max_message_length)
+                last_chunk_limit = max(
+                    1,
+                    min(
+                        self.split_message_length,
+                        self.max_message_length - reserved_last,
+                    ),
                 )
-                suffix_len = len(plain_suffix) + 3  # for "..."
 
-                # Determine truncated text
+                # If splitting is practical, do it and return
+                if last_chunk_limit >= MIN_PRACTICAL_CHUNK_SIZE:
+                    text_chunks = self._split_text_into_chunks(text, chunk_limit)
+                    if text_chunks and len(text_chunks[-1]) > last_chunk_limit:
+                        tail = text_chunks.pop()
+                        text_chunks.extend(
+                            self._split_text_into_chunks(tail, last_chunk_limit)
+                        )
+
+                    logger.info(f"Splitting message into {len(text_chunks)} parts")
+                    await self._send_message_parts(
+                        room_id, text_chunks, trimmed_reference
+                    )
+
+                    if trimmed_reference:
+                        logger.info(f"Sent split scripture: {trimmed_reference}")
+                    else:
+                        logger.info("Sent split scripture response")
+                    return  # We are done, exit the function
+
+                logger.info(
+                    "Suffix too large for effective splitting; using single-message path"
+                )
+
+            # Single-message logic (truncation)
+            # This path is taken if splitting is disabled, not needed, or impractical.
+            trimmed_reference = self._trim_reference_for_suffix(
+                reference, reserve_fallback_space=True
+            )
+            plain_suffix = (
+                f" - {trimmed_reference}{MESSAGE_SUFFIX}"
+                if trimmed_reference
+                else MESSAGE_SUFFIX
+            )
+            message_text = text
+
+            if len(f"{text}{plain_suffix}") > self.max_message_length:
+                suffix_len = len(plain_suffix) + len(TRUNCATION_INDICATOR)
                 max_text_len = self.max_message_length - suffix_len
                 if max_text_len > 0:
-                    truncated_text = text[:max_text_len] + "..."
+                    message_text = text[:max_text_len] + TRUNCATION_INDICATOR
                     logger.debug(
-                        f"Truncated message from {len(text)} to {len(truncated_text)} characters"
+                        f"Truncated message from {len(text)} to {len(message_text)} characters"
                     )
                 else:
-                    truncated_text = "[Message too long]"
+                    message_text = FALLBACK_MESSAGE_TOO_LONG
 
-                # Reconstruct the bodies with proper formatting
-                _, html_truncated_text = self._format_text_for_display(truncated_text)
-                plain_body = f"{truncated_text}{plain_suffix}"
-                formatted_body = f"{html_truncated_text}{formatted_suffix}"
+            await self._send_message_parts(room_id, [message_text], trimmed_reference)
 
-            if reference:
-                logger.info(f"Sending scripture: {reference}")
+            if trimmed_reference:
+                logger.info(f"Sent scripture: {trimmed_reference}")
             else:
-                logger.info("Sending scripture response")
-
-            content = {
-                "msgtype": "m.text",
-                "body": plain_body,
-                "format": "org.matrix.custom.html",
-                "formatted_body": formatted_body,
-            }
-            await self.client.room_send(
-                room_id,
-                "m.room.message",
-                content,
-                ignore_unverified_devices=True,
-            )
+                logger.info("Sent scripture response")
 
         except APIKeyMissing as e:
             logger.warning(f"Failed to retrieve passage: {passage} ({e})")

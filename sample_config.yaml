@@ -7,35 +7,51 @@ matrix:
   # homeserver: https://matrix.example.org
   # user: "@bot:example.org"
 
-  # List of Matrix room IDs where the bot should respond
+  # List of Matrix room IDs or aliases where the bot should respond
   # Get room IDs from Element: Room Settings > Advanced > Internal room ID
-  # Use internal IDs beginning with "!" (not room aliases beginning with "#")
+  # Both internal IDs ("!...") and room aliases ("#...") are supported.
+  # Aliases are resolved to room IDs on startup; the bot stores canonical IDs thereafter.
   room_ids:
     - "!your_room_id:your_homeserver_domain"
     - "!your_other_room_id:your_homeserver_domain"
+    # - "#your_room_alias:your_homeserver_domain"  # aliases are also supported
 
   # End-to-end encryption settings (optional)
   # Only enable if you understand the implications and have proper key management
-  e2ee:
-    enabled: false
-    # Optional: override store path (default: ~/.config/matrix-biblebot/e2ee-store)
-    # Ensure this directory is private (0700) to protect keys.
-    store_path: null
-
-# Bot behavior configuration
-bot:
-  # Default Bible translation to use when none is specified
-  default_translation: kjv # Options: "kjv", "esv" (ESV requires api_keys.esv)
-
-  # Enable or disable caching of Bible passages
-  cache_enabled: true
-
-  # Maximum length for bot messages (characters)
-  # Messages longer than this will be truncated with "..."
-  max_message_length: 2000
+  # e2ee:
+  #   # Requires: pip install matrix-nio[e2e]
+  #   # Manual access tokens do NOT support E2EE
+  #   # Requires: `biblebot auth login` (credentials.json); legacy MATRIX_ACCESS_TOKEN cannot be used with E2EE
+  #   enabled: false
+  #   # Optional: override store path (default: ~/.config/matrix-biblebot/e2ee-store)
+  #   # Ensure this directory is private (0700) to protect keys.
+  #   store_path: null
+# Bot behavior configuration (optional - defaults shown)
+# bot:
+#   # Default Bible translation to use when none is specified
+#   default_translation: kjv # Options: "kjv", "esv" (ESV requires api_keys.esv)
+#
+#   # Enable or disable caching of Bible passages
+#   cache_enabled: true
+#
+#   # Preserve poetry formatting (newlines kept; HTML uses <br />)
+#   preserve_poetry_formatting: false
+#
+#   # Maximum length for bot messages (characters)
+#   # Messages longer than this will be truncated with "..."
+#   max_message_length: 2000
+#
+#   # Split long messages into multiple messages of specified length
+#   # Set to 0 or null to disable message splitting (default behavior)
+#   # When enabled, messages longer than this will be split into multiple messages.
+#   # Note: This value is capped to max_message_length. The final chunk reserves
+#   # space for the reference and suffix, so its text portion may be shorter.
+#   split_message_length: 0 # Disabled by default
 
 # API Keys for Bible translations (optional)
-# These can also be set via environment variables
-api_keys:
-  # ESV API key from https://api.esv.org/
-  esv: null
+# These can also be set via environment variables (e.g., ESV_API_KEY).
+# Note: Using a .env file is deprecated; prefer config.yaml or real env vars.
+# api_keys:
+#   # Or set via env var: ESV_API_KEY
+#   # ESV API key from https://api.esv.org/
+#   esv: null
