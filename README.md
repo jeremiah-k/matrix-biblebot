@@ -117,7 +117,7 @@ For long Bible passages, you can enable message splitting to break them into mul
 bot:
   # Split messages longer than this into multiple parts (disabled by default)
   split_message_length: 1000 # Characters per message chunk
-  max_message_length: 2000 # Maximum length for any single message
+  max_message_length: 2000 # Maximum length for a single message part
 ```
 
 **Message Splitting Features:**
@@ -200,11 +200,11 @@ biblebot --config /path/to/config.yaml
 
 # Run with debug logging
 biblebot --log-level debug
+```
 
 ### Encrypted Rooms (Optional)
 
 To use encrypted Matrix rooms, install with the `e2e` extra and enable E2EE in config. See docs/E2EE.md for a full guide.
-```
 
 ### Running as a Service (Recommended)
 

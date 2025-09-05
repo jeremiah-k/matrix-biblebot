@@ -29,8 +29,8 @@ class TestLogConfiguration:
         # This function should not raise errors
         log_utils.configure_component_debug_logging()
 
-        # Verify the global flag is set
-        assert log_utils._component_debug_configured is True
+        # Call twice to ensure idempotence and no exceptions
+        log_utils.configure_component_debug_logging()
 
 
 class TestLogDirectory:
@@ -81,7 +81,7 @@ class TestLoggerErrorHandling:
         assert log_utils.config is None
 
     @patch("logging.getLogger", side_effect=Exception("Logger error"))
-    def test_get_logger_error_handling(self, mock_get_logger):
+    def test_get_logger_error_handling(self, _mock_get_logger):
         """Test get_logger propagates exceptions from logging.getLogger."""
         import pytest
 

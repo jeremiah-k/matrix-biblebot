@@ -235,7 +235,7 @@ class TestServiceTemplateHandling:
     @patch("builtins.open", side_effect=OSError("File read error"))
     @patch("importlib.resources.files")
     def test_get_template_service_content_fallback_to_default(
-        self, mock_files, mock_open, mock_copy
+        self, mock_files, _mock_open, mock_copy
     ):
         """Test fallback to default template when all sources fail."""
         # Mock copy_service_template_to to raise an error
@@ -309,14 +309,14 @@ class TestServiceFileCreation:
     """Test service file creation functionality."""
 
     @patch("biblebot.setup_utils.get_executable_path", return_value=None)
-    def test_create_service_file_no_executable(self, mock_get_exec):
+    def test_create_service_file_no_executable(self, _mock_get_exec):
         """Test create_service_file when no executable path is found."""
         result = setup_utils.create_service_file()
         assert result is False
 
     @patch("biblebot.setup_utils.get_executable_path", return_value="/usr/bin/biblebot")
     @patch("biblebot.setup_utils.get_template_service_content", return_value=None)
-    def test_create_service_file_no_template(self, mock_template, mock_get_exec):
+    def test_create_service_file_no_template(self, _mock_template, _mock_get_exec):
         """Test create_service_file when no template is found."""
         result = setup_utils.create_service_file()
         assert result is False
@@ -325,7 +325,7 @@ class TestServiceFileCreation:
     @patch("biblebot.setup_utils.get_template_service_content")
     @patch("pathlib.Path.write_text", side_effect=OSError("Write failed"))
     def test_create_service_file_write_error(
-        self, mock_write, mock_template, mock_get_exec
+        self, _mock_write, mock_template, _mock_get_exec
     ):
         """Test create_service_file when writing fails."""
         mock_template.return_value = "[Unit]\nDescription=Test\n[Service]\nExecStart=test\n[Install]\nWantedBy=default.target"
@@ -338,13 +338,13 @@ class TestSystemdOperations:
     """Test systemd daemon operations."""
 
     @patch("subprocess.run", side_effect=subprocess.CalledProcessError(1, "systemctl"))
-    def test_reload_daemon_failure(self, mock_run):
+    def test_reload_daemon_failure(self, _mock_run):
         """Test reload_daemon when systemctl fails."""
         result = setup_utils.reload_daemon()
         assert result is False
 
     @patch("subprocess.run", side_effect=OSError("Command not found"))
-    def test_reload_daemon_os_error(self, mock_run):
+    def test_reload_daemon_os_error(self, _mock_run):
         """Test reload_daemon when OSError occurs."""
         result = setup_utils.reload_daemon()
         assert result is False

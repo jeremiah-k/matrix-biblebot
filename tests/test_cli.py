@@ -433,57 +433,51 @@ class TestMainFunction:
             "matrix_room_ids": ["!room:matrix.org"],
         }
 
-        with patch("biblebot.cli.get_default_config_path") as mock_get_config_path:
-            # Create a mock Path object that returns True for exists()
-            mock_config_path = MagicMock()
-            mock_config_path.exists.return_value = True
-            mock_get_config_path.return_value = mock_config_path
-            # Create proper Credentials object so bot starts directly
-            import secrets
+        # Create a mock Path object that returns True for exists()
+        mock_config_path = MagicMock()
+        mock_config_path.exists.return_value = True
 
-            from biblebot.auth import Credentials
+        # Create proper Credentials object so bot starts directly
+        import secrets
 
-            TEST_ACCESS_TOKEN = secrets.token_urlsafe(24)
+        from biblebot.auth import Credentials
 
-            mock_credentials = Credentials(
-                homeserver="https://matrix.org",
-                user_id="@test:matrix.org",
-                access_token=TEST_ACCESS_TOKEN,
-                device_id="TEST_DEVICE",
-            )
-            with patch("biblebot.cli.CONFIG_DIR") as mock_config_dir:
-                # Mock credentials path to exist
-                mock_credentials_path = MagicMock()
-                mock_credentials_path.exists.return_value = True
-                mock_config_dir.__truediv__.return_value = mock_credentials_path
+        TEST_ACCESS_TOKEN = secrets.token_urlsafe(24)
 
-                with patch(
-                    "biblebot.cli.load_credentials", return_value=mock_credentials
-                ), patch(
-                    "biblebot.bot.load_credentials", return_value=mock_credentials
-                ):
-                    # Mock the config loading to avoid file system access
-                    with patch("biblebot.bot.load_config", return_value=mock_config):
-                        # Patch the async entrypoint with AsyncMock following testing guide
-                        with patch(
-                            "biblebot.bot.main_with_config", new_callable=AsyncMock
-                        ) as mock_main:
-                            mock_main.return_value = 0
-                            # Run the bot directly instead of interactive mode
-                            with patch("sys.argv", ["biblebot"]):
-                                # Mock the config file path to point to our mocked config
-                                with patch(
-                                    "biblebot.cli.get_default_config_path",
-                                    return_value=mock_config_path,
-                                ):
-                                    # Mock user input to start the bot
-                                    with patch("builtins.input", return_value="y"):
-                                        cli.main()
-                            mock_main.assert_awaited_once()
+        mock_credentials = Credentials(
+            homeserver="https://matrix.org",
+            user_id="@test:matrix.org",
+            access_token=TEST_ACCESS_TOKEN,
+            device_id="TEST_DEVICE",
+        )
+        with patch("biblebot.cli.CONFIG_DIR") as mock_config_dir:
+            # Mock credentials path to exist
+            mock_credentials_path = MagicMock()
+            mock_credentials_path.exists.return_value = True
+            mock_config_dir.__truediv__.return_value = mock_credentials_path
 
-        # Test passes if CLI handles the authentication cancellation gracefully
-        # The test should verify that the CLI attempted to run the bot
-        # but since we're mocking input to say "n", it won't actually call asyncio.run
+            with patch(
+                "biblebot.cli.load_credentials", return_value=mock_credentials
+            ), patch("biblebot.bot.load_credentials", return_value=mock_credentials):
+                # Mock the config loading to avoid file system access
+                with patch("biblebot.bot.load_config", return_value=mock_config):
+                    # Patch the async entrypoint with AsyncMock following testing guide
+                    with patch(
+                        "biblebot.bot.main_with_config", new_callable=AsyncMock
+                    ) as mock_main:
+                        mock_main.return_value = 0
+                        # Run the bot directly instead of interactive mode
+                        with patch("sys.argv", ["biblebot"]), patch(
+                            "biblebot.cli.get_default_config_path",
+                            return_value=mock_config_path,
+                        ):
+                            # Mock user input to start the bot
+                            with patch("builtins.input", return_value="y"):
+                                cli.main()
+                        mock_main.assert_awaited_once()
+
+        # Verifies the CLI attempted to run the bot (user answered "y").
+        # No direct asyncio.run here; main_with_config is awaited.
 
     @patch("builtins.input")
     @patch("biblebot.cli.generate_config")
@@ -661,22 +655,25 @@ class TestCLIMainFunction:
     @patch("argparse.ArgumentParser.print_help")
     def test_config_no_action(self, mock_print_help):
         """Test config command with no action."""
-        # This test is tricky because argparse exits. We can't easily catch it.
-        # We will assume that if no command is matched, help is printed.
-        # This is the default behavior of argparse.
-        pass
+        with pytest.raises(SystemExit):
+            cli.main()
+        mock_print_help.assert_called()
 
     @patch("sys.argv", ["biblebot", "auth"])
     @patch("argparse.ArgumentParser.print_help")
     def test_auth_no_action(self, mock_print_help):
         """Test auth command with no action."""
-        pass
+        with pytest.raises(SystemExit):
+            cli.main()
+        mock_print_help.assert_called()
 
     @patch("sys.argv", ["biblebot", "service"])
     @patch("argparse.ArgumentParser.print_help")
     def test_service_no_action(self, mock_print_help):
         """Test service command with no action."""
-        pass
+        with pytest.raises(SystemExit):
+            cli.main()
+        mock_print_help.assert_called()
 
     @patch("sys.argv", ["biblebot", "config", "validate"])
     @patch("biblebot.bot.load_config")
