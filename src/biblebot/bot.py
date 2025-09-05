@@ -505,7 +505,8 @@ class BibleBot:
 
         Parameters:
             config (dict): Configuration mapping (expected keys: "bot" with optional "default_translation",
-                "cache_enabled", "max_message_length", and "split_message_length"; also contains matrix room IDs elsewhere in the config).
+                "cache_enabled", "max_message_length", and "split_message_length" in characters; the final chunk includes the reference/suffix and
+                must also respect max_message_length; also contains matrix room IDs elsewhere in the config).
             client: Optional injected AsyncClient used for Matrix interactions (omitted from detailed param docs as a common service).
 
         Behavior:
@@ -517,7 +518,7 @@ class BibleBot:
                 - max_message_length: maximum allowed length for outgoing messages (defaults to 2000).
                 - split_message_length: length at which to split long messages into multiple messages (defaults to 0, disabled).
             - Validates max_message_length and resets it to 2000 if a non-positive value is supplied.
-            - Validates split_message_length and resets it to 0 if a negative value is supplied.
+            - Validates split_message_length, coerces to int, resets to 0 if negative, and caps to max_message_length.
         """
         self.config = config
         self.client = client  # Injected AsyncClient instance
@@ -535,7 +536,15 @@ class BibleBot:
         self.preserve_poetry_formatting = bot_settings.get(
             CONFIG_PRESERVE_POETRY_FORMATTING, False
         )
-        self.split_message_length = bot_settings.get("split_message_length", 0)
+        # Type-validate and coerce split_message_length
+        raw_split_len = bot_settings.get("split_message_length", 0)
+        try:
+            self.split_message_length = int(raw_split_len)
+        except (TypeError, ValueError):
+            logger.warning(
+                f"Invalid split_message_length type: {raw_split_len!r}, disabling message splitting"
+            )
+            self.split_message_length = 0
 
         # Validate settings
         if self.max_message_length <= 0:
@@ -544,11 +553,22 @@ class BibleBot:
             )
             self.max_message_length = 2000
 
-        if self.split_message_length is not None and self.split_message_length < 0:
+        if self.split_message_length < 0:
             logger.warning(
                 f"Invalid split_message_length: {self.split_message_length}, disabling message splitting"
             )
             self.split_message_length = 0
+
+        # Cap to max_message_length to avoid generating oversize chunks
+        if (
+            self.split_message_length
+            and self.split_message_length > self.max_message_length
+        ):
+            logger.info(
+                f"split_message_length {self.split_message_length} exceeds max_message_length "
+                f"{self.max_message_length}; capping to max."
+            )
+            self.split_message_length = self.max_message_length
 
     def __repr__(self):
         """

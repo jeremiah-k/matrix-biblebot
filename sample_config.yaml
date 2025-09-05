@@ -17,6 +17,8 @@ matrix:
   # End-to-end encryption settings (optional)
   # Only enable if you understand the implications and have proper key management
   # e2ee:
+  #   # Requires: pip install matrix-nio[e2e]
+  #   # Manual access tokens do NOT support E2EE
   #   enabled: false
   #   # Optional: override store path (default: ~/.config/matrix-biblebot/e2ee-store)
   #   # Ensure this directory is private (0700) to protect keys.
@@ -41,5 +43,6 @@ matrix:
 # API Keys for Bible translations (optional)
 # These can also be set via environment variables
 # api_keys:
+#   # Or set via env var: ESV_API_KEY
 #   # ESV API key from https://api.esv.org/
 #   esv: null

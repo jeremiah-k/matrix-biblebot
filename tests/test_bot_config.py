@@ -103,6 +103,35 @@ class TestBotConfiguration:
             assert bot.split_message_length == 0  # should disable splitting
             mock_logger.warning.assert_called_once()
 
+    def test_bot_split_message_length_type_validation(self):
+        """Test bot with invalid split_message_length type falls back to disabled."""
+        config = {
+            "matrix_room_ids": ["!test:example.org"],
+            "bot": {"split_message_length": "invalid"},  # string instead of int
+        }
+
+        with patch("biblebot.bot.logger") as mock_logger:
+            bot = BibleBot(config)
+
+            assert bot.split_message_length == 0  # should disable splitting
+            mock_logger.warning.assert_called_once()
+
+    def test_bot_split_message_length_capping(self):
+        """Test bot caps split_message_length to max_message_length."""
+        config = {
+            "matrix_room_ids": ["!test:example.org"],
+            "bot": {
+                "split_message_length": 5000,  # larger than max_message_length
+                "max_message_length": 2000,
+            },
+        }
+
+        with patch("biblebot.bot.logger") as mock_logger:
+            bot = BibleBot(config)
+
+            assert bot.split_message_length == 2000  # should be capped
+            mock_logger.info.assert_called_once()
+
 
 class TestMessageSplitting:
     """Test message splitting functionality."""
@@ -125,6 +154,8 @@ class TestMessageSplitting:
             assert len(chunk) <= 20
         # Verify all text is preserved
         assert " ".join(chunks) == long_text
+        # No leading/trailing spaces in any chunk
+        assert all(c == c.strip() for c in chunks)
 
         # Test text with very long word (edge case)
         text_with_long_word = "Short verylongwordthatexceedsthelimit more"
@@ -221,6 +252,7 @@ class TestMessageSplitting:
             # Should be truncated with "..."
             assert "..." in content["body"]
             assert len(content["body"]) <= 50
+            assert "John 3:16" in content["body"]
 
     @pytest.mark.asyncio
     async def test_handle_scripture_command_splitting_respects_max_length(self):
