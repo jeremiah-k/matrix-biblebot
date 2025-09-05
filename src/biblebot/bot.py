@@ -1066,8 +1066,6 @@ class BibleBot:
                             retry_ms / 1000.0 * (2 ** (3 - retries))
                         )  # Exponential backoff
                         # Add ±20% jitter to avoid thundering herd (using time-based seed for simplicity)
-                        import time
-
                         jitter_factor = 0.8 + 0.4 * (
                             (int(time.time() * 1000) % 100) / 100
                         )
@@ -1133,20 +1131,16 @@ class BibleBot:
                 and self.split_message_length > 0
                 and len(text) > self.split_message_length
             ):
-                # Trim reference if needed to ensure suffix fits within max_message_length
+                # Trim reference if needed for splitting context
                 trimmed_reference = self._trim_reference_for_suffix(
                     reference, reserve_fallback_space=False
                 )
-
-                # Calculate effective chunk limits respecting max_message_length
                 plain_suffix = (
                     f" - {trimmed_reference}{MESSAGE_SUFFIX}"
                     if trimmed_reference
                     else MESSAGE_SUFFIX
                 )
                 reserved_last = len(plain_suffix)
-
-                # Ensure chunks don't exceed max_message_length
                 chunk_limit = min(self.split_message_length, self.max_message_length)
                 last_chunk_limit = max(
                     1,
@@ -1156,18 +1150,9 @@ class BibleBot:
                     ),
                 )
 
-                # Prevent pathological splitting into many tiny parts when suffix nearly fills the limit
-                if last_chunk_limit < 8:  # Minimum reasonable chunk size
-                    logger.info(
-                        "Suffix too large for effective splitting; using single-message path"
-                    )
-                    # Fall through to single-message path below
-                    pass
-                else:
-                    # Initial split using the general limit
+                # If splitting is practical, do it and return
+                if last_chunk_limit >= 8:
                     text_chunks = self._split_text_into_chunks(text, chunk_limit)
-
-                    # Ensure final chunk fits with suffix; if not, re-split that tail
                     if text_chunks and len(text_chunks[-1]) > last_chunk_limit:
                         tail = text_chunks.pop()
                         text_chunks.extend(
@@ -1183,46 +1168,41 @@ class BibleBot:
                         logger.info(f"Sent split scripture: {trimmed_reference}")
                     else:
                         logger.info("Sent split scripture response")
-                    return
-            else:
-                # Use existing single-message logic with truncation
-                # Trim reference if needed to ensure suffix fits within max_message_length
-                trimmed_reference = self._trim_reference_for_suffix(
-                    reference, reserve_fallback_space=True
+                    return  # We are done, exit the function
+
+                logger.info(
+                    "Suffix too large for effective splitting; using single-message path"
                 )
 
-                # Calculate suffix using trimmed reference
-                plain_suffix = (
-                    f" - {trimmed_reference}{MESSAGE_SUFFIX}"
-                    if trimmed_reference
-                    else MESSAGE_SUFFIX
-                )
+            # Single-message logic (truncation)
+            # This path is taken if splitting is disabled, not needed, or impractical.
+            trimmed_reference = self._trim_reference_for_suffix(
+                reference, reserve_fallback_space=True
+            )
+            plain_suffix = (
+                f" - {trimmed_reference}{MESSAGE_SUFFIX}"
+                if trimmed_reference
+                else MESSAGE_SUFFIX
+            )
+            message_text = text
 
-                message_text = text
-
-                # Apply message length truncation if needed
-                if len(f"{text}{plain_suffix}") > self.max_message_length:
-                    suffix_len = len(plain_suffix) + 3  # for "..."
-
-                    # Determine truncated text
-                    max_text_len = self.max_message_length - suffix_len
-                    if max_text_len > 0:
-                        message_text = text[:max_text_len] + "..."
-                        logger.debug(
-                            f"Truncated message from {len(text)} to {len(message_text)} characters"
-                        )
-                    else:
-                        message_text = FALLBACK_MESSAGE_TOO_LONG
-
-                # Send the single message (truncated or not)
-                await self._send_message_parts(
-                    room_id, [message_text], trimmed_reference
-                )
-
-                if trimmed_reference:
-                    logger.info(f"Sent scripture: {trimmed_reference}")
+            if len(f"{text}{plain_suffix}") > self.max_message_length:
+                suffix_len = len(plain_suffix) + 3  # for "..."
+                max_text_len = self.max_message_length - suffix_len
+                if max_text_len > 0:
+                    message_text = text[:max_text_len] + "..."
+                    logger.debug(
+                        f"Truncated message from {len(text)} to {len(message_text)} characters"
+                    )
                 else:
-                    logger.info("Sent scripture response")
+                    message_text = FALLBACK_MESSAGE_TOO_LONG
+
+            await self._send_message_parts(room_id, [message_text], trimmed_reference)
+
+            if trimmed_reference:
+                logger.info(f"Sent scripture: {trimmed_reference}")
+            else:
+                logger.info("Sent scripture response")
 
         except APIKeyMissing as e:
             logger.warning(f"Failed to retrieve passage: {passage} ({e})")
