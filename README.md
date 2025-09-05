@@ -30,7 +30,13 @@ To enable Matrix end-to-end encryption (E2EE):
 pipx install 'matrix-biblebot[e2e]'
 ```
 
-_Alternatively, you can use pip if you prefer: `pip install matrix-biblebot` or `pip install 'matrix-biblebot[e2e]'`_
+Alternatively, you can use pip if you prefer:
+
+```bash
+pip install matrix-biblebot
+# or
+pip install 'matrix-biblebot[e2e]'
+```
 
 ### Install from Source
 
