@@ -32,17 +32,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Pathological splitting prevention (minimum chunk size enforcement)
   - Better validation and error messages for configuration issues
 - **Code Quality**: Significant code quality improvements
-  - Extracted magic numbers to named constants for better maintainability
-  - Improved test coverage with 27 comprehensive tests
-  - Better separation of concerns and cleaner code structure
-  - Enhanced documentation and inline comments
-
-### Technical Details
-
-- Context-aware reference trimming optimizes behavior for different message paths.
-- Intelligent fallback mechanisms ensure messages are always delivered.
-- Production-grade error handling prevents bot failures in edge cases.
-- Backward-compatible design (message splitting disabled by default).
+  - Extracted magic numbers to named constants for better maintainability.
+  - Improved test coverage with 27 comprehensive tests.
+  - Better separation of concerns and cleaner code structure.
+  - Enhanced documentation and inline comments.
+  - Context-aware reference trimming optimizes behavior for different message paths.
+  - Intelligent fallback mechanisms ensure messages are always delivered.
+  - Production-grade error handling prevents bot failures in edge cases.
+  - Backward-compatible design (message splitting disabled by default).
 
 ## [0.1.3] - Previous Release
 
