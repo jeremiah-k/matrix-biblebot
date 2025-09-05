@@ -958,6 +958,40 @@ class BibleBot:
             break_on_hyphens=True,
         )
 
+    def _trim_reference_for_suffix(self, reference):
+        """
+        Trim reference if needed to ensure suffix fits within max_message_length.
+
+        Parameters:
+            reference (str | None): Bible reference to potentially trim
+
+        Returns:
+            str | None: Trimmed reference that ensures suffix fits, or None if dropped
+        """
+        if not reference:
+            return None
+
+        # Calculate budget for reference (reserve space for " - ", MESSAGE_SUFFIX, and fallback text)
+        # Reserve space for "[Message too long]" (18 chars) as worst case
+        fallback_text_len = len("[Message too long]")
+        budget = (
+            self.max_message_length - len(MESSAGE_SUFFIX) - 3 - fallback_text_len
+        )  # " - " and fallback text
+        if budget <= 0:
+            # Not enough space even for minimal reference, drop it entirely
+            return None
+
+        # Check if full reference fits within budget
+        if len(reference) <= budget:
+            return reference
+
+        # Truncate reference with "..." if needed
+        if budget >= 3:  # Need space for "..."
+            keep = max(0, budget - 3)
+            return reference[:keep] + "..." if keep > 0 else None
+        else:
+            return None
+
     async def _send_message_parts(self, room_id, text_parts, reference):
         """
         Send multiple message parts, adding reference and suffix only to the last part.
@@ -1047,9 +1081,14 @@ class BibleBot:
                 and self.split_message_length > 0
                 and len(text) > self.split_message_length
             ):
+                # Trim reference if needed to ensure suffix fits within max_message_length
+                trimmed_reference = self._trim_reference_for_suffix(reference)
+
                 # Calculate effective chunk limits respecting max_message_length
                 plain_suffix = (
-                    f" - {reference}{MESSAGE_SUFFIX}" if reference else MESSAGE_SUFFIX
+                    f" - {trimmed_reference}{MESSAGE_SUFFIX}"
+                    if trimmed_reference
+                    else MESSAGE_SUFFIX
                 )
                 reserved_last = len(plain_suffix)
 
@@ -1074,30 +1113,29 @@ class BibleBot:
                     )
 
                 logger.info(f"Splitting message into {len(text_chunks)} parts")
-                await self._send_message_parts(room_id, text_chunks, reference)
+                await self._send_message_parts(room_id, text_chunks, trimmed_reference)
 
-                if reference:
-                    logger.info(f"Sent split scripture: {reference}")
+                if trimmed_reference:
+                    logger.info(f"Sent split scripture: {trimmed_reference}")
                 else:
                     logger.info("Sent split scripture response")
             else:
                 # Use existing single-message logic with truncation
+                # Trim reference if needed to ensure suffix fits within max_message_length
+                trimmed_reference = self._trim_reference_for_suffix(reference)
+
+                # Calculate suffix using trimmed reference
+                plain_suffix = (
+                    f" - {trimmed_reference}{MESSAGE_SUFFIX}"
+                    if trimmed_reference
+                    else MESSAGE_SUFFIX
+                )
+
                 message_text = text
+                test_body = f"{text}{plain_suffix}"
 
                 # Apply message length truncation if needed
-                # First, create a test message to check length
-                if reference:
-                    test_body = f"{text} - {reference}{MESSAGE_SUFFIX}"
-                else:
-                    test_body = f"{text}{MESSAGE_SUFFIX}"
-
                 if len(test_body) > self.max_message_length:
-                    # Calculate suffix and its length
-                    plain_suffix = (
-                        f" - {reference}{MESSAGE_SUFFIX}"
-                        if reference
-                        else MESSAGE_SUFFIX
-                    )
                     suffix_len = len(plain_suffix) + 3  # for "..."
 
                     # Determine truncated text
@@ -1111,10 +1149,12 @@ class BibleBot:
                         message_text = "[Message too long]"
 
                 # Send the single message (truncated or not)
-                await self._send_message_parts(room_id, [message_text], reference)
+                await self._send_message_parts(
+                    room_id, [message_text], trimmed_reference
+                )
 
-                if reference:
-                    logger.info(f"Sending scripture: {reference}")
+                if trimmed_reference:
+                    logger.info(f"Sending scripture: {trimmed_reference}")
                 else:
                     logger.info("Sending scripture response")
 

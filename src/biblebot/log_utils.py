@@ -77,19 +77,16 @@ def configure_component_debug_logging():
 
         if component_config:
             # Component debug is enabled - check if it's a boolean or a log level
-            if isinstance(component_config, bool):
-                # Legacy boolean format - default to DEBUG
-                log_level = logging.DEBUG
-            elif isinstance(component_config, str):
-                # String log level format (e.g., "warning", "error", "debug")
+            # Default to DEBUG for all cases
+            log_level = logging.DEBUG
+
+            if isinstance(component_config, str):
+                # If it's a string, try to parse it as a log level
                 try:
                     log_level = getattr(logging, component_config.upper())
                 except AttributeError:
-                    # Invalid log level, fall back to DEBUG
-                    log_level = logging.DEBUG
-            else:
-                # Invalid config, fall back to DEBUG
-                log_level = logging.DEBUG
+                    # Invalid log level string, the default DEBUG will be used
+                    pass
 
             for logger_name in loggers:
                 logging.getLogger(logger_name).setLevel(log_level)
