@@ -977,7 +977,10 @@ class BibleBot:
 
         # Calculate budget for reference (reserve space for " - ", MESSAGE_SUFFIX, and text)
         if reserve_fallback_space:
-            # Reserve space for fallback text in single-message path
+            # Reserve space for fallback text in single-message path. This is conservative,
+            # reserving space for the worst-case scenario where the message text itself is
+            # so long it must be replaced by FALLBACK_MESSAGE_TOO_LONG. This guarantees
+            # the final combined message (text + reference + suffix) will not exceed max_message_length.
             reserved_text_len = len(FALLBACK_MESSAGE_TOO_LONG)
         else:
             # Reserve space for at least 1 character of text in splitting path
@@ -985,7 +988,7 @@ class BibleBot:
 
         budget = (
             self.max_message_length - len(MESSAGE_SUFFIX) - 3 - reserved_text_len
-        )  # " - " and text space
+        )  # 3 is for " - "
         if budget <= 0:
             # Not enough space even for minimal reference, drop it entirely
             return None
@@ -1033,37 +1036,31 @@ class BibleBot:
                 "formatted_body": formatted_body,
             }
 
-            # Send with basic rate limit handling
-            try:
-                await self.client.room_send(
-                    room_id,
-                    "m.room.message",
-                    content,
-                    ignore_unverified_devices=True,
-                )
-            except nio.exceptions.MatrixRequestError as e:
-                # Enhanced handling for rate limiting with bounded retries
-                if getattr(e, "status", None) == 429:
-                    retry_ms = int(getattr(e, "retry_after_ms", 1000))
-                    for attempt in range(3):
-                        delay = retry_ms / 1000.0 * (2**attempt)
+            # Send with enhanced rate limit handling
+            retries = 3
+            while True:
+                try:
+                    await self.client.room_send(
+                        room_id,
+                        "m.room.message",
+                        content,
+                        ignore_unverified_devices=True,
+                    )
+                    break  # Success
+                except nio.exceptions.MatrixRequestError as e:
+                    # Enhanced handling for rate limiting with bounded retries
+                    if retries > 0 and getattr(e, "status", None) == 429:
+                        retry_ms = int(getattr(e, "retry_after_ms", 1000))
+                        delay = (
+                            retry_ms / 1000.0 * (2 ** (3 - retries))
+                        )  # Exponential backoff
                         logger.warning(
-                            f"Rate limited; backing off for {delay:.1f}s (attempt {attempt + 1}/3)"
+                            f"Rate limited; backing off for {delay:.1f}s (attempt {4 - retries}/3)"
                         )
                         await asyncio.sleep(delay)
-                        try:
-                            await self.client.room_send(
-                                room_id,
-                                "m.room.message",
-                                content,
-                                ignore_unverified_devices=True,
-                            )
-                            break
-                        except nio.exceptions.MatrixRequestError as e2:
-                            if getattr(e2, "status", None) != 429 or attempt == 2:
-                                raise
-                else:
-                    raise
+                        retries -= 1
+                    else:
+                        raise
 
     async def handle_scripture_command(self, room_id, passage, translation, event):
         """
