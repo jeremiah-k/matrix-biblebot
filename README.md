@@ -173,7 +173,7 @@ The bot supports End-to-End Encryption for secure communication in encrypted roo
 
 **E2EE Notes:**
 
-- E2EE requires additional system dependencies (libolm)
+- E2EE dependencies are automatically installed with `matrix-biblebot[e2e]`
 - The bot can work in both encrypted and unencrypted rooms simultaneously
 - E2EE store contains sensitive cryptographic keys - keep it secure
 - If you lose the E2EE store, the bot won't be able to decrypt old messages
