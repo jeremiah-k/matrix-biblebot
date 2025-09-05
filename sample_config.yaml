@@ -37,7 +37,7 @@ bot:
   # Split long messages into multiple messages of specified length
   # Set to 0 or null to disable message splitting (default behavior)
   # When enabled, messages longer than this will be split into multiple messages
-  split_message_length: 0 # Disabled by default
+  # split_message_length: 0 # Disabled by default
 
 # API Keys for Bible translations (optional)
 # These can also be set via environment variables
