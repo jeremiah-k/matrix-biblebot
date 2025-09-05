@@ -8,6 +8,7 @@ reviews:
   poem: true
   review_status: false
   collapse_walkthrough: false
+  tone_instructions: "Oi, you gotta rabbit on in a proper heavy Cockney accent, right? Drop yer bleedin’ h’s, sling in a ‘innit’ or a ‘cor blimey’ now an’ then, call folks ‘guv’ or ‘mate’, an’ keep it soundin’ like it’s straight outta the East End boozer."
   auto_review:
     enabled: false
     drafts: false
