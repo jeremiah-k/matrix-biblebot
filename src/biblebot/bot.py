@@ -913,13 +913,12 @@ class BibleBot:
 
     def _format_text_for_display(self, text: str) -> tuple[str, str]:
         """
-        Format text for both plain and HTML display based on configuration.
-
-        Parameters:
-            text (str): Raw text to format
-
+        Format a passage for plain-text and HTML-safe display according to the bot's poetry-preservation setting.
+        
+        When preserve_poetry_formatting is True, this preserves paragraph/newline structure (collapsing multiple blank lines to a single blank line), normalizes internal spaces, strips leading/trailing whitespace, and converts newlines to HTML <br /> tags for the HTML output. When False, all whitespace (including newlines) is collapsed to single spaces. Both returned strings are HTML-escaped where appropriate.
+        
         Returns:
-            tuple[str, str]: (formatted_plain_text, formatted_html_text)
+            tuple[str, str]: (plain_text, html_text) — the normalized plain-text string and an HTML-safe representation suitable for sending as formatted message content.
         """
         if self.preserve_poetry_formatting:
             # Poetry mode: preserve newlines, clean excess whitespace
@@ -963,14 +962,20 @@ class BibleBot:
 
     def _trim_reference_for_suffix(self, reference, reserve_fallback_space=False):
         """
-        Trim reference if needed to ensure suffix fits within max_message_length.
-
+        Ensure a Bible reference fits when appended with the message suffix by trimming or dropping it.
+        
+        If the full reference would cause the final message (text + " - " + reference + MESSAGE_SUFFIX) to exceed the bot's max_message_length, this returns a truncated reference that fits (using "..." when space allows) or None if the reference must be omitted.
+        
         Parameters:
-            reference (str | None): Bible reference to potentially trim
-            reserve_fallback_space (bool): Whether to reserve space for fallback text
-
+            reference (str | None): The canonical Bible reference to trim; None or empty returns None.
+            reserve_fallback_space (bool): When True, reserve space for the worst-case fallback message
+                (FALLBACK_MESSAGE_TOO_LONG) instead of assuming at least one character of text. Use this
+                when preparing a single-message response that may need to replace the passage text with a
+                fallback placeholder.
+        
         Returns:
-            str | None: Trimmed reference that ensures suffix fits, or None if dropped
+            str | None: A reference string guaranteed to fit with the suffix and reserved text, or None
+            when no acceptable reference can be included.
         """
         if not reference:
             return None
@@ -1006,12 +1011,18 @@ class BibleBot:
 
     async def _send_message_parts(self, room_id, text_parts, reference):
         """
-        Send multiple message parts, adding reference and suffix only to the last part.
-
+        Send a sequence of message parts to a room, appending the reference and message suffix only to the final part.
+        
+        Each part is formatted for both plain text and HTML (using _format_text_for_display). The last part will include " - {reference}{MESSAGE_SUFFIX}" when a reference is provided; otherwise it will include MESSAGE_SUFFIX alone. Messages are sent via the Matrix client with guarded handling for 429 (rate-limited) responses: on 429 the method will perform exponential backoff with jitter and retry up to three times before propagating the error.
+        
         Parameters:
-            room_id (str): Matrix room ID where messages should be sent
-            text_parts (list[str]): List of text parts to send
-            reference (str | None): Bible reference to add to the last message
+            room_id (str): Matrix room ID to send the messages to.
+            text_parts (list[str]): Ordered list of message body parts to send.
+            reference (str | None): Bible reference to append to the final message, or None to omit.
+        
+        Raises:
+            nio.exceptions.MatrixRequestError: If a send fails for reasons other than handled rate limiting.
+            Exception: Propagates other unexpected exceptions from the Matrix client.
         """
         for i, text_part in enumerate(text_parts):
             # Format the text part
@@ -1071,21 +1082,23 @@ class BibleBot:
 
     async def handle_scripture_command(self, room_id, passage, translation, event):
         """
-        Handle a detected Bible verse reference by fetching the passage text and posting it to the room.
-
-        Fetches the requested passage (using the configured/default translation and cache), normalizes whitespace,
-        reacts to the triggering event with a checkmark, and sends a formatted HTML/plain text message containing
-        the verse and its canonical reference. If the assembled message exceeds the bot's max_message_length it will
-        be truncated with an ellipsis; if it cannot be truncated to fit, a short "[Message too long]" placeholder is sent.
-
-        On failure to retrieve the passage (e.g., passage not found or missing API key) a user-facing error message is posted.
-        Unexpected exceptions are logged and the same generic error message is sent.
-
+        Handle a detected Bible reference: fetch the passage and post a formatted response to the given room.
+        
+        Fetches the requested passage (using the provided or default translation and cache), formats it for plain and HTML display, reacts to the triggering event with a checkmark, and sends the passage text plus its canonical reference to the room. If the passage exceeds configured length limits the bot will either:
+        - split the text into multiple parts (when split_message_length is enabled) and append the reference only to the final part, or
+        - truncate the text and append an ellipsis and reference, or
+        - fall back to a short placeholder when truncation cannot produce a valid message.
+        
+        On failures the function posts a user-facing error message for missing API keys, not-found passages, or network errors. Unexpected exceptions are logged and result in the same generic error message being posted.
+        
         Parameters:
             room_id (str): Matrix room ID where the response should be posted.
-            passage (str): Bible passage reference as detected (e.g., "John 3:16").
-            translation (str | None): Requested translation code (if None, the bot's default_translation is used).
-            event: The original Matrix event object that triggered the command; used to send a reaction.
+            passage (str): Detected Bible passage reference (e.g., "John 3:16").
+            translation (str | None): Translation code to use; if None the bot's default_translation is used.
+            event: The original Matrix event that triggered the command (used to send a reaction).
+        
+        Returns:
+            None
         """
         # Use configured default translation if none specified
         if translation is None:

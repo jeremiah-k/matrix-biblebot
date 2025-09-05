@@ -100,7 +100,14 @@ def configure_component_debug_logging():
 
 
 def get_log_dir():
-    """Get the default log directory."""
+    """
+    Return the default directory for application logs.
+    
+    This is the application's config directory with "logs" appended (i.e., get_config_dir() / "logs").
+    
+    Returns:
+        pathlib.Path: Path to the logs directory (may not exist).
+    """
     from .auth import get_config_dir
 
     return get_config_dir() / "logs"
@@ -233,10 +240,19 @@ def get_logger(name):
 
 def configure_logging(config_dict=None):
     """
-    Configure global logging settings.
-
+    Set the module-wide logging configuration and apply per-component debug settings.
+    
+    This stores the provided configuration dict in the module-level `config` variable (or clears it when None)
+    and then applies component-specific debug levels by calling `configure_component_debug_logging()`.
+    
     Parameters:
-        config_dict (dict): Configuration dictionary containing logging settings.
+        config_dict (dict | None): Global configuration mapping for logging. Expected keys are the same
+            logging keys consumed elsewhere in this module (for example: `"level"`, `"color_enabled"`,
+            `"log_to_file"`, `"filename"`, `"max_log_size"`, `"backup_count"`, and a `"debug"` mapping
+            for per-component overrides). If None, the global configuration is cleared.
+    
+    Returns:
+        None
     """
     global config
     config = config_dict
