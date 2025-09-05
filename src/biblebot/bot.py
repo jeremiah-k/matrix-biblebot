@@ -75,6 +75,9 @@ from .constants import (
 # Configure logging
 logger = logging.getLogger(LOGGER_NAME)
 
+# Constants
+FALLBACK_MESSAGE_TOO_LONG = "[Message too long]"
+
 
 # Custom exceptions for Bible text retrieval
 class PassageNotFound(Exception):
@@ -972,8 +975,8 @@ class BibleBot:
             return None
 
         # Calculate budget for reference (reserve space for " - ", MESSAGE_SUFFIX, and fallback text)
-        # Reserve space for "[Message too long]" (18 chars) as worst case
-        fallback_text_len = len("[Message too long]")
+        # Reserve space for fallback text as worst case
+        fallback_text_len = len(FALLBACK_MESSAGE_TOO_LONG)
         budget = (
             self.max_message_length - len(MESSAGE_SUFFIX) - 3 - fallback_text_len
         )  # " - " and fallback text
@@ -1149,10 +1152,9 @@ class BibleBot:
                 )
 
                 message_text = text
-                test_body = f"{text}{plain_suffix}"
 
                 # Apply message length truncation if needed
-                if len(test_body) > self.max_message_length:
+                if len(f"{text}{plain_suffix}") > self.max_message_length:
                     suffix_len = len(plain_suffix) + 3  # for "..."
 
                     # Determine truncated text
@@ -1163,7 +1165,7 @@ class BibleBot:
                             f"Truncated message from {len(text)} to {len(message_text)} characters"
                         )
                     else:
-                        message_text = "[Message too long]"
+                        message_text = FALLBACK_MESSAGE_TOO_LONG
 
                 # Send the single message (truncated or not)
                 await self._send_message_parts(

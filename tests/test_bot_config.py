@@ -335,10 +335,10 @@ class TestMessageSplitting:
                 assert len(content["body"]) <= 50  # max_message_length
 
             # At least one message should contain some form of reference (trimmed)
-            any(
+            assert any(
                 "..." in call[0][2]["body"] or long_reference[:10] in call[0][2]["body"]
                 for call in message_calls
-            )
+            ), "Expected a trimmed or partial reference in at least one message"
             # Note: reference might be completely dropped if too long, so this is optional
             # The important thing is that no message exceeds the length limit
 
