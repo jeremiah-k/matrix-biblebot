@@ -600,7 +600,7 @@ class TestBibleBot:
             # Mock successful join response
             mock_response = MagicMock()
             mock_response.room_id = TEST_ROOM_IDS[0]
-            mock_client.join.return_value = mock_response
+            mock_client.join = AsyncMock(return_value=mock_response)
 
             bot_instance = bot.BibleBot(sample_config)
             bot_instance.client = mock_client

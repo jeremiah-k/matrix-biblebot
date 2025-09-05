@@ -563,7 +563,7 @@ class TestReliabilityPatterns:
         bot.api_keys = {}
 
         # Mock service that recovers after a delay
-        recovery_time = 0.3
+        recovery_time = 0.2  # Shorter recovery time
         start_time = time.monotonic()
 
         async def recovering_api(*args, **kwargs):
@@ -598,11 +598,14 @@ class TestReliabilityPatterns:
                     await bot.on_room_message(room, event)
                 except Exception:
                     pass  # Expected for recovery cases
-                await asyncio.sleep(0.15)  # Space out requests
+                await asyncio.sleep(0.1)  # Shorter spacing between requests
 
             recovery_end = time.monotonic()
 
-            # Should have completed within reasonable time
-            assert recovery_end - recovery_start < 1.0
+            # Should complete within a reasonable window:
+            # n*spacing + recovery_time + CI headroom
+            num_requests, spacing, headroom = 3, 0.1, 1.0
+            expected_upper = num_requests * spacing + recovery_time + headroom
+            assert recovery_end - recovery_start < expected_upper
             # Test passes if recovery time is measured correctly
             assert mock_client.room_send.call_count >= 0

@@ -37,6 +37,26 @@ class MockDiscoveryInfoError(Exception):
     pass
 
 
+class MockLoginError(Exception):
+    def __init__(self, message="", status_code=None, errcode=None):
+        super().__init__(message)
+        self.message = message
+        self.status_code = status_code
+        self.errcode = errcode
+
+    def __repr__(self):
+        return f"MockLoginError(message={self.message!r}, status_code={self.status_code!r}, errcode={self.errcode!r})"
+
+
+class MockRoomResolveAliasError(Exception):
+    def __init__(self, message=""):
+        super().__init__(message)
+        self.message = message
+
+    def __repr__(self):
+        return f"MockRoomResolveAliasError(message={self.message!r})"
+
+
 class MockDiscoveryInfoResponse:
     def __init__(self, homeserver_url=None):
         self.homeserver_url = homeserver_url
@@ -56,6 +76,8 @@ nio_exceptions_mock.RemoteProtocolError = MockRemoteProtocolError
 nio_exceptions_mock.RemoteTransportError = MockRemoteTransportError
 nio_exceptions_mock.LocalProtocolError = MockLocalProtocolError
 nio_exceptions_mock.DiscoveryInfoError = MockDiscoveryInfoError
+nio_exceptions_mock.LoginError = MockLoginError
+nio_exceptions_mock.RoomResolveAliasError = MockRoomResolveAliasError
 
 sys.modules["nio"] = nio_mock
 sys.modules["nio.events"] = MagicMock()
@@ -87,6 +109,8 @@ nio_mock.SqliteStore = MagicMock()
 nio_mock.exceptions = nio_exceptions_mock
 nio_mock.DiscoveryInfoResponse = MockDiscoveryInfoResponse
 nio_mock.DiscoveryInfoError = MockDiscoveryInfoError
+nio_mock.LoginError = MockLoginError
+nio_mock.RoomResolveAliasError = MockRoomResolveAliasError
 nio_mock.LoginResponse = MockLoginResponse
 
 # Set up proper __spec__ for nio module to support importlib.util.find_spec
