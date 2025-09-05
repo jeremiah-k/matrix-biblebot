@@ -161,8 +161,8 @@ class TestMessageSplitting:
         text_with_long_word = "Short verylongwordthatexceedsthelimit more"
         chunks = bot._split_text_into_chunks(text_with_long_word, 10)
         assert len(chunks) > 1
-        # Should split the long word
-        assert any(len(chunk) <= 10 for chunk in chunks)
+        # Every produced chunk should obey the width constraint
+        assert all(len(chunk) <= 10 for chunk in chunks)
 
     @pytest.mark.asyncio
     async def test_handle_scripture_command_with_message_splitting(self):
@@ -341,6 +341,44 @@ class TestMessageSplitting:
             )
             # Note: reference might be completely dropped if too long, so this is optional
             # The important thing is that no message exceeds the length limit
+
+    @pytest.mark.asyncio
+    async def test_handle_scripture_command_suffix_exceeds_max(self):
+        """Reference + suffix longer than max_message_length should be trimmed or dropped."""
+        config = {
+            "matrix_room_ids": ["!test:example.org"],
+            "bot": {
+                "max_message_length": 20,
+                "split_message_length": 0,
+            },  # force single-message path
+        }
+        mock_client = AsyncMock()
+        bot = BibleBot(config, mock_client)
+        bot.api_keys = {}
+        bot._room_id_set = {"!test:example.org"}
+        mock_event = MagicMock()
+        mock_event.event_id = "$event:matrix.org"
+
+        long_text = "X" * 5  # short text
+        with patch(
+            "biblebot.bot.get_bible_text",
+            new=AsyncMock(
+                return_value=(long_text, "Very Long Reference That Won't Fit")
+            ),
+        ):
+            await bot.handle_scripture_command(
+                "!test:example.org", "John 3:16", "kjv", mock_event
+            )
+
+        # message is second call (after reaction)
+        msg = [
+            c
+            for c in mock_client.room_send.call_args_list
+            if c[0][1] == "m.room.message"
+        ][0]
+        body = msg[0][2]["body"]
+        assert len(body) <= 20
+        # Either a trimmed reference or suffix-only (implementation-dependent), but never overflow
 
 
 class TestCacheConfiguration:

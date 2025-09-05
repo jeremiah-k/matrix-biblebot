@@ -37,11 +37,14 @@ matrix:
 #
 #   # Split long messages into multiple messages of specified length
 #   # Set to 0 or null to disable message splitting (default behavior)
-#   # When enabled, messages longer than this will be split into multiple messages
+#   # When enabled, messages longer than this will be split into multiple messages.
+#   # Note: This value is capped to max_message_length. The final chunk reserves
+#   # space for the reference and suffix, so its text portion may be shorter.
 #   split_message_length: 0 # Disabled by default
 
 # API Keys for Bible translations (optional)
-# These can also be set via environment variables
+# These can also be set via environment variables.
+# Note: Using a .env file is deprecated; prefer config.yaml or real env vars.
 # api_keys:
 #   # Or set via env var: ESV_API_KEY
 #   # ESV API key from https://api.esv.org/

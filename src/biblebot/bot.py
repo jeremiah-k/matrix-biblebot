@@ -1023,12 +1023,29 @@ class BibleBot:
                 "format": "org.matrix.custom.html",
                 "formatted_body": formatted_body,
             }
-            await self.client.room_send(
-                room_id,
-                "m.room.message",
-                content,
-                ignore_unverified_devices=True,
-            )
+
+            # Send with basic rate limit handling
+            try:
+                await self.client.room_send(
+                    room_id,
+                    "m.room.message",
+                    content,
+                    ignore_unverified_devices=True,
+                )
+            except nio.exceptions.MatrixRequestError as e:
+                # Basic handling for rate limiting
+                if getattr(e, "status", None) == 429:
+                    retry_ms = int(getattr(e, "retry_after_ms", 1000))
+                    logger.warning(f"Rate limited; backing off for {retry_ms} ms")
+                    await asyncio.sleep(retry_ms / 1000.0)
+                    await self.client.room_send(
+                        room_id,
+                        "m.room.message",
+                        content,
+                        ignore_unverified_devices=True,
+                    )
+                else:
+                    raise
 
     async def handle_scripture_command(self, room_id, passage, translation, event):
         """
