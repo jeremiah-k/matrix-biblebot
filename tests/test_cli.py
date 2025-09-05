@@ -822,7 +822,6 @@ class TestCLIBotOperation:
         mock_generate.return_value = False
 
         # Should raise SystemExit(1) when config generation fails
-        import pytest
 
         with pytest.raises(SystemExit) as exc_info:
             cli.main()
@@ -1106,7 +1105,6 @@ class TestCLIErrorHandling:
         """Test handling of invalid configuration."""
         # This test is for the non-interactive main() function with --config argument
         # When config file doesn't exist, it should offer to generate and exit with 1 when user says no
-        import pytest
 
         with pytest.raises(SystemExit) as exc_info:
             cli.main()
@@ -1114,7 +1112,7 @@ class TestCLIErrorHandling:
 
     @patch("sys.argv", ["biblebot"])
     @patch("biblebot.cli.detect_configuration_state")
-    @patch("biblebot.bot.main", new_callable=AsyncMock)
+    @patch("biblebot.bot.main_with_config", new_callable=AsyncMock)
     def test_keyboard_interrupt_handling(self, mock_main, mock_detect):
         """Test handling of keyboard interrupt."""
         mock_detect.return_value = ("ready", "Ready", {"test": "config"})
