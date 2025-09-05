@@ -2,11 +2,19 @@
 
 A simple Matrix bot that fetches Bible verses using APIs from [bible-api.com](https://bible-api.com) & [esv.org](https://api.esv.org/)
 
+## Features
+
+- **Bible Verse Fetching**: Support for KJV and ESV translations with easy extensibility
+- **Message Splitting**: Configurable splitting of long passages into multiple messages
+- **End-to-End Encryption**: Optional E2EE support for encrypted Matrix rooms
+- **Smart Configuration**: Interactive setup with room alias support and validation
+- **Production Ready**: Rate limiting, error handling, and systemd service integration
+
 ## Supported Translations
 
-- King James Version (KJV)
-- English Standard Version (ESV) - requires an API key
-- Easily extensible to support additional translations
+- **King James Version (KJV)** - Default, no API key required
+- **English Standard Version (ESV)** - Requires free API key from [api.esv.org](https://api.esv.org/)
+- **Easily extensible** - Architecture supports adding additional translations
 
 ## Installation
 
@@ -104,6 +112,26 @@ matrix:
 2. **Optionally set API keys** in `config.yaml` (preferred). They can also be set as environment variables, which will take precedence over `config.yaml`.
 
 The bot will automatically resolve room aliases to room IDs at startup. You can use either room IDs (starting with !) or room aliases (starting with #) in your configuration.
+
+### Message Splitting Configuration
+
+For long Bible passages, you can enable message splitting to break them into multiple messages:
+
+```yaml
+bot:
+  # Split messages longer than this into multiple parts (disabled by default)
+  split_message_length: 1000 # Characters per message chunk
+  max_message_length: 2000 # Maximum total message length
+```
+
+**Message Splitting Features:**
+
+- **Smart Word Boundaries**: Messages are split at word boundaries, not mid-word
+- **Reference Preservation**: Bible reference and bot suffix only appear on the final message
+- **Automatic Fallback**: Falls back to single-message mode when splitting isn't practical
+- **Rate Limiting**: Built-in rate limiting handles multiple message sending gracefully
+
+**Example**: A long passage like Psalm 119 would be split into multiple messages, with only the last message showing "Psalm 119:1-176 🕊️✝️"
 
 ### Configuration File Locations
 
