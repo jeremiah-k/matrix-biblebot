@@ -961,12 +961,13 @@ class BibleBot:
             break_on_hyphens=True,
         )
 
-    def _trim_reference_for_suffix(self, reference):
+    def _trim_reference_for_suffix(self, reference, reserve_fallback_space=False):
         """
         Trim reference if needed to ensure suffix fits within max_message_length.
 
         Parameters:
             reference (str | None): Bible reference to potentially trim
+            reserve_fallback_space (bool): Whether to reserve space for fallback text
 
         Returns:
             str | None: Trimmed reference that ensures suffix fits, or None if dropped
@@ -974,12 +975,17 @@ class BibleBot:
         if not reference:
             return None
 
-        # Calculate budget for reference (reserve space for " - ", MESSAGE_SUFFIX, and fallback text)
-        # Reserve space for fallback text as worst case
-        fallback_text_len = len(FALLBACK_MESSAGE_TOO_LONG)
+        # Calculate budget for reference (reserve space for " - ", MESSAGE_SUFFIX, and text)
+        if reserve_fallback_space:
+            # Reserve space for fallback text in single-message path
+            reserved_text_len = len(FALLBACK_MESSAGE_TOO_LONG)
+        else:
+            # Reserve space for at least 1 character of text in splitting path
+            reserved_text_len = 1
+
         budget = (
-            self.max_message_length - len(MESSAGE_SUFFIX) - 3 - fallback_text_len
-        )  # " - " and fallback text
+            self.max_message_length - len(MESSAGE_SUFFIX) - 3 - reserved_text_len
+        )  # " - " and text space
         if budget <= 0:
             # Not enough space even for minimal reference, drop it entirely
             return None
@@ -1036,17 +1042,26 @@ class BibleBot:
                     ignore_unverified_devices=True,
                 )
             except nio.exceptions.MatrixRequestError as e:
-                # Basic handling for rate limiting
+                # Enhanced handling for rate limiting with bounded retries
                 if getattr(e, "status", None) == 429:
                     retry_ms = int(getattr(e, "retry_after_ms", 1000))
-                    logger.warning(f"Rate limited; backing off for {retry_ms} ms")
-                    await asyncio.sleep(retry_ms / 1000.0)
-                    await self.client.room_send(
-                        room_id,
-                        "m.room.message",
-                        content,
-                        ignore_unverified_devices=True,
-                    )
+                    for attempt in range(3):
+                        delay = retry_ms / 1000.0 * (2**attempt)
+                        logger.warning(
+                            f"Rate limited; backing off for {delay:.1f}s (attempt {attempt + 1}/3)"
+                        )
+                        await asyncio.sleep(delay)
+                        try:
+                            await self.client.room_send(
+                                room_id,
+                                "m.room.message",
+                                content,
+                                ignore_unverified_devices=True,
+                            )
+                            break
+                        except nio.exceptions.MatrixRequestError as e2:
+                            if getattr(e2, "status", None) != 429 or attempt == 2:
+                                raise
                 else:
                     raise
 
@@ -1085,7 +1100,7 @@ class BibleBot:
             )
 
             # Format text based on configuration
-            text, html_text = self._format_text_for_display(text)
+            text, _ = self._format_text_for_display(text)
 
             # Check if text is empty after cleaning
             if not text:
@@ -1102,7 +1117,9 @@ class BibleBot:
                 and len(text) > self.split_message_length
             ):
                 # Trim reference if needed to ensure suffix fits within max_message_length
-                trimmed_reference = self._trim_reference_for_suffix(reference)
+                trimmed_reference = self._trim_reference_for_suffix(
+                    reference, reserve_fallback_space=False
+                )
 
                 # Calculate effective chunk limits respecting max_message_length
                 plain_suffix = (
@@ -1142,7 +1159,9 @@ class BibleBot:
             else:
                 # Use existing single-message logic with truncation
                 # Trim reference if needed to ensure suffix fits within max_message_length
-                trimmed_reference = self._trim_reference_for_suffix(reference)
+                trimmed_reference = self._trim_reference_for_suffix(
+                    reference, reserve_fallback_space=True
+                )
 
                 # Calculate suffix using trimmed reference
                 plain_suffix = (

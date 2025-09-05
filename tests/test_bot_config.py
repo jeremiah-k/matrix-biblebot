@@ -371,11 +371,15 @@ class TestMessageSplitting:
             )
 
         # message is second call (after reaction)
-        msg = [
-            c
-            for c in mock_client.room_send.call_args_list
-            if c[0][1] == "m.room.message"
-        ][0]
+        msg = next(
+            (
+                c
+                for c in mock_client.room_send.call_args_list
+                if c[0][1] == "m.room.message"
+            ),
+            None,
+        )
+        assert msg is not None, "No m.room.message call captured"
         body = msg[0][2]["body"]
         assert len(body) <= 20
         # Either a trimmed reference or suffix-only (implementation-dependent), but never overflow

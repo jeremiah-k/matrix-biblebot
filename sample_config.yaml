@@ -13,12 +13,14 @@ matrix:
   room_ids:
     - "!your_room_id:your_homeserver_domain"
     - "!your_other_room_id:your_homeserver_domain"
+    # - "#your_room_alias:your_homeserver_domain"  # aliases are also supported
 
   # End-to-end encryption settings (optional)
   # Only enable if you understand the implications and have proper key management
   # e2ee:
   #   # Requires: pip install matrix-nio[e2e]
   #   # Manual access tokens do NOT support E2EE
+  #   # Requires: `biblebot auth login` (credentials.json); legacy MATRIX_ACCESS_TOKEN cannot be used with E2EE
   #   enabled: false
   #   # Optional: override store path (default: ~/.config/matrix-biblebot/e2ee-store)
   #   # Ensure this directory is private (0700) to protect keys.
@@ -30,6 +32,9 @@ matrix:
 #
 #   # Enable or disable caching of Bible passages
 #   cache_enabled: true
+#
+#   # Preserve poetry formatting (newlines kept; HTML uses <br />)
+#   preserve_poetry_formatting: false
 #
 #   # Maximum length for bot messages (characters)
 #   # Messages longer than this will be truncated with "..."
