@@ -8,23 +8,22 @@ matrix:
   room_ids:
     - "!your_room_id:your_homeserver_domain"
     - "!your_other_room_id:your_homeserver_domain"
-  # End-to-End Encryption (E2EE) Settings
+  # End-to-End Encryption (E2EE) Settings (optional)
   # Requires: pip install matrix-nio[e2e]
   # Note: E2EE requires proper authentication via 'biblebot auth login'
   # Manual access tokens do NOT support E2EE
-  e2ee:
-    enabled: false # Set to true to enable E2EE support
-    store_path: null # Optional: custom path for E2EE store (defaults to ~/.config/matrix-biblebot/e2ee-store)
-
-# Bot Behavior Settings
-bot:
-  default_translation: kjv # Default Bible translation (esv, kjv)
-  cache_enabled: true # Enable verse caching for better performance
-  max_message_length: 4000 # Maximum message length before truncation
-  preserve_poetry_formatting: false # Set to true to preserve line breaks in poetic texts (Psalms, etc.)
-  # split_message_length: 0 # Split long messages into multiple messages of this length (0 = disabled)
+  # e2ee:
+  #   enabled: false # Set to true to enable E2EE support
+  #   store_path: null # Optional: custom path for E2EE store (defaults to ~/.config/matrix-biblebot/e2ee-store)
+# Bot Behavior Settings (optional - defaults shown)
+# bot:
+#   default_translation: kjv # Default Bible translation (esv, kjv)
+#   cache_enabled: true # Enable verse caching for better performance
+#   max_message_length: 2000 # Maximum message length before truncation
+#   preserve_poetry_formatting: false # Set to true to preserve line breaks in poetic texts (Psalms, etc.)
+#   split_message_length: 0 # Split long messages into multiple messages of this length (0 = disabled)
 
 # API Keys (Optional)
 # You can also set these as environment variables: ESV_API_KEY
-api_keys:
-  esv: null # Optional: ESV API key for enhanced ESV support (get from https://api.esv.org/)
+# api_keys:
+#   esv: null # Optional: ESV API key for enhanced ESV support (get from https://api.esv.org/)

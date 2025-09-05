@@ -16,31 +16,30 @@ matrix:
 
   # End-to-end encryption settings (optional)
   # Only enable if you understand the implications and have proper key management
-  e2ee:
-    enabled: false
-    # Optional: override store path (default: ~/.config/matrix-biblebot/e2ee-store)
-    # Ensure this directory is private (0700) to protect keys.
-    store_path: null
-
-# Bot behavior configuration
-bot:
-  # Default Bible translation to use when none is specified
-  default_translation: kjv # Options: "kjv", "esv" (ESV requires api_keys.esv)
-
-  # Enable or disable caching of Bible passages
-  cache_enabled: true
-
-  # Maximum length for bot messages (characters)
-  # Messages longer than this will be truncated with "..."
-  max_message_length: 2000
-
-  # Split long messages into multiple messages of specified length
-  # Set to 0 or null to disable message splitting (default behavior)
-  # When enabled, messages longer than this will be split into multiple messages
-  # split_message_length: 0 # Disabled by default
+  # e2ee:
+  #   enabled: false
+  #   # Optional: override store path (default: ~/.config/matrix-biblebot/e2ee-store)
+  #   # Ensure this directory is private (0700) to protect keys.
+  #   store_path: null
+# Bot behavior configuration (optional - defaults shown)
+# bot:
+#   # Default Bible translation to use when none is specified
+#   default_translation: kjv # Options: "kjv", "esv" (ESV requires api_keys.esv)
+#
+#   # Enable or disable caching of Bible passages
+#   cache_enabled: true
+#
+#   # Maximum length for bot messages (characters)
+#   # Messages longer than this will be truncated with "..."
+#   max_message_length: 2000
+#
+#   # Split long messages into multiple messages of specified length
+#   # Set to 0 or null to disable message splitting (default behavior)
+#   # When enabled, messages longer than this will be split into multiple messages
+#   split_message_length: 0 # Disabled by default
 
 # API Keys for Bible translations (optional)
 # These can also be set via environment variables
-api_keys:
-  # ESV API key from https://api.esv.org/
-  esv: null
+# api_keys:
+#   # ESV API key from https://api.esv.org/
+#   esv: null
