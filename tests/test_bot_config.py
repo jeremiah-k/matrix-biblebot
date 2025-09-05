@@ -71,6 +71,152 @@ class TestBotConfiguration:
         assert bot.default_translation == "kjv"
         assert bot.cache_enabled is True
         assert bot.max_message_length == 2000
+        assert bot.split_message_length == 0
+
+    def test_bot_split_message_length_default(self):
+        """Test bot with default split_message_length setting."""
+        config = {"matrix_room_ids": ["!test:example.org"]}
+        bot = BibleBot(config)
+
+        assert bot.split_message_length == 0  # disabled by default
+
+    def test_bot_split_message_length_custom(self):
+        """Test bot with custom split_message_length setting."""
+        config = {
+            "matrix_room_ids": ["!test:example.org"],
+            "bot": {"split_message_length": 200},
+        }
+        bot = BibleBot(config)
+
+        assert bot.split_message_length == 200
+
+    def test_bot_split_message_length_invalid(self):
+        """Test bot with invalid split_message_length falls back to disabled."""
+        config = {
+            "matrix_room_ids": ["!test:example.org"],
+            "bot": {"split_message_length": -50},  # invalid
+        }
+
+        with patch("biblebot.bot.logger") as mock_logger:
+            bot = BibleBot(config)
+
+            assert bot.split_message_length == 0  # should disable splitting
+            mock_logger.warning.assert_called_once()
+
+
+class TestMessageSplitting:
+    """Test message splitting functionality."""
+
+    def test_split_text_into_chunks(self):
+        """Test the _split_text_into_chunks method."""
+        config = {"matrix_room_ids": ["!test:example.org"]}
+        bot = BibleBot(config)
+
+        # Test short text (no splitting needed)
+        short_text = "Short text"
+        chunks = bot._split_text_into_chunks(short_text, 50)
+        assert chunks == ["Short text"]
+
+        # Test text that needs splitting at word boundary
+        long_text = "This is a long text that needs to be split into multiple chunks"
+        chunks = bot._split_text_into_chunks(long_text, 20)
+        assert len(chunks) > 1
+        for chunk in chunks:
+            assert len(chunk) <= 20
+        # Verify all text is preserved
+        assert " ".join(chunks) == long_text
+
+        # Test text with very long word (edge case)
+        text_with_long_word = "Short verylongwordthatexceedsthelimit more"
+        chunks = bot._split_text_into_chunks(text_with_long_word, 10)
+        assert len(chunks) > 1
+        # Should split the long word
+        assert any(len(chunk) <= 10 for chunk in chunks)
+
+    @pytest.mark.asyncio
+    async def test_handle_scripture_command_with_message_splitting(self):
+        """Test handle_scripture_command with message splitting enabled."""
+        config = {
+            "matrix_room_ids": ["!test:example.org"],
+            "bot": {"split_message_length": 30},  # Short limit to force splitting
+        }
+
+        mock_client = AsyncMock()
+        bot = BibleBot(config, mock_client)
+        bot.api_keys = {}
+        bot._room_id_set = {"!test:example.org"}
+
+        mock_event = MagicMock()
+        mock_event.event_id = "$event:matrix.org"
+
+        long_text = "This is a very long Bible verse that should be split into multiple messages because it exceeds the split message length"
+        with patch(
+            "biblebot.bot.get_bible_text",
+            new=AsyncMock(return_value=(long_text, "John 3:16")),
+        ):
+            await bot.handle_scripture_command(
+                "!test:example.org", "John 3:16", "kjv", mock_event
+            )
+
+            # Should send reaction + multiple messages
+            assert mock_client.room_send.call_count > 2
+
+            # Get all message calls (skip the first reaction call)
+            calls = mock_client.room_send.call_args_list
+            message_calls = [call for call in calls if call[0][1] == "m.room.message"]
+
+            # Should have multiple message parts
+            assert len(message_calls) > 1
+
+            # Check that only the last message has the reference and suffix
+            for i, call in enumerate(message_calls):
+                content = call[0][2]
+                if i == len(message_calls) - 1:  # Last message
+                    assert "John 3:16" in content["body"]
+                    assert "🕊️✝️" in content["body"]
+                else:  # Earlier messages
+                    assert "John 3:16" not in content["body"]
+                    assert "🕊️✝️" not in content["body"]
+
+    @pytest.mark.asyncio
+    async def test_handle_scripture_command_splitting_disabled(self):
+        """Test that splitting is disabled when split_message_length is 0."""
+        config = {
+            "matrix_room_ids": ["!test:example.org"],
+            "bot": {
+                "split_message_length": 0,  # Disabled
+                "max_message_length": 50,  # Should use truncation instead
+            },
+        }
+
+        mock_client = AsyncMock()
+        bot = BibleBot(config, mock_client)
+        bot.api_keys = {}
+        bot._room_id_set = {"!test:example.org"}
+
+        mock_event = MagicMock()
+        mock_event.event_id = "$event:matrix.org"
+
+        long_text = "This is a very long Bible verse that should be truncated not split"
+        with patch(
+            "biblebot.bot.get_bible_text",
+            new=AsyncMock(return_value=(long_text, "John 3:16")),
+        ):
+            await bot.handle_scripture_command(
+                "!test:example.org", "John 3:16", "kjv", mock_event
+            )
+
+            # Should send reaction + single truncated message
+            assert mock_client.room_send.call_count == 2
+
+            # Get the message call
+            calls = mock_client.room_send.call_args_list
+            message_call = calls[1]  # Second call should be the message
+            content = message_call[0][2]
+
+            # Should be truncated with "..."
+            assert "..." in content["body"]
+            assert len(content["body"]) <= 50
 
 
 class TestCacheConfiguration:

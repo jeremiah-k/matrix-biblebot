@@ -504,7 +504,7 @@ class BibleBot:
 
         Parameters:
             config (dict): Configuration mapping (expected keys: "bot" with optional "default_translation",
-                "cache_enabled", and "max_message_length"; also contains matrix room IDs elsewhere in the config).
+                "cache_enabled", "max_message_length", and "split_message_length"; also contains matrix room IDs elsewhere in the config).
             client: Optional injected AsyncClient used for Matrix interactions (omitted from detailed param docs as a common service).
 
         Behavior:
@@ -514,7 +514,9 @@ class BibleBot:
                 - default_translation: translation to use when none is specified (defaults to DEFAULT_TRANSLATION).
                 - cache_enabled: whether passage caching is enabled (defaults to True).
                 - max_message_length: maximum allowed length for outgoing messages (defaults to 2000).
+                - split_message_length: length at which to split long messages into multiple messages (defaults to 0, disabled).
             - Validates max_message_length and resets it to 2000 if a non-positive value is supplied.
+            - Validates split_message_length and resets it to 0 if a negative value is supplied.
         """
         self.config = config
         self.client = client  # Injected AsyncClient instance
@@ -532,6 +534,7 @@ class BibleBot:
         self.preserve_poetry_formatting = bot_settings.get(
             CONFIG_PRESERVE_POETRY_FORMATTING, False
         )
+        self.split_message_length = bot_settings.get("split_message_length", 0)
 
         # Validate settings
         if self.max_message_length <= 0:
@@ -539,6 +542,12 @@ class BibleBot:
                 f"Invalid max_message_length: {self.max_message_length}, using default 2000"
             )
             self.max_message_length = 2000
+
+        if self.split_message_length is not None and self.split_message_length < 0:
+            logger.warning(
+                f"Invalid split_message_length: {self.split_message_length}, disabling message splitting"
+            )
+            self.split_message_length = 0
 
     def __repr__(self):
         """
@@ -909,6 +918,44 @@ class BibleBot:
 
         return formatted_text, html_text
 
+    def _split_text_into_chunks(self, text, max_length):
+        """
+        Split text into chunks of specified maximum length, preferring word boundaries.
+
+        Parameters:
+            text (str): The text to split
+            max_length (int): Maximum length for each chunk
+
+        Returns:
+            list[str]: List of text chunks
+        """
+        if len(text) <= max_length:
+            return [text]
+
+        chunks = []
+        remaining_text = text
+
+        while remaining_text:
+            if len(remaining_text) <= max_length:
+                chunks.append(remaining_text)
+                break
+
+            # Find the best split point within the max_length
+            chunk = remaining_text[:max_length]
+
+            # Try to split at word boundary
+            last_space = chunk.rfind(" ")
+            if last_space > 0:
+                # Split at the last space within the limit
+                chunks.append(chunk[:last_space])
+                remaining_text = remaining_text[last_space + 1 :]
+            else:
+                # No space found, split at max_length (edge case for very long words)
+                chunks.append(chunk)
+                remaining_text = remaining_text[max_length:]
+
+        return chunks
+
     async def handle_scripture_command(self, room_id, passage, translation, event):
         """
         Handle a detected Bible verse reference by fetching the passage text and posting it to the room.
@@ -954,59 +1001,115 @@ class BibleBot:
             # Send a checkmark reaction to the original message
             await self.send_reaction(room_id, event.event_id, REACTION_OK)
 
-            # Format the scripture message
-            if reference:
-                plain_body = f"{text} - {reference}{MESSAGE_SUFFIX}"
-                formatted_body = f"{html_text} - {html.escape(reference)}{html.escape(MESSAGE_SUFFIX)}"
-            else:
-                plain_body = f"{text}{MESSAGE_SUFFIX}"
-                formatted_body = f"{html_text}{html.escape(MESSAGE_SUFFIX)}"
+            # Check if message splitting is enabled and needed
+            if (
+                self.split_message_length
+                and self.split_message_length > 0
+                and len(text) > self.split_message_length
+            ):
 
-            # Apply message length truncation if needed
-            if len(plain_body) > self.max_message_length:
-                # Calculate suffix and its length
-                plain_suffix = (
-                    f" - {reference}{MESSAGE_SUFFIX}" if reference else MESSAGE_SUFFIX
+                # Split the text into chunks
+                text_chunks = self._split_text_into_chunks(
+                    text, self.split_message_length
                 )
-                formatted_suffix = (
-                    f" - {html.escape(reference)}{html.escape(MESSAGE_SUFFIX)}"
-                    if reference
-                    else html.escape(MESSAGE_SUFFIX)
-                )
-                suffix_len = len(plain_suffix) + 3  # for "..."
 
-                # Determine truncated text
-                max_text_len = self.max_message_length - suffix_len
-                if max_text_len > 0:
-                    truncated_text = text[:max_text_len] + "..."
-                    logger.debug(
-                        f"Truncated message from {len(text)} to {len(truncated_text)} characters"
+                logger.info(f"Splitting message into {len(text_chunks)} parts")
+
+                # Send each chunk as a separate message
+                for i, chunk in enumerate(text_chunks):
+                    # Format the chunk text
+                    chunk_text, chunk_html = self._format_text_for_display(chunk)
+
+                    # Only add reference and suffix to the last message
+                    if i == len(text_chunks) - 1:
+                        if reference:
+                            plain_body = f"{chunk_text} - {reference}{MESSAGE_SUFFIX}"
+                            formatted_body = f"{chunk_html} - {html.escape(reference)}{html.escape(MESSAGE_SUFFIX)}"
+                        else:
+                            plain_body = f"{chunk_text}{MESSAGE_SUFFIX}"
+                            formatted_body = (
+                                f"{chunk_html}{html.escape(MESSAGE_SUFFIX)}"
+                            )
+                    else:
+                        plain_body = chunk_text
+                        formatted_body = chunk_html
+
+                    content = {
+                        "msgtype": "m.text",
+                        "body": plain_body,
+                        "format": "org.matrix.custom.html",
+                        "formatted_body": formatted_body,
+                    }
+                    await self.client.room_send(
+                        room_id,
+                        "m.room.message",
+                        content,
+                        ignore_unverified_devices=True,
                     )
+
+                if reference:
+                    logger.info(f"Sent split scripture: {reference}")
                 else:
-                    truncated_text = "[Message too long]"
-
-                # Reconstruct the bodies with proper formatting
-                _, html_truncated_text = self._format_text_for_display(truncated_text)
-                plain_body = f"{truncated_text}{plain_suffix}"
-                formatted_body = f"{html_truncated_text}{formatted_suffix}"
-
-            if reference:
-                logger.info(f"Sending scripture: {reference}")
+                    logger.info("Sent split scripture response")
             else:
-                logger.info("Sending scripture response")
+                # Use existing single-message logic with truncation
+                # Format the scripture message
+                if reference:
+                    plain_body = f"{text} - {reference}{MESSAGE_SUFFIX}"
+                    formatted_body = f"{html_text} - {html.escape(reference)}{html.escape(MESSAGE_SUFFIX)}"
+                else:
+                    plain_body = f"{text}{MESSAGE_SUFFIX}"
+                    formatted_body = f"{html_text}{html.escape(MESSAGE_SUFFIX)}"
 
-            content = {
-                "msgtype": "m.text",
-                "body": plain_body,
-                "format": "org.matrix.custom.html",
-                "formatted_body": formatted_body,
-            }
-            await self.client.room_send(
-                room_id,
-                "m.room.message",
-                content,
-                ignore_unverified_devices=True,
-            )
+                # Apply message length truncation if needed
+                if len(plain_body) > self.max_message_length:
+                    # Calculate suffix and its length
+                    plain_suffix = (
+                        f" - {reference}{MESSAGE_SUFFIX}"
+                        if reference
+                        else MESSAGE_SUFFIX
+                    )
+                    formatted_suffix = (
+                        f" - {html.escape(reference)}{html.escape(MESSAGE_SUFFIX)}"
+                        if reference
+                        else html.escape(MESSAGE_SUFFIX)
+                    )
+                    suffix_len = len(plain_suffix) + 3  # for "..."
+
+                    # Determine truncated text
+                    max_text_len = self.max_message_length - suffix_len
+                    if max_text_len > 0:
+                        truncated_text = text[:max_text_len] + "..."
+                        logger.debug(
+                            f"Truncated message from {len(text)} to {len(truncated_text)} characters"
+                        )
+                    else:
+                        truncated_text = "[Message too long]"
+
+                    # Reconstruct the bodies with proper formatting
+                    _, html_truncated_text = self._format_text_for_display(
+                        truncated_text
+                    )
+                    plain_body = f"{truncated_text}{plain_suffix}"
+                    formatted_body = f"{html_truncated_text}{formatted_suffix}"
+
+                if reference:
+                    logger.info(f"Sending scripture: {reference}")
+                else:
+                    logger.info("Sending scripture response")
+
+                content = {
+                    "msgtype": "m.text",
+                    "body": plain_body,
+                    "format": "org.matrix.custom.html",
+                    "formatted_body": formatted_body,
+                }
+                await self.client.room_send(
+                    room_id,
+                    "m.room.message",
+                    content,
+                    ignore_unverified_devices=True,
+                )
 
         except APIKeyMissing as e:
             logger.warning(f"Failed to retrieve passage: {passage} ({e})")

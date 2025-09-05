@@ -22,6 +22,7 @@ bot:
   cache_enabled: true # Enable verse caching for better performance
   max_message_length: 4000 # Maximum message length before truncation
   preserve_poetry_formatting: false # Set to true to preserve line breaks in poetic texts (Psalms, etc.)
+  split_message_length: 0 # Split long messages into multiple messages of this length (0 = disabled)
 
 # API Keys (Optional)
 # You can also set these as environment variables: ESV_API_KEY
