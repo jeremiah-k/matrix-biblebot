@@ -125,7 +125,7 @@ bot:
 - **Smart Word Boundaries**: Messages are split at word boundaries, not mid-word
 - **Reference Preservation**: Bible reference and bot suffix only appear on the final message
 - **Automatic Fallback**: Falls back to single-message mode when splitting isn't practical
-- **Rate Limiting**: Built-in rate limiting handles multiple message sending gracefully
+- **Rate Limiting**: Built-in rate-limiting handles multiple-message sending gracefully
 
 **Example**: A long passage like Psalm 119 would be split into multiple messages, with only the last message showing "Psalm 119:1-176 🕊️✝️"
 
@@ -159,8 +159,8 @@ The bot supports End-to-End Encryption for secure communication in encrypted roo
      # E2EE Configuration
      e2ee:
        enabled: true # Enable E2EE support
-       store_path: null # Optional: custom path for E2EE store
-       trust_on_first_use: true # Trust new devices automatically
+       # store_path: /custom/path  # Optional; omit to use default (~/.config/matrix-biblebot/e2ee-store)
+       # trust_on_first_use: true  # Optional; convenience vs security—review your threat model
    ```
 
 3. **First-time E2EE setup**:

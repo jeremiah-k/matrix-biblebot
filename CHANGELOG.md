@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.2.0] - 2025-01-05
+## [0.2.0] - 2025-09-05
 
 ### Added
 
@@ -33,7 +33,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Better validation and error messages for configuration issues
 - **Code Quality**: Significant code quality improvements
   - Extracted magic numbers to named constants for better maintainability.
-  - Improved test coverage with 27 comprehensive tests.
+  - Improved test coverage with a broader, more comprehensive suite.
   - Better separation of concerns and cleaner code structure.
   - Enhanced documentation and inline comments.
   - Context-aware reference trimming optimizes behavior for different message paths.

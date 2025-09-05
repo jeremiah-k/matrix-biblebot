@@ -18,12 +18,13 @@ Or pip:
 pip install 'matrix-biblebot[e2e]'
 ```
 
-This installs the cryptographic dependencies needed for E2EE support. Prebuilt wheels are available for most Linux/macOS platforms; if a wheel isn't available for your platform, you may need `libolm` v3 (via `python-olm`) available at build time.
+This installs the cryptographic bits needed for E2EE. Prebuilt wheels cover most Linux/macOS setups.
+If your platform doesn't have wheels, you'll need `libolm` v3 headers/libs and a build toolchain to compile `python-olm` during install.
 
 **Requirements:**
 
 - Python 3.9+
-- Linux/macOS (Windows not supported for E2EE due to `python-olm` dependency; consider WSL 2 or Docker as a workaround)
+- Linux or macOS (Windows not supported for E2EE due to `python-olm`; consider WSL 2 or Docker)
 
 ## Enable in Config
 
