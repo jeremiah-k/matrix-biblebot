@@ -121,7 +121,7 @@ For long Bible passages, you can enable message splitting to break them into mul
 bot:
   # Split messages longer than this into multiple parts (disabled by default)
   split_message_length: 1000 # Characters per message chunk
-  max_message_length: 2000 # Maximum total message length
+  max_message_length: 2000 # Maximum length for any single message
 ```
 
 **Message Splitting Features:**
