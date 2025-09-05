@@ -18,20 +18,12 @@ Or pip:
 pip install 'matrix-biblebot[e2e]'
 ```
 
+This installs all cryptographic dependencies needed for E2EE support, including pre-compiled libraries. No additional system packages are required.
+
 **Requirements:**
 
 - Python 3.9+
 - Linux/macOS (Windows not supported for E2EE due to `python-olm` dependency)
-
-## Installation
-
-Install the E2EE dependencies:
-
-```bash
-pip install 'matrix-nio[e2e]'
-```
-
-This installs all cryptographic dependencies needed for E2EE support, including pre-compiled libraries. No additional system packages are required.
 
 ## Enable in Config
 
