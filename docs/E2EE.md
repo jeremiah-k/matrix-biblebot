@@ -18,8 +18,7 @@ Or pip:
 pip install 'matrix-biblebot[e2e]'
 ```
 
-This installs the cryptographic bits needed for E2EE. Prebuilt wheels cover most Linux/macOS setups.
-If your platform doesn't have wheels, you'll need `libolm` v3 headers/libs and a build toolchain to compile `python-olm` during install.
+This installs the cryptographic bits needed for E2EE. Prebuilt wheels cover common Linux/macOS setups; no extra system packages are typically required.
 
 **Requirements:**
 
