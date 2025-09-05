@@ -9,7 +9,8 @@ matrix:
 
   # List of Matrix room IDs or aliases where the bot should respond
   # Get room IDs from Element: Room Settings > Advanced > Internal room ID
-  # Both internal IDs ("!...") and room aliases ("#...") are supported
+  # Both internal IDs ("!...") and room aliases ("#...") are supported.
+  # Aliases are resolved to room IDs on startup; the bot stores canonical IDs thereafter.
   room_ids:
     - "!your_room_id:your_homeserver_domain"
     - "!your_other_room_id:your_homeserver_domain"
@@ -48,7 +49,7 @@ matrix:
 #   split_message_length: 0 # Disabled by default
 
 # API Keys for Bible translations (optional)
-# These can also be set via environment variables.
+# These can also be set via environment variables (e.g., ESV_API_KEY).
 # Note: Using a .env file is deprecated; prefer config.yaml or real env vars.
 # api_keys:
 #   # Or set via env var: ESV_API_KEY

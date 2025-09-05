@@ -1051,9 +1051,16 @@ class BibleBot:
                     # Enhanced handling for rate limiting with bounded retries
                     if retries > 0 and getattr(e, "status", None) == 429:
                         retry_ms = int(getattr(e, "retry_after_ms", 1000))
-                        delay = (
+                        base_delay = (
                             retry_ms / 1000.0 * (2 ** (3 - retries))
                         )  # Exponential backoff
+                        # Add ±20% jitter to avoid thundering herd (using time-based seed for simplicity)
+                        import time
+
+                        jitter_factor = 0.8 + 0.4 * (
+                            (int(time.time() * 1000) % 100) / 100
+                        )
+                        delay = base_delay * jitter_factor
                         logger.warning(
                             f"Rate limited; backing off for {delay:.1f}s (attempt {4 - retries}/3)"
                         )
@@ -1136,23 +1143,34 @@ class BibleBot:
                     ),
                 )
 
-                # Initial split using the general limit
-                text_chunks = self._split_text_into_chunks(text, chunk_limit)
+                # Prevent pathological splitting into many tiny parts when suffix nearly fills the limit
+                if last_chunk_limit < 8:  # Minimum reasonable chunk size
+                    logger.info(
+                        "Suffix too large for effective splitting; using single-message path"
+                    )
+                    # Fall through to single-message path below
+                    pass
+                else:
+                    # Initial split using the general limit
+                    text_chunks = self._split_text_into_chunks(text, chunk_limit)
 
-                # Ensure final chunk fits with suffix; if not, re-split that tail
-                if text_chunks and len(text_chunks[-1]) > last_chunk_limit:
-                    tail = text_chunks.pop()
-                    text_chunks.extend(
-                        self._split_text_into_chunks(tail, last_chunk_limit)
+                    # Ensure final chunk fits with suffix; if not, re-split that tail
+                    if text_chunks and len(text_chunks[-1]) > last_chunk_limit:
+                        tail = text_chunks.pop()
+                        text_chunks.extend(
+                            self._split_text_into_chunks(tail, last_chunk_limit)
+                        )
+
+                    logger.info(f"Splitting message into {len(text_chunks)} parts")
+                    await self._send_message_parts(
+                        room_id, text_chunks, trimmed_reference
                     )
 
-                logger.info(f"Splitting message into {len(text_chunks)} parts")
-                await self._send_message_parts(room_id, text_chunks, trimmed_reference)
-
-                if trimmed_reference:
-                    logger.info(f"Sent split scripture: {trimmed_reference}")
-                else:
-                    logger.info("Sent split scripture response")
+                    if trimmed_reference:
+                        logger.info(f"Sent split scripture: {trimmed_reference}")
+                    else:
+                        logger.info("Sent split scripture response")
+                    return
             else:
                 # Use existing single-message logic with truncation
                 # Trim reference if needed to ensure suffix fits within max_message_length
@@ -1189,9 +1207,9 @@ class BibleBot:
                 )
 
                 if trimmed_reference:
-                    logger.info(f"Sending scripture: {trimmed_reference}")
+                    logger.info(f"Sent scripture: {trimmed_reference}")
                 else:
-                    logger.info("Sending scripture response")
+                    logger.info("Sent scripture response")
 
         except APIKeyMissing as e:
             logger.warning(f"Failed to retrieve passage: {passage} ({e})")

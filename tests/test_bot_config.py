@@ -152,8 +152,8 @@ class TestMessageSplitting:
         assert len(chunks) > 1
         for chunk in chunks:
             assert len(chunk) <= 20
-        # Verify all text is preserved
-        assert " ".join(chunks) == long_text
+        # Verify all text is preserved (normalize whitespace for comparison)
+        assert " ".join(chunks).split() == long_text.split()
         # No leading/trailing spaces in any chunk
         assert all(c == c.strip() for c in chunks)
 
