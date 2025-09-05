@@ -7,9 +7,9 @@ matrix:
   # homeserver: https://matrix.example.org
   # user: "@bot:example.org"
 
-  # List of Matrix room IDs where the bot should respond
+  # List of Matrix room IDs or aliases where the bot should respond
   # Get room IDs from Element: Room Settings > Advanced > Internal room ID
-  # Use internal IDs beginning with "!" (not room aliases beginning with "#")
+  # Both internal IDs ("!...") and room aliases ("#...") are supported
   room_ids:
     - "!your_room_id:your_homeserver_domain"
     - "!your_other_room_id:your_homeserver_domain"

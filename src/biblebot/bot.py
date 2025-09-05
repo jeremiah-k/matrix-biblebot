@@ -1027,10 +1027,31 @@ class BibleBot:
                 and self.split_message_length > 0
                 and len(text) > self.split_message_length
             ):
-                # Split the text into chunks and send them
-                text_chunks = self._split_text_into_chunks(
-                    text, self.split_message_length
+                # Calculate effective chunk limits respecting max_message_length
+                plain_suffix = (
+                    f" - {reference}{MESSAGE_SUFFIX}" if reference else MESSAGE_SUFFIX
                 )
+                reserved_last = len(plain_suffix)
+
+                # Ensure chunks don't exceed max_message_length
+                chunk_limit = min(self.split_message_length, self.max_message_length)
+                last_chunk_limit = max(
+                    1,
+                    min(
+                        self.split_message_length,
+                        self.max_message_length - reserved_last,
+                    ),
+                )
+
+                # Initial split using the general limit
+                text_chunks = self._split_text_into_chunks(text, chunk_limit)
+
+                # Ensure final chunk fits with suffix; if not, re-split that tail
+                if text_chunks and len(text_chunks[-1]) > last_chunk_limit:
+                    tail = text_chunks.pop()
+                    text_chunks.extend(
+                        self._split_text_into_chunks(tail, last_chunk_limit)
+                    )
 
                 logger.info(f"Splitting message into {len(text_chunks)} parts")
                 await self._send_message_parts(room_id, text_chunks, reference)

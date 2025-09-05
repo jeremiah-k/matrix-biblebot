@@ -174,9 +174,13 @@ class TestMessageSplitting:
                 if i == len(message_calls) - 1:  # Last message
                     assert "John 3:16" in content["body"]
                     assert "🕊️✝️" in content["body"]
+                    # Last message must respect max_message_length
+                    assert len(content["body"]) <= bot.max_message_length
                 else:  # Earlier messages
                     assert "John 3:16" not in content["body"]
                     assert "🕊️✝️" not in content["body"]
+                    # Non-final chunks must respect split_message_length
+                    assert len(content["body"]) <= bot.split_message_length
 
     @pytest.mark.asyncio
     async def test_handle_scripture_command_splitting_disabled(self):
@@ -217,6 +221,46 @@ class TestMessageSplitting:
             # Should be truncated with "..."
             assert "..." in content["body"]
             assert len(content["body"]) <= 50
+
+    @pytest.mark.asyncio
+    async def test_handle_scripture_command_splitting_respects_max_length(self):
+        """Test that splitting respects max_message_length even when split_message_length is larger."""
+        config = {
+            "matrix_room_ids": ["!test:example.org"],
+            "bot": {
+                "split_message_length": 100,  # Larger than max_message_length
+                "max_message_length": 50,  # Smaller limit
+            },
+        }
+
+        mock_client = AsyncMock()
+        bot = BibleBot(config, mock_client)
+        bot.api_keys = {}
+        bot._room_id_set = {"!test:example.org"}
+
+        mock_event = MagicMock()
+        mock_event.event_id = "$event:matrix.org"
+
+        long_text = "This is a very long Bible verse that should be split but also respect the maximum message length limit"
+        with patch(
+            "biblebot.bot.get_bible_text",
+            new=AsyncMock(return_value=(long_text, "John 3:16")),
+        ):
+            await bot.handle_scripture_command(
+                "!test:example.org", "John 3:16", "kjv", mock_event
+            )
+
+            # Get all message calls
+            calls = mock_client.room_send.call_args_list
+            message_calls = [call for call in calls if call[0][1] == "m.room.message"]
+
+            # Should have multiple message parts
+            assert len(message_calls) > 1
+
+            # All messages must respect max_message_length
+            for call in message_calls:
+                content = call[0][2]
+                assert len(content["body"]) <= 50  # max_message_length
 
 
 class TestCacheConfiguration:
