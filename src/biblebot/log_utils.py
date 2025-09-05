@@ -32,10 +32,74 @@ config = None
 # Global variable to store the log file path
 log_file_path = None
 
+# Track if component debug logging has been configured
+_component_debug_configured = False
+
+# Component logger mapping for data-driven configuration
+_COMPONENT_LOGGERS = {
+    "matrix_nio": [
+        "nio",
+        "nio.client",
+        "nio.http",
+        "nio.crypto",
+        "nio.responses",
+        "nio.rooms",
+    ],
+}
+
 # Default log settings
 DEFAULT_LOG_SIZE_MB = 10
 DEFAULT_LOG_BACKUP_COUNT = 5
 LOG_SIZE_BYTES_MULTIPLIER = 1024 * 1024
+
+
+def configure_component_debug_logging():
+    """
+    Configure log levels for external component loggers based on config["logging"]["debug"].
+
+    Reads per-component entries under `config["logging"]["debug"]` and applies one of:
+    - falsy or missing: silence the component by setting its loggers to CRITICAL+1
+    - boolean True: enable DEBUG for the component's loggers
+    - string: interpret as a logging level name (case-insensitive); invalid names fall back to DEBUG
+
+    This function mutates the levels of loggers listed in _COMPONENT_LOGGERS and runs only once per process; no-op if called again or if global `config` is None.
+    """
+    global _component_debug_configured, config
+
+    # Only configure once
+    if _component_debug_configured or config is None:
+        return
+
+    debug_config = config.get("logging", {}).get("debug", {})
+
+    for component, loggers in _COMPONENT_LOGGERS.items():
+        component_config = debug_config.get(component)
+
+        if component_config:
+            # Component debug is enabled - check if it's a boolean or a log level
+            if isinstance(component_config, bool):
+                # Legacy boolean format - default to DEBUG
+                log_level = logging.DEBUG
+            elif isinstance(component_config, str):
+                # String log level format (e.g., "warning", "error", "debug")
+                try:
+                    log_level = getattr(logging, component_config.upper())
+                except AttributeError:
+                    # Invalid log level, fall back to DEBUG
+                    log_level = logging.DEBUG
+            else:
+                # Invalid config, fall back to DEBUG
+                log_level = logging.DEBUG
+
+            for logger_name in loggers:
+                logging.getLogger(logger_name).setLevel(log_level)
+        else:
+            # Component debug is disabled - completely suppress external library logging
+            # Use a level higher than CRITICAL to effectively disable all messages
+            for logger_name in loggers:
+                logging.getLogger(logger_name).setLevel(logging.CRITICAL + 1)
+
+    _component_debug_configured = True
 
 
 def get_log_dir():
@@ -180,12 +244,5 @@ def configure_logging(config_dict=None):
     global config
     config = config_dict
 
-    # Configure Matrix nio library logging to be less verbose
-    # Reduce timeout/sync messages that clutter logs
-    nio_logger = logging.getLogger("nio")
-    nio_logger.setLevel(logging.WARNING)  # Only show warnings and errors
-
-    # Also configure specific nio loggers that are particularly verbose
-    logging.getLogger("nio.client").setLevel(logging.WARNING)
-    logging.getLogger("nio.responses").setLevel(logging.WARNING)
-    logging.getLogger("nio.http").setLevel(logging.WARNING)
+    # Configure component debug logging (nio, etc.)
+    configure_component_debug_logging()
