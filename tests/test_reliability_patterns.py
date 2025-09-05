@@ -603,9 +603,9 @@ class TestReliabilityPatterns:
             recovery_end = time.monotonic()
 
             # Should complete within a reasonable window:
-            # (n-1)*spacing + recovery_time + CI headroom
-            n, spacing, headroom = 3, 0.1, 1.0
-            expected_upper = (n - 1) * spacing + recovery_time + headroom
+            # n*spacing + recovery_time + CI headroom
+            num_requests, spacing, headroom = 3, 0.1, 1.0
+            expected_upper = num_requests * spacing + recovery_time + headroom
             assert recovery_end - recovery_start < expected_upper
             # Test passes if recovery time is measured correctly
             assert mock_client.room_send.call_count >= 0
