@@ -18,7 +18,7 @@ A simple Matrix bot that fetches Bible verses using APIs from [bible-api.com](ht
 
 ## Installation
 
-### Option 1: Install with [pipx](https://pypa.github.io/pipx/) (Recommended)
+### Install with [pipx](https://pypa.github.io/pipx/) (Recommended)
 
 ```bash
 pipx install matrix-biblebot
@@ -30,15 +30,9 @@ To enable Matrix end-to-end encryption (E2EE):
 pipx install 'matrix-biblebot[e2e]'
 ```
 
-### Option 2: Install with pip
+_Alternatively, you can use pip if you prefer: `pip install matrix-biblebot` or `pip install 'matrix-biblebot[e2e]'`_
 
-```bash
-pip install matrix-biblebot
-# or with E2EE support
-pip install 'matrix-biblebot[e2e]'
-```
-
-### Option 3: Install from Source
+### Install from Source
 
 ```bash
 git clone https://github.com/jeremiah-k/matrix-biblebot.git
@@ -46,6 +40,8 @@ cd matrix-biblebot
 pip install .  # For normal use
 # OR
 pip install -e .  # For development
+# With E2EE support from source
+pip install '.[e2e]'
 ```
 
 ## Configuration
@@ -159,11 +155,12 @@ The bot supports End-to-End Encryption for secure communication in encrypted roo
 2. **Enable E2EE in your config.yaml**:
 
    ```yaml
-   # E2EE Configuration
-   e2ee:
-     enabled: true # Enable E2EE support
-     store_path: null # Optional: custom path for E2EE store
-     trust_on_first_use: true # Trust new devices automatically
+   matrix:
+     # E2EE Configuration
+     e2ee:
+       enabled: true # Enable E2EE support
+       store_path: null # Optional: custom path for E2EE store
+       trust_on_first_use: true # Trust new devices automatically
    ```
 
 3. **First-time E2EE setup**:
