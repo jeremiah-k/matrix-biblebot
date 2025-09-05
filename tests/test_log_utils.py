@@ -38,11 +38,13 @@ class TestLogDirectory:
 
     def test_get_log_dir(self):
         """Test getting log directory."""
+        from pathlib import Path
+
         log_dir = log_utils.get_log_dir()
-        assert isinstance(log_dir, type(log_dir))  # Should be a Path-like object
+        assert isinstance(log_dir, Path)
         assert str(log_dir).endswith("logs")
 
-    @patch("biblebot.log_utils.get_config_dir")
+    @patch("biblebot.auth.get_config_dir")
     def test_get_log_dir_with_mock(self, mock_get_config_dir):
         """Test get_log_dir with mocked config dir."""
         from pathlib import Path
@@ -80,16 +82,11 @@ class TestLoggerErrorHandling:
 
     @patch("logging.getLogger", side_effect=Exception("Logger error"))
     def test_get_logger_error_handling(self, mock_get_logger):
-        """Test get_logger handles errors gracefully."""
-        # Should not raise exception, might return None or fallback
-        try:
-            result = log_utils.get_logger("test")
-            # If it returns something, it should be a logger-like object
-            if result is not None:
-                assert hasattr(result, "info") or hasattr(result, "debug")
-        except Exception:
-            # If it raises, that's also acceptable error handling
-            pass
+        """Test get_logger propagates exceptions from logging.getLogger."""
+        import pytest
+
+        with pytest.raises(Exception, match="Logger error"):
+            log_utils.get_logger("test")
 
 
 class TestLogUtilsIntegration:
