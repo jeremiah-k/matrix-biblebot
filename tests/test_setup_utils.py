@@ -1,6 +1,7 @@
 """Tests for the setup_utils module."""
 
 import os
+import subprocess
 from pathlib import Path
 from unittest.mock import patch
 
@@ -230,6 +231,28 @@ class TestServiceTemplateHandling:
         assert "[Unit]" in content
         assert "Description=Matrix Bible Bot Service" in content
 
+    @patch("biblebot.setup_utils.copy_service_template_to")
+    @patch("builtins.open", side_effect=OSError("File read error"))
+    @patch("importlib.resources.files")
+    def test_get_template_service_content_fallback_to_default(
+        self, mock_files, _mock_open, mock_copy
+    ):
+        """Test fallback to default template when all sources fail."""
+        # Mock copy_service_template_to to raise an error
+        mock_copy.side_effect = OSError("Template copy failed")
+
+        # Mock importlib.resources to fail
+        mock_files.side_effect = ImportError("Resources not available")
+
+        # Mock get_template_service_path to return None
+        with patch("biblebot.setup_utils.get_template_service_path", return_value=None):
+            content = setup_utils.get_template_service_content()
+
+        assert isinstance(content, str)
+        assert "[Unit]" in content
+        assert "Description={SERVICE_DESCRIPTION}" in content
+        assert "ExecStart=%h/.local/bin/biblebot" in content
+
     @patch("subprocess.run")
     def test_check_loginctl_available_true(self, mock_run):
         """Test loginctl availability check - available."""
@@ -280,3 +303,48 @@ class TestServiceTemplateHandling:
         needs_update, reason = setup_utils.service_needs_update()
         assert needs_update is True
         assert "does not match" in reason
+
+
+class TestServiceFileCreation:
+    """Test service file creation functionality."""
+
+    @patch("biblebot.setup_utils.get_executable_path", return_value=None)
+    def test_create_service_file_no_executable(self, _mock_get_exec):
+        """Test create_service_file when no executable path is found."""
+        result = setup_utils.create_service_file()
+        assert result is False
+
+    @patch("biblebot.setup_utils.get_executable_path", return_value="/usr/bin/biblebot")
+    @patch("biblebot.setup_utils.get_template_service_content", return_value=None)
+    def test_create_service_file_no_template(self, _mock_template, _mock_get_exec):
+        """Test create_service_file when no template is found."""
+        result = setup_utils.create_service_file()
+        assert result is False
+
+    @patch("biblebot.setup_utils.get_executable_path", return_value="/usr/bin/biblebot")
+    @patch("biblebot.setup_utils.get_template_service_content")
+    @patch("pathlib.Path.write_text", side_effect=OSError("Write failed"))
+    def test_create_service_file_write_error(
+        self, _mock_write, mock_template, _mock_get_exec
+    ):
+        """Test create_service_file when writing fails."""
+        mock_template.return_value = "[Unit]\nDescription=Test\n[Service]\nExecStart=test\n[Install]\nWantedBy=default.target"
+
+        result = setup_utils.create_service_file()
+        assert result is False
+
+
+class TestSystemdOperations:
+    """Test systemd daemon operations."""
+
+    @patch("subprocess.run", side_effect=subprocess.CalledProcessError(1, "systemctl"))
+    def test_reload_daemon_failure(self, _mock_run):
+        """Test reload_daemon when systemctl fails."""
+        result = setup_utils.reload_daemon()
+        assert result is False
+
+    @patch("subprocess.run", side_effect=OSError("Command not found"))
+    def test_reload_daemon_os_error(self, _mock_run):
+        """Test reload_daemon when OSError occurs."""
+        result = setup_utils.reload_daemon()
+        assert result is False

@@ -1,6 +1,8 @@
 # Matrix End-to-End Encryption (E2EE)
 
-BibleBot supports optional Matrix End-to-End Encryption so it can participate in encrypted rooms. E2EE is disabled by default and can be enabled with an extra dependency and a small config change.
+BibleBot supports optional Matrix End-to-End Encryption so it can participate in encrypted rooms. E2EE is disabled by default and can be enabled with an extra dependency and configuration change.
+
+**Important**: E2EE requires proper authentication using `biblebot auth login` to bootstrap device keys. Manual access tokens (MATRIX_ACCESS_TOKEN) are not supported by BibleBot for enabling E2EE sessions.
 
 ## Install with E2EE
 
@@ -16,10 +18,12 @@ Or pip:
 pip install 'matrix-biblebot[e2e]'
 ```
 
-Requirements:
+This installs the cryptographic bits needed for E2EE. Prebuilt wheels cover common Linux/macOS setups; no extra system packages are typically required.
+
+**Requirements:**
 
 - Python 3.9+
-- Linux/macOS (Windows not supported for E2EE due to `python-olm`)
+- Linux or macOS (Windows not supported for E2EE due to `python-olm`; consider WSL 2 or Docker)
 
 ## Enable in Config
 
@@ -62,7 +66,12 @@ biblebot auth logout
 
 ## Windows Limitation
 
-E2EE is not available on Windows due to `python-olm` constraints. You can still use `--auth-login` and run without E2EE.
+E2EE is not available on Windows due to `python-olm` dependency constraints. Windows users can still:
+
+- Use `biblebot auth login` for secure authentication
+- Run the bot in unencrypted rooms
+- Use all other bot features except E2EE
+- If you need E2EE on Windows, run BibleBot inside WSL 2 or Docker
 
 ## Security Notes
 

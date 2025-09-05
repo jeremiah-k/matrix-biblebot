@@ -2,15 +2,23 @@
 
 A simple Matrix bot that fetches Bible verses using APIs from [bible-api.com](https://bible-api.com) & [esv.org](https://api.esv.org/)
 
+## Features
+
+- **Bible Verse Fetching**: Support for KJV and ESV translations with easy extensibility
+- **Message Splitting**: Configurable splitting of long passages into multiple messages
+- **End-to-End Encryption**: Optional E2EE support for encrypted Matrix rooms
+- **Smart Configuration**: Interactive setup with room alias support and validation
+- **Production Ready**: Rate limiting, error handling, and systemd service integration
+
 ## Supported Translations
 
-- King James Version (KJV)
-- English Standard Version (ESV) - requires an API key
-- Easily extensible to support additional translations
+- **King James Version (KJV)** - Default, no API key required
+- **English Standard Version (ESV)** - Requires free API key from [api.esv.org](https://api.esv.org/)
+- **Easily extensible** - Architecture supports adding additional translations
 
 ## Installation
 
-### Option 1: Install with [pipx](https://pypa.github.io/pipx/) (Recommended)
+### Install with [pipx](https://pypa.github.io/pipx/) (Recommended)
 
 ```bash
 pipx install matrix-biblebot
@@ -22,15 +30,15 @@ To enable Matrix end-to-end encryption (E2EE):
 pipx install 'matrix-biblebot[e2e]'
 ```
 
-### Option 2: Install with pip
+Alternatively, you can use pip if you prefer:
 
 ```bash
 pip install matrix-biblebot
-# or with E2EE support
+# or
 pip install 'matrix-biblebot[e2e]'
 ```
 
-### Option 3: Install from Source
+### Install from Source
 
 ```bash
 git clone https://github.com/jeremiah-k/matrix-biblebot.git
@@ -38,6 +46,8 @@ cd matrix-biblebot
 pip install .  # For normal use
 # OR
 pip install -e .  # For development
+# With E2EE support from source
+pip install '.[e2e]'
 ```
 
 ## Configuration
@@ -105,6 +115,26 @@ matrix:
 
 The bot will automatically resolve room aliases to room IDs at startup. You can use either room IDs (starting with !) or room aliases (starting with #) in your configuration.
 
+### Message Splitting Configuration
+
+For long Bible passages, you can enable message splitting to break them into multiple messages:
+
+```yaml
+bot:
+  # Split messages longer than this into multiple parts (disabled by default)
+  split_message_length: 1000 # Characters per message chunk
+  max_message_length: 2000 # Maximum length for a single message part
+```
+
+**Message Splitting Features:**
+
+- **Smart Word Boundaries**: Messages are split at word boundaries, not mid-word
+- **Reference Preservation**: Bible reference and bot suffix only appear on the final message
+- **Automatic Fallback**: Falls back to single-message mode when splitting isn't practical
+- **Rate Limiting**: Built-in rate-limiting handles multiple-message sending gracefully
+
+**Example**: A long passage like Psalm 119 would be split into multiple messages, with only the last message showing "Psalm 119:1-176 🕊️✝️"
+
 ### Configuration File Locations
 
 By default, the bot looks for:
@@ -131,11 +161,12 @@ The bot supports End-to-End Encryption for secure communication in encrypted roo
 2. **Enable E2EE in your config.yaml**:
 
    ```yaml
-   # E2EE Configuration
-   e2ee:
-     enabled: true # Enable E2EE support
-     store_path: null # Optional: custom path for E2EE store
-     trust_on_first_use: true # Trust new devices automatically
+   matrix:
+     # E2EE Configuration
+     e2ee:
+       enabled: true # Enable E2EE support
+       # store_path: /custom/path  # Optional; omit to use default (~/.config/matrix-biblebot/e2ee-store)
+       # trust_on_first_use: true  # Optional; convenience vs security—review your threat model
    ```
 
 3. **First-time E2EE setup**:
@@ -145,7 +176,7 @@ The bot supports End-to-End Encryption for secure communication in encrypted roo
 
 **E2EE Notes:**
 
-- E2EE requires additional system dependencies (libolm)
+- E2EE dependencies are automatically installed with `matrix-biblebot[e2e]`
 - The bot can work in both encrypted and unencrypted rooms simultaneously
 - E2EE store contains sensitive cryptographic keys - keep it secure
 - If you lose the E2EE store, the bot won't be able to decrypt old messages
@@ -175,11 +206,11 @@ biblebot --config /path/to/config.yaml
 
 # Run with debug logging
 biblebot --log-level debug
+```
 
 ### Encrypted Rooms (Optional)
 
 To use encrypted Matrix rooms, install with the `e2e` extra and enable E2EE in config. See docs/E2EE.md for a full guide.
-```
 
 ### Running as a Service (Recommended)
 
