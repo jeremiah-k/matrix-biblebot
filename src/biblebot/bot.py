@@ -682,9 +682,26 @@ class BibleBot:
         try:
             await self.client.sync(timeout=SYNC_TIMEOUT_MS, full_state=True)
             logger.info("Initial sync complete.")
-        except Exception:
-            logger.exception("Error during initial sync")
-            # We'll log and continue, as sync_forever might recover.
+        except Exception as e:
+            # Check if this is the one_time_key_counts validation error
+            error_msg = str(e)
+            if "one_time_key_counts" in error_msg and "required property" in error_msg:
+                logger.warning(
+                    "⚠️  Matrix server did not provide device_one_time_keys_count in sync response. "
+                    "This is normal for some servers when no one-time keys exist. "
+                    "Continuing without E2EE validation."
+                )
+                # Try sync again with a timeout to see if it recovers
+                try:
+                    await asyncio.sleep(1)  # Brief pause
+                    await self.client.sync(timeout=SYNC_TIMEOUT_MS, full_state=False)
+                    logger.info("Recovery sync complete.")
+                except Exception as recovery_error:
+                    logger.warning(f"Recovery sync also failed: {recovery_error}")
+                    logger.info("Continuing with bot startup despite sync issues...")
+            else:
+                logger.exception("Error during initial sync")
+                # We'll log and continue, as sync_forever might recover.
 
         logger.info("Starting bot event processing loop...")
         await self.client.sync_forever(timeout=SYNC_TIMEOUT_MS)  # Sync every 30 seconds
