@@ -8,6 +8,7 @@ import textwrap
 import time
 from collections import OrderedDict
 from time import monotonic
+from typing import Optional
 from urllib.parse import quote
 
 import aiohttp
@@ -114,33 +115,18 @@ def _clean_book_name(book_str: str) -> str:
     return " ".join(book_str.lower().replace(CHAR_DOT, "").strip().split())
 
 
-def normalize_book_name(book_str: str) -> str:
+def normalize_book_name(book_str: str) -> Optional[str]:
     """
     Normalize a Bible book name or abbreviation to its canonical full name.
 
-    The input is cleaned and normalized (lowercased, periods removed, whitespace normalized)
-    before lookup in the BOOK_ABBREVIATIONS mapping. If a normalized entry exists in that
-    mapping, the mapped full book name is returned; otherwise the cleaned input is returned
-    in title case.
+    If the book is not a valid Bible book, returns None. Otherwise, returns
+    the canonical full name.
     """
-    # Clean the input with robust whitespace normalization
     clean_str = _clean_book_name(book_str)
-    return BOOK_ABBREVIATIONS.get(clean_str, clean_str.title())
-
-
-def is_valid_bible_book(book_str: str) -> bool:
-    """
-    Check if a book name or abbreviation is a valid Bible book.
-
-    Returns True if the book name is found in BOOK_ABBREVIATIONS (as key or value),
-    False otherwise. This helps prevent false positives in scripture detection.
-    Uses O(1) lookups for optimal performance.
-    """
-    # Clean the input with consistent normalization
-    clean_str = _clean_book_name(book_str)
-
     # Check if it's a known abbreviation (key) or a known full name (value)
-    return clean_str in BOOK_ABBREVIATIONS or clean_str in _LOWERCASE_BOOK_NAMES
+    if clean_str not in BOOK_ABBREVIATIONS and clean_str not in _LOWERCASE_BOOK_NAMES:
+        return None
+    return BOOK_ABBREVIATIONS.get(clean_str, clean_str.title())
 
 
 # Load config
@@ -933,11 +919,11 @@ class BibleBot:
                 if match:
                     raw_book_name = match.group(1).strip()
 
-                    # Validate that this is actually a Bible book to prevent false positives
-                    if not is_valid_bible_book(raw_book_name):
-                        continue  # Skip this match, try next pattern
-
+                    # Validate and normalize the book name in one step
                     book_name = normalize_book_name(raw_book_name)
+                    if not book_name:
+                        continue  # Skip if not a valid Bible book
+
                     verse_reference = match.group(2).strip()
                     passage = f"{book_name} {verse_reference}"
 

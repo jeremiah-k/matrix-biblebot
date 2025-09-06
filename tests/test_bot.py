@@ -7,7 +7,7 @@ import pytest
 import yaml
 
 from biblebot import bot
-from biblebot.bot import BibleBot, is_valid_bible_book, normalize_book_name
+from biblebot.bot import BibleBot, normalize_book_name
 from tests.test_constants import (
     TEST_ACCESS_TOKEN,
     TEST_BIBLE_REFERENCE,
@@ -396,48 +396,48 @@ class TestBookNameValidation:
         "book_name,expected",
         [
             # Valid abbreviations
-            ("gen", True),
-            ("GEN", True),
-            ("1co", True),
-            ("1 cor", True),
-            ("ps", True),
-            ("rev", True),
+            ("gen", "Genesis"),
+            ("GEN", "Genesis"),
+            ("1co", "1 Corinthians"),
+            ("1 cor", "1 Corinthians"),
+            ("ps", "Psalms"),
+            ("rev", "Revelation"),
             # Valid full names
-            ("Genesis", True),
-            ("Matthew", True),
-            ("1 Corinthians", True),
-            ("Psalms", True),
-            ("Revelation", True),
+            ("Genesis", "Genesis"),
+            ("Matthew", "Matthew"),
+            ("1 Corinthians", "1 Corinthians"),
+            ("Psalms", "Psalms"),
+            ("Revelation", "Revelation"),
             # Invalid names (common false positives)
-            ("I have", False),
-            ("Room", False),
-            ("Version", False),
-            ("Chapter", False),
-            ("unknown", False),
-            ("xyz", False),
-            ("", False),
+            ("I have", None),
+            ("Room", None),
+            ("Version", None),
+            ("Chapter", None),
+            ("unknown", None),
+            ("xyz", None),
+            ("", None),
         ],
     )
-    def test_is_valid_bible_book(self, book_name, expected):
-        """Test book name validation with various inputs."""
-        result = is_valid_bible_book(book_name)
+    def test_normalize_book_name_validation(self, book_name, expected):
+        """Test book name validation and normalization with various inputs."""
+        result = normalize_book_name(book_name)
         assert result == expected
 
     @pytest.mark.parametrize(
         "book_name,expected",
         [
-            ("1 Samuel", True),  # Normal spacing
-            ("1  Samuel", True),  # Double space
-            ("1\tSamuel", True),  # Tab character
-            ("  1   Samuel  ", True),  # Multiple spaces and padding
-            ("Song of Solomon", True),  # Normal case
-            ("Song  of  Solomon", True),  # Multiple spaces between words
-            ("  John  ", True),  # Padded single word
+            ("1 Samuel", "1 Samuel"),  # Normal spacing
+            ("1  Samuel", "1 Samuel"),  # Double space
+            ("1\tSamuel", "1 Samuel"),  # Tab character
+            ("  1   Samuel  ", "1 Samuel"),  # Multiple spaces and padding
+            ("Song of Solomon", "Song Of Solomon"),  # Normal case
+            ("Song  of  Solomon", "Song Of Solomon"),  # Multiple spaces between words
+            ("  John  ", "John"),  # Padded single word
         ],
     )
-    def test_is_valid_bible_book_whitespace_normalization(self, book_name, expected):
-        """Test that book validation handles irregular whitespace correctly."""
-        result = is_valid_bible_book(book_name)
+    def test_normalize_book_name_whitespace_normalization(self, book_name, expected):
+        """Test that book normalization handles irregular whitespace correctly."""
+        result = normalize_book_name(book_name)
         assert result == expected
 
     @pytest.mark.parametrize(
@@ -451,7 +451,7 @@ class TestBookNameValidation:
                 "1 Samuel",
             ),  # Multiple spaces and padding should normalize
             ("Song  of  Solomon", "Song Of Solomon"),  # Multiple spaces between words
-            ("unknown  book", "Unknown Book"),  # Unknown book should also normalize
+            ("unknown  book", None),  # Unknown book returns None (invalid)
         ],
     )
     def test_normalize_book_name_whitespace_consistency(
