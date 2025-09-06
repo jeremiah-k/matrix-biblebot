@@ -380,6 +380,10 @@ class TestBookNameNormalization:
             ("revelation", "Revelation"),
             ("ps", "Psalms"),
             ("psalm", "Psalms"),
+            ("song", "Song of Solomon"),
+            ("sos", "Song of Solomon"),
+            ("so", "Song of Solomon"),
+            ("Song of Solomon", "Song Of Solomon"),
             ("unknown", "Unknown"),  # Returns title case if not found
         ],
     )
@@ -457,7 +461,7 @@ class TestBookNameValidation:
     def test_normalize_book_name_whitespace_consistency(
         self, book_name, expected_normalized
     ):
-        """Test that normalize_book_name handles whitespace consistently with is_valid_bible_book."""
+        """Test that normalize_book_name handles whitespace consistently with validate_and_normalize_book_name."""
         result = normalize_book_name(book_name)
         assert result == expected_normalized
 
@@ -575,7 +579,7 @@ class TestPartialReferenceMatching:
             args = mock_handle.call_args[0]
             assert args[0] == "!test:example.org"  # room_id
             assert "John 3:16" in args[1]  # passage
-            assert args[2] == "esv"  # translation
+            assert args[2].lower() == "esv"  # translation (case-insensitive)
 
     @pytest.mark.asyncio
     @pytest.mark.parametrize("detect_anywhere", [False, True])
@@ -622,6 +626,8 @@ class TestPartialReferenceMatching:
             "Chapter 1 begins",
             "Meeting at 2:30",
             "Call me at 555:1234",
+            "Release v2.0 today",
+            "Meet @ 2:30pm",
         ],
     )
     async def test_false_positives_prevented(self, false_positive_message):

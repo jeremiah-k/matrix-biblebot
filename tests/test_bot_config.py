@@ -91,6 +91,9 @@ class TestBotConfiguration:
             ({"bot": {"detect_references_anywhere": "0"}}, False),
             ({"bot": {"detect_references_anywhere": "on"}}, True),
             ({"bot": {"detect_references_anywhere": "off"}}, False),
+            ({"bot": {"detect_references_anywhere": ""}}, False),
+            ({"bot": {"detect_references_anywhere": "  "}}, False),
+            ({"bot": {"detect_references_anywhere": None}}, False),
             ({"bot": {"detect_references_anywhere": "random"}}, False),
         ],
     )
