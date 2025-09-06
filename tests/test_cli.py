@@ -1,7 +1,6 @@
 """Tests for the CLI module."""
 
 import argparse
-import warnings
 from unittest.mock import AsyncMock, MagicMock, Mock, patch
 
 import pytest
@@ -178,68 +177,6 @@ class TestArgumentParsing:
             assert "/custom/path.yaml" in cli_args
 
 
-class TestLegacyFlags:
-    """Test legacy flag handling with deprecation warnings."""
-
-    @patch("biblebot.cli.generate_config")
-    def test_legacy_generate_config_flag(self, mock_generate, capsys):
-        """Test legacy --generate-config flag."""
-        with patch("sys.argv", ["biblebot", "--generate-config"]):
-            with warnings.catch_warnings(record=True) as w:
-                warnings.simplefilter("always")
-
-                # ✅ CORRECT: Use simple object instead of MagicMock (mmrelay pattern)
-                class MockArgs:
-                    generate_config = True
-                    config = "test.yaml"
-                    install_service = False
-                    auth_login = False
-                    auth_logout = False
-
-                args = MockArgs()
-
-                # Test the legacy flag handling logic
-                if args.generate_config:
-                    warnings.warn(
-                        "--generate-config is deprecated. Use 'biblebot config generate' instead.",
-                        DeprecationWarning,
-                        stacklevel=2,
-                    )
-                    mock_generate(args.config)
-
-                assert len(w) == 1
-                assert issubclass(w[0].category, DeprecationWarning)
-                assert "deprecated" in str(w[0].message)
-                mock_generate.assert_called_once_with("test.yaml")
-
-    def test_legacy_auth_login_flag(self):
-        """Test legacy --auth-login flag."""
-        # No-op: this test only verifies the warning emission path
-
-        with warnings.catch_warnings(record=True) as w:
-            warnings.simplefilter("always")
-
-            # ✅ CORRECT: Use simple object instead of MagicMock (mmrelay pattern)
-            class MockArgs:
-                generate_config = False
-                install_service = False
-                auth_login = True
-                auth_logout = False
-
-            args = MockArgs()
-
-            # Test the legacy flag handling logic
-            if args.auth_login:
-                warnings.warn(
-                    "--auth-login is deprecated. Use 'biblebot auth login' instead.",
-                    DeprecationWarning,
-                    stacklevel=2,
-                )
-
-            assert len(w) == 1
-            assert issubclass(w[0].category, DeprecationWarning)
-
-
 class TestModernCommands:
     """Test modern grouped command handling."""
 
@@ -264,10 +201,10 @@ class TestModernCommands:
     @patch("biblebot.bot.load_config")
     @patch("biblebot.bot.load_environment")
     @patch("biblebot.auth.check_e2ee_status")
-    def test_config_validate_command(
+    def test_config_check_command(
         self, mock_e2ee_status, mock_load_env, mock_load_config, capsys
     ):
-        """Test 'biblebot config validate' command."""
+        """Test 'biblebot config check' command."""
         # Setup mocks
         mock_load_config.return_value = {
             "matrix_room_ids": ["!room1:matrix.org", "!room2:matrix.org"]
@@ -278,13 +215,13 @@ class TestModernCommands:
         # ✅ CORRECT: Use simple object instead of MagicMock (mmrelay pattern)
         class MockArgs:
             command = "config"
-            config_action = "validate"
+            config_action = "check"
             config = "test.yaml"
 
         args = MockArgs()
 
         # Simulate the validation logic
-        if args.command == "config" and args.config_action == "validate":
+        if args.command == "config" and args.config_action == "check":
             config = mock_load_config(args.config)
             if config:
                 print("✓ Configuration file is valid")
@@ -561,15 +498,15 @@ class TestCLIMainFunction:
         cli.main()
         mock_generate.assert_called_once()
 
-    @patch("sys.argv", ["biblebot", "config", "validate"])
+    @patch("sys.argv", ["biblebot", "config", "check"])
     @patch("biblebot.bot.load_config")
     @patch("biblebot.bot.load_environment")
     @patch("biblebot.auth.check_e2ee_status")
     @patch("builtins.print")
-    def test_config_validate_command(
+    def test_config_check_command(
         self, mock_print, mock_e2ee, mock_load_env, mock_load_config
     ):
-        """Test config validate command."""
+        """Test config check command."""
         mock_load_config.return_value = {"matrix_room_ids": ["!room1", "!room2"]}
         mock_load_env.return_value = (None, {"api_key1": "value1", "api_key2": ""})
         mock_e2ee.return_value = {"available": True}
@@ -675,11 +612,11 @@ class TestCLIMainFunction:
             cli.main()
         mock_print_help.assert_called()
 
-    @patch("sys.argv", ["biblebot", "config", "validate"])
+    @patch("sys.argv", ["biblebot", "config", "check"])
     @patch("biblebot.bot.load_config")
     @patch("sys.exit")
-    def test_config_validate_invalid_config(self, mock_exit, mock_load_config):
-        """Test config validate with invalid config."""
+    def test_config_check_invalid_config(self, mock_exit, mock_load_config):
+        """Test config check with invalid config."""
         mock_load_config.return_value = None
         mock_exit.side_effect = SystemExit(1)
 
@@ -688,28 +625,6 @@ class TestCLIMainFunction:
 
         assert e.value.code == 1
         mock_exit.assert_called_with(1)
-
-
-class TestCLILegacyFlags:
-    """Test legacy CLI flags with deprecation warnings."""
-
-    @patch("sys.argv", ["biblebot", "--generate-config"])
-    @patch("biblebot.cli.generate_config")
-    def test_legacy_generate_config(self, mock_generate):
-        """Test legacy --generate-config flag."""
-        mock_generate.return_value = True
-
-        cli.main()
-        mock_generate.assert_called_once()
-
-    @patch("sys.argv", ["biblebot", "--install-service"])
-    @patch("biblebot.setup_utils.install_service")
-    def test_legacy_install_service(self, mock_install):
-        """Test legacy --install-service flag."""
-        mock_install.return_value = True
-
-        cli.main()
-        mock_install.assert_called_once()
 
     @patch("sys.argv", ["biblebot", "--auth-login"])
     @patch("builtins.input", return_value="https://matrix.org")

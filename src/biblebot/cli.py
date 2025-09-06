@@ -16,8 +16,6 @@ from .constants import (
     CLI_ACTION_STORE_TRUE,
     CLI_ACTION_VERSION,
     CLI_ARG_CONFIG,
-    CLI_ARG_GENERATE_CONFIG,
-    CLI_ARG_INSTALL_SERVICE,
     CLI_ARG_LOG_LEVEL,
     CLI_ARG_VERSION,
     CLI_ARG_YES_LONG,
@@ -357,11 +355,9 @@ def main():
     Run the BibleBot command-line interface.
 
     If invoked with no arguments, enters the interactive setup/run flow. When called with arguments, provides modern grouped subcommands:
-    - config generate / validate: create a sample config or validate an existing config file.
+    - config generate / check: create a sample config or validate an existing config file.
     - auth login / logout / status: perform interactive Matrix login/logout and show authentication/E2EE status.
     - service install: install or update the per-user systemd service.
-
-    Legacy, deprecated flags (--generate-config, --install-service, --auth-login, --auth-logout) are still accepted for backward compatibility and map to the corresponding modern commands while emitting deprecation warnings.
 
     Side effects:
     - May create files (sample config), install a service, modify credentials/E2EE state, or start the running bot.
@@ -384,12 +380,10 @@ def main():
 Examples:
   biblebot                          # Run the bot
   biblebot config generate          # Generate sample config files
+  biblebot config check             # Validate configuration file
   biblebot auth login               # Interactive login to Matrix
   biblebot auth logout              # Logout and clear credentials
   biblebot service install          # Install systemd service
-
-Legacy flags (deprecated):
-  --auth-login, --auth-logout, --generate-config, --install-service
         """,
     )
 
@@ -415,28 +409,6 @@ Legacy flags (deprecated):
         help=CLI_HELP_YES,
     )
 
-    # Legacy flags for backward compatibility (deprecated)
-    parser.add_argument(
-        CLI_ARG_GENERATE_CONFIG,
-        action=CLI_ACTION_STORE_TRUE,
-        help=argparse.SUPPRESS,  # Hide from help but keep functional
-    )
-    parser.add_argument(
-        CLI_ARG_INSTALL_SERVICE,
-        action=CLI_ACTION_STORE_TRUE,
-        help=argparse.SUPPRESS,
-    )
-    parser.add_argument(
-        "--auth-login",
-        action="store_true",
-        help=argparse.SUPPRESS,
-    )
-    parser.add_argument(
-        "--auth-logout",
-        action="store_true",
-        help=argparse.SUPPRESS,
-    )
-
     # Subcommands
     subparsers = parser.add_subparsers(dest="command", help="Available commands")
 
@@ -445,7 +417,7 @@ Legacy flags (deprecated):
     config_subparsers = config_parser.add_subparsers(dest="config_action")
 
     config_subparsers.add_parser("generate", help="Generate sample config files")
-    config_subparsers.add_parser("validate", help="Validate configuration file")
+    config_subparsers.add_parser("check", help="Validate configuration file")
 
     # Auth subcommands
     auth_parser = subparsers.add_parser("auth", help="Authentication management")
@@ -490,43 +462,12 @@ Legacy flags (deprecated):
         level=log_level, format="%(asctime)s - %(levelname)s - %(message)s"
     )
 
-    # Handle legacy flags with deprecation warnings
-    if args.generate_config:
-        logging.warning(
-            "--generate-config is deprecated. Use 'biblebot config generate' instead."
-        )
-        generate_config(args.config)
-        return
-
-    if args.install_service:
-        logging.warning(
-            "--install-service is deprecated. Use 'biblebot service install' instead."
-        )
-        from .setup_utils import install_service
-
-        install_service()
-        return
-
-    if args.auth_login:
-        logging.warning(
-            "--auth-login is deprecated. Use 'biblebot auth login' instead."
-        )
-        ok = run_async(interactive_login())
-        sys.exit(0 if ok else 1)
-
-    if args.auth_logout:
-        logging.warning(
-            "--auth-logout is deprecated. Use 'biblebot auth logout' instead."
-        )
-        ok = run_async(interactive_logout())
-        sys.exit(0 if ok else 1)
-
     # Handle modern grouped commands
     if args.command == "config":
         if args.config_action == "generate":
             generate_config(args.config)
             return
-        elif args.config_action == "validate":
+        elif args.config_action == "check":
             from .bot import load_config
 
             config = load_config(args.config)

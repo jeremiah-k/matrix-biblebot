@@ -57,7 +57,7 @@ pip install '.[e2e]'
 The easiest way to get started is to generate the configuration files:
 
 ```bash
-biblebot --generate-config
+biblebot config generate
 ```
 
 This will create a sample config file (`config.yaml`) in the `~/.config/matrix-biblebot/` directory.
@@ -66,7 +66,7 @@ If a config file is missing when you run `biblebot`, the CLI will offer to gener
 You can also specify a custom location:
 
 ```bash
-biblebot --generate-config --config /path/to/your/config.yaml
+biblebot config generate --config /path/to/your/config.yaml
 ```
 
 ### Authentication
@@ -238,16 +238,31 @@ systemctl --user status biblebot.service   # Check service status
 ### Command-line Options
 
 ```text
-usage: biblebot [-h] [--config CONFIG] [--log-level {error,warning,info,debug}] [--generate-config] [--install-service] [--version]
+usage: biblebot [-h] [--config CONFIG] [--log-level {error,warning,info,debug}] [--version] {config,auth,service} ...
+
+BibleBot for Matrix - A simple bot that fetches Bible verses.
+
+positional arguments:
+  {config,auth,service}
+                        Available commands
+    config              Configuration management
+    auth                Authentication management
+    service             Service management
 
 options:
   -h, --help            show this help message and exit
   --config CONFIG       Path to config file (default: ~/.config/matrix-biblebot/config.yaml)
   --log-level {error,warning,info,debug}
                         Set logging level (default: info)
-  --generate-config     Generate sample config files at the specified path
-  --install-service     Install or update the systemd user service
   --version             show program's version number and exit
+
+Examples:
+  biblebot                          # Run the bot
+  biblebot config generate          # Generate sample config files
+  biblebot config check             # Validate configuration file
+  biblebot auth login               # Interactive login to Matrix
+  biblebot auth logout              # Logout and clear credentials
+  biblebot service install          # Install systemd service
 ```
 
 ### Interacting with the Bot
