@@ -7,7 +7,7 @@ import pytest
 import yaml
 
 from biblebot import bot
-from biblebot.bot import BibleBot, is_valid_bible_book
+from biblebot.bot import BibleBot, is_valid_bible_book, normalize_book_name
 from tests.test_constants import (
     TEST_ACCESS_TOKEN,
     TEST_BIBLE_REFERENCE,
@@ -439,6 +439,27 @@ class TestBookNameValidation:
         """Test that book validation handles irregular whitespace correctly."""
         result = is_valid_bible_book(book_name)
         assert result == expected
+
+    @pytest.mark.parametrize(
+        "book_name,expected_normalized",
+        [
+            ("1 Samuel", "1 Samuel"),  # Normal spacing
+            ("1  Samuel", "1 Samuel"),  # Double space should normalize
+            ("1\tSamuel", "1 Samuel"),  # Tab should normalize
+            (
+                "  1   Samuel  ",
+                "1 Samuel",
+            ),  # Multiple spaces and padding should normalize
+            ("Song  of  Solomon", "Song Of Solomon"),  # Multiple spaces between words
+            ("unknown  book", "Unknown Book"),  # Unknown book should also normalize
+        ],
+    )
+    def test_normalize_book_name_whitespace_consistency(
+        self, book_name, expected_normalized
+    ):
+        """Test that normalize_book_name handles whitespace consistently with is_valid_bible_book."""
+        result = normalize_book_name(book_name)
+        assert result == expected_normalized
 
 
 class TestAPIRequests:

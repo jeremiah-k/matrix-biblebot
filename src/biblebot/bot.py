@@ -109,17 +109,23 @@ _PASSAGE_CACHE_MAX = CACHE_MAX_SIZE
 _PASSAGE_CACHE_TTL_SECS = CACHE_TTL_SECONDS
 
 
+def _clean_book_name(book_str: str) -> str:
+    """Clean and normalize book name string for consistent matching."""
+    return " ".join(book_str.lower().replace(CHAR_DOT, "").strip().split())
+
+
 def normalize_book_name(book_str: str) -> str:
     """
     Normalize a Bible book name or abbreviation to its canonical full name.
 
-    The input is lowercased, periods are removed, and surrounding whitespace is trimmed before lookup
-    in the BOOK_ABBREVIATIONS mapping. If a normalized entry exists in that mapping, the mapped
-    full book name is returned; otherwise the original input is returned in title case.
+    The input is cleaned and normalized (lowercased, periods removed, whitespace normalized)
+    before lookup in the BOOK_ABBREVIATIONS mapping. If a normalized entry exists in that
+    mapping, the mapped full book name is returned; otherwise the cleaned input is returned
+    in title case.
     """
-    # Clean the input: lowercase, remove dots, and strip whitespace
-    clean_str = book_str.lower().replace(CHAR_DOT, "").strip()
-    return BOOK_ABBREVIATIONS.get(clean_str, book_str.title())
+    # Clean the input with robust whitespace normalization
+    clean_str = _clean_book_name(book_str)
+    return BOOK_ABBREVIATIONS.get(clean_str, clean_str.title())
 
 
 def is_valid_bible_book(book_str: str) -> bool:
@@ -130,8 +136,8 @@ def is_valid_bible_book(book_str: str) -> bool:
     False otherwise. This helps prevent false positives in scripture detection.
     Uses O(1) lookups for optimal performance.
     """
-    # Clean the input and normalize whitespace for robust matching
-    clean_str = " ".join(book_str.lower().replace(CHAR_DOT, "").strip().split())
+    # Clean the input with consistent normalization
+    clean_str = _clean_book_name(book_str)
 
     # Check if it's a known abbreviation (key) or a known full name (value)
     return clean_str in BOOK_ABBREVIATIONS or clean_str in _LOWERCASE_BOOK_NAMES
