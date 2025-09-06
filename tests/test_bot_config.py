@@ -95,7 +95,6 @@ class TestBotConfiguration:
         }
         bot = BibleBot(config)
         assert bot.detect_references_anywhere is True
-        assert bot.detect_references_anywhere is False
 
     def test_bot_split_message_length_default(self):
         """Test bot with default split_message_length setting."""
