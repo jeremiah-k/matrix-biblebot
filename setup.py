@@ -40,7 +40,7 @@ setup(
     ],
     python_requires=">=3.9",
     install_requires=[
-        "matrix-nio>=0.25.2",
+        "matrix-nio>=0.25.2,<0.26",
         "PyYAML>=6.0",
         "python-dotenv>=1.1.0",
         "aiohttp>=3.10.11",
