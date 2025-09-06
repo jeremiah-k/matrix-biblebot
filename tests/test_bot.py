@@ -557,39 +557,39 @@ class TestPartialReferenceMatching:
             assert args[2] == "esv"  # translation
 
     @pytest.mark.asyncio
-    async def test_exact_reference_works_in_both_modes(self):
+    @pytest.mark.parametrize("detect_anywhere", [False, True])
+    async def test_exact_reference_works_in_both_modes(self, detect_anywhere):
         """Test that exact references work in both modes."""
-        for detect_anywhere in [False, True]:
-            config = {
-                "matrix_room_ids": ["!test:example.org"],
-                "bot": {"detect_references_anywhere": detect_anywhere},
-            }
-            bot = BibleBot(config)
-            bot.start_time = 0
-            bot._room_id_set = {"!test:example.org"}
-            bot.client = MagicMock()
-            bot.client.user_id = "@bot:example.org"
+        config = {
+            "matrix_room_ids": ["!test:example.org"],
+            "bot": {"detect_references_anywhere": detect_anywhere},
+        }
+        bot = BibleBot(config)
+        bot.start_time = 0
+        bot._room_id_set = {"!test:example.org"}
+        bot.client = MagicMock()
+        bot.client.user_id = "@bot:example.org"
 
-            # Mock the scripture handling
-            with patch.object(
-                bot, "handle_scripture_command", new_callable=AsyncMock
-            ) as mock_handle:
-                # Create a mock event with exact reference
-                event = MagicMock()
-                event.body = "John 3:16"  # Exact reference
-                event.sender = "@user:example.org"
-                event.server_timestamp = 1000
+        # Mock the scripture handling
+        with patch.object(
+            bot, "handle_scripture_command", new_callable=AsyncMock
+        ) as mock_handle:
+            # Create a mock event with exact reference
+            event = MagicMock()
+            event.body = "John 3:16"  # Exact reference
+            event.sender = "@user:example.org"
+            event.server_timestamp = 1000
 
-                room = MagicMock()
-                room.room_id = "!test:example.org"
+            room = MagicMock()
+            room.room_id = "!test:example.org"
 
-                await bot.on_room_message(room, event)
+            await bot.on_room_message(room, event)
 
-                # Should trigger scripture handling in both modes
-                mock_handle.assert_called_once()
-                args = mock_handle.call_args[0]
-                assert args[0] == "!test:example.org"  # room_id
-                assert "John 3:16" in args[1]  # passage
+            # Should trigger scripture handling in both modes
+            mock_handle.assert_called_once()
+            args = mock_handle.call_args[0]
+            assert args[0] == "!test:example.org"  # room_id
+            assert "John 3:16" in args[1]  # passage
 
     @pytest.mark.asyncio
     async def test_false_positives_prevented(self):
