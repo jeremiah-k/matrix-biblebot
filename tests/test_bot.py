@@ -667,6 +667,41 @@ class TestPartialReferenceMatching:
             # Should NOT trigger scripture handling for false positives
             mock_handle.assert_not_called()
 
+    @pytest.mark.asyncio
+    async def test_partial_reference_with_kjv_translation(self):
+        """Test that partial references work with KJV translation specification."""
+        config = {
+            "matrix_room_ids": ["!test:example.org"],
+            "bot": {"detect_references_anywhere": True},
+        }
+        bible_bot = BibleBot(config)
+        bible_bot.start_time = 0
+        bible_bot._room_id_set = {"!test:example.org"}
+        bible_bot.client = MagicMock()
+        bible_bot.client.user_id = "@bot:example.org"
+
+        # Mock the scripture handling
+        with patch.object(
+            bible_bot, "handle_scripture_command", new_callable=AsyncMock
+        ) as mock_handle:
+            # Create a mock event with partial reference and KJV translation
+            event = MagicMock()
+            event.body = "Have you read John 3:16 KJV?"  # Reference with KJV
+            event.sender = "@user:example.org"
+            event.server_timestamp = 1000
+
+            room = MagicMock()
+            room.room_id = "!test:example.org"
+
+            await bible_bot.on_room_message(room, event)
+
+            # Should trigger scripture handling
+            mock_handle.assert_called_once()
+            args = mock_handle.call_args[0]
+            assert args[0] == "!test:example.org"  # room_id
+            assert "John 3:16" in args[1]  # passage
+            assert args[2].lower() == "kjv"  # translation should be KJV
+
 
 class TestBibleTextRetrieval:
     """Test Bible text retrieval functions."""

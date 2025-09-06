@@ -123,6 +123,9 @@ class TestBookNormalizationPerformance:
 
         # Performance assertion - more lenient for CI stability
         assert normalization_time < 3.5
+        # Optional: guard against slow boxes by also checking average
+        per_call = normalization_time / (200 * len(common_books))
+        assert per_call < 0.005  # 5ms per normalization, plenty slack
 
     def test_normalization_performance_abbreviations(self):
         """Test normalization performance for abbreviations."""
@@ -136,6 +139,9 @@ class TestBookNormalizationPerformance:
             "Mk",
             "Lk",
             "Jn",
+            "1jn",
+            "2jn",
+            "3jn",
             "Acts",
             "Rom",
             "1co",
@@ -155,6 +161,9 @@ class TestBookNormalizationPerformance:
 
         # Performance assertion - more lenient for CI stability
         assert abbrev_time < 3.0
+        # Optional: guard against slow boxes by also checking average
+        per_call = abbrev_time / (200 * len(abbreviations))
+        assert per_call < 0.005  # 5ms per normalization, plenty slack
 
     def test_normalization_performance_mixed_case(self):
         """Test normalization performance with mixed case."""
