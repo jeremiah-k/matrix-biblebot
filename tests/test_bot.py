@@ -523,6 +523,29 @@ class TestAPIRequests:
 class TestPartialReferenceMatching:
     """Test partial reference matching functionality."""
 
+    def test_detect_anywhere_bool_coercion(self):
+        """Ensure truthy/falsey strings and ints map correctly."""
+        cases = [
+            ("true", True),
+            ("True", True),
+            ("yes", True),
+            ("on", True),
+            ("1", True),
+            (1, True),
+            ("false", False),
+            ("off", False),
+            ("0", False),
+            (0, False),
+            (None, False),
+        ]
+        for raw, expected in cases:
+            cfg = {
+                "matrix_room_ids": ["!test:example.org"],
+                "bot": {"detect_references_anywhere": raw},
+            }
+            bb = BibleBot(cfg)
+            assert bb.detect_references_anywhere is expected
+
     @pytest.mark.asyncio
     async def test_detect_references_anywhere_disabled(self):
         """Test that partial references are ignored when detect_references_anywhere is False."""

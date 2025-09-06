@@ -86,8 +86,13 @@ MAX_RATE_LIMIT_RETRIES = 3  # Maximum number of rate limit retries
 DEFAULT_RETRY_AFTER_MS = 1000  # Default retry delay in milliseconds
 
 
-# Mapping from lowercased full names to their canonical forms for exact matching
-_LOWERCASE_NAME_TO_CANONICAL = {v.lower(): v for v in BOOK_ABBREVIATIONS.values()}
+# Create a comprehensive lookup table for all valid book names and abbreviations
+_ALL_NAMES_TO_CANONICAL = BOOK_ABBREVIATIONS.copy()
+# Add lowercased full book names to the lookup table
+for book_name in set(
+    BOOK_ABBREVIATIONS.values()
+):  # Use set to avoid redundant iterations
+    _ALL_NAMES_TO_CANONICAL[book_name.lower()] = book_name
 TRUNCATION_INDICATOR = "..."  # Indicator for truncated text
 REFERENCE_SEPARATOR_LEN = 3  # Length of " - " separator
 
@@ -125,14 +130,7 @@ def validate_and_normalize_book_name(book_str: str) -> Optional[str]:
     in contexts where both operations are needed.
     """
     clean_str = _clean_book_name(book_str)
-
-    if canonical_name := BOOK_ABBREVIATIONS.get(clean_str):
-        return canonical_name
-
-    if canonical_name := _LOWERCASE_NAME_TO_CANONICAL.get(clean_str):
-        return canonical_name
-
-    return None
+    return _ALL_NAMES_TO_CANONICAL.get(clean_str)
 
 
 # Load config
@@ -943,9 +941,8 @@ class BibleBot:
                     passage = f"{book_name} {verse_reference}"
 
                     # Get optional translation group (guard against patterns with fewer groups)
-                    trans_group = (
-                        match.group(3) if (match.lastindex or 0) >= 3 else None
-                    )
+                    # Guard by defined groups, not last matched index
+                    trans_group = match.group(3) if len(match.groups()) >= 3 else None
                     translation = (
                         trans_group.lower() if trans_group else self.default_translation
                     )

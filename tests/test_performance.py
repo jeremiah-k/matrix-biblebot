@@ -94,6 +94,7 @@ class TestCachePerformance:
 class TestBookNormalizationPerformance:
     """Test book name normalization performance."""
 
+    @pytest.mark.slow
     def test_normalization_performance_common_books(self):
         """Test normalization performance for common book names."""
         common_books = [
@@ -127,6 +128,7 @@ class TestBookNormalizationPerformance:
         per_call = normalization_time / (200 * len(common_books))
         assert per_call < 0.005  # 5ms per normalization, plenty slack
 
+    @pytest.mark.slow
     def test_normalization_performance_abbreviations(self):
         """Test normalization performance for abbreviations."""
         abbreviations = [
@@ -142,6 +144,7 @@ class TestBookNormalizationPerformance:
             "1jn",
             "2jn",
             "3jn",
+            "1 john",  # Test spaced John variant
             "Acts",
             "Rom",
             "1co",
@@ -165,6 +168,7 @@ class TestBookNormalizationPerformance:
         per_call = abbrev_time / (200 * len(abbreviations))
         assert per_call < 0.005  # 5ms per normalization, plenty slack
 
+    @pytest.mark.slow
     def test_normalization_performance_mixed_case(self):
         """Test normalization performance with mixed case."""
         mixed_case_books = [
