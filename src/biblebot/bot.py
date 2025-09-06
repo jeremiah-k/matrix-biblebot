@@ -934,14 +934,16 @@ class BibleBot:
                     book_name = normalize_book_name(raw_book_name)
                     verse_reference = match.group(2).strip()
                     passage = f"{book_name} {verse_reference}"
-                    if match.group(
-                        3
-                    ):  # Check if the translation (esv or kjv) is specified
-                        translation = match.group(3).lower()
-                    else:
-                        translation = (
-                            self.default_translation
-                        )  # Fall back to config default
+
+                    # Safely read optional translation group (index 3) if it exists
+                    trans_group = (
+                        match.group(3)
+                        if match.lastindex and match.lastindex >= 3
+                        else None
+                    )
+                    translation = (
+                        trans_group.lower() if trans_group else self.default_translation
+                    )
                     logger.info(
                         f"Detected Bible reference: {passage} ({translation}) in room {room.room_id}"
                     )

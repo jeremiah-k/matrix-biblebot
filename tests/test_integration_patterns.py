@@ -396,6 +396,38 @@ class TestIntegrationPatterns:
             # Verify response was sent
             assert mock_client.room_send.call_count == 2  # Reaction + message
 
+    async def test_api_integration_chain_partial_mode(self, mock_config, mock_client):
+        """Test API integration with detect_references_anywhere enabled."""
+        config = {**mock_config, "bot": {"detect_references_anywhere": True}}
+        bot = BibleBot(config=config, client=mock_client)
+
+        # Populate room ID set for testing
+        bot._room_id_set = set(config["matrix_room_ids"])
+        bot.start_time = 1234567880000
+
+        # Mock the entire API chain
+        with patch("biblebot.bot.make_api_request", new_callable=AsyncMock) as mock_api:
+            mock_api.return_value = {
+                "text": "For God so loved the world that he gave his one and only Son",
+                "reference": "John 3:16",
+                "version": "NIV",
+            }
+
+            event = MagicMock()
+            event.body = "Show me John 3:16 please"  # Natural sentence with embedded reference (uses default KJV)
+            event.sender = "@user:matrix.org"
+            event.server_timestamp = 1234567890000
+
+            room = MagicMock()
+            room.room_id = "!room1:matrix.org"
+
+            await bot.on_room_message(room, event)
+
+            # Verify API was called
+            mock_api.assert_called_once()
+            # Verify response was sent
+            assert mock_client.room_send.call_count == 2  # Reaction + message
+
     async def test_configuration_integration(self, mock_config, mock_client):
         """
         Validate that BibleBot accepts and preserves essential configuration variants.
