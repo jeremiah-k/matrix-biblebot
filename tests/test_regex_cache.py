@@ -44,6 +44,10 @@ def test_reference_patterns_basic():
         ("ps", "Psalms"),
         ("rev.", "Revelation"),
         ("  rom  ", "Romans"),
+        ("1jn", "1 John"),  # Edge case: compact John abbreviation
+        ("2jn", "2 John"),  # Edge case: compact 2 John abbreviation
+        ("3jn", "3 John"),  # Edge case: compact 3 John abbreviation
+        ("1 john", "1 John"),  # Edge case: spaced variant
     ],
 )
 def test_validate_and_normalize_book_name_valid(abbreviation, full_name):

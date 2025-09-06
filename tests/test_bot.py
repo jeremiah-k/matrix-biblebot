@@ -530,15 +530,15 @@ class TestPartialReferenceMatching:
             "matrix_room_ids": ["!test:example.org"],
             "bot": {"detect_references_anywhere": False},
         }
-        bot = BibleBot(config)
-        bot.start_time = 0
-        bot._room_id_set = {"!test:example.org"}
-        bot.client = MagicMock()
-        bot.client.user_id = "@bot:example.org"
+        bible_bot = BibleBot(config)
+        bible_bot.start_time = 0
+        bible_bot._room_id_set = {"!test:example.org"}
+        bible_bot.client = MagicMock()
+        bible_bot.client.user_id = "@bot:example.org"
 
         # Mock the scripture handling
         with patch.object(
-            bot, "handle_scripture_command", new_callable=AsyncMock
+            bible_bot, "handle_scripture_command", new_callable=AsyncMock
         ) as mock_handle:
             # Create a mock event with partial reference
             event = MagicMock()
@@ -549,7 +549,7 @@ class TestPartialReferenceMatching:
             room = MagicMock()
             room.room_id = "!test:example.org"
 
-            await bot.on_room_message(room, event)
+            await bible_bot.on_room_message(room, event)
 
             # Should NOT trigger scripture handling
             mock_handle.assert_not_called()
@@ -561,15 +561,15 @@ class TestPartialReferenceMatching:
             "matrix_room_ids": ["!test:example.org"],
             "bot": {"detect_references_anywhere": True},
         }
-        bot = BibleBot(config)
-        bot.start_time = 0
-        bot._room_id_set = {"!test:example.org"}
-        bot.client = MagicMock()
-        bot.client.user_id = "@bot:example.org"
+        bible_bot = BibleBot(config)
+        bible_bot.start_time = 0
+        bible_bot._room_id_set = {"!test:example.org"}
+        bible_bot.client = MagicMock()
+        bible_bot.client.user_id = "@bot:example.org"
 
         # Mock the scripture handling
         with patch.object(
-            bot, "handle_scripture_command", new_callable=AsyncMock
+            bible_bot, "handle_scripture_command", new_callable=AsyncMock
         ) as mock_handle:
             # Create a mock event with partial reference
             event = MagicMock()
@@ -580,7 +580,7 @@ class TestPartialReferenceMatching:
             room = MagicMock()
             room.room_id = "!test:example.org"
 
-            await bot.on_room_message(room, event)
+            await bible_bot.on_room_message(room, event)
 
             # Should trigger scripture handling
             mock_handle.assert_called_once()
@@ -597,15 +597,15 @@ class TestPartialReferenceMatching:
             "matrix_room_ids": ["!test:example.org"],
             "bot": {"detect_references_anywhere": detect_anywhere},
         }
-        bot = BibleBot(config)
-        bot.start_time = 0
-        bot._room_id_set = {"!test:example.org"}
-        bot.client = MagicMock()
-        bot.client.user_id = "@bot:example.org"
+        bible_bot = BibleBot(config)
+        bible_bot.start_time = 0
+        bible_bot._room_id_set = {"!test:example.org"}
+        bible_bot.client = MagicMock()
+        bible_bot.client.user_id = "@bot:example.org"
 
         # Mock the scripture handling
         with patch.object(
-            bot, "handle_scripture_command", new_callable=AsyncMock
+            bible_bot, "handle_scripture_command", new_callable=AsyncMock
         ) as mock_handle:
             # Create a mock event with exact reference
             event = MagicMock()
@@ -616,7 +616,7 @@ class TestPartialReferenceMatching:
             room = MagicMock()
             room.room_id = "!test:example.org"
 
-            await bot.on_room_message(room, event)
+            await bible_bot.on_room_message(room, event)
 
             # Should trigger scripture handling in both modes
             mock_handle.assert_called_once()
@@ -644,15 +644,15 @@ class TestPartialReferenceMatching:
             "matrix_room_ids": ["!test:example.org"],
             "bot": {"detect_references_anywhere": True},
         }
-        bot = BibleBot(config)
-        bot.start_time = 0
-        bot._room_id_set = {"!test:example.org"}
-        bot.client = MagicMock()
-        bot.client.user_id = "@bot:example.org"
+        bible_bot = BibleBot(config)
+        bible_bot.start_time = 0
+        bible_bot._room_id_set = {"!test:example.org"}
+        bible_bot.client = MagicMock()
+        bible_bot.client.user_id = "@bot:example.org"
 
         # Mock the scripture handling
         with patch.object(
-            bot, "handle_scripture_command", new_callable=AsyncMock
+            bible_bot, "handle_scripture_command", new_callable=AsyncMock
         ) as mock_handle:
             event = MagicMock()
             event.body = false_positive_message
@@ -662,7 +662,7 @@ class TestPartialReferenceMatching:
             room = MagicMock()
             room.room_id = "!test:example.org"
 
-            await bot.on_room_message(room, event)
+            await bible_bot.on_room_message(room, event)
 
             # Should NOT trigger scripture handling for false positives
             mock_handle.assert_not_called()

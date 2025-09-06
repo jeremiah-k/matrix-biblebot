@@ -3,3 +3,7 @@ select = ["B", "D3", "E", "F"]
 
 # Never enforce `E501` (line length violations). This should be handled by formatters.
 ignore = ["E501"]
+
+# Per-file ignores
+[per-file-ignores]
+"tests/**" = ["S101"] # Allow assert statements in tests
