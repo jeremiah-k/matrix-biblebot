@@ -935,12 +935,8 @@ class BibleBot:
                     verse_reference = match.group(2).strip()
                     passage = f"{book_name} {verse_reference}"
 
-                    # Safely read optional translation group (index 3) if it exists
-                    trans_group = (
-                        match.group(3)
-                        if match.lastindex and match.lastindex >= 3
-                        else None
-                    )
+                    # Get optional translation group (returns None if not matched)
+                    trans_group = match.group(3)
                     translation = (
                         trans_group.lower() if trans_group else self.default_translation
                     )
