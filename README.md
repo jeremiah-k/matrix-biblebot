@@ -217,7 +217,7 @@ To use encrypted Matrix rooms, install with the `e2e` extra and enable E2EE in c
 For a persistent installation, set up BibleBot as a systemd user service:
 
 ```bash
-biblebot --install-service
+biblebot service install
 ```
 
 This will:
@@ -262,6 +262,7 @@ Examples:
   biblebot config check             # Validate configuration file
   biblebot auth login               # Interactive login to Matrix
   biblebot auth logout              # Logout and clear credentials
+  biblebot auth status              # Show authentication & E2EE status
   biblebot service install          # Install systemd service
 ```
 

@@ -24,6 +24,15 @@ from .constants import (
     CLI_HELP_CONFIG,
     CLI_HELP_LOG_LEVEL,
     CLI_HELP_YES,
+    CMD_AUTH,
+    CMD_CHECK,
+    CMD_CONFIG,
+    CMD_GENERATE,
+    CMD_INSTALL,
+    CMD_LOGIN,
+    CMD_LOGOUT,
+    CMD_SERVICE,
+    CMD_STATUS,
     CONFIG_DIR,
     DEFAULT_CONFIG_FILENAME,
     DEFAULT_LOG_LEVEL,
@@ -383,6 +392,7 @@ Examples:
   biblebot config check             # Validate configuration file
   biblebot auth login               # Interactive login to Matrix
   biblebot auth logout              # Logout and clear credentials
+  biblebot auth status              # Show authentication & E2EE status
   biblebot service install          # Install systemd service
         """,
     )
@@ -413,19 +423,19 @@ Examples:
     subparsers = parser.add_subparsers(dest="command", help="Available commands")
 
     # Config subcommands
-    config_parser = subparsers.add_parser("config", help="Configuration management")
+    config_parser = subparsers.add_parser(CMD_CONFIG, help="Configuration management")
     config_subparsers = config_parser.add_subparsers(dest="config_action")
 
-    config_subparsers.add_parser("generate", help="Generate sample config files")
-    config_subparsers.add_parser("check", help="Validate configuration file")
+    config_subparsers.add_parser(CMD_GENERATE, help="Generate sample config files")
+    config_subparsers.add_parser(CMD_CHECK, help="Validate configuration file")
 
     # Auth subcommands
-    auth_parser = subparsers.add_parser("auth", help="Authentication management")
+    auth_parser = subparsers.add_parser(CMD_AUTH, help="Authentication management")
     auth_subparsers = auth_parser.add_subparsers(dest="auth_action")
 
     # Login subcommand with optional arguments
     login_parser = auth_subparsers.add_parser(
-        "login", help="Interactive login to Matrix and save credentials"
+        CMD_LOGIN, help="Interactive login to Matrix and save credentials"
     )
     login_parser.add_argument(
         "--homeserver",
@@ -442,16 +452,16 @@ Examples:
     )
 
     auth_subparsers.add_parser(
-        "logout", help="Logout and remove credentials and E2EE store"
+        CMD_LOGOUT, help="Logout and remove credentials and E2EE store"
     )
-    auth_subparsers.add_parser("status", help="Show authentication and E2EE status")
+    auth_subparsers.add_parser(CMD_STATUS, help="Show authentication and E2EE status")
 
     # Service subcommands
-    service_parser = subparsers.add_parser("service", help="Service management")
+    service_parser = subparsers.add_parser(CMD_SERVICE, help="Service management")
     service_subparsers = service_parser.add_subparsers(dest="service_action")
 
     service_subparsers.add_parser(
-        "install", help="Install or update systemd user service"
+        CMD_INSTALL, help="Install or update systemd user service"
     )
 
     args = parser.parse_args()
@@ -463,11 +473,11 @@ Examples:
     )
 
     # Handle modern grouped commands
-    if args.command == "config":
-        if args.config_action == "generate":
+    if args.command == CMD_CONFIG:
+        if args.config_action == CMD_GENERATE:
             generate_config(args.config)
             return
-        elif args.config_action == "check":
+        elif args.config_action == CMD_CHECK:
             from .bot import load_config
 
             config = load_config(args.config)
@@ -505,8 +515,8 @@ Examples:
             config_parser.print_help()
             return
 
-    elif args.command == "auth":
-        if args.auth_action == "login":
+    elif args.command == CMD_AUTH:
+        if args.auth_action == CMD_LOGIN:
             # Extract arguments if provided
             homeserver = getattr(args, "homeserver", None)
             username = getattr(args, "username", None)
@@ -557,10 +567,10 @@ Examples:
 
             ok = run_async(interactive_login(homeserver, username, password))
             sys.exit(0 if ok else 1)
-        elif args.auth_action == "logout":
+        elif args.auth_action == CMD_LOGOUT:
             ok = run_async(interactive_logout())
             sys.exit(0 if ok else 1)
-        elif args.auth_action == "status":
+        elif args.auth_action == CMD_STATUS:
             from .auth import print_e2ee_status
 
             # Show authentication status
@@ -581,8 +591,8 @@ Examples:
             auth_parser.print_help()
             return
 
-    elif args.command == "service":
-        if args.service_action == "install":
+    elif args.command == CMD_SERVICE:
+        if args.service_action == CMD_INSTALL:
             from .setup_utils import install_service
 
             install_service()
