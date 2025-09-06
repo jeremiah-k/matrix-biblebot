@@ -44,16 +44,34 @@ def test_reference_patterns_basic():
         ("ps", "Psalms"),
         ("rev.", "Revelation"),
         ("  rom  ", "Romans"),
-        ("invalidbook", "Invalidbook"),  # Test fallback to title case
     ],
 )
-def test_normalize_book_name(abbreviation, full_name):
+def test_validate_and_normalize_book_name_valid(abbreviation, full_name):
     """
-    Assert that a book abbreviation normalizes to the expected full book name.
+    Assert that a valid book abbreviation normalizes to the expected full book name.
 
-    The test passes the given abbreviation (which may include extra whitespace, punctuation, numeric prefixes like "1", and varying case) to normalize_book_name and verifies the returned canonical book name equals full_name.
+    The test passes the given abbreviation (which may include extra whitespace, punctuation, numeric prefixes like "1", and varying case) to validate_and_normalize_book_name and verifies the returned canonical book name equals full_name.
     """
-    assert botmod.normalize_book_name(abbreviation) == full_name
+    assert botmod.validate_and_normalize_book_name(abbreviation) == full_name
+
+
+@pytest.mark.parametrize(
+    "invalid_book",
+    [
+        "invalidbook",
+        "xyz",
+        "notabook",
+        "",
+        "   ",
+    ],
+)
+def test_validate_and_normalize_book_name_invalid(invalid_book):
+    """
+    Assert that invalid book names return None.
+
+    The test passes invalid book names to validate_and_normalize_book_name and verifies that None is returned.
+    """
+    assert botmod.validate_and_normalize_book_name(invalid_book) is None
 
 
 def test_passage_cache(monkeypatch):

@@ -310,10 +310,10 @@ def test_bible_verse_parsing():
 
 
 def test_bible_book_normalization():
-    """Test Bible book name normalization."""
-    from biblebot.bot import normalize_book_name
+    """Test Bible book name validation and normalization."""
+    from biblebot.bot import validate_and_normalize_book_name
 
-    test_cases = [
+    valid_test_cases = [
         ("gen", "Genesis"),
         ("GEN", "Genesis"),
         ("Genesis", "Genesis"),
@@ -321,12 +321,17 @@ def test_bible_book_normalization():
         ("1co", "1 Corinthians"),
         ("rev", "Revelation"),
         ("ps", "Psalms"),
-        ("unknown", "Unknown"),
     ]
 
-    for input_name, expected in test_cases:
-        result = normalize_book_name(input_name)
+    for input_name, expected in valid_test_cases:
+        result = validate_and_normalize_book_name(input_name)
         assert result == expected, f"Book normalization failed for: {input_name}"
+
+    # Test invalid book names return None
+    invalid_test_cases = ["unknown", "invalidbook", "xyz"]
+    for invalid_name in invalid_test_cases:
+        result = validate_and_normalize_book_name(invalid_name)
+        assert result is None, f"Expected None for invalid book: {invalid_name}"
 
 
 async def test_matrix_client_initialization(test_config):

@@ -85,8 +85,7 @@ MIN_PRACTICAL_CHUNK_SIZE = 8  # Minimum reasonable chunk size for splitting
 MAX_RATE_LIMIT_RETRIES = 3  # Maximum number of rate limit retries
 DEFAULT_RETRY_AFTER_MS = 1000  # Default retry delay in milliseconds
 
-# Pre-computed set of lowercased book names for O(1) lookup performance
-_LOWERCASE_BOOK_NAMES = {v.lower() for v in BOOK_ABBREVIATIONS.values()}
+
 # Mapping from lowercased full names to their canonical forms for exact matching
 _LOWERCASE_NAME_TO_CANONICAL = {v.lower(): v for v in BOOK_ABBREVIATIONS.values()}
 TRUNCATION_INDICATOR = "..."  # Indicator for truncated text
@@ -115,20 +114,6 @@ _PASSAGE_CACHE_TTL_SECS = CACHE_TTL_SECONDS
 def _clean_book_name(book_str: str) -> str:
     """Clean and normalize book name string for consistent matching."""
     return " ".join(book_str.lower().replace(CHAR_DOT, "").strip().split())
-
-
-def normalize_book_name(book_str: str) -> str:
-    """
-    Normalize a Bible book name or abbreviation to its canonical full name.
-
-    The input is cleaned and normalized (lowercased, periods removed, whitespace normalized)
-    before lookup in the BOOK_ABBREVIATIONS mapping. If a normalized entry exists in that
-    mapping, the mapped full book name is returned; otherwise the cleaned input is returned
-    in title case.
-    """
-    # Clean the input with robust whitespace normalization
-    clean_str = _clean_book_name(book_str)
-    return BOOK_ABBREVIATIONS.get(clean_str, clean_str.title())
 
 
 def validate_and_normalize_book_name(book_str: str) -> Optional[str]:
@@ -582,12 +567,15 @@ class BibleBot:
         )
         # Type-validate and coerce detect_references_anywhere
         raw_detect_anywhere = bot_settings.get(CONFIG_DETECT_REFERENCES_ANYWHERE, False)
-        self.detect_references_anywhere = str(raw_detect_anywhere).lower() in (
-            "true",
-            "yes",
-            "1",
-            "on",
-        )
+        if isinstance(raw_detect_anywhere, bool):
+            self.detect_references_anywhere = raw_detect_anywhere
+        else:
+            self.detect_references_anywhere = str(raw_detect_anywhere).lower() in (
+                "true",
+                "yes",
+                "1",
+                "on",
+            )
         # Type-validate and coerce split_message_length
         raw_split_len = bot_settings.get("split_message_length", 0)
         try:
@@ -911,7 +899,7 @@ class BibleBot:
 
         Scans the message text with REFERENCE_PATTERNS (exact match) or PARTIAL_REFERENCE_PATTERNS
         (anywhere in message) based on detect_references_anywhere setting. When a match is found it:
-        - normalizes the book name with normalize_book_name(),
+        - validates and normalizes the book name with validate_and_normalize_book_name(),
         - constructs a passage string "<Book> <Reference>",
         - determines the requested translation (falls back to DEFAULT_TRANSLATION),
         - logs the detected reference, and
@@ -956,7 +944,7 @@ class BibleBot:
 
                     # Get optional translation group (guard against patterns with fewer groups)
                     trans_group = (
-                        match.group(3) if getattr(match.re, "groups", 0) >= 3 else None
+                        match.group(3) if (match.lastindex or 0) >= 3 else None
                     )
                     translation = (
                         trans_group.lower() if trans_group else self.default_translation

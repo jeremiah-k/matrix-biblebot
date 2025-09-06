@@ -7,7 +7,7 @@ import pytest
 import yaml
 
 from biblebot import bot
-from biblebot.bot import BibleBot, normalize_book_name, validate_and_normalize_book_name
+from biblebot.bot import BibleBot, validate_and_normalize_book_name
 from tests.test_constants import (
     TEST_ACCESS_TOKEN,
     TEST_BIBLE_REFERENCE,
@@ -366,7 +366,7 @@ class TestEnvironmentLoading:
 
 
 class TestBookNameNormalization:
-    """Test Bible book name normalization."""
+    """Test Bible book name validation and normalization."""
 
     @pytest.mark.parametrize(
         "input_name,expected",
@@ -383,14 +383,28 @@ class TestBookNameNormalization:
             ("song", "Song of Solomon"),
             ("sos", "Song of Solomon"),
             ("so", "Song of Solomon"),
-            ("Song of Solomon", "Song Of Solomon"),
-            ("unknown", "Unknown"),  # Returns title case if not found
+            ("Song of Solomon", "Song of Solomon"),
         ],
     )
-    def test_normalize_book_name(self, input_name, expected):
-        """Test book name normalization with various inputs."""
-        result = bot.normalize_book_name(input_name)
+    def test_validate_and_normalize_book_name_valid(self, input_name, expected):
+        """Test book name validation and normalization with valid inputs."""
+        result = validate_and_normalize_book_name(input_name)
         assert result == expected
+
+    @pytest.mark.parametrize(
+        "input_name",
+        [
+            "unknown",
+            "invalidbook",
+            "xyz",
+            "",
+            "   ",
+        ],
+    )
+    def test_validate_and_normalize_book_name_invalid(self, input_name):
+        """Test that invalid book names return None."""
+        result = validate_and_normalize_book_name(input_name)
+        assert result is None
 
 
 class TestBookNameValidation:
@@ -434,36 +448,30 @@ class TestBookNameValidation:
             ("1  Samuel", "1 Samuel"),  # Double space
             ("1\tSamuel", "1 Samuel"),  # Tab character
             ("  1   Samuel  ", "1 Samuel"),  # Multiple spaces and padding
-            ("Song of Solomon", "Song Of Solomon"),  # Normal case
-            ("Song  of  Solomon", "Song Of Solomon"),  # Multiple spaces between words
+            ("Song of Solomon", "Song of Solomon"),  # Normal case
+            ("Song  of  Solomon", "Song of Solomon"),  # Multiple spaces between words
             ("  John  ", "John"),  # Padded single word
         ],
     )
-    def test_normalize_book_name_whitespace_normalization(self, book_name, expected):
-        """Test that book normalization handles irregular whitespace correctly."""
-        result = normalize_book_name(book_name)
+    def test_validate_and_normalize_book_name_whitespace_normalization(
+        self, book_name, expected
+    ):
+        """Test that book validation and normalization handles irregular whitespace correctly."""
+        result = validate_and_normalize_book_name(book_name)
         assert result == expected
 
     @pytest.mark.parametrize(
-        "book_name,expected_normalized",
+        "book_name",
         [
-            ("1 Samuel", "1 Samuel"),  # Normal spacing
-            ("1  Samuel", "1 Samuel"),  # Double space should normalize
-            ("1\tSamuel", "1 Samuel"),  # Tab should normalize
-            (
-                "  1   Samuel  ",
-                "1 Samuel",
-            ),  # Multiple spaces and padding should normalize
-            ("Song  of  Solomon", "Song Of Solomon"),  # Multiple spaces between words
-            ("unknown  book", "Unknown Book"),  # Unknown book gets title case
+            "unknown  book",  # Unknown book with extra spaces
+            "   invalid   ",  # Invalid book with padding
+            "xyz  abc",  # Invalid book with spaces
         ],
     )
-    def test_normalize_book_name_whitespace_consistency(
-        self, book_name, expected_normalized
-    ):
-        """Test that normalize_book_name handles whitespace consistently with validate_and_normalize_book_name."""
-        result = normalize_book_name(book_name)
-        assert result == expected_normalized
+    def test_validate_and_normalize_book_name_whitespace_invalid(self, book_name):
+        """Test that invalid book names with whitespace return None."""
+        result = validate_and_normalize_book_name(book_name)
+        assert result is None
 
 
 class TestAPIRequests:
@@ -1736,31 +1744,29 @@ class TestMainFunction:
 class TestUtilityFunctions:
     """Test utility functions in the bot module."""
 
-    def test_normalize_book_name_full_names(self):
-        """Test normalizing full book names."""
-        assert bot.normalize_book_name("Genesis") == "Genesis"
-        assert bot.normalize_book_name("Exodus") == "Exodus"
-        assert bot.normalize_book_name("Matthew") == "Matthew"
+    def test_validate_and_normalize_book_name_full_names(self):
+        """Test validating and normalizing full book names."""
+        assert validate_and_normalize_book_name("Genesis") == "Genesis"
+        assert validate_and_normalize_book_name("Exodus") == "Exodus"
+        assert validate_and_normalize_book_name("Matthew") == "Matthew"
 
-    def test_normalize_book_name_abbreviations(self):
-        """Test normalizing common abbreviations."""
-        assert bot.normalize_book_name("Gen") == "Genesis"
-        assert bot.normalize_book_name("Ex") == "Exodus"
-        assert bot.normalize_book_name("Matt") == "Matthew"
-        assert bot.normalize_book_name("Mt") == "Matthew"
+    def test_validate_and_normalize_book_name_abbreviations(self):
+        """Test validating and normalizing common abbreviations."""
+        assert validate_and_normalize_book_name("Gen") == "Genesis"
+        assert validate_and_normalize_book_name("Ex") == "Exodus"
+        assert validate_and_normalize_book_name("Matt") == "Matthew"
+        assert validate_and_normalize_book_name("Mt") == "Matthew"
 
-    def test_normalize_book_name_case_insensitive(self):
-        """Test case insensitive normalization."""
-        assert bot.normalize_book_name("gen") == "Genesis"
-        assert bot.normalize_book_name("GEN") == "Genesis"
-        assert bot.normalize_book_name("GeN") == "Genesis"
+    def test_validate_and_normalize_book_name_case_insensitive(self):
+        """Test case insensitive validation and normalization."""
+        assert validate_and_normalize_book_name("gen") == "Genesis"
+        assert validate_and_normalize_book_name("GEN") == "Genesis"
+        assert validate_and_normalize_book_name("GeN") == "Genesis"
 
-    def test_normalize_book_name_unknown(self):
-        """Test normalizing unknown book names."""
-        assert bot.normalize_book_name("Unknown") == "Unknown"
-        assert (
-            bot.normalize_book_name("XYZ") == "Xyz"
-        )  # Function capitalizes first letter
+    def test_validate_and_normalize_book_name_unknown(self):
+        """Test that unknown book names return None."""
+        assert validate_and_normalize_book_name("Unknown") is None
+        assert validate_and_normalize_book_name("XYZ") is None
 
 
 class TestCacheFunctions:
