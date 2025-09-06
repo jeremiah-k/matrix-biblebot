@@ -90,14 +90,18 @@ class TestEdgeCases:
         bot.start_time = 1234567880000  # Use milliseconds
         bot.api_keys = {}
 
+        # Enable partial matching to allow scripture references within long text
+        bot.detect_references_anywhere = True
+
         with patch(
             "biblebot.bot.get_bible_text", new_callable=AsyncMock
         ) as mock_get_bible:
             mock_get_bible.return_value = ("Test verse", "John 3:16")
 
-            # Test with message that has valid reference format
-            # Use a valid Bible book name for the test
-            long_message = "John 3:16"  # Simple valid reference
+            # Test with extremely long message containing embedded scripture reference
+            # This tests both long message handling and partial reference detection
+            long_text = "A" * 10000  # Create extremely long text for stress testing
+            long_message = f"Here is some very long text: {long_text} and here's a scripture reference: John 3:16 ESV"
 
             event = MagicMock()
             event.body = long_message
