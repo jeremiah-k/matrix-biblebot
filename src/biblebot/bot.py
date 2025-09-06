@@ -567,15 +567,15 @@ class BibleBot:
         )
         # Type-validate and coerce detect_references_anywhere
         raw_detect_anywhere = bot_settings.get(CONFIG_DETECT_REFERENCES_ANYWHERE, False)
-        if isinstance(raw_detect_anywhere, bool):
-            self.detect_references_anywhere = raw_detect_anywhere
-        else:
-            self.detect_references_anywhere = str(raw_detect_anywhere).lower() in (
+        if isinstance(raw_detect_anywhere, str):
+            self.detect_references_anywhere = raw_detect_anywhere.lower().strip() in (
                 "true",
                 "yes",
                 "1",
                 "on",
             )
+        else:
+            self.detect_references_anywhere = bool(raw_detect_anywhere)
         # Type-validate and coerce split_message_length
         raw_split_len = bot_settings.get("split_message_length", 0)
         try:
