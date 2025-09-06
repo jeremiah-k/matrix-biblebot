@@ -817,20 +817,18 @@ class TestCLIUtilityFunctions:
     @patch("os.chmod")
     @patch("pathlib.Path.mkdir")
     @patch("pathlib.Path.exists")
-    @patch("shutil.copy2")
-    @patch("biblebot.tools.get_sample_config_path")
+    @patch("biblebot.cli.copy_sample_config_to")
     def test_generate_config_success(
-        self, mock_get_config, mock_copy, mock_path_exists, mock_path_mkdir, mock_chmod
+        self, mock_copy_config, mock_path_exists, mock_path_mkdir, mock_chmod
     ):
         """Test successful config generation."""
         mock_path_exists.return_value = False  # No existing files
-        mock_get_config.return_value = "/sample/config.yaml"
 
         result = cli.generate_config("/test/config.yaml")
 
         assert result is True
         mock_path_mkdir.assert_called_once_with(parents=True, exist_ok=True)
-        assert mock_copy.call_count == 1  # Only copies config.yaml now
+        mock_copy_config.assert_called_once_with("/test/config.yaml")
         from pathlib import Path
 
         mock_chmod.assert_called_once_with(Path("/test/config.yaml"), 0o600)

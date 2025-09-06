@@ -388,7 +388,7 @@ def main():
         epilog="""
 Examples:
   biblebot                          # Run the bot
-  biblebot config generate          # Generate sample config files
+  biblebot config generate          # Generate sample config file
   biblebot config check             # Validate configuration file
   biblebot auth login               # Interactive login to Matrix
   biblebot auth logout              # Logout and clear credentials
@@ -426,7 +426,7 @@ Examples:
     config_parser = subparsers.add_parser(CMD_CONFIG, help="Configuration management")
     config_subparsers = config_parser.add_subparsers(dest="config_action")
 
-    config_subparsers.add_parser(CMD_GENERATE, help="Generate sample config files")
+    config_subparsers.add_parser(CMD_GENERATE, help="Generate sample config file")
     config_subparsers.add_parser(CMD_CHECK, help="Validate configuration file")
 
     # Auth subcommands
@@ -513,7 +513,7 @@ Examples:
             return
         else:
             config_parser.print_help()
-            return
+            sys.exit(2)
 
     elif args.command == CMD_AUTH:
         if args.auth_action == CMD_LOGIN:
@@ -589,7 +589,7 @@ Examples:
             return
         else:
             auth_parser.print_help()
-            return
+            sys.exit(2)
 
     elif args.command == CMD_SERVICE:
         if args.service_action == CMD_INSTALL:
@@ -599,7 +599,7 @@ Examples:
             return
         else:
             service_parser.print_help()
-            return
+            sys.exit(2)
 
     # Check if config file exists - always required for bot operation
     if not os.path.exists(args.config):

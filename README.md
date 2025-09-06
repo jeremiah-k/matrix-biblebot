@@ -258,7 +258,7 @@ options:
 
 Examples:
   biblebot                          # Run the bot
-  biblebot config generate          # Generate sample config files
+  biblebot config generate          # Generate sample config file
   biblebot config check             # Validate configuration file
   biblebot auth login               # Interactive login to Matrix
   biblebot auth logout              # Logout and clear credentials
