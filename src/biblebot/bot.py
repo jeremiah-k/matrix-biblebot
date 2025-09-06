@@ -83,6 +83,9 @@ FALLBACK_MESSAGE_TOO_LONG = "[Message too long]"
 MIN_PRACTICAL_CHUNK_SIZE = 8  # Minimum reasonable chunk size for splitting
 MAX_RATE_LIMIT_RETRIES = 3  # Maximum number of rate limit retries
 DEFAULT_RETRY_AFTER_MS = 1000  # Default retry delay in milliseconds
+
+# Pre-computed set of lowercased book names for O(1) lookup performance
+_LOWERCASE_BOOK_NAMES = {v.lower() for v in BOOK_ABBREVIATIONS.values()}
 TRUNCATION_INDICATOR = "..."  # Indicator for truncated text
 REFERENCE_SEPARATOR_LEN = 3  # Length of " - " separator
 
@@ -125,21 +128,13 @@ def is_valid_bible_book(book_str: str) -> bool:
 
     Returns True if the book name is found in BOOK_ABBREVIATIONS (as key or value),
     False otherwise. This helps prevent false positives in scripture detection.
+    Uses O(1) lookups for optimal performance.
     """
     # Clean the input the same way normalize_book_name does
     clean_str = book_str.lower().replace(CHAR_DOT, "").strip()
 
-    # Check if it's a known abbreviation (key in BOOK_ABBREVIATIONS)
-    if clean_str in BOOK_ABBREVIATIONS:
-        return True
-
-    # Check if it's a known full name (case-insensitive) by comparing against
-    # the lowercased values from the abbreviations map.
-    for book_name in BOOK_ABBREVIATIONS.values():
-        if clean_str == book_name.lower():
-            return True
-
-    return False
+    # Check if it's a known abbreviation (key) or a known full name (value)
+    return clean_str in BOOK_ABBREVIATIONS or clean_str in _LOWERCASE_BOOK_NAMES
 
 
 # Load config

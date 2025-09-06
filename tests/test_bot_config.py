@@ -73,28 +73,20 @@ class TestBotConfiguration:
         assert bot.max_message_length == 2000
         assert bot.split_message_length == 0
 
-    def test_detect_references_anywhere_setting(self):
+    @pytest.mark.parametrize(
+        "bot_config, expected_value",
+        [
+            ({}, False),  # Default when 'bot' section is missing
+            ({"bot": {}}, False),  # Default when 'bot' section is empty
+            ({"bot": {"detect_references_anywhere": False}}, False),
+            ({"bot": {"detect_references_anywhere": True}}, True),
+        ],
+    )
+    def test_detect_references_anywhere_setting(self, bot_config, expected_value):
         """Test detect_references_anywhere configuration setting."""
-        # Test default (False)
-        config = {"matrix_room_ids": ["!test:example.org"]}
+        config = {"matrix_room_ids": ["!test:example.org"], **bot_config}
         bot = BibleBot(config)
-        assert bot.detect_references_anywhere is False
-
-        # Test explicitly set to False
-        config = {
-            "matrix_room_ids": ["!test:example.org"],
-            "bot": {"detect_references_anywhere": False},
-        }
-        bot = BibleBot(config)
-        assert bot.detect_references_anywhere is False
-
-        # Test set to True
-        config = {
-            "matrix_room_ids": ["!test:example.org"],
-            "bot": {"detect_references_anywhere": True},
-        }
-        bot = BibleBot(config)
-        assert bot.detect_references_anywhere is True
+        assert bot.detect_references_anywhere is expected_value
 
     def test_bot_split_message_length_default(self):
         """Test bot with default split_message_length setting."""
