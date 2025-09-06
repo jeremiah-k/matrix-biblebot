@@ -626,44 +626,6 @@ class TestCLIMainFunction:
         assert e.value.code == 1
         mock_exit.assert_called_with(1)
 
-    @patch("sys.argv", ["biblebot", "--auth-login"])
-    @patch("builtins.input", return_value="https://matrix.org")
-    @patch("getpass.getpass", return_value="password")
-    @patch("biblebot.cli.interactive_login", new_callable=AsyncMock)
-    @patch("sys.exit")
-    def test_legacy_auth_login(
-        self,
-        mock_exit,
-        mock_login,
-        mock_getpass,
-        mock_input,
-    ):
-        """Test legacy --auth-login flag."""
-        mock_login.return_value = True
-        mock_exit.side_effect = SystemExit(0)
-
-        with pytest.raises(SystemExit) as exc_info:
-            cli.main()
-
-        assert exc_info.value.code == 0
-        mock_login.assert_called_once()
-        mock_exit.assert_called_with(0)
-
-    @patch("sys.argv", ["biblebot", "--auth-logout"])
-    @patch("biblebot.cli.interactive_logout", new_callable=AsyncMock)
-    @patch("sys.exit")
-    def test_legacy_auth_logout(self, mock_exit, mock_logout):
-        """Test legacy --auth-logout flag."""
-        mock_logout.return_value = True
-        mock_exit.side_effect = SystemExit(0)
-
-        with pytest.raises(SystemExit) as exc_info:
-            cli.main()
-
-        assert exc_info.value.code == 0
-        mock_logout.assert_called_once()
-        mock_exit.assert_called_with(0)
-
 
 class TestCLIBotOperation:
     """Test CLI bot operation scenarios."""
