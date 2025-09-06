@@ -7,7 +7,7 @@ import pytest
 import yaml
 
 from biblebot import bot
-from biblebot.bot import BibleBot, normalize_book_name
+from biblebot.bot import BibleBot, normalize_book_name, validate_and_normalize_book_name
 from tests.test_constants import (
     TEST_ACCESS_TOKEN,
     TEST_BIBLE_REFERENCE,
@@ -418,9 +418,9 @@ class TestBookNameValidation:
             ("", None),
         ],
     )
-    def test_normalize_book_name_validation(self, book_name, expected):
+    def test_validate_and_normalize_book_name(self, book_name, expected):
         """Test book name validation and normalization with various inputs."""
-        result = normalize_book_name(book_name)
+        result = validate_and_normalize_book_name(book_name)
         assert result == expected
 
     @pytest.mark.parametrize(
@@ -451,7 +451,7 @@ class TestBookNameValidation:
                 "1 Samuel",
             ),  # Multiple spaces and padding should normalize
             ("Song  of  Solomon", "Song Of Solomon"),  # Multiple spaces between words
-            ("unknown  book", None),  # Unknown book returns None (invalid)
+            ("unknown  book", "Unknown Book"),  # Unknown book gets title case
         ],
     )
     def test_normalize_book_name_whitespace_consistency(
