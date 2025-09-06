@@ -576,10 +576,11 @@ class BibleBot:
         )
         # Type-validate and coerce detect_references_anywhere
         raw_detect_anywhere = bot_settings.get(CONFIG_DETECT_REFERENCES_ANYWHERE, False)
-        self.detect_references_anywhere = (
-            str(raw_detect_anywhere).lower() in ("true", "yes", "1", "on")
-            if isinstance(raw_detect_anywhere, str)
-            else bool(raw_detect_anywhere)
+        self.detect_references_anywhere = str(raw_detect_anywhere).lower() in (
+            "true",
+            "yes",
+            "1",
+            "on",
         )
         # Type-validate and coerce split_message_length
         raw_split_len = bot_settings.get("split_message_length", 0)
@@ -924,23 +925,18 @@ class BibleBot:
             and event.sender != self.client.user_id
             and event.server_timestamp > self.start_time
         ):
-            # Choose patterns based on configuration
-            search_patterns = (
-                PARTIAL_REFERENCE_PATTERNS
-                if self.detect_references_anywhere
-                else REFERENCE_PATTERNS
-            )
+            # Choose patterns and matcher function based on configuration
+            if self.detect_references_anywhere:
+                search_patterns = PARTIAL_REFERENCE_PATTERNS
+                match_method = "search"
+            else:
+                search_patterns = REFERENCE_PATTERNS
+                match_method = "fullmatch"
 
             passage = None
             translation = self.default_translation  # Default translation
             for pattern in search_patterns:
-                # Use fullmatch for exact mode, search for partial mode
-                matcher = (
-                    pattern.search
-                    if self.detect_references_anywhere
-                    else pattern.fullmatch
-                )
-                match = matcher(event.body)
+                match = getattr(pattern, match_method)(event.body)
                 if match:
                     raw_book_name = match.group(1).strip()
 
