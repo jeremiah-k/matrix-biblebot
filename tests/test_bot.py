@@ -7,7 +7,7 @@ import pytest
 import yaml
 
 from biblebot import bot
-from biblebot.bot import BibleBot
+from biblebot.bot import BibleBot, is_valid_bible_book
 from tests.test_constants import (
     TEST_ACCESS_TOKEN,
     TEST_BIBLE_REFERENCE,
@@ -389,6 +389,41 @@ class TestBookNameNormalization:
         assert result == expected
 
 
+class TestBookNameValidation:
+    """Test Bible book name validation."""
+
+    @pytest.mark.parametrize(
+        "book_name,expected",
+        [
+            # Valid abbreviations
+            ("gen", True),
+            ("GEN", True),
+            ("1co", True),
+            ("1 cor", True),
+            ("ps", True),
+            ("rev", True),
+            # Valid full names
+            ("Genesis", True),
+            ("Matthew", True),
+            ("1 Corinthians", True),
+            ("Psalms", True),
+            ("Revelation", True),
+            # Invalid names (common false positives)
+            ("I have", False),
+            ("Room", False),
+            ("Version", False),
+            ("Chapter", False),
+            ("unknown", False),
+            ("xyz", False),
+            ("", False),
+        ],
+    )
+    def test_is_valid_bible_book(self, book_name, expected):
+        """Test book name validation with various inputs."""
+        result = is_valid_bible_book(book_name)
+        assert result == expected
+
+
 class TestAPIRequests:
     """Test API request functionality."""
 
@@ -538,6 +573,46 @@ class TestPartialReferenceMatching:
                 args = mock_handle.call_args[0]
                 assert args[0] == "!test:example.org"  # room_id
                 assert "John 3:16" in args[1]  # passage
+
+    @pytest.mark.asyncio
+    async def test_false_positives_prevented(self):
+        """Test that common false positives are prevented with validation."""
+        config = {
+            "matrix_room_ids": ["!test:example.org"],
+            "bot": {"detect_references_anywhere": True},
+        }
+        bot = BibleBot(config)
+        bot.start_time = 0
+        bot._room_id_set = {"!test:example.org"}
+        bot.client = MagicMock()
+        bot.client.user_id = "@bot:example.org"
+
+        false_positive_messages = [
+            "I have 3 cats",
+            "Room 5 is available",
+            "Version 2 update",
+            "Chapter 1 begins",
+            "Meeting at 2:30",
+            "Call me at 555:1234",
+        ]
+
+        # Mock the scripture handling
+        with patch.object(
+            bot, "handle_scripture_command", new_callable=AsyncMock
+        ) as mock_handle:
+            for message in false_positive_messages:
+                event = MagicMock()
+                event.body = message
+                event.sender = "@user:example.org"
+                event.server_timestamp = 1000
+
+                room = MagicMock()
+                room.room_id = "!test:example.org"
+
+                await bot.on_room_message(room, event)
+
+            # Should NOT trigger scripture handling for any false positives
+            mock_handle.assert_not_called()
 
 
 class TestBibleTextRetrieval:

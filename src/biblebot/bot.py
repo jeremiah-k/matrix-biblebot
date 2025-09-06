@@ -119,6 +119,36 @@ def normalize_book_name(book_str: str) -> str:
     return BOOK_ABBREVIATIONS.get(clean_str, book_str.title())
 
 
+def is_valid_bible_book(book_str: str) -> bool:
+    """
+    Check if a book name or abbreviation is a valid Bible book.
+
+    Returns True if the book name is found in BOOK_ABBREVIATIONS (as key or value),
+    False otherwise. This helps prevent false positives in scripture detection.
+    """
+    # Clean the input the same way normalize_book_name does
+    clean_str = book_str.lower().replace(CHAR_DOT, "").strip()
+
+    # Check if it's a known abbreviation (key in BOOK_ABBREVIATIONS)
+    if clean_str in BOOK_ABBREVIATIONS:
+        return True
+
+    # Check if the normalized book name matches any known book
+    # We need to check both the original input and the normalized result
+    normalized = normalize_book_name(book_str)
+
+    # Check if the normalized name is in the values (exact match)
+    if normalized in BOOK_ABBREVIATIONS.values():
+        return True
+
+    # Also check if the original input (cleaned) matches any value when lowercased
+    for book_name in BOOK_ABBREVIATIONS.values():
+        if clean_str == book_name.lower():
+            return True
+
+    return False
+
+
 # Load config
 def load_config(config_file, log_loading=True):
     """
@@ -908,6 +938,11 @@ class BibleBot:
                 match = pattern.search(event.body)
                 if match:
                     raw_book_name = match.group(1).strip()
+
+                    # Validate that this is actually a Bible book to prevent false positives
+                    if not is_valid_bible_book(raw_book_name):
+                        continue  # Skip this match, try next pattern
+
                     book_name = normalize_book_name(raw_book_name)
                     verse_reference = match.group(2).strip()
                     passage = f"{book_name} {verse_reference}"

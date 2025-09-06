@@ -81,13 +81,20 @@ REFERENCE_PATTERNS = [
 ]
 
 # Partial matching patterns (for detect_references_anywhere mode)
+# More restrictive patterns to reduce false positives
 PARTIAL_REFERENCE_PATTERNS = [
     # Book + chapter:verse[-\u2013 verse] [translation] (anywhere in message)
+    # Matches specific Bible book patterns to reduce false positives
     re.compile(
-        r"([\w\s]+?)\s+(\d+:\d+(?:\s*[-\u2013]\s*\d+)?)\s*(kjv|esv)?", re.IGNORECASE
+        r"\b([1-3]\s+[A-Za-z]+(?:\s+[A-Za-z]+)?|[A-Za-z]+(?:\s+of\s+[A-Za-z]+)?)\s+(\d+:\d+(?:\s*[-\u2013]\s*\d+)?)\s*(kjv|esv)?\b",
+        re.IGNORECASE,
     ),
     # Book + chapter [translation] (anywhere in message)
-    re.compile(r"([\w\s]+?)\s+(\d+)\s*(kjv|esv)?", re.IGNORECASE),
+    # Matches specific Bible book patterns to reduce false positives
+    re.compile(
+        r"\b([1-3]\s+[A-Za-z]+(?:\s+[A-Za-z]+)?|[A-Za-z]+(?:\s+of\s+[A-Za-z]+)?)\s+(\d+)\s*(kjv|esv)?\b",
+        re.IGNORECASE,
+    ),
 ]
 
 # Required configuration keys
