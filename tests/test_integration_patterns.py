@@ -434,6 +434,9 @@ class TestIntegrationPatterns:
 
             # Verify response was sent
             assert mock_client.room_send.call_count == 2  # Reaction + message
+            # First call should be the reaction, second the verse message
+            reaction_call = mock_client.room_send.call_args_list[0]
+            assert reaction_call.args[1] == "m.reaction"
             msg = mock_client.room_send.call_args_list[1]
             assert msg.args[1] == "m.room.message"
             assert "John 3:16" in msg.args[2]["body"]
