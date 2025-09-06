@@ -2,10 +2,12 @@ name: Tests and Coverage
 
 on:
   push:
-    branches: [main, modernize-bot]
+    branches: [main, develop]
   pull_request:
-    branches: [main, modernize-bot]
+    branches: [main, develop]
   workflow_dispatch:
+  release:
+    types: [published]
 
 permissions:
   contents: read
