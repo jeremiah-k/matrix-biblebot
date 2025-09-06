@@ -577,8 +577,8 @@ class BibleBot:
         # Type-validate and coerce detect_references_anywhere
         raw_detect_anywhere = bot_settings.get(CONFIG_DETECT_REFERENCES_ANYWHERE, False)
         self.detect_references_anywhere = (
-            raw_detect_anywhere
-            if isinstance(raw_detect_anywhere, bool)
+            str(raw_detect_anywhere).lower() in ("true", "yes", "1", "on")
+            if isinstance(raw_detect_anywhere, str)
             else bool(raw_detect_anywhere)
         )
         # Type-validate and coerce split_message_length

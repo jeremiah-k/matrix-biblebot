@@ -80,10 +80,22 @@ class TestBotConfiguration:
             ({"bot": {}}, False),  # Default when 'bot' section is empty
             ({"bot": {"detect_references_anywhere": False}}, False),
             ({"bot": {"detect_references_anywhere": True}}, True),
+            # String value handling
+            ({"bot": {"detect_references_anywhere": "true"}}, True),
+            ({"bot": {"detect_references_anywhere": "false"}}, False),
+            ({"bot": {"detect_references_anywhere": "TRUE"}}, True),
+            ({"bot": {"detect_references_anywhere": "FALSE"}}, False),
+            ({"bot": {"detect_references_anywhere": "yes"}}, True),
+            ({"bot": {"detect_references_anywhere": "no"}}, False),
+            ({"bot": {"detect_references_anywhere": "1"}}, True),
+            ({"bot": {"detect_references_anywhere": "0"}}, False),
+            ({"bot": {"detect_references_anywhere": "on"}}, True),
+            ({"bot": {"detect_references_anywhere": "off"}}, False),
+            ({"bot": {"detect_references_anywhere": "random"}}, False),
         ],
     )
     def test_detect_references_anywhere_setting(self, bot_config, expected_value):
-        """Test detect_references_anywhere configuration setting."""
+        """Test detect_references_anywhere configuration setting with robust string handling."""
         config = {"matrix_room_ids": ["!test:example.org"], **bot_config}
         bot = BibleBot(config)
         assert bot.detect_references_anywhere is expected_value
