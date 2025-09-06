@@ -23,6 +23,7 @@ matrix:
 #   preserve_poetry_formatting: false # Set to true to preserve line breaks in poetic texts (Psalms, etc.)
 #   split_message_length: 0 # Split long messages into multiple messages of this length (0 = disabled)
 #   # Only the last split message includes the reference and any suffix (e.g., "- John 3:16 🕊️✝️")
+#   detect_references_anywhere: false # Detect scripture references anywhere in messages (default: false)
 
 # API Keys (Optional)
 # You can also set these as environment variables: ESV_API_KEY

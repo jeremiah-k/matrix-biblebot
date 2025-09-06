@@ -47,6 +47,12 @@ matrix:
 #   # Note: This value is capped to max_message_length. The final chunk reserves
 #   # space for the reference and suffix, so its text portion may be shorter.
 #   split_message_length: 0 # Disabled by default
+#
+#   # Detect scripture references anywhere in messages (default: false)
+#   # When false: only responds to messages that are ONLY scripture references ("John 3:16")
+#   # When true: detects references anywhere in messages ("Have you read John 3:16 ESV?")
+#   # Useful for integration with relay bots like meshtastic-matrix-relay
+#   detect_references_anywhere: false
 
 # API Keys for Bible translations (optional)
 # These can also be set via environment variables (e.g., ESV_API_KEY).

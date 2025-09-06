@@ -39,6 +39,7 @@ from .constants import (
     CACHE_MAX_SIZE,
     CACHE_TTL_SECONDS,
     CHAR_DOT,
+    CONFIG_DETECT_REFERENCES_ANYWHERE,
     CONFIG_KEY_MATRIX,
     CONFIG_MATRIX_E2EE,
     CONFIG_MATRIX_HOMESERVER,
@@ -64,6 +65,7 @@ from .constants import (
     LOGGER_NAME,
     LOGGER_NIO,
     MESSAGE_SUFFIX,
+    PARTIAL_REFERENCE_PATTERNS,
     REACTION_OK,
     REFERENCE_PATTERNS,
     SYNC_TIMEOUT_MS,
@@ -514,8 +516,9 @@ class BibleBot:
 
         Parameters:
             config (dict): Configuration mapping (expected keys: "bot" with optional "default_translation",
-                "cache_enabled", "max_message_length", and "split_message_length" in characters; the final chunk includes the reference/suffix and
-                must also respect max_message_length; also contains matrix room IDs elsewhere in the config).
+                "cache_enabled", "max_message_length", "split_message_length", and "detect_references_anywhere";
+                the final chunk includes the reference/suffix and must also respect max_message_length;
+                also contains matrix room IDs elsewhere in the config).
             client: Optional injected AsyncClient used for Matrix interactions (omitted from detailed param docs as a common service).
 
         Behavior:
@@ -526,6 +529,7 @@ class BibleBot:
                 - cache_enabled: whether passage caching is enabled (defaults to True).
                 - max_message_length: maximum allowed length for outgoing messages (defaults to 2000).
                 - split_message_length: length at which to split long messages into multiple messages (defaults to 0, disabled).
+                - detect_references_anywhere: whether to detect scripture references anywhere in messages (defaults to False).
             - Validates max_message_length and resets it to 2000 if a non-positive value is supplied.
             - Validates split_message_length, coerces to int, resets to 0 if negative, and caps to max_message_length.
         """
@@ -544,6 +548,9 @@ class BibleBot:
         self.max_message_length = bot_settings.get("max_message_length", 2000)
         self.preserve_poetry_formatting = bot_settings.get(
             CONFIG_PRESERVE_POETRY_FORMATTING, False
+        )
+        self.detect_references_anywhere = bot_settings.get(
+            CONFIG_DETECT_REFERENCES_ANYWHERE, False
         )
         # Type-validate and coerce split_message_length
         raw_split_len = bot_settings.get("split_message_length", 0)
@@ -866,7 +873,8 @@ class BibleBot:
         - are not sent by the bot itself, and
         - were sent after the bot's recorded start time.
 
-        Scans the message text with REFERENCE_PATTERNS. When a match is found it:
+        Scans the message text with REFERENCE_PATTERNS (exact match) or PARTIAL_REFERENCE_PATTERNS
+        (anywhere in message) based on detect_references_anywhere setting. When a match is found it:
         - normalizes the book name with normalize_book_name(),
         - constructs a passage string "<Book> <Reference>",
         - determines the requested translation (falls back to DEFAULT_TRANSLATION),
@@ -887,8 +895,12 @@ class BibleBot:
             and event.sender != self.client.user_id
             and event.server_timestamp > self.start_time
         ):
-            # Bible verse reference pattern(s)
-            search_patterns = REFERENCE_PATTERNS
+            # Choose patterns based on configuration
+            search_patterns = (
+                PARTIAL_REFERENCE_PATTERNS
+                if self.detect_references_anywhere
+                else REFERENCE_PATTERNS
+            )
 
             passage = None
             translation = self.default_translation  # Default translation

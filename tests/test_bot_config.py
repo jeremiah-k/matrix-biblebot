@@ -73,6 +73,30 @@ class TestBotConfiguration:
         assert bot.max_message_length == 2000
         assert bot.split_message_length == 0
 
+    def test_detect_references_anywhere_setting(self):
+        """Test detect_references_anywhere configuration setting."""
+        # Test default (False)
+        config = {"matrix_room_ids": ["!test:example.org"]}
+        bot = BibleBot(config)
+        assert bot.detect_references_anywhere is False
+
+        # Test explicitly set to False
+        config = {
+            "matrix_room_ids": ["!test:example.org"],
+            "bot": {"detect_references_anywhere": False},
+        }
+        bot = BibleBot(config)
+        assert bot.detect_references_anywhere is False
+
+        # Test set to True
+        config = {
+            "matrix_room_ids": ["!test:example.org"],
+            "bot": {"detect_references_anywhere": True},
+        }
+        bot = BibleBot(config)
+        assert bot.detect_references_anywhere is True
+        assert bot.detect_references_anywhere is False
+
     def test_bot_split_message_length_default(self):
         """Test bot with default split_message_length setting."""
         config = {"matrix_room_ids": ["!test:example.org"]}
