@@ -16,8 +16,6 @@ from .constants import (
     CLI_ACTION_STORE_TRUE,
     CLI_ACTION_VERSION,
     CLI_ARG_CONFIG,
-    CLI_ARG_GENERATE_CONFIG,
-    CLI_ARG_INSTALL_SERVICE,
     CLI_ARG_LOG_LEVEL,
     CLI_ARG_VERSION,
     CLI_ARG_YES_LONG,
@@ -26,6 +24,15 @@ from .constants import (
     CLI_HELP_CONFIG,
     CLI_HELP_LOG_LEVEL,
     CLI_HELP_YES,
+    CMD_AUTH,
+    CMD_CHECK,
+    CMD_CONFIG,
+    CMD_GENERATE,
+    CMD_INSTALL,
+    CMD_LOGIN,
+    CMD_LOGOUT,
+    CMD_SERVICE,
+    CMD_STATUS,
     CONFIG_DIR,
     DEFAULT_CONFIG_FILENAME,
     DEFAULT_LOG_LEVEL,
@@ -357,11 +364,9 @@ def main():
     Run the BibleBot command-line interface.
 
     If invoked with no arguments, enters the interactive setup/run flow. When called with arguments, provides modern grouped subcommands:
-    - config generate / validate: create a sample config or validate an existing config file.
+    - config generate / check: create a sample config or validate an existing config file.
     - auth login / logout / status: perform interactive Matrix login/logout and show authentication/E2EE status.
     - service install: install or update the per-user systemd service.
-
-    Legacy, deprecated flags (--generate-config, --install-service, --auth-login, --auth-logout) are still accepted for backward compatibility and map to the corresponding modern commands while emitting deprecation warnings.
 
     Side effects:
     - May create files (sample config), install a service, modify credentials/E2EE state, or start the running bot.
@@ -383,13 +388,12 @@ def main():
         epilog="""
 Examples:
   biblebot                          # Run the bot
-  biblebot config generate          # Generate sample config files
+  biblebot config generate          # Generate sample config file
+  biblebot config check             # Validate configuration file
   biblebot auth login               # Interactive login to Matrix
   biblebot auth logout              # Logout and clear credentials
+  biblebot auth status              # Show authentication & E2EE status
   biblebot service install          # Install systemd service
-
-Legacy flags (deprecated):
-  --auth-login, --auth-logout, --generate-config, --install-service
         """,
     )
 
@@ -415,45 +419,23 @@ Legacy flags (deprecated):
         help=CLI_HELP_YES,
     )
 
-    # Legacy flags for backward compatibility (deprecated)
-    parser.add_argument(
-        CLI_ARG_GENERATE_CONFIG,
-        action=CLI_ACTION_STORE_TRUE,
-        help=argparse.SUPPRESS,  # Hide from help but keep functional
-    )
-    parser.add_argument(
-        CLI_ARG_INSTALL_SERVICE,
-        action=CLI_ACTION_STORE_TRUE,
-        help=argparse.SUPPRESS,
-    )
-    parser.add_argument(
-        "--auth-login",
-        action="store_true",
-        help=argparse.SUPPRESS,
-    )
-    parser.add_argument(
-        "--auth-logout",
-        action="store_true",
-        help=argparse.SUPPRESS,
-    )
-
     # Subcommands
     subparsers = parser.add_subparsers(dest="command", help="Available commands")
 
     # Config subcommands
-    config_parser = subparsers.add_parser("config", help="Configuration management")
+    config_parser = subparsers.add_parser(CMD_CONFIG, help="Configuration management")
     config_subparsers = config_parser.add_subparsers(dest="config_action")
 
-    config_subparsers.add_parser("generate", help="Generate sample config files")
-    config_subparsers.add_parser("validate", help="Validate configuration file")
+    config_subparsers.add_parser(CMD_GENERATE, help="Generate sample config file")
+    config_subparsers.add_parser(CMD_CHECK, help="Validate configuration file")
 
     # Auth subcommands
-    auth_parser = subparsers.add_parser("auth", help="Authentication management")
+    auth_parser = subparsers.add_parser(CMD_AUTH, help="Authentication management")
     auth_subparsers = auth_parser.add_subparsers(dest="auth_action")
 
     # Login subcommand with optional arguments
     login_parser = auth_subparsers.add_parser(
-        "login", help="Interactive login to Matrix and save credentials"
+        CMD_LOGIN, help="Interactive login to Matrix and save credentials"
     )
     login_parser.add_argument(
         "--homeserver",
@@ -470,16 +452,16 @@ Legacy flags (deprecated):
     )
 
     auth_subparsers.add_parser(
-        "logout", help="Logout and remove credentials and E2EE store"
+        CMD_LOGOUT, help="Logout and remove credentials and E2EE store"
     )
-    auth_subparsers.add_parser("status", help="Show authentication and E2EE status")
+    auth_subparsers.add_parser(CMD_STATUS, help="Show authentication and E2EE status")
 
     # Service subcommands
-    service_parser = subparsers.add_parser("service", help="Service management")
+    service_parser = subparsers.add_parser(CMD_SERVICE, help="Service management")
     service_subparsers = service_parser.add_subparsers(dest="service_action")
 
     service_subparsers.add_parser(
-        "install", help="Install or update systemd user service"
+        CMD_INSTALL, help="Install or update systemd user service"
     )
 
     args = parser.parse_args()
@@ -490,43 +472,12 @@ Legacy flags (deprecated):
         level=log_level, format="%(asctime)s - %(levelname)s - %(message)s"
     )
 
-    # Handle legacy flags with deprecation warnings
-    if args.generate_config:
-        logging.warning(
-            "--generate-config is deprecated. Use 'biblebot config generate' instead."
-        )
-        generate_config(args.config)
-        return
-
-    if args.install_service:
-        logging.warning(
-            "--install-service is deprecated. Use 'biblebot service install' instead."
-        )
-        from .setup_utils import install_service
-
-        install_service()
-        return
-
-    if args.auth_login:
-        logging.warning(
-            "--auth-login is deprecated. Use 'biblebot auth login' instead."
-        )
-        ok = run_async(interactive_login())
-        sys.exit(0 if ok else 1)
-
-    if args.auth_logout:
-        logging.warning(
-            "--auth-logout is deprecated. Use 'biblebot auth logout' instead."
-        )
-        ok = run_async(interactive_logout())
-        sys.exit(0 if ok else 1)
-
     # Handle modern grouped commands
-    if args.command == "config":
-        if args.config_action == "generate":
+    if args.command == CMD_CONFIG:
+        if args.config_action == CMD_GENERATE:
             generate_config(args.config)
             return
-        elif args.config_action == "validate":
+        elif args.config_action == CMD_CHECK:
             from .bot import load_config
 
             config = load_config(args.config)
@@ -562,10 +513,10 @@ Legacy flags (deprecated):
             return
         else:
             config_parser.print_help()
-            return
+            sys.exit(2)
 
-    elif args.command == "auth":
-        if args.auth_action == "login":
+    elif args.command == CMD_AUTH:
+        if args.auth_action == CMD_LOGIN:
             # Extract arguments if provided
             homeserver = getattr(args, "homeserver", None)
             username = getattr(args, "username", None)
@@ -616,10 +567,10 @@ Legacy flags (deprecated):
 
             ok = run_async(interactive_login(homeserver, username, password))
             sys.exit(0 if ok else 1)
-        elif args.auth_action == "logout":
+        elif args.auth_action == CMD_LOGOUT:
             ok = run_async(interactive_logout())
             sys.exit(0 if ok else 1)
-        elif args.auth_action == "status":
+        elif args.auth_action == CMD_STATUS:
             from .auth import print_e2ee_status
 
             # Show authentication status
@@ -638,17 +589,17 @@ Legacy flags (deprecated):
             return
         else:
             auth_parser.print_help()
-            return
+            sys.exit(2)
 
-    elif args.command == "service":
-        if args.service_action == "install":
+    elif args.command == CMD_SERVICE:
+        if args.service_action == CMD_INSTALL:
             from .setup_utils import install_service
 
             install_service()
             return
         else:
             service_parser.print_help()
-            return
+            sys.exit(2)
 
     # Check if config file exists - always required for bot operation
     if not os.path.exists(args.config):

@@ -353,10 +353,10 @@ class TestCLIIntegration:
     @patch("biblebot.auth.check_e2ee_status")
     @patch("biblebot.bot.load_environment")
     @patch("biblebot.bot.load_config")
-    def test_config_validate_command_integration(
+    def test_config_check_command_integration(
         self, mock_load_config, mock_load_env, mock_e2ee_status
     ):
-        """Test config validate command with real module integration."""
+        """Test config check command with real module integration."""
         # Setup mocks - check_e2ee_status is a sync function, use regular Mock
         mock_load_config.return_value = {
             "matrix_room_ids": ["!room1:matrix.org", "!room2:matrix.org"]

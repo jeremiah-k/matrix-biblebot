@@ -91,17 +91,12 @@ CMD_CONFIG = "config"
 CMD_AUTH = "auth"
 CMD_SERVICE = "service"
 CMD_GENERATE = "generate"
-CMD_VALIDATE = "validate"
+CMD_CHECK = "check"
 CMD_LOGIN = "login"
 CMD_LOGOUT = "logout"
 CMD_STATUS = "status"
 CMD_INSTALL = "install"
 
-# Legacy CLI flags (deprecated)
-LEGACY_AUTH_LOGIN = "--auth-login"
-LEGACY_AUTH_LOGOUT = "--auth-logout"
-LEGACY_GENERATE_CONFIG = "--generate-config"
-LEGACY_INSTALL_SERVICE = "--install-service"
 
 # Error messages
 ERROR_CONFIG_NOT_FOUND = "Config file not found"
@@ -190,8 +185,7 @@ CLI_ARG_LOG_LEVEL = "--log-level"
 CLI_ARG_VERSION = "--version"
 CLI_ARG_YES_SHORT = "-y"
 CLI_ARG_YES_LONG = "--yes"
-CLI_ARG_GENERATE_CONFIG = "--generate-config"
-CLI_ARG_INSTALL_SERVICE = "--install-service"
+
 
 # CLI help messages
 CLI_HELP_CONFIG = "Path to config file (default: {})"
