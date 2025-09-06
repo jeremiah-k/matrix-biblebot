@@ -117,7 +117,7 @@ class TestBookNormalizationPerformance:
         start_time = time.perf_counter()
         for _ in range(200):
             for book in common_books:
-                result = bot.normalize_book_name(book)
+                result = bot.validate_and_normalize_book_name(book)
                 assert isinstance(result, str)
         normalization_time = time.perf_counter() - start_time
 
@@ -138,8 +138,8 @@ class TestBookNormalizationPerformance:
             "Jn",
             "Acts",
             "Rom",
-            "1Cor",
-            "2Cor",
+            "1co",
+            "2co",
             "Gal",
             "Eph",
         ]
@@ -147,7 +147,7 @@ class TestBookNormalizationPerformance:
         start_time = time.perf_counter()
         for _ in range(200):
             for abbrev in abbreviations:
-                result = bot.normalize_book_name(abbrev)
+                result = bot.validate_and_normalize_book_name(abbrev)
                 assert isinstance(result, str)
         abbrev_time = time.perf_counter() - start_time
 
@@ -172,7 +172,7 @@ class TestBookNormalizationPerformance:
         start_time = time.perf_counter()
         for _ in range(200):
             for book in mixed_case_books:
-                result = bot.normalize_book_name(book)
+                result = bot.validate_and_normalize_book_name(book)
                 assert isinstance(result, str)
         mixed_case_time = time.perf_counter() - start_time
 
@@ -335,8 +335,9 @@ class TestMemoryPerformance:
         # Test many normalizations
         for i in range(10000):
             book_name = f"TestBook{i % 100}"
-            result = bot.normalize_book_name(book_name)
-            assert isinstance(result, str)
+            result = bot.validate_and_normalize_book_name(book_name)
+            # Note: invalid book names return None, so we check for str or None
+            assert result is None or isinstance(result, str)
 
         # If we get here without memory issues, test passes implicitly
 
@@ -383,7 +384,7 @@ class TestStressPerformance:
             """
             Run 100 iterations of book-name normalization and record results.
 
-            This worker repeatedly normalizes a fixed set of book-name variants by calling bot.normalize_book_name and appends each normalization result to the outer-scope list `results`. Any exception raised during processing is caught and appended to the outer-scope list `errors`. Intended for use as a threaded worker in concurrency/stress tests. Returns None.
+            This worker repeatedly normalizes a fixed set of book-name variants by calling bot.validate_and_normalize_book_name and appends each normalization result to the outer-scope list `results`. Any exception raised during processing is caught and appended to the outer-scope list `errors`. Intended for use as a threaded worker in concurrency/stress tests. Returns None.
             """
             try:
                 for _i in range(100):
@@ -396,7 +397,7 @@ class TestStressPerformance:
                         "MATTHEW",
                     ]
                     for book in book_names:
-                        result = bot.normalize_book_name(book)
+                        result = bot.validate_and_normalize_book_name(book)
                         results.append(result)
             except Exception as e:  # noqa: BLE001
                 errors.append(e)

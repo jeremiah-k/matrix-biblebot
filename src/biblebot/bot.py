@@ -8,6 +8,7 @@ import textwrap
 import time
 from collections import OrderedDict
 from time import monotonic
+from typing import Optional
 from urllib.parse import quote
 
 import aiohttp
@@ -39,6 +40,7 @@ from .constants import (
     CACHE_MAX_SIZE,
     CACHE_TTL_SECONDS,
     CHAR_DOT,
+    CONFIG_DETECT_REFERENCES_ANYWHERE,
     CONFIG_KEY_MATRIX,
     CONFIG_MATRIX_E2EE,
     CONFIG_MATRIX_HOMESERVER,
@@ -64,6 +66,7 @@ from .constants import (
     LOGGER_NAME,
     LOGGER_NIO,
     MESSAGE_SUFFIX,
+    PARTIAL_REFERENCE_PATTERNS,
     REACTION_OK,
     REFERENCE_PATTERNS,
     SYNC_TIMEOUT_MS,
@@ -81,6 +84,10 @@ FALLBACK_MESSAGE_TOO_LONG = "[Message too long]"
 MIN_PRACTICAL_CHUNK_SIZE = 8  # Minimum reasonable chunk size for splitting
 MAX_RATE_LIMIT_RETRIES = 3  # Maximum number of rate limit retries
 DEFAULT_RETRY_AFTER_MS = 1000  # Default retry delay in milliseconds
+
+
+# Mapping from lowercased full names to their canonical forms for exact matching
+_LOWERCASE_NAME_TO_CANONICAL = {v.lower(): v for v in BOOK_ABBREVIATIONS.values()}
 TRUNCATION_INDICATOR = "..."  # Indicator for truncated text
 REFERENCE_SEPARATOR_LEN = 3  # Length of " - " separator
 
@@ -104,17 +111,28 @@ _PASSAGE_CACHE_MAX = CACHE_MAX_SIZE
 _PASSAGE_CACHE_TTL_SECS = CACHE_TTL_SECONDS
 
 
-def normalize_book_name(book_str: str) -> str:
-    """
-    Normalize a Bible book name or abbreviation to its canonical full name.
+def _clean_book_name(book_str: str) -> str:
+    """Clean and normalize book name string for consistent matching."""
+    return " ".join(book_str.lower().replace(CHAR_DOT, "").strip().split())
 
-    The input is lowercased, periods are removed, and surrounding whitespace is trimmed before lookup
-    in the BOOK_ABBREVIATIONS mapping. If a normalized entry exists in that mapping, the mapped
-    full book name is returned; otherwise the original input is returned in title case.
+
+def validate_and_normalize_book_name(book_str: str) -> Optional[str]:
     """
-    # Clean the input: lowercase, remove dots, and strip whitespace
-    clean_str = book_str.lower().replace(CHAR_DOT, "").strip()
-    return BOOK_ABBREVIATIONS.get(clean_str, book_str.title())
+    Validate and normalize a Bible book name in one operation.
+
+    Returns the canonical full name if the book is valid, None if invalid.
+    This function combines validation and normalization for optimal performance
+    in contexts where both operations are needed.
+    """
+    clean_str = _clean_book_name(book_str)
+
+    if canonical_name := BOOK_ABBREVIATIONS.get(clean_str):
+        return canonical_name
+
+    if canonical_name := _LOWERCASE_NAME_TO_CANONICAL.get(clean_str):
+        return canonical_name
+
+    return None
 
 
 # Load config
@@ -514,8 +532,9 @@ class BibleBot:
 
         Parameters:
             config (dict): Configuration mapping (expected keys: "bot" with optional "default_translation",
-                "cache_enabled", "max_message_length", and "split_message_length" in characters; the final chunk includes the reference/suffix and
-                must also respect max_message_length; also contains matrix room IDs elsewhere in the config).
+                "cache_enabled", "max_message_length", "split_message_length", and "detect_references_anywhere";
+                the final chunk includes the reference/suffix and must also respect max_message_length;
+                also contains matrix room IDs elsewhere in the config).
             client: Optional injected AsyncClient used for Matrix interactions (omitted from detailed param docs as a common service).
 
         Behavior:
@@ -526,6 +545,7 @@ class BibleBot:
                 - cache_enabled: whether passage caching is enabled (defaults to True).
                 - max_message_length: maximum allowed length for outgoing messages (defaults to 2000).
                 - split_message_length: length at which to split long messages into multiple messages (defaults to 0, disabled).
+                - detect_references_anywhere: whether to detect scripture references anywhere in messages (defaults to False).
             - Validates max_message_length and resets it to 2000 if a non-positive value is supplied.
             - Validates split_message_length, coerces to int, resets to 0 if negative, and caps to max_message_length.
         """
@@ -545,6 +565,17 @@ class BibleBot:
         self.preserve_poetry_formatting = bot_settings.get(
             CONFIG_PRESERVE_POETRY_FORMATTING, False
         )
+        # Type-validate and coerce detect_references_anywhere
+        raw_detect_anywhere = bot_settings.get(CONFIG_DETECT_REFERENCES_ANYWHERE, False)
+        if isinstance(raw_detect_anywhere, bool):
+            self.detect_references_anywhere = raw_detect_anywhere
+        else:
+            self.detect_references_anywhere = str(raw_detect_anywhere).lower() in (
+                "true",
+                "yes",
+                "1",
+                "on",
+            )
         # Type-validate and coerce split_message_length
         raw_split_len = bot_settings.get("split_message_length", 0)
         try:
@@ -866,8 +897,9 @@ class BibleBot:
         - are not sent by the bot itself, and
         - were sent after the bot's recorded start time.
 
-        Scans the message text with REFERENCE_PATTERNS. When a match is found it:
-        - normalizes the book name with normalize_book_name(),
+        Scans the message text with REFERENCE_PATTERNS (exact match) or PARTIAL_REFERENCE_PATTERNS
+        (anywhere in message) based on detect_references_anywhere setting. When a match is found it:
+        - validates and normalizes the book name with validate_and_normalize_book_name(),
         - constructs a passage string "<Book> <Reference>",
         - determines the requested translation (falls back to DEFAULT_TRANSLATION),
         - logs the detected reference, and
@@ -887,26 +919,36 @@ class BibleBot:
             and event.sender != self.client.user_id
             and event.server_timestamp > self.start_time
         ):
-            # Bible verse reference pattern(s)
-            search_patterns = REFERENCE_PATTERNS
+            # Choose patterns and matcher function based on configuration
+            if self.detect_references_anywhere:
+                search_patterns = PARTIAL_REFERENCE_PATTERNS
+                match_method = "search"
+            else:
+                search_patterns = REFERENCE_PATTERNS
+                match_method = "fullmatch"
 
             passage = None
             translation = self.default_translation  # Default translation
             for pattern in search_patterns:
-                match = pattern.search(event.body)
+                match = getattr(pattern, match_method)(event.body)
                 if match:
                     raw_book_name = match.group(1).strip()
-                    book_name = normalize_book_name(raw_book_name)
+
+                    # Validate and normalize the book name in one optimized step
+                    book_name = validate_and_normalize_book_name(raw_book_name)
+                    if not book_name:
+                        continue  # Skip if not a valid Bible book
+
                     verse_reference = match.group(2).strip()
                     passage = f"{book_name} {verse_reference}"
-                    if match.group(
-                        3
-                    ):  # Check if the translation (esv or kjv) is specified
-                        translation = match.group(3).lower()
-                    else:
-                        translation = (
-                            self.default_translation
-                        )  # Fall back to config default
+
+                    # Get optional translation group (guard against patterns with fewer groups)
+                    trans_group = (
+                        match.group(3) if (match.lastindex or 0) >= 3 else None
+                    )
+                    translation = (
+                        trans_group.lower() if trans_group else self.default_translation
+                    )
                     logger.info(
                         f"Detected Bible reference: {passage} ({translation}) in room {room.room_id}"
                     )
