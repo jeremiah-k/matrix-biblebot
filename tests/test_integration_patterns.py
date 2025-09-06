@@ -405,13 +405,14 @@ class TestIntegrationPatterns:
         bot._room_id_set = set(config["matrix_room_ids"])
         bot.start_time = 1234567880000
 
-        # Mock the entire API chain
-        with patch("biblebot.bot.make_api_request", new_callable=AsyncMock) as mock_api:
-            mock_api.return_value = {
-                "text": "For God so loved the world that he gave his one and only Son",
-                "reference": "John 3:16",
-                "version": "NIV",
-            }
+        # Mock the Bible text retrieval function
+        with patch(
+            "biblebot.bot.get_bible_text", new_callable=AsyncMock
+        ) as mock_get_bible:
+            mock_get_bible.return_value = (
+                "For God so loved the world that he gave his one and only Son",
+                "John 3:16",
+            )
 
             event = MagicMock()
             event.body = "Show me John 3:16 please"  # Natural sentence with embedded reference (uses default KJV)
@@ -423,8 +424,8 @@ class TestIntegrationPatterns:
 
             await bot.on_room_message(room, event)
 
-            # Verify API was called
-            mock_api.assert_called_once()
+            # Verify Bible text was fetched
+            mock_get_bible.assert_called_once()
             # Verify response was sent
             assert mock_client.room_send.call_count == 2  # Reaction + message
 
