@@ -133,15 +133,8 @@ def is_valid_bible_book(book_str: str) -> bool:
     if clean_str in BOOK_ABBREVIATIONS:
         return True
 
-    # Check if the normalized book name matches any known book
-    # We need to check both the original input and the normalized result
-    normalized = normalize_book_name(book_str)
-
-    # Check if the normalized name is in the values (exact match)
-    if normalized in BOOK_ABBREVIATIONS.values():
-        return True
-
-    # Also check if the original input (cleaned) matches any value when lowercased
+    # Check if it's a known full name (case-insensitive) by comparing against
+    # the lowercased values from the abbreviations map.
     for book_name in BOOK_ABBREVIATIONS.values():
         if clean_str == book_name.lower():
             return True
