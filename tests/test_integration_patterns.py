@@ -381,7 +381,7 @@ class TestIntegrationPatterns:
             }
 
             event = MagicMock()
-            event.body = "Show me John 3:16"
+            event.body = "John 3:16"  # Exact reference to match default behavior
             event.sender = "@user:matrix.org"
             event.server_timestamp = 1234567890000  # Converted to milliseconds
 
