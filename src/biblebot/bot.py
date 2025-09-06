@@ -115,12 +115,27 @@ def _clean_book_name(book_str: str) -> str:
     return " ".join(book_str.lower().replace(CHAR_DOT, "").strip().split())
 
 
-def normalize_book_name(book_str: str) -> Optional[str]:
+def normalize_book_name(book_str: str) -> str:
     """
     Normalize a Bible book name or abbreviation to its canonical full name.
 
-    If the book is not a valid Bible book, returns None. Otherwise, returns
-    the canonical full name.
+    The input is cleaned and normalized (lowercased, periods removed, whitespace normalized)
+    before lookup in the BOOK_ABBREVIATIONS mapping. If a normalized entry exists in that
+    mapping, the mapped full book name is returned; otherwise the cleaned input is returned
+    in title case.
+    """
+    # Clean the input with robust whitespace normalization
+    clean_str = _clean_book_name(book_str)
+    return BOOK_ABBREVIATIONS.get(clean_str, clean_str.title())
+
+
+def validate_and_normalize_book_name(book_str: str) -> Optional[str]:
+    """
+    Validate and normalize a Bible book name in one operation.
+
+    Returns the canonical full name if the book is valid, None if invalid.
+    This function combines validation and normalization for optimal performance
+    in contexts where both operations are needed.
     """
     clean_str = _clean_book_name(book_str)
     # Check if it's a known abbreviation (key) or a known full name (value)
@@ -919,8 +934,8 @@ class BibleBot:
                 if match:
                     raw_book_name = match.group(1).strip()
 
-                    # Validate and normalize the book name in one step
-                    book_name = normalize_book_name(raw_book_name)
+                    # Validate and normalize the book name in one optimized step
+                    book_name = validate_and_normalize_book_name(raw_book_name)
                     if not book_name:
                         continue  # Skip if not a valid Bible book
 
