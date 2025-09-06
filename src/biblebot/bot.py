@@ -130,8 +130,8 @@ def is_valid_bible_book(book_str: str) -> bool:
     False otherwise. This helps prevent false positives in scripture detection.
     Uses O(1) lookups for optimal performance.
     """
-    # Clean the input the same way normalize_book_name does
-    clean_str = book_str.lower().replace(CHAR_DOT, "").strip()
+    # Clean the input and normalize whitespace for robust matching
+    clean_str = " ".join(book_str.lower().replace(CHAR_DOT, "").strip().split())
 
     # Check if it's a known abbreviation (key) or a known full name (value)
     return clean_str in BOOK_ABBREVIATIONS or clean_str in _LOWERCASE_BOOK_NAMES

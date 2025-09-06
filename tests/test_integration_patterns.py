@@ -404,6 +404,7 @@ class TestIntegrationPatterns:
         # Populate room ID set for testing
         bot._room_id_set = set(config["matrix_room_ids"])
         bot.start_time = 1234567880000
+        bot.api_keys = {}
 
         # Mock the Bible text retrieval function
         with patch(
@@ -415,7 +416,9 @@ class TestIntegrationPatterns:
             )
 
             event = MagicMock()
-            event.body = "Show me John 3:16 please"  # Natural sentence with embedded reference (uses default KJV)
+            event.body = (
+                "Show me John 3:16 please"  # Natural sentence with embedded reference
+            )
             event.sender = "@user:matrix.org"
             event.server_timestamp = 1234567890000
 
@@ -428,6 +431,47 @@ class TestIntegrationPatterns:
             mock_get_bible.assert_called_once()
             # Verify response was sent
             assert mock_client.room_send.call_count == 2  # Reaction + message
+            msg = mock_client.room_send.call_args_list[1]
+            assert msg.args[1] == "m.room.message"
+            assert "John 3:16" in msg.args[2]["body"]
+
+    async def test_api_integration_chain_partial_mode_disabled(
+        self, mock_config, mock_client
+    ):
+        """Test that partial references are ignored when detect_references_anywhere is disabled (default)."""
+        # Use default config (detect_references_anywhere defaults to False)
+        bot = BibleBot(config=mock_config, client=mock_client)
+
+        # Populate room ID set for testing
+        bot._room_id_set = set(mock_config["matrix_room_ids"])
+        bot.start_time = 1234567880000
+        bot.api_keys = {}
+
+        # Mock the Bible text retrieval function
+        with patch(
+            "biblebot.bot.get_bible_text", new_callable=AsyncMock
+        ) as mock_get_bible:
+            mock_get_bible.return_value = (
+                "For God so loved the world that he gave his one and only Son",
+                "John 3:16",
+            )
+
+            event = MagicMock()
+            event.body = (
+                "Show me John 3:16 please"  # Natural sentence with embedded reference
+            )
+            event.sender = "@user:matrix.org"
+            event.server_timestamp = 1234567890000
+
+            room = MagicMock()
+            room.room_id = "!room1:matrix.org"
+
+            await bot.on_room_message(room, event)
+
+            # Verify Bible text was NOT fetched (partial references ignored in default mode)
+            mock_get_bible.assert_not_called()
+            # Verify no response was sent
+            assert mock_client.room_send.call_count == 0
 
     async def test_configuration_integration(self, mock_config, mock_client):
         """

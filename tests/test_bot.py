@@ -423,6 +423,23 @@ class TestBookNameValidation:
         result = is_valid_bible_book(book_name)
         assert result == expected
 
+    @pytest.mark.parametrize(
+        "book_name,expected",
+        [
+            ("1 Samuel", True),  # Normal spacing
+            ("1  Samuel", True),  # Double space
+            ("1\tSamuel", True),  # Tab character
+            ("  1   Samuel  ", True),  # Multiple spaces and padding
+            ("Song of Solomon", True),  # Normal case
+            ("Song  of  Solomon", True),  # Multiple spaces between words
+            ("  John  ", True),  # Padded single word
+        ],
+    )
+    def test_is_valid_bible_book_whitespace_normalization(self, book_name, expected):
+        """Test that book validation handles irregular whitespace correctly."""
+        result = is_valid_bible_book(book_name)
+        assert result == expected
+
 
 class TestAPIRequests:
     """Test API request functionality."""
