@@ -427,8 +427,11 @@ class TestIntegrationPatterns:
 
             await bot.on_room_message(room, event)
 
-            # Verify Bible text was fetched
+            # Verify Bible text was fetched with correct parameters
             mock_get_bible.assert_called_once()
+            call_args = mock_get_bible.call_args
+            assert "John 3:16" in call_args[0][0]  # passage argument
+
             # Verify response was sent
             assert mock_client.room_send.call_count == 2  # Reaction + message
             msg = mock_client.room_send.call_args_list[1]

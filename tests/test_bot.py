@@ -613,7 +613,18 @@ class TestPartialReferenceMatching:
             assert "John 3:16" in args[1]  # passage
 
     @pytest.mark.asyncio
-    async def test_false_positives_prevented(self):
+    @pytest.mark.parametrize(
+        "false_positive_message",
+        [
+            "I have 3 cats",
+            "Room 5 is available",
+            "Version 2 update",
+            "Chapter 1 begins",
+            "Meeting at 2:30",
+            "Call me at 555:1234",
+        ],
+    )
+    async def test_false_positives_prevented(self, false_positive_message):
         """Test that common false positives are prevented with validation."""
         config = {
             "matrix_room_ids": ["!test:example.org"],
@@ -625,31 +636,21 @@ class TestPartialReferenceMatching:
         bot.client = MagicMock()
         bot.client.user_id = "@bot:example.org"
 
-        false_positive_messages = [
-            "I have 3 cats",
-            "Room 5 is available",
-            "Version 2 update",
-            "Chapter 1 begins",
-            "Meeting at 2:30",
-            "Call me at 555:1234",
-        ]
-
         # Mock the scripture handling
         with patch.object(
             bot, "handle_scripture_command", new_callable=AsyncMock
         ) as mock_handle:
-            for message in false_positive_messages:
-                event = MagicMock()
-                event.body = message
-                event.sender = "@user:example.org"
-                event.server_timestamp = 1000
+            event = MagicMock()
+            event.body = false_positive_message
+            event.sender = "@user:example.org"
+            event.server_timestamp = 1000
 
-                room = MagicMock()
-                room.room_id = "!test:example.org"
+            room = MagicMock()
+            room.room_id = "!test:example.org"
 
-                await bot.on_room_message(room, event)
+            await bot.on_room_message(room, event)
 
-            # Should NOT trigger scripture handling for any false positives
+            # Should NOT trigger scripture handling for false positives
             mock_handle.assert_not_called()
 
 

@@ -574,8 +574,12 @@ class BibleBot:
         self.preserve_poetry_formatting = bot_settings.get(
             CONFIG_PRESERVE_POETRY_FORMATTING, False
         )
-        self.detect_references_anywhere = bot_settings.get(
-            CONFIG_DETECT_REFERENCES_ANYWHERE, False
+        # Type-validate and coerce detect_references_anywhere
+        raw_detect_anywhere = bot_settings.get(CONFIG_DETECT_REFERENCES_ANYWHERE, False)
+        self.detect_references_anywhere = (
+            raw_detect_anywhere
+            if isinstance(raw_detect_anywhere, bool)
+            else bool(raw_detect_anywhere)
         )
         # Type-validate and coerce split_message_length
         raw_split_len = bot_settings.get("split_message_length", 0)
@@ -930,7 +934,13 @@ class BibleBot:
             passage = None
             translation = self.default_translation  # Default translation
             for pattern in search_patterns:
-                match = pattern.search(event.body)
+                # Use fullmatch for exact mode, search for partial mode
+                matcher = (
+                    pattern.search
+                    if self.detect_references_anywhere
+                    else pattern.fullmatch
+                )
+                match = matcher(event.body)
                 if match:
                     raw_book_name = match.group(1).strip()
 
@@ -942,8 +952,10 @@ class BibleBot:
                     verse_reference = match.group(2).strip()
                     passage = f"{book_name} {verse_reference}"
 
-                    # Get optional translation group (returns None if not matched)
-                    trans_group = match.group(3)
+                    # Get optional translation group (guard against patterns with fewer groups)
+                    trans_group = (
+                        match.group(3) if getattr(match.re, "groups", 0) >= 3 else None
+                    )
                     translation = (
                         trans_group.lower() if trans_group else self.default_translation
                     )
