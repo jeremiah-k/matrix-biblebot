@@ -87,6 +87,8 @@ DEFAULT_RETRY_AFTER_MS = 1000  # Default retry delay in milliseconds
 
 # Pre-computed set of lowercased book names for O(1) lookup performance
 _LOWERCASE_BOOK_NAMES = {v.lower() for v in BOOK_ABBREVIATIONS.values()}
+# Mapping from lowercased full names to their canonical forms for exact matching
+_LOWERCASE_NAME_TO_CANONICAL = {v.lower(): v for v in BOOK_ABBREVIATIONS.values()}
 TRUNCATION_INDICATOR = "..."  # Indicator for truncated text
 REFERENCE_SEPARATOR_LEN = 3  # Length of " - " separator
 
@@ -138,10 +140,14 @@ def validate_and_normalize_book_name(book_str: str) -> Optional[str]:
     in contexts where both operations are needed.
     """
     clean_str = _clean_book_name(book_str)
-    # Check if it's a known abbreviation (key) or a known full name (value)
-    if clean_str not in BOOK_ABBREVIATIONS and clean_str not in _LOWERCASE_BOOK_NAMES:
-        return None
-    return BOOK_ABBREVIATIONS.get(clean_str, clean_str.title())
+
+    if canonical_name := BOOK_ABBREVIATIONS.get(clean_str):
+        return canonical_name
+
+    if canonical_name := _LOWERCASE_NAME_TO_CANONICAL.get(clean_str):
+        return canonical_name
+
+    return None
 
 
 # Load config
