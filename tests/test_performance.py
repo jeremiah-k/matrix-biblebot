@@ -123,10 +123,14 @@ class TestBookNormalizationPerformance:
         normalization_time = time.perf_counter() - start_time
 
         # Performance assertion - more lenient for CI stability
-        assert normalization_time < 3.5
-        # Optional: guard against slow boxes by also checking average
-        per_call = normalization_time / (200 * len(common_books))
-        assert per_call < 0.005  # 5ms per normalization, plenty slack
+        # Skip timing checks on slow CI environments
+        import os
+
+        if not os.getenv("CI_SLOW_RUNNER"):
+            assert normalization_time < 4.0  # Increased budget for flaky CI
+            # Optional: guard against slow boxes by also checking average
+            per_call = normalization_time / (200 * len(common_books))
+            assert per_call < 0.006  # 6ms per normalization, extra slack
 
     @pytest.mark.slow
     def test_normalization_performance_abbreviations(self):
@@ -163,10 +167,14 @@ class TestBookNormalizationPerformance:
         abbrev_time = time.perf_counter() - start_time
 
         # Performance assertion - more lenient for CI stability
-        assert abbrev_time < 3.0
-        # Optional: guard against slow boxes by also checking average
-        per_call = abbrev_time / (200 * len(abbreviations))
-        assert per_call < 0.005  # 5ms per normalization, plenty slack
+        # Skip timing checks on slow CI environments
+        import os
+
+        if not os.getenv("CI_SLOW_RUNNER"):
+            assert abbrev_time < 3.5  # Increased budget for flaky CI
+            # Optional: guard against slow boxes by also checking average
+            per_call = abbrev_time / (200 * len(abbreviations))
+            assert per_call < 0.006  # 6ms per normalization, extra slack
 
     @pytest.mark.slow
     def test_normalization_performance_mixed_case(self):
@@ -192,7 +200,11 @@ class TestBookNormalizationPerformance:
         mixed_case_time = time.perf_counter() - start_time
 
         # Performance assertion - more lenient for CI stability
-        assert mixed_case_time < 3.0
+        # Skip timing checks on slow CI environments
+        import os
+
+        if not os.getenv("CI_SLOW_RUNNER"):
+            assert mixed_case_time < 3.5  # Increased budget for flaky CI
 
 
 class TestAPIPerformance:

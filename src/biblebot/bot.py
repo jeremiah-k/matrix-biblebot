@@ -565,15 +565,12 @@ class BibleBot:
         )
         # Type-validate and coerce detect_references_anywhere
         raw_detect_anywhere = bot_settings.get(CONFIG_DETECT_REFERENCES_ANYWHERE, False)
-        if isinstance(raw_detect_anywhere, str):
-            self.detect_references_anywhere = raw_detect_anywhere.lower().strip() in (
-                "true",
-                "yes",
-                "1",
-                "on",
-            )
-        else:
-            self.detect_references_anywhere = bool(raw_detect_anywhere)
+        self.detect_references_anywhere = str(raw_detect_anywhere).lower().strip() in {
+            "true",
+            "yes",
+            "1",
+            "on",
+        }
         # Type-validate and coerce split_message_length
         raw_split_len = bot_settings.get("split_message_length", 0)
         try:
@@ -918,17 +915,19 @@ class BibleBot:
             and event.server_timestamp > self.start_time
         ):
             # Choose patterns and matcher function based on configuration
-            if self.detect_references_anywhere:
-                search_patterns = PARTIAL_REFERENCE_PATTERNS
-                match_method = "search"
-            else:
-                search_patterns = REFERENCE_PATTERNS
-                match_method = "fullmatch"
+            use_search = self.detect_references_anywhere
+            search_patterns = (
+                PARTIAL_REFERENCE_PATTERNS if use_search else REFERENCE_PATTERNS
+            )
 
             passage = None
             translation = self.default_translation  # Default translation
             for pattern in search_patterns:
-                match = getattr(pattern, match_method)(event.body)
+                match = (
+                    pattern.search(event.body)
+                    if use_search
+                    else pattern.fullmatch(event.body)
+                )
                 if match:
                     raw_book_name = match.group(1).strip()
 
@@ -940,9 +939,8 @@ class BibleBot:
                     verse_reference = match.group(2).strip()
                     passage = f"{book_name} {verse_reference}"
 
-                    # Get optional translation group (guard against patterns with fewer groups)
-                    # Guard by defined groups, not last matched index
-                    trans_group = match.group(3) if len(match.groups()) >= 3 else None
+                    # Get optional translation group - all patterns have exactly 3 groups
+                    trans_group = match.group(3)
                     translation = (
                         trans_group.lower() if trans_group else self.default_translation
                     )
