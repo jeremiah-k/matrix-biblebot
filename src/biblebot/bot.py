@@ -96,6 +96,9 @@ _ALL_NAMES_TO_CANONICAL = MappingProxyType(
 TRUNCATION_INDICATOR = "..."  # Indicator for truncated text
 REFERENCE_SEPARATOR_LEN = 3  # Length of " - " separator
 
+# Placeholder room IDs to skip from sample config
+_PLACEHOLDER_ROOM_IDS = frozenset({"#example:example.org", "!example:example.org"})
+
 
 # Custom exceptions for Bible text retrieval
 class PassageNotFound(Exception):
@@ -665,7 +668,7 @@ class BibleBot:
         if (
             room_id_or_alias.startswith("!your_room_id:")
             or room_id_or_alias.endswith(":your_homeserver_domain")
-            or room_id_or_alias in {"#example:example.org", "!example:example.org"}
+            or room_id_or_alias in _PLACEHOLDER_ROOM_IDS
         ):
             logger.debug(f"Skipping placeholder room ID: {room_id_or_alias}")
             return
@@ -915,19 +918,17 @@ class BibleBot:
             and event.server_timestamp > self.start_time
         ):
             # Choose patterns and matcher function based on configuration
-            use_search = self.detect_references_anywhere
-            search_patterns = (
-                PARTIAL_REFERENCE_PATTERNS if use_search else REFERENCE_PATTERNS
-            )
-
-            # Bind the match function once to avoid per-iteration branching
-            def _match(pat, text):
-                return pat.search(text) if use_search else pat.fullmatch(text)
+            if self.detect_references_anywhere:
+                search_patterns = PARTIAL_REFERENCE_PATTERNS
+                _match_name = "search"
+            else:
+                search_patterns = REFERENCE_PATTERNS
+                _match_name = "fullmatch"
 
             passage = None
             translation = self.default_translation  # Default translation
             for pattern in search_patterns:
-                match = _match(pattern, event.body)
+                match = getattr(pattern, _match_name)(event.body)
                 if match:
                     raw_book_name = match.group(1).strip()
 
@@ -940,7 +941,9 @@ class BibleBot:
                     passage = f"{book_name} {verse_reference}"
 
                     # Get optional translation group safely (some patterns may define only 2 groups)
-                    trans_group = match.group(3) if len(match.groups()) >= 3 else None
+                    trans_group = (
+                        match.group(3) if (match.re.groups or 0) >= 3 else None
+                    )
                     translation = (
                         trans_group.lower() if trans_group else self.default_translation
                     )
