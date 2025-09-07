@@ -7,6 +7,7 @@ import pytest
 import yaml
 
 from biblebot import bot
+from biblebot.bot import BibleBot, validate_and_normalize_book_name
 from tests.test_constants import (
     TEST_ACCESS_TOKEN,
     TEST_BIBLE_REFERENCE,
@@ -365,7 +366,7 @@ class TestEnvironmentLoading:
 
 
 class TestBookNameNormalization:
-    """Test Bible book name normalization."""
+    """Test Bible book name validation and normalization."""
 
     @pytest.mark.parametrize(
         "input_name,expected",
@@ -379,13 +380,98 @@ class TestBookNameNormalization:
             ("revelation", "Revelation"),
             ("ps", "Psalms"),
             ("psalm", "Psalms"),
-            ("unknown", "Unknown"),  # Returns title case if not found
+            ("song", "Song of Solomon"),
+            ("sos", "Song of Solomon"),
+            ("so", "Song of Solomon"),
+            ("Song of Solomon", "Song of Solomon"),
         ],
     )
-    def test_normalize_book_name(self, input_name, expected):
-        """Test book name normalization with various inputs."""
-        result = bot.normalize_book_name(input_name)
+    def test_validate_and_normalize_book_name_valid(self, input_name, expected):
+        """Test book name validation and normalization with valid inputs."""
+        result = validate_and_normalize_book_name(input_name)
         assert result == expected
+
+    @pytest.mark.parametrize(
+        "input_name",
+        [
+            "unknown",
+            "invalidbook",
+            "xyz",
+            "",
+            "   ",
+        ],
+    )
+    def test_validate_and_normalize_book_name_invalid(self, input_name):
+        """Test that invalid book names return None."""
+        result = validate_and_normalize_book_name(input_name)
+        assert result is None
+
+
+class TestBookNameValidation:
+    """Test Bible book name validation."""
+
+    @pytest.mark.parametrize(
+        "book_name,expected",
+        [
+            # Valid abbreviations
+            ("gen", "Genesis"),
+            ("GEN", "Genesis"),
+            ("1co", "1 Corinthians"),
+            ("1 cor", "1 Corinthians"),
+            ("ps", "Psalms"),
+            ("rev", "Revelation"),
+            # Valid full names
+            ("Genesis", "Genesis"),
+            ("Matthew", "Matthew"),
+            ("1 Corinthians", "1 Corinthians"),
+            ("Psalms", "Psalms"),
+            ("Revelation", "Revelation"),
+            # Invalid names (common false positives)
+            ("I have", None),
+            ("Room", None),
+            ("Version", None),
+            ("Chapter", None),
+            ("unknown", None),
+            ("xyz", None),
+            ("", None),
+        ],
+    )
+    def test_validate_and_normalize_book_name(self, book_name, expected):
+        """Test book name validation and normalization with various inputs."""
+        result = validate_and_normalize_book_name(book_name)
+        assert result == expected
+
+    @pytest.mark.parametrize(
+        "book_name,expected",
+        [
+            ("1 Samuel", "1 Samuel"),  # Normal spacing
+            ("1  Samuel", "1 Samuel"),  # Double space
+            ("1\tSamuel", "1 Samuel"),  # Tab character
+            ("  1   Samuel  ", "1 Samuel"),  # Multiple spaces and padding
+            ("Song of Solomon", "Song of Solomon"),  # Normal case
+            ("Song  of  Solomon", "Song of Solomon"),  # Multiple spaces between words
+            ("  John  ", "John"),  # Padded single word
+        ],
+    )
+    def test_validate_and_normalize_book_name_whitespace_normalization(
+        self, book_name, expected
+    ):
+        """Test that book validation and normalization handles irregular whitespace correctly."""
+        result = validate_and_normalize_book_name(book_name)
+        assert result == expected
+
+    @pytest.mark.parametrize(
+        "book_name",
+        [
+            "unknown  book",  # Unknown book with extra spaces
+            "   invalid   ",  # Invalid book with padding
+            "xyz  abc",  # Invalid book with spaces
+        ],
+    )
+    def test_validate_and_normalize_book_name_whitespace_invalid(self, book_name):
+        """Test that invalid book names with whitespace return None."""
+        result = validate_and_normalize_book_name(book_name)
+        assert result is None
 
 
 class TestAPIRequests:
@@ -432,6 +518,187 @@ class TestAPIRequests:
 
             result = await bot.make_api_request("/test", timeout=0.1)
             assert result is None
+
+
+class TestPartialReferenceMatching:
+    """Test partial reference matching functionality."""
+
+    @pytest.mark.parametrize(
+        "raw,expected",
+        [
+            ("true", True),
+            ("True", True),
+            ("yes", True),
+            ("on", True),
+            ("1", True),
+            (1, True),
+            ("false", False),
+            ("off", False),
+            ("0", False),
+            (0, False),
+            (None, False),
+        ],
+    )
+    def test_detect_anywhere_bool_coercion(self, raw, expected):
+        """Ensure truthy/falsey strings and ints map correctly."""
+        cfg = {
+            "matrix_room_ids": ["!test:example.org"],
+            "bot": {"detect_references_anywhere": raw},
+        }
+        bb = BibleBot(cfg)
+        assert bb.detect_references_anywhere is expected
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize("flag,should_call", [(False, False), (True, True)])
+    async def test_detect_references_anywhere_toggle(self, flag, should_call):
+        """Test that partial references are handled correctly based on detect_references_anywhere flag."""
+        config = {
+            "matrix_room_ids": ["!test:example.org"],
+            "bot": {"detect_references_anywhere": flag},
+        }
+        bible_bot = BibleBot(config)
+        bible_bot.start_time = 0
+        bible_bot._room_id_set = {"!test:example.org"}
+        bible_bot.client = MagicMock()
+        bible_bot.client.user_id = "@bot:example.org"
+
+        # Mock the scripture handling
+        with patch.object(
+            bible_bot, "handle_scripture_command", new_callable=AsyncMock
+        ) as mock_handle:
+            # Create a mock event with partial reference
+            event = MagicMock()
+            event.body = "Have you read John 3:16 ESV?"  # Reference embedded in text
+            event.sender = "@user:example.org"
+            event.server_timestamp = 1000
+
+            room = MagicMock()
+            room.room_id = "!test:example.org"
+
+            await bible_bot.on_room_message(room, event)
+
+            if should_call:
+                mock_handle.assert_called_once()
+                args = mock_handle.call_args[0]
+                assert args[0] == "!test:example.org"  # room_id
+                assert "John 3:16" in args[1]  # passage
+                assert args[2].lower() == "esv"  # translation (case-insensitive)
+            else:
+                mock_handle.assert_not_called()
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize("detect_anywhere", [False, True])
+    async def test_exact_reference_works_in_both_modes(self, detect_anywhere):
+        """Test that exact references work in both modes."""
+        config = {
+            "matrix_room_ids": ["!test:example.org"],
+            "bot": {"detect_references_anywhere": detect_anywhere},
+        }
+        bible_bot = BibleBot(config)
+        bible_bot.start_time = 0
+        bible_bot._room_id_set = {"!test:example.org"}
+        bible_bot.client = MagicMock()
+        bible_bot.client.user_id = "@bot:example.org"
+
+        # Mock the scripture handling
+        with patch.object(
+            bible_bot, "handle_scripture_command", new_callable=AsyncMock
+        ) as mock_handle:
+            # Create a mock event with exact reference
+            event = MagicMock()
+            event.body = "John 3:16"  # Exact reference
+            event.sender = "@user:example.org"
+            event.server_timestamp = 1000
+
+            room = MagicMock()
+            room.room_id = "!test:example.org"
+
+            await bible_bot.on_room_message(room, event)
+
+            # Should trigger scripture handling in both modes
+            mock_handle.assert_called_once()
+            args = mock_handle.call_args[0]
+            assert args[0] == "!test:example.org"  # room_id
+            assert "John 3:16" in args[1]  # passage
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize(
+        "false_positive_message",
+        [
+            "I have 3 cats",
+            "Room 5 is available",
+            "Version 2 update",
+            "Chapter 1 begins",
+            "Meeting at 2:30",
+            "Call me at 555:1234",
+            "Release v2.0 today",
+            "Meet @ 2:30pm",
+            "task 1:1 is complete",  # Should not match any Bible book
+        ],
+    )
+    async def test_false_positives_prevented(self, false_positive_message):
+        """Test that common false positives are prevented with validation."""
+        config = {
+            "matrix_room_ids": ["!test:example.org"],
+            "bot": {"detect_references_anywhere": True},
+        }
+        bible_bot = BibleBot(config)
+        bible_bot.start_time = 0
+        bible_bot._room_id_set = {"!test:example.org"}
+        bible_bot.client = MagicMock()
+        bible_bot.client.user_id = "@bot:example.org"
+
+        # Mock the scripture handling
+        with patch.object(
+            bible_bot, "handle_scripture_command", new_callable=AsyncMock
+        ) as mock_handle:
+            event = MagicMock()
+            event.body = false_positive_message
+            event.sender = "@user:example.org"
+            event.server_timestamp = 1000
+
+            room = MagicMock()
+            room.room_id = "!test:example.org"
+
+            await bible_bot.on_room_message(room, event)
+
+            # Should NOT trigger scripture handling for false positives
+            mock_handle.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_partial_reference_with_kjv_translation(self):
+        """Test that partial references work with KJV translation specification."""
+        config = {
+            "matrix_room_ids": ["!test:example.org"],
+            "bot": {"detect_references_anywhere": True},
+        }
+        bible_bot = BibleBot(config)
+        bible_bot.start_time = 0
+        bible_bot._room_id_set = {"!test:example.org"}
+        bible_bot.client = MagicMock()
+        bible_bot.client.user_id = "@bot:example.org"
+
+        # Mock the scripture handling
+        with patch.object(
+            bible_bot, "handle_scripture_command", new_callable=AsyncMock
+        ) as mock_handle:
+            # Create a mock event with partial reference and KJV translation
+            event = MagicMock()
+            event.body = "Have you read John 3:16 KJV?"  # Reference with KJV
+            event.sender = "@user:example.org"
+            event.server_timestamp = 1000
+
+            room = MagicMock()
+            room.room_id = "!test:example.org"
+
+            await bible_bot.on_room_message(room, event)
+
+            # Should trigger scripture handling
+            mock_handle.assert_called_once()
+            args = mock_handle.call_args[0]
+            assert args[0] == "!test:example.org"  # room_id
+            assert "John 3:16" in args[1]  # passage
+            assert args[2].lower() == "kjv"  # translation should be KJV
 
 
 class TestBibleTextRetrieval:
@@ -577,37 +844,20 @@ class TestBibleBot:
     @pytest.mark.asyncio
     async def test_join_matrix_room_success(self, sample_config):
         """Test successful room joining."""
-        # E2EE dependencies are mocked upfront in conftest.py
-        with patch("biblebot.bot.AsyncClient") as mock_client_class:
-            mock_client = AsyncMock(
-                spec=[
-                    "user_id",
-                    "device_id",
-                    "room_send",
-                    "join",
-                    "add_event_callback",
-                    "should_upload_keys",
-                    "restore_login",
-                    "access_token",
-                    "rooms",
-                    "room_resolve_alias",
-                    "close",
-                ]
-            )
-            mock_client_class.return_value = mock_client
-            mock_client.rooms = {}  # Bot not in room yet
+        # Use existing test helper to avoid heavy patching
+        mock_client = E2EETestFramework.create_mock_client(rooms={})
 
-            # Mock successful join response
-            mock_response = MagicMock()
-            mock_response.room_id = TEST_ROOM_IDS[0]
-            mock_client.join = AsyncMock(return_value=mock_response)
+        # Mock successful join response
+        mock_response = MagicMock()
+        mock_response.room_id = TEST_ROOM_IDS[0]
+        mock_client.join = AsyncMock(return_value=mock_response)
 
-            bot_instance = bot.BibleBot(sample_config)
-            bot_instance.client = mock_client
+        bot_instance = bot.BibleBot(sample_config)
+        bot_instance.client = mock_client
 
-            await bot_instance.join_matrix_room(TEST_ROOM_IDS[0])
+        await bot_instance.join_matrix_room(TEST_ROOM_IDS[0])
 
-            mock_client.join.assert_called_once_with(TEST_ROOM_IDS[0])
+        mock_client.join.assert_called_once_with(TEST_ROOM_IDS[0])
 
     @pytest.mark.asyncio
     async def test_join_matrix_room_already_joined(self, sample_config):
@@ -1510,31 +1760,29 @@ class TestMainFunction:
 class TestUtilityFunctions:
     """Test utility functions in the bot module."""
 
-    def test_normalize_book_name_full_names(self):
-        """Test normalizing full book names."""
-        assert bot.normalize_book_name("Genesis") == "Genesis"
-        assert bot.normalize_book_name("Exodus") == "Exodus"
-        assert bot.normalize_book_name("Matthew") == "Matthew"
+    def test_validate_and_normalize_book_name_full_names(self):
+        """Test validating and normalizing full book names."""
+        assert validate_and_normalize_book_name("Genesis") == "Genesis"
+        assert validate_and_normalize_book_name("Exodus") == "Exodus"
+        assert validate_and_normalize_book_name("Matthew") == "Matthew"
 
-    def test_normalize_book_name_abbreviations(self):
-        """Test normalizing common abbreviations."""
-        assert bot.normalize_book_name("Gen") == "Genesis"
-        assert bot.normalize_book_name("Ex") == "Exodus"
-        assert bot.normalize_book_name("Matt") == "Matthew"
-        assert bot.normalize_book_name("Mt") == "Matthew"
+    def test_validate_and_normalize_book_name_abbreviations(self):
+        """Test validating and normalizing common abbreviations."""
+        assert validate_and_normalize_book_name("Gen") == "Genesis"
+        assert validate_and_normalize_book_name("Ex") == "Exodus"
+        assert validate_and_normalize_book_name("Matt") == "Matthew"
+        assert validate_and_normalize_book_name("Mt") == "Matthew"
 
-    def test_normalize_book_name_case_insensitive(self):
-        """Test case insensitive normalization."""
-        assert bot.normalize_book_name("gen") == "Genesis"
-        assert bot.normalize_book_name("GEN") == "Genesis"
-        assert bot.normalize_book_name("GeN") == "Genesis"
+    def test_validate_and_normalize_book_name_case_insensitive(self):
+        """Test case insensitive validation and normalization."""
+        assert validate_and_normalize_book_name("gen") == "Genesis"
+        assert validate_and_normalize_book_name("GEN") == "Genesis"
+        assert validate_and_normalize_book_name("GeN") == "Genesis"
 
-    def test_normalize_book_name_unknown(self):
-        """Test normalizing unknown book names."""
-        assert bot.normalize_book_name("Unknown") == "Unknown"
-        assert (
-            bot.normalize_book_name("XYZ") == "Xyz"
-        )  # Function capitalizes first letter
+    def test_validate_and_normalize_book_name_unknown(self):
+        """Test that unknown book names return None."""
+        assert validate_and_normalize_book_name("Unknown") is None
+        assert validate_and_normalize_book_name("XYZ") is None
 
 
 class TestCacheFunctions:

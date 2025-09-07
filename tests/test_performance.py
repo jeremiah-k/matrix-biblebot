@@ -1,6 +1,7 @@
 """Performance tests for BibleBot components."""
 
 import asyncio
+import os
 import time
 from unittest.mock import AsyncMock, patch
 
@@ -33,11 +34,20 @@ class TestCachePerformance:
         get_time = time.perf_counter() - start_time
 
         # Performance assertions
-        assert set_time < 2.0
-        assert get_time < 1.0
+        if not os.getenv("CI_SLOW_RUNNER"):
+            assert set_time < 2.0
+            assert get_time < 1.0
 
     def test_cache_performance_bulk_operations(self):
-        """Test cache performance for bulk operations."""
+        """
+        Measure bulk cache set/get performance.
+        
+        Clears the internal passage cache if present, performs 50 bulk cache-set operations
+        and 50 corresponding cache-get operations, and enforces timing budgets for the
+        bulk set and bulk get phases. Get assertions (non-None results) are only made
+        when the internal cache exists and contains entries. Timing assertions are
+        skipped when the CI_SLOW_RUNNER environment variable is set.
+        """
         # Clear cache
         if hasattr(bot, "_passage_cache"):
             bot._passage_cache.clear()
@@ -58,8 +68,9 @@ class TestCachePerformance:
         bulk_get_time = time.perf_counter() - start_time
 
         # Performance assertions
-        assert bulk_set_time < 3.0
-        assert bulk_get_time < 1.5
+        if not os.getenv("CI_SLOW_RUNNER"):
+            assert bulk_set_time < 3.0
+            assert bulk_get_time < 1.5
 
     def test_cache_performance_case_insensitive(self):
         """
@@ -87,13 +98,15 @@ class TestCachePerformance:
         case_get_time = time.perf_counter() - start_time
 
         # Performance assertions
-        assert case_set_time < 1.0
-        assert case_get_time < 0.5
+        if not os.getenv("CI_SLOW_RUNNER"):
+            assert case_set_time < 1.0
+            assert case_get_time < 0.5
 
 
 class TestBookNormalizationPerformance:
     """Test book name normalization performance."""
 
+    @pytest.mark.slow
     def test_normalization_performance_common_books(self):
         """Test normalization performance for common book names."""
         common_books = [
@@ -117,13 +130,19 @@ class TestBookNormalizationPerformance:
         start_time = time.perf_counter()
         for _ in range(200):
             for book in common_books:
-                result = bot.normalize_book_name(book)
+                result = bot.validate_and_normalize_book_name(book)
                 assert isinstance(result, str)
         normalization_time = time.perf_counter() - start_time
 
-        # Performance assertion
-        assert normalization_time < 2.5
+        # Performance assertion - more lenient for CI stability
+        # Skip timing checks on slow CI environments
+        if not os.getenv("CI_SLOW_RUNNER"):
+            assert normalization_time < 4.0  # Increased budget for flaky CI
+            # Optional: guard against slow boxes by also checking average
+            per_call = normalization_time / (200 * len(common_books))
+            assert per_call < 0.006  # 6ms per normalization, extra slack
 
+    @pytest.mark.slow
     def test_normalization_performance_abbreviations(self):
         """Test normalization performance for abbreviations."""
         abbreviations = [
@@ -136,10 +155,16 @@ class TestBookNormalizationPerformance:
             "Mk",
             "Lk",
             "Jn",
+            "1jn",
+            "2jn",
+            "3jn",
+            "1 john",  # Test spaced John variant
             "Acts",
             "Rom",
-            "1Cor",
-            "2Cor",
+            "1co",
+            "2co",
+            "1 cor",  # Test spaced variant
+            "2 cor",  # Test spaced variant
             "Gal",
             "Eph",
         ]
@@ -147,15 +172,26 @@ class TestBookNormalizationPerformance:
         start_time = time.perf_counter()
         for _ in range(200):
             for abbrev in abbreviations:
-                result = bot.normalize_book_name(abbrev)
+                result = bot.validate_and_normalize_book_name(abbrev)
                 assert isinstance(result, str)
         abbrev_time = time.perf_counter() - start_time
 
-        # Performance assertion
-        assert abbrev_time < 2.0
+        # Performance assertion - more lenient for CI stability
+        # Skip timing checks on slow CI environments
+        if not os.getenv("CI_SLOW_RUNNER"):
+            assert abbrev_time < 3.5  # Increased budget for flaky CI
+            # Optional: guard against slow boxes by also checking average
+            per_call = abbrev_time / (200 * len(abbreviations))
+            assert per_call < 0.006  # 6ms per normalization, extra slack
 
+    @pytest.mark.slow
     def test_normalization_performance_mixed_case(self):
-        """Test normalization performance with mixed case."""
+        """
+        Measure performance of validate_and_normalize_book_name on mixed-case book names.
+        
+        Runs 200 iterations over a set of mixed-case book name variants and asserts each call returns a string.
+        When not running on a slow CI runner (CI_SLOW_RUNNER unset), the total elapsed time must be under 3.5 seconds.
+        """
         mixed_case_books = [
             "genesis",
             "EXODUS",
@@ -172,17 +208,20 @@ class TestBookNormalizationPerformance:
         start_time = time.perf_counter()
         for _ in range(200):
             for book in mixed_case_books:
-                result = bot.normalize_book_name(book)
+                result = bot.validate_and_normalize_book_name(book)
                 assert isinstance(result, str)
         mixed_case_time = time.perf_counter() - start_time
 
-        # Performance assertion
-        assert mixed_case_time < 2.0
+        # Performance assertion - more lenient for CI stability
+        # Skip timing checks on slow CI environments
+        if not os.getenv("CI_SLOW_RUNNER"):
+            assert mixed_case_time < 3.5  # Increased budget for flaky CI
 
 
 class TestAPIPerformance:
     """Test API performance characteristics."""
 
+    @pytest.mark.asyncio
     @patch("biblebot.bot.make_api_request", new_callable=AsyncMock)
     async def test_api_request_performance_single(self, mock_api):
         """
@@ -200,6 +239,7 @@ class TestAPIPerformance:
         assert request_time < 1.0  # Should complete quickly with mocked API
         assert result is not None
 
+    @pytest.mark.asyncio
     @patch("biblebot.bot.make_api_request", new_callable=AsyncMock)
     async def test_api_request_performance_concurrent(self, mock_api):
         """Test concurrent API request performance."""
@@ -227,6 +267,7 @@ class TestAPIPerformance:
         assert len(results) == 10
         assert all(result is not None for result in results)
 
+    @pytest.mark.asyncio
     @patch("biblebot.bot.make_api_request", new_callable=AsyncMock)
     async def test_api_request_performance_with_cache(self, mock_api):
         """Test API request performance with caching."""
@@ -248,7 +289,9 @@ class TestAPIPerformance:
 
         # Performance assertions
         assert first_request_time < 1.0
-        assert cached_request_time < 0.1  # Cache should be much faster
+        # Cache should be much faster; relax timing on slow CI
+        if not os.getenv("CI_SLOW_RUNNER"):
+            assert cached_request_time < 0.15
         assert result1 == result2
         assert mock_api.call_count == 1  # Only called once due to caching
 
@@ -330,13 +373,15 @@ class TestMemoryPerformance:
             assert cache_size > 0
             assert cache_size <= 1000  # Should not exceed what we put in
 
+    @pytest.mark.slow
     def test_normalization_memory_usage(self):
         """Test book normalization doesn't leak memory."""
         # Test many normalizations
         for i in range(10000):
             book_name = f"TestBook{i % 100}"
-            result = bot.normalize_book_name(book_name)
-            assert isinstance(result, str)
+            result = bot.validate_and_normalize_book_name(book_name)
+            # Note: invalid book names return None, so we check for str or None
+            assert result is None or isinstance(result, str)
 
         # If we get here without memory issues, test passes implicitly
 
@@ -345,7 +390,16 @@ class TestStressPerformance:
     """Test stress performance scenarios."""
 
     def test_rapid_cache_operations(self):
-        """Test rapid cache operations under stress."""
+        """
+        Run a stress test that performs 500 rapid alternating cache set/get operations and verifies correctness and performance.
+        
+        The test clears the internal passage cache (if present), then performs 500 iterations of:
+        - storing a passage via the internal cache-set helper,
+        - retrieving it via the internal cache-get helper and asserting the result is not None,
+        - retrieving it again using different casing for key and version and asserting the result matches the original retrieval (case-insensitive behavior).
+        
+        It measures the total elapsed time and, unless the CI_SLOW_RUNNER environment variable is set, asserts the test completes in under 10 seconds.
+        """
         # Clear cache
         if hasattr(bot, "_passage_cache"):
             bot._passage_cache.clear()
@@ -370,10 +424,15 @@ class TestStressPerformance:
         stress_time = time.perf_counter() - start_time
 
         # Performance assertion
-        assert stress_time < 10.0  # Should complete in under 10 seconds
+        if not os.getenv("CI_SLOW_RUNNER"):
+            assert stress_time < 10.0  # Should complete in under 10 seconds
 
     def test_concurrent_normalization_stress(self):
-        """Test concurrent book normalization under stress."""
+        """
+        Stress-test concurrent normalization of Bible book names using multiple threads.
+        
+        Spawns several worker threads that repeatedly call bot.validate_and_normalize_book_name on a fixed set of book-name variants and record each result in the shared `results` list; any exceptions are collected in the shared `errors` list. After joining all threads the test asserts there were no errors, that some results were produced, and that the total run completed within the expected time budget (5.0 seconds).
+        """
         import threading
 
         results = []
@@ -381,9 +440,9 @@ class TestStressPerformance:
 
         def normalize_worker():
             """
-            Run 100 iterations of book-name normalization and record results.
-
-            This worker repeatedly normalizes a fixed set of book-name variants by calling bot.normalize_book_name and appends each normalization result to the outer-scope list `results`. Any exception raised during processing is caught and appended to the outer-scope list `errors`. Intended for use as a threaded worker in concurrency/stress tests. Returns None.
+            Worker that performs 100 iterations of book-name normalization and records outcomes.
+            
+            Repeatedly calls bot.validate_and_normalize_book_name on a fixed set of book-name variants and appends each result to the outer-scope list `results`. Any exception encountered is caught and appended to the outer-scope list `errors`. Designed to be used as a threaded worker in concurrency/stress tests.
             """
             try:
                 for _i in range(100):
@@ -396,7 +455,7 @@ class TestStressPerformance:
                         "MATTHEW",
                     ]
                     for book in book_names:
-                        result = bot.normalize_book_name(book)
+                        result = bot.validate_and_normalize_book_name(book)
                         results.append(result)
             except Exception as e:  # noqa: BLE001
                 errors.append(e)

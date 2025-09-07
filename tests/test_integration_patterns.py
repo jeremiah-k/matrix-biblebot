@@ -381,7 +381,7 @@ class TestIntegrationPatterns:
             }
 
             event = MagicMock()
-            event.body = "Show me John 3:16"
+            event.body = "John 3:16"  # Exact reference to match default behavior
             event.sender = "@user:matrix.org"
             event.server_timestamp = 1234567890000  # Converted to milliseconds
 
@@ -395,6 +395,92 @@ class TestIntegrationPatterns:
 
             # Verify response was sent
             assert mock_client.room_send.call_count == 2  # Reaction + message
+
+    async def test_api_integration_chain_partial_mode(self, mock_config, mock_client):
+        """Test API integration with detect_references_anywhere enabled."""
+        config = {**mock_config, "bot": {"detect_references_anywhere": True}}
+        bot = BibleBot(config=config, client=mock_client)
+
+        # Populate room ID set for testing
+        bot._room_id_set = set(config["matrix_room_ids"])
+        bot.start_time = 1234567880000
+        bot.api_keys = {}
+
+        # Mock the Bible text retrieval function
+        with patch(
+            "biblebot.bot.get_bible_text", new_callable=AsyncMock
+        ) as mock_get_bible:
+            mock_get_bible.return_value = (
+                "For God so loved the world that he gave his one and only Son",
+                "John 3:16",
+            )
+
+            event = MagicMock()
+            event.body = (
+                "Show me John 3:16 please"  # Natural sentence with embedded reference
+            )
+            event.sender = "@user:matrix.org"
+            event.server_timestamp = 1234567890000
+
+            room = MagicMock()
+            room.room_id = "!room1:matrix.org"
+
+            await bot.on_room_message(room, event)
+
+            # Verify Bible text was fetched with correct parameters
+            mock_get_bible.assert_called_once()
+            call_args = mock_get_bible.call_args
+            assert "John 3:16" in call_args[0][0]  # passage argument
+
+            # Verify response was sent
+            assert mock_client.room_send.call_count == 2  # Reaction + message
+            # First call should be the reaction, second the verse message
+            reaction_call = mock_client.room_send.call_args_list[0]
+            assert reaction_call.args[1] == "m.reaction"
+            msg = mock_client.room_send.call_args_list[1]
+            assert msg.args[1] == "m.room.message"
+            assert "John 3:16" in msg.args[2]["body"]
+
+    async def test_api_integration_chain_partial_mode_disabled(
+        self, mock_config, mock_client
+    ):
+        """Test that partial references are ignored when detect_references_anywhere is disabled (default)."""
+        # Use default config (detect_references_anywhere defaults to False)
+        bot = BibleBot(config=mock_config, client=mock_client)
+
+        # Populate room ID set for testing
+        bot._room_id_set = set(mock_config["matrix_room_ids"])
+        bot.start_time = 1234567880000
+        bot.api_keys = {}
+
+        # Mock the Bible text retrieval function
+        with patch(
+            "biblebot.bot.get_bible_text", new_callable=AsyncMock
+        ) as mock_get_bible:
+            mock_get_bible.return_value = (
+                "For God so loved the world that he gave his one and only Son",
+                "John 3:16",
+            )
+
+            event = MagicMock()
+            event.body = (
+                "Show me John 3:16 please"  # Natural sentence with embedded reference
+            )
+            event.sender = "@user:matrix.org"
+            event.server_timestamp = 1234567890000
+
+            room = MagicMock()
+            room.room_id = "!room1:matrix.org"
+
+            await bot.on_room_message(room, event)
+
+            # Verify Bible text was NOT fetched (partial references ignored in default mode)
+            mock_get_bible.assert_not_called()
+            # Verify no response was sent
+            assert mock_client.room_send.call_count == 0
+            assert not any(
+                c.args[1] == "m.reaction" for c in mock_client.room_send.call_args_list
+            )
 
     async def test_configuration_integration(self, mock_config, mock_client):
         """

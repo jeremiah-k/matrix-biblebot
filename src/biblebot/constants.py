@@ -63,6 +63,9 @@ CONFIG_MATRIX_ROOM_IDS = "matrix_room_ids"  # DEPRECATED: use CONFIG_KEY_MATRIX 
 # Text formatting options
 CONFIG_PRESERVE_POETRY_FORMATTING = "preserve_poetry_formatting"
 
+# Message parsing options
+CONFIG_DETECT_REFERENCES_ANYWHERE = "detect_references_anywhere"
+
 # File permissions
 CONFIG_DIR_PERMISSIONS = 0o700
 CREDENTIALS_FILE_PERMISSIONS = 0o600
@@ -75,6 +78,26 @@ REFERENCE_PATTERNS = [
     ),
     # Book + chapter [translation]
     re.compile(r"^([\w\s]+?)\s+(\d+)\s*(kjv|esv)?$", re.IGNORECASE),
+]
+
+# Partial matching patterns (for detect_references_anywhere mode)
+# More restrictive patterns to reduce false positives
+_PARTIAL_BOOK_PATTERN_STR = (
+    r"(?:[1-3]\s+[A-Za-z]+(?:\s+[A-Za-z]+)?|[A-Za-z]+(?:\s+of\s+[A-Za-z]+)?)"
+)
+PARTIAL_REFERENCE_PATTERNS = [
+    # Book + chapter:verse[-\u2013 verse] [translation] (anywhere in message)
+    # Matches specific Bible book patterns to reduce false positives
+    re.compile(
+        rf"\b({_PARTIAL_BOOK_PATTERN_STR})\s+(\d+:\d+(?:\s*[-\u2013]\s*\d+)?)\s*(kjv|esv)?\b",
+        re.IGNORECASE,
+    ),
+    # Book + chapter [translation] (anywhere in message)
+    # Matches specific Bible book patterns to reduce false positives
+    re.compile(
+        rf"\b({_PARTIAL_BOOK_PATTERN_STR})\s+(\d+)\s*(kjv|esv)?\b",
+        re.IGNORECASE,
+    ),
 ]
 
 # Required configuration keys

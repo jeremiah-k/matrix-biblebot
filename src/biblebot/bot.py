@@ -8,6 +8,7 @@ import textwrap
 import time
 from collections import OrderedDict
 from time import monotonic
+from types import MappingProxyType
 from urllib.parse import quote
 
 import aiohttp
@@ -39,6 +40,7 @@ from .constants import (
     CACHE_MAX_SIZE,
     CACHE_TTL_SECONDS,
     CHAR_DOT,
+    CONFIG_DETECT_REFERENCES_ANYWHERE,
     CONFIG_KEY_MATRIX,
     CONFIG_MATRIX_E2EE,
     CONFIG_MATRIX_HOMESERVER,
@@ -64,6 +66,7 @@ from .constants import (
     LOGGER_NAME,
     LOGGER_NIO,
     MESSAGE_SUFFIX,
+    PARTIAL_REFERENCE_PATTERNS,
     REACTION_OK,
     REFERENCE_PATTERNS,
     SYNC_TIMEOUT_MS,
@@ -81,8 +84,20 @@ FALLBACK_MESSAGE_TOO_LONG = "[Message too long]"
 MIN_PRACTICAL_CHUNK_SIZE = 8  # Minimum reasonable chunk size for splitting
 MAX_RATE_LIMIT_RETRIES = 3  # Maximum number of rate limit retries
 DEFAULT_RETRY_AFTER_MS = 1000  # Default retry delay in milliseconds
+
+
+# Create a comprehensive, frozen lookup in one go
+_ALL_NAMES_TO_CANONICAL = MappingProxyType(
+    {
+        **BOOK_ABBREVIATIONS,
+        **{name.lower(): name for name in set(BOOK_ABBREVIATIONS.values())},
+    }
+)
 TRUNCATION_INDICATOR = "..."  # Indicator for truncated text
 REFERENCE_SEPARATOR_LEN = 3  # Length of " - " separator
+
+# Placeholder room IDs to skip from sample config
+_PLACEHOLDER_ROOM_IDS = frozenset({"#example:example.org", "!example:example.org"})
 
 
 # Custom exceptions for Bible text retrieval
@@ -104,17 +119,26 @@ _PASSAGE_CACHE_MAX = CACHE_MAX_SIZE
 _PASSAGE_CACHE_TTL_SECS = CACHE_TTL_SECONDS
 
 
-def normalize_book_name(book_str: str) -> str:
+def _clean_book_name(book_str: str) -> str:
     """
-    Normalize a Bible book name or abbreviation to its canonical full name.
+    Normalize a Bible book name string for canonical lookup.
+    
+    Lowercases the input, removes dot characters (CHAR_DOT), trims leading/trailing whitespace, and collapses consecutive internal whitespace into single spaces. The result is suitable for matching against the canonical book-name map.
+    
+    Returns:
+        str: The cleaned, space-separated, lower-case book name.
+    """
+    return " ".join(book_str.lower().replace(CHAR_DOT, "").strip().split())
 
-    The input is lowercased, periods are removed, and surrounding whitespace is trimmed before lookup
-    in the BOOK_ABBREVIATIONS mapping. If a normalized entry exists in that mapping, the mapped
-    full book name is returned; otherwise the original input is returned in title case.
+
+def validate_and_normalize_book_name(book_str: str) -> str | None:
     """
-    # Clean the input: lowercase, remove dots, and strip whitespace
-    clean_str = book_str.lower().replace(CHAR_DOT, "").strip()
-    return BOOK_ABBREVIATIONS.get(clean_str, book_str.title())
+    Return the canonical full Bible book name for a user-supplied book string, or None if it is not recognized.
+    
+    This accepts common variants (abbreviations, punctuation, mixed case, and extra whitespace) and normalizes them before lookup. If the input corresponds to a known book it returns the canonical full name (e.g., "1 timothy"), otherwise returns None.
+    """
+    clean_str = _clean_book_name(book_str)
+    return _ALL_NAMES_TO_CANONICAL.get(clean_str)
 
 
 # Load config
@@ -510,24 +534,23 @@ async def get_kjv_text(passage, session=None):
 class BibleBot:
     def __init__(self, config, client=None):
         """
-        Initialize the BibleBot instance.
-
+        Create a BibleBot configured for operation.
+        
+        Initializes internal state (config, optional Matrix client, API key store, joined-room set, and HTTP session placeholder)
+        and loads bot-specific settings from config["bot"] applying sensible defaults and coercions.
+        
         Parameters:
-            config (dict): Configuration mapping (expected keys: "bot" with optional "default_translation",
-                "cache_enabled", "max_message_length", and "split_message_length" in characters; the final chunk includes the reference/suffix and
-                must also respect max_message_length; also contains matrix room IDs elsewhere in the config).
-            client: Optional injected AsyncClient used for Matrix interactions (omitted from detailed param docs as a common service).
-
-        Behavior:
-            - Stores the provided config and optional client.
-            - Initializes an empty api_keys dict (populated later by main) and an empty set of joined room IDs.
-            - Reads bot settings from config["bot"]:
-                - default_translation: translation to use when none is specified (defaults to DEFAULT_TRANSLATION).
-                - cache_enabled: whether passage caching is enabled (defaults to True).
-                - max_message_length: maximum allowed length for outgoing messages (defaults to 2000).
-                - split_message_length: length at which to split long messages into multiple messages (defaults to 0, disabled).
-            - Validates max_message_length and resets it to 2000 if a non-positive value is supplied.
-            - Validates split_message_length, coerces to int, resets to 0 if negative, and caps to max_message_length.
+            config (dict): Parsed configuration mapping. Relevant bot keys in config["bot"]:
+                - default_translation: translation to use when none is specified (default: DEFAULT_TRANSLATION).
+                - cache_enabled: enable passage caching (default: True).
+                - max_message_length: maximum length of outgoing messages (default: 2000). Non-positive values are reset to 2000.
+                - split_message_length: threshold to split long messages into multiple parts (default: 0 to disable). Non-integer or negative values disable splitting; values above max_message_length are capped to max_message_length.
+                - preserve_poetry_formatting: preserve original line breaks for poetry-style passages (default: False).
+                - CONFIG_DETECT_REFERENCES_ANYWHERE: truthy string enables detecting references anywhere in a message (accepted values: "true", "yes", "1", "on"); default is False.
+        
+        Notes:
+            - `client` (AsyncClient) may be injected but is treated as a runtime service and is intentionally undocumented here.
+            - The instance enforces caps and type coercion for numeric settings to avoid generating oversized message chunks.
         """
         self.config = config
         self.client = client  # Injected AsyncClient instance
@@ -545,6 +568,14 @@ class BibleBot:
         self.preserve_poetry_formatting = bot_settings.get(
             CONFIG_PRESERVE_POETRY_FORMATTING, False
         )
+        # Type-validate and coerce detect_references_anywhere
+        raw_detect_anywhere = bot_settings.get(CONFIG_DETECT_REFERENCES_ANYWHERE, False)
+        self.detect_references_anywhere = str(raw_detect_anywhere).lower().strip() in {
+            "true",
+            "yes",
+            "1",
+            "on",
+        }
         # Type-validate and coerce split_message_length
         raw_split_len = bot_settings.get("split_message_length", 0)
         try:
@@ -629,17 +660,18 @@ class BibleBot:
 
     async def join_matrix_room(self, room_id_or_alias):
         """
-        Join a Matrix room by ID or alias.
-
-        If room_id_or_alias starts with '#', the alias is resolved to a room ID via the client's room_resolve_alias; otherwise the value is treated as a room ID. If the bot is not already in the room, this method attempts to join it. Successes and failures are logged; exceptions are caught and logged — the method does not raise.
+        Join a Matrix room given a room ID or alias.
+        
+        Resolves a room alias (strings starting with '#') to a canonical room ID and attempts to join the room if the bot is not already a member. Placeholder/sample room IDs are ignored. Failures are logged and the method will not raise; it always returns None.
+        
         Parameters:
-            room_id_or_alias (str): A Matrix room ID (e.g. "!abc:example.org") or alias (e.g. "#room:example.org").
+            room_id_or_alias (str): A Matrix room identifier — either a room ID (e.g. "!abc:example.org") or an alias (e.g. "#room:example.org").
         """
         # Skip placeholder room IDs from sample config
         if (
-            "your_room_id" in room_id_or_alias
-            or "your_homeserver_domain" in room_id_or_alias
-            or "example.org" in room_id_or_alias
+            room_id_or_alias.startswith("!your_room_id:")
+            or room_id_or_alias.endswith(":your_homeserver_domain")
+            or room_id_or_alias in _PLACEHOLDER_ROOM_IDS
         ):
             logger.debug(f"Skipping placeholder room ID: {room_id_or_alias}")
             return
@@ -866,8 +898,9 @@ class BibleBot:
         - are not sent by the bot itself, and
         - were sent after the bot's recorded start time.
 
-        Scans the message text with REFERENCE_PATTERNS. When a match is found it:
-        - normalizes the book name with normalize_book_name(),
+        Scans the message text with REFERENCE_PATTERNS (exact match) or PARTIAL_REFERENCE_PATTERNS
+        (anywhere in message) based on detect_references_anywhere setting. When a match is found it:
+        - validates and normalizes the book name with validate_and_normalize_book_name(),
         - constructs a passage string "<Book> <Reference>",
         - determines the requested translation (falls back to DEFAULT_TRANSLATION),
         - logs the detected reference, and
@@ -887,26 +920,34 @@ class BibleBot:
             and event.sender != self.client.user_id
             and event.server_timestamp > self.start_time
         ):
-            # Bible verse reference pattern(s)
-            search_patterns = REFERENCE_PATTERNS
+            # Choose patterns and matcher function based on configuration
+            if self.detect_references_anywhere:
+                search_patterns = PARTIAL_REFERENCE_PATTERNS
+                _match_name = "search"
+            else:
+                search_patterns = REFERENCE_PATTERNS
+                _match_name = "fullmatch"
 
             passage = None
             translation = self.default_translation  # Default translation
             for pattern in search_patterns:
-                match = pattern.search(event.body)
+                match = getattr(pattern, _match_name)(event.body)
                 if match:
                     raw_book_name = match.group(1).strip()
-                    book_name = normalize_book_name(raw_book_name)
+
+                    # Validate and normalize the book name in one optimized step
+                    book_name = validate_and_normalize_book_name(raw_book_name)
+                    if not book_name:
+                        continue  # Skip if not a valid Bible book
+
                     verse_reference = match.group(2).strip()
                     passage = f"{book_name} {verse_reference}"
-                    if match.group(
-                        3
-                    ):  # Check if the translation (esv or kjv) is specified
-                        translation = match.group(3).lower()
-                    else:
-                        translation = (
-                            self.default_translation
-                        )  # Fall back to config default
+
+                    # Get optional translation group safely (some patterns may define only 2 groups)
+                    trans_group = match.group(3) if match.re.groups >= 3 else None
+                    translation = (
+                        trans_group.lower() if trans_group else self.default_translation
+                    )
                     logger.info(
                         f"Detected Bible reference: {passage} ({translation}) in room {room.room_id}"
                     )
@@ -1092,21 +1133,20 @@ class BibleBot:
 
     async def handle_scripture_command(self, room_id, passage, translation, event):
         """
-        Handle a detected Bible reference: fetch the passage and post a formatted response to the given room.
-
-        Fetches the requested passage (using the provided or default translation and cache), formats it for plain and HTML display, reacts to the triggering event with a checkmark, and sends the passage text plus its canonical reference to the room. If the passage exceeds configured length limits the bot will either:
-        - split the text into multiple parts (when split_message_length is enabled) and append the reference only to the final part, or
-        - truncate the text and append an ellipsis and reference, or
+        Fetch the specified Bible passage and post it to the given Matrix room, handling splitting, truncation, reactions, and user-facing errors.
+        
+        This coroutine fetches the text for `passage` using `translation` (or the bot's default), trims the result, reacts to the triggering event with a checkmark, and posts the passage to `room_id`. If the text exceeds configured length limits the bot will either:
+        - split the content across multiple messages (when `split_message_length` is enabled and practical), appending the canonical reference only to the final part;
+        - truncate the text and append an ellipsis plus the reference; or
         - fall back to a short placeholder when truncation cannot produce a valid message.
-
-        On failures the function posts a user-facing error message for missing API keys, not-found passages, or network errors. Unexpected exceptions are logged and result in the same generic error message being posted.
-
+        
+        Errors that occur while fetching (missing API key, passage not found, network/timeouts, or unexpected exceptions) are handled by posting an appropriate user-facing error message to the room; exceptions are not propagated.
         Parameters:
             room_id (str): Matrix room ID where the response should be posted.
             passage (str): Detected Bible passage reference (e.g., "John 3:16").
-            translation (str | None): Translation code to use; if None the bot's default_translation is used.
+            translation (str | None): Translation code to use; if None the bot's `default_translation` is used.
             event: The original Matrix event that triggered the command (used to send a reaction).
-
+        
         Returns:
             None
         """
@@ -1126,8 +1166,8 @@ class BibleBot:
                 session=self.http_session,
             )
 
-            # Format text based on configuration
-            text, _ = self._format_text_for_display(text)
+            # Defer formatting to _send_message_parts; keep only a trim here
+            text = text.strip()
 
             # Check if text is empty after cleaning
             if not text:
