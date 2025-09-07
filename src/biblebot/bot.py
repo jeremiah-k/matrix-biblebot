@@ -941,9 +941,7 @@ class BibleBot:
                     passage = f"{book_name} {verse_reference}"
 
                     # Get optional translation group safely (some patterns may define only 2 groups)
-                    trans_group = (
-                        match.group(3) if (match.re.groups or 0) >= 3 else None
-                    )
+                    trans_group = match.group(3) if match.re.groups >= 3 else None
                     translation = (
                         trans_group.lower() if trans_group else self.default_translation
                     )
