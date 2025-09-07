@@ -844,37 +844,20 @@ class TestBibleBot:
     @pytest.mark.asyncio
     async def test_join_matrix_room_success(self, sample_config):
         """Test successful room joining."""
-        # E2EE dependencies are mocked upfront in conftest.py
-        with patch("biblebot.bot.AsyncClient") as mock_client_class:
-            mock_client = AsyncMock(
-                spec=[
-                    "user_id",
-                    "device_id",
-                    "room_send",
-                    "join",
-                    "add_event_callback",
-                    "should_upload_keys",
-                    "restore_login",
-                    "access_token",
-                    "rooms",
-                    "room_resolve_alias",
-                    "close",
-                ]
-            )
-            mock_client_class.return_value = mock_client
-            mock_client.rooms = {}  # Bot not in room yet
+        # Use existing test helper to avoid heavy patching
+        mock_client = E2EETestFramework.create_mock_client(rooms={})
 
-            # Mock successful join response
-            mock_response = MagicMock()
-            mock_response.room_id = TEST_ROOM_IDS[0]
-            mock_client.join = AsyncMock(return_value=mock_response)
+        # Mock successful join response
+        mock_response = MagicMock()
+        mock_response.room_id = TEST_ROOM_IDS[0]
+        mock_client.join = AsyncMock(return_value=mock_response)
 
-            bot_instance = bot.BibleBot(sample_config)
-            bot_instance.client = mock_client
+        bot_instance = bot.BibleBot(sample_config)
+        bot_instance.client = mock_client
 
-            await bot_instance.join_matrix_room(TEST_ROOM_IDS[0])
+        await bot_instance.join_matrix_room(TEST_ROOM_IDS[0])
 
-            mock_client.join.assert_called_once_with(TEST_ROOM_IDS[0])
+        mock_client.join.assert_called_once_with(TEST_ROOM_IDS[0])
 
     @pytest.mark.asyncio
     async def test_join_matrix_room_already_joined(self, sample_config):

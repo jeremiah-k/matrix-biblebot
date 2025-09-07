@@ -8,6 +8,7 @@ import textwrap
 import time
 from collections import OrderedDict
 from time import monotonic
+from types import MappingProxyType
 from urllib.parse import quote
 
 import aiohttp
@@ -92,6 +93,8 @@ for book_name in set(
     BOOK_ABBREVIATIONS.values()
 ):  # Use set to avoid redundant iterations
     _ALL_NAMES_TO_CANONICAL[book_name.lower()] = book_name
+# Freeze the lookup table to prevent accidental mutation
+_ALL_NAMES_TO_CANONICAL = MappingProxyType(_ALL_NAMES_TO_CANONICAL)
 TRUNCATION_INDICATOR = "..."  # Indicator for truncated text
 REFERENCE_SEPARATOR_LEN = 3  # Length of " - " separator
 
@@ -938,8 +941,8 @@ class BibleBot:
                     verse_reference = match.group(2).strip()
                     passage = f"{book_name} {verse_reference}"
 
-                    # Get optional translation group - all patterns have exactly 3 groups
-                    trans_group = match.group(3)
+                    # Get optional translation group safely (some patterns may define only 2 groups)
+                    trans_group = match.group(3) if len(match.groups()) >= 3 else None
                     translation = (
                         trans_group.lower() if trans_group else self.default_translation
                     )
