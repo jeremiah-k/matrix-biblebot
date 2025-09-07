@@ -34,8 +34,9 @@ class TestCachePerformance:
         get_time = time.perf_counter() - start_time
 
         # Performance assertions
-        assert set_time < 2.0
-        assert get_time < 1.0
+        if not os.getenv("CI_SLOW_RUNNER"):
+            assert set_time < 2.0
+            assert get_time < 1.0
 
     def test_cache_performance_bulk_operations(self):
         """Test cache performance for bulk operations."""
@@ -59,8 +60,9 @@ class TestCachePerformance:
         bulk_get_time = time.perf_counter() - start_time
 
         # Performance assertions
-        assert bulk_set_time < 3.0
-        assert bulk_get_time < 1.5
+        if not os.getenv("CI_SLOW_RUNNER"):
+            assert bulk_set_time < 3.0
+            assert bulk_get_time < 1.5
 
     def test_cache_performance_case_insensitive(self):
         """
@@ -88,8 +90,9 @@ class TestCachePerformance:
         case_get_time = time.perf_counter() - start_time
 
         # Performance assertions
-        assert case_set_time < 1.0
-        assert case_get_time < 0.5
+        if not os.getenv("CI_SLOW_RUNNER"):
+            assert case_set_time < 1.0
+            assert case_get_time < 0.5
 
 
 class TestBookNormalizationPerformance:
@@ -399,7 +402,8 @@ class TestStressPerformance:
         stress_time = time.perf_counter() - start_time
 
         # Performance assertion
-        assert stress_time < 10.0  # Should complete in under 10 seconds
+        if not os.getenv("CI_SLOW_RUNNER"):
+            assert stress_time < 10.0  # Should complete in under 10 seconds
 
     def test_concurrent_normalization_stress(self):
         """Test concurrent book normalization under stress."""

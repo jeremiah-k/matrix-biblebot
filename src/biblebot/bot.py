@@ -86,15 +86,13 @@ MAX_RATE_LIMIT_RETRIES = 3  # Maximum number of rate limit retries
 DEFAULT_RETRY_AFTER_MS = 1000  # Default retry delay in milliseconds
 
 
-# Create a comprehensive lookup table for all valid book names and abbreviations
-_ALL_NAMES_TO_CANONICAL = BOOK_ABBREVIATIONS.copy()
-# Add lowercased full book names to the lookup table
-for book_name in set(
-    BOOK_ABBREVIATIONS.values()
-):  # Use set to avoid redundant iterations
-    _ALL_NAMES_TO_CANONICAL[book_name.lower()] = book_name
-# Freeze the lookup table to prevent accidental mutation
-_ALL_NAMES_TO_CANONICAL = MappingProxyType(_ALL_NAMES_TO_CANONICAL)
+# Create a comprehensive, frozen lookup in one go
+_ALL_NAMES_TO_CANONICAL = MappingProxyType(
+    {
+        **BOOK_ABBREVIATIONS,
+        **{name.lower(): name for name in set(BOOK_ABBREVIATIONS.values())},
+    }
+)
 TRUNCATION_INDICATOR = "..."  # Indicator for truncated text
 REFERENCE_SEPARATOR_LEN = 3  # Length of " - " separator
 
@@ -665,9 +663,9 @@ class BibleBot:
         """
         # Skip placeholder room IDs from sample config
         if (
-            "your_room_id" in room_id_or_alias
-            or "your_homeserver_domain" in room_id_or_alias
-            or "example.org" in room_id_or_alias
+            room_id_or_alias.startswith("!your_room_id:")
+            or room_id_or_alias.endswith(":your_homeserver_domain")
+            or room_id_or_alias in {"#example:example.org", "!example:example.org"}
         ):
             logger.debug(f"Skipping placeholder room ID: {room_id_or_alias}")
             return
@@ -1165,8 +1163,8 @@ class BibleBot:
                 session=self.http_session,
             )
 
-            # Format text based on configuration
-            text, _ = self._format_text_for_display(text)
+            # Defer formatting to _send_message_parts; keep only a trim here
+            text = text.strip()
 
             # Check if text is empty after cleaning
             if not text:
