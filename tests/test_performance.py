@@ -1,6 +1,7 @@
 """Performance tests for BibleBot components."""
 
 import asyncio
+import os
 import time
 from unittest.mock import AsyncMock, patch
 
@@ -124,8 +125,6 @@ class TestBookNormalizationPerformance:
 
         # Performance assertion - more lenient for CI stability
         # Skip timing checks on slow CI environments
-        import os
-
         if not os.getenv("CI_SLOW_RUNNER"):
             assert normalization_time < 4.0  # Increased budget for flaky CI
             # Optional: guard against slow boxes by also checking average
@@ -168,8 +167,6 @@ class TestBookNormalizationPerformance:
 
         # Performance assertion - more lenient for CI stability
         # Skip timing checks on slow CI environments
-        import os
-
         if not os.getenv("CI_SLOW_RUNNER"):
             assert abbrev_time < 3.5  # Increased budget for flaky CI
             # Optional: guard against slow boxes by also checking average
@@ -201,8 +198,6 @@ class TestBookNormalizationPerformance:
 
         # Performance assertion - more lenient for CI stability
         # Skip timing checks on slow CI environments
-        import os
-
         if not os.getenv("CI_SLOW_RUNNER"):
             assert mixed_case_time < 3.5  # Increased budget for flaky CI
 
@@ -210,6 +205,7 @@ class TestBookNormalizationPerformance:
 class TestAPIPerformance:
     """Test API performance characteristics."""
 
+    @pytest.mark.asyncio
     @patch("biblebot.bot.make_api_request", new_callable=AsyncMock)
     async def test_api_request_performance_single(self, mock_api):
         """
@@ -227,6 +223,7 @@ class TestAPIPerformance:
         assert request_time < 1.0  # Should complete quickly with mocked API
         assert result is not None
 
+    @pytest.mark.asyncio
     @patch("biblebot.bot.make_api_request", new_callable=AsyncMock)
     async def test_api_request_performance_concurrent(self, mock_api):
         """Test concurrent API request performance."""
@@ -254,6 +251,7 @@ class TestAPIPerformance:
         assert len(results) == 10
         assert all(result is not None for result in results)
 
+    @pytest.mark.asyncio
     @patch("biblebot.bot.make_api_request", new_callable=AsyncMock)
     async def test_api_request_performance_with_cache(self, mock_api):
         """Test API request performance with caching."""

@@ -549,11 +549,12 @@ class TestPartialReferenceMatching:
         assert bb.detect_references_anywhere is expected
 
     @pytest.mark.asyncio
-    async def test_detect_references_anywhere_disabled(self):
-        """Test that partial references are ignored when detect_references_anywhere is False."""
+    @pytest.mark.parametrize("flag,should_call", [(False, False), (True, True)])
+    async def test_detect_references_anywhere_toggle(self, flag, should_call):
+        """Test that partial references are handled correctly based on detect_references_anywhere flag."""
         config = {
             "matrix_room_ids": ["!test:example.org"],
-            "bot": {"detect_references_anywhere": False},
+            "bot": {"detect_references_anywhere": flag},
         }
         bible_bot = BibleBot(config)
         bible_bot.start_time = 0
@@ -576,43 +577,14 @@ class TestPartialReferenceMatching:
 
             await bible_bot.on_room_message(room, event)
 
-            # Should NOT trigger scripture handling
-            mock_handle.assert_not_called()
-
-    @pytest.mark.asyncio
-    async def test_detect_references_anywhere_enabled(self):
-        """Test that partial references are detected when detect_references_anywhere is True."""
-        config = {
-            "matrix_room_ids": ["!test:example.org"],
-            "bot": {"detect_references_anywhere": True},
-        }
-        bible_bot = BibleBot(config)
-        bible_bot.start_time = 0
-        bible_bot._room_id_set = {"!test:example.org"}
-        bible_bot.client = MagicMock()
-        bible_bot.client.user_id = "@bot:example.org"
-
-        # Mock the scripture handling
-        with patch.object(
-            bible_bot, "handle_scripture_command", new_callable=AsyncMock
-        ) as mock_handle:
-            # Create a mock event with partial reference
-            event = MagicMock()
-            event.body = "Have you read John 3:16 ESV?"  # Reference embedded in text
-            event.sender = "@user:example.org"
-            event.server_timestamp = 1000
-
-            room = MagicMock()
-            room.room_id = "!test:example.org"
-
-            await bible_bot.on_room_message(room, event)
-
-            # Should trigger scripture handling
-            mock_handle.assert_called_once()
-            args = mock_handle.call_args[0]
-            assert args[0] == "!test:example.org"  # room_id
-            assert "John 3:16" in args[1]  # passage
-            assert args[2].lower() == "esv"  # translation (case-insensitive)
+            if should_call:
+                mock_handle.assert_called_once()
+                args = mock_handle.call_args[0]
+                assert args[0] == "!test:example.org"  # room_id
+                assert "John 3:16" in args[1]  # passage
+                assert args[2].lower() == "esv"  # translation (case-insensitive)
+            else:
+                mock_handle.assert_not_called()
 
     @pytest.mark.asyncio
     @pytest.mark.parametrize("detect_anywhere", [False, True])
@@ -661,6 +633,7 @@ class TestPartialReferenceMatching:
             "Call me at 555:1234",
             "Release v2.0 today",
             "Meet @ 2:30pm",
+            "task 1:1 is complete",  # Should not match any Bible book
         ],
     )
     async def test_false_positives_prevented(self, false_positive_message):

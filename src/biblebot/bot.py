@@ -8,7 +8,6 @@ import textwrap
 import time
 from collections import OrderedDict
 from time import monotonic
-from typing import Optional
 from urllib.parse import quote
 
 import aiohttp
@@ -121,7 +120,7 @@ def _clean_book_name(book_str: str) -> str:
     return " ".join(book_str.lower().replace(CHAR_DOT, "").strip().split())
 
 
-def validate_and_normalize_book_name(book_str: str) -> Optional[str]:
+def validate_and_normalize_book_name(book_str: str) -> str | None:
     """
     Validate and normalize a Bible book name in one operation.
 
@@ -920,14 +919,14 @@ class BibleBot:
                 PARTIAL_REFERENCE_PATTERNS if use_search else REFERENCE_PATTERNS
             )
 
+            # Bind the match function once to avoid per-iteration branching
+            def _match(pat, text):
+                return pat.search(text) if use_search else pat.fullmatch(text)
+
             passage = None
             translation = self.default_translation  # Default translation
             for pattern in search_patterns:
-                match = (
-                    pattern.search(event.body)
-                    if use_search
-                    else pattern.fullmatch(event.body)
-                )
+                match = _match(pattern, event.body)
                 if match:
                     raw_book_name = match.group(1).strip()
 
