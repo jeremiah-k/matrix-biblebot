@@ -22,6 +22,19 @@ RELEASES_URL = f"{GITHUB_API_BASE}/repos/{REPO_OWNER}/{REPO_NAME}/releases/lates
 UPDATE_CHECK_TIMEOUT = 10  # seconds
 UPDATE_CHECK_USER_AGENT = f"BibleBot/{__version__}"
 
+# Component loggers to suppress (similar to mmrelay)
+COMPONENT_LOGGERS = {
+    "matrix_nio": [
+        "nio",
+        "nio.client",
+        "nio.http",
+        "nio.crypto",
+        "nio.responses",
+        "nio.rooms",
+    ],
+    "aiohttp": ["aiohttp", "aiohttp.access"],
+}
+
 
 async def get_latest_release_version() -> Optional[str]:
     """
@@ -100,12 +113,33 @@ async def check_for_updates() -> Tuple[bool, Optional[str]]:
     return update_available, latest_version
 
 
+def suppress_component_loggers() -> None:
+    """
+    Suppress noisy loggers from external libraries.
+
+    Sets external library loggers to CRITICAL+1 to effectively silence them,
+    similar to how mmrelay handles component logging.
+    """
+    for component, loggers in COMPONENT_LOGGERS.items():
+        for logger_name in loggers:
+            logging.getLogger(logger_name).setLevel(logging.CRITICAL + 1)
+
+
+def print_startup_banner() -> None:
+    """
+    Print the startup banner with version information.
+
+    This should be called once at the very beginning of startup.
+    """
+    logger.info(f"Starting BibleBot version {__version__}")
+
+
 async def perform_startup_update_check() -> None:
     """
     Perform an update check on startup and log the result.
 
     This function is designed to be called during bot startup.
-    It performs the check asynchronously and logs appropriate messages.
+    Only shows update notification if current version is older than latest release.
     """
     logger.debug("Performing startup update check...")
 
@@ -114,8 +148,7 @@ async def perform_startup_update_check() -> None:
 
         if update_available and latest_version:
             logger.info("🔄 A new version of BibleBot is available!")
-            logger.info(f"   Current version: {__version__}")
-            logger.info(f"   Latest version:  {latest_version}")
+            logger.info(f"   Latest version: {latest_version}")
             logger.info(
                 f"   Visit: https://github.com/{REPO_OWNER}/{REPO_NAME}/releases"
             )

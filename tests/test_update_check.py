@@ -1,5 +1,6 @@
 """Tests for update check functionality."""
 
+import logging
 from unittest.mock import patch
 
 import pytest
@@ -8,6 +9,8 @@ from biblebot.update_check import (
     check_for_updates,
     compare_versions,
     perform_startup_update_check,
+    print_startup_banner,
+    suppress_component_loggers,
 )
 
 
@@ -91,3 +94,20 @@ class TestUpdateCheck:
         ):
             # Should not raise any exceptions
             await perform_startup_update_check()
+
+    def test_print_startup_banner(self, caplog):
+        """Test startup banner prints version information."""
+        with caplog.at_level(logging.INFO):
+            print_startup_banner()
+            assert "Starting BibleBot version" in caplog.text
+
+    def test_suppress_component_loggers(self):
+        """Test component logger suppression."""
+        import logging
+
+        # Test that loggers get suppressed
+        suppress_component_loggers()
+
+        # Check that nio logger is suppressed
+        nio_logger = logging.getLogger("nio")
+        assert nio_logger.level == logging.CRITICAL + 1

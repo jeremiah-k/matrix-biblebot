@@ -75,7 +75,11 @@ from .constants import (
     WARN_COULD_NOT_RESOLVE_ALIAS,
     WARN_MATRIX_ACCESS_TOKEN_NOT_SET,
 )
-from .update_check import perform_startup_update_check
+from .update_check import (
+    perform_startup_update_check,
+    print_startup_banner,
+    suppress_component_loggers,
+)
 
 # Configure logging
 logger = logging.getLogger(LOGGER_NAME)
@@ -1288,6 +1292,10 @@ async def main(config_path=DEFAULT_CONFIG_FILENAME_MAIN, config=None):
         config_path (str): Path to the configuration file.
         config (dict, optional): Pre-loaded configuration. If provided, config_path is only used for environment loading.
     """
+    # Print startup banner and suppress noisy loggers
+    print_startup_banner()
+    suppress_component_loggers()
+
     # Load config and environment variables (only if not already provided)
     if config is None:
         config = load_config(config_path)
