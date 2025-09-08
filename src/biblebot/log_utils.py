@@ -105,7 +105,7 @@ def get_log_dir():
     return get_config_dir() / "logs"
 
 
-def get_logger(name):
+def get_logger(name, *, force: bool = False):
     """
     Create and configure a logger with console output and optional file logging.
 
@@ -114,6 +114,7 @@ def get_logger(name):
 
     Parameters:
         name (str): The name of the logger to create.
+        force (bool): If True, force reconfiguration even if handlers exist.
 
     Returns:
         logging.Logger: The configured logger instance.
@@ -139,7 +140,7 @@ def get_logger(name):
     logger.propagate = False
 
     # Check if logger already has handlers to avoid duplicates
-    if logger.handlers:
+    if logger.handlers and not force:
         return logger
 
     # Add handler for console logging (with or without colors)
@@ -200,14 +201,28 @@ def get_logger(name):
                 if isinstance(val, (int, float)):
                     max_bytes = int(val * LOG_SIZE_BYTES_MULTIPLIER)
                 elif isinstance(val, str):
+                    import re
+
                     s = val.strip().lower()
-                    # Bytes like "1048576b"
-                    if s.endswith("b") and s[:-1].strip().isdigit():
-                        max_bytes = int(s[:-1].strip())
-                    elif s.isdigit():
-                        # Bare number treated as bytes
-                        max_bytes = int(s)
-                    # else: leave default
+                    m = re.fullmatch(r"(\d+(?:\.\d+)?)\s*([kmgt]?i?b)?", s)
+                    if m:
+                        num, unit = m.groups()
+                        factor = 1
+                        if unit in (None, "b"):
+                            factor = 1
+                        elif unit in ("kb",):
+                            factor = 1000
+                        elif unit in ("kib",):
+                            factor = 1024
+                        elif unit in ("mb",):
+                            factor = 1000**2
+                        elif unit in ("mib",):
+                            factor = 1024**2
+                        elif unit in ("gb",):
+                            factor = 1000**3
+                        elif unit in ("gib",):
+                            factor = 1024**3
+                        max_bytes = int(float(num) * factor)
                 bc = config["logging"].get("backup_count", backup_count)
                 try:
                     backup_count = int(bc)

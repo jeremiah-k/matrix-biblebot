@@ -5,10 +5,10 @@ __all__ = [
     "DEFAULT_LOG_BACKUP_COUNT",
     "DEFAULT_LOG_LEVEL",
     "DEFAULT_LOG_SIZE_MB",
+    "LOGGER_NIO",
     "LOG_LEVELS",
     "LOG_LEVEL_STYLES",
     "LOG_SIZE_BYTES_MULTIPLIER",
-    "LOGGER_NIO",
 ]
 
 # Component loggers to suppress (similar to mmrelay)

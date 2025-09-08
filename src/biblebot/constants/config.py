@@ -36,7 +36,6 @@ __all__ = [  # noqa: RUF022
     "E2EE_KEY_PLATFORM_SUPPORTED",
     "E2EE_KEY_ERROR",
     "E2EE_KEY_READY",
-    "DEFAULT_CONFIG_FILENAME_MAIN",
 ]
 
 # Configuration paths
@@ -101,6 +100,3 @@ E2EE_KEY_STORE_EXISTS = "store_exists"
 E2EE_KEY_PLATFORM_SUPPORTED = "platform_supported"
 E2EE_KEY_ERROR = "error"
 E2EE_KEY_READY = "ready"
-
-# Default values
-DEFAULT_CONFIG_FILENAME_MAIN = DEFAULT_CONFIG_FILENAME

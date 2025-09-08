@@ -3,13 +3,13 @@
 import re
 
 __all__ = [
+    "BOOK_ABBREVIATIONS",
     "DEFAULT_TRANSLATION",
+    "PARTIAL_REFERENCE_PATTERNS",
+    "REFERENCE_PATTERNS",
     "SUPPORTED_TRANSLATIONS",
     "TRANSLATION_ESV",
     "TRANSLATION_KJV",
-    "REFERENCE_PATTERNS",
-    "PARTIAL_REFERENCE_PATTERNS",
-    "BOOK_ABBREVIATIONS",
 ]
 
 # Bible translation constants
@@ -38,7 +38,7 @@ REFERENCE_PATTERNS = [
 # Partial matching patterns (for detect_references_anywhere mode)
 # More restrictive patterns to reduce false positives
 _PARTIAL_BOOK_PATTERN_STR = (
-    r"(?:[1-3]\s+[A-Za-z]+(?:\s+[A-Za-z]+)?|[A-Za-z]+(?:\s+of\s+[A-Za-z]+)?)"
+    r"(?:[1-3]\s*[A-Za-z]+(?:\s+[A-Za-z]+)?|[A-Za-z]+(?:\s+of\s+[A-Za-z]+)?)"
 )
 PARTIAL_REFERENCE_PATTERNS = [
     # Book + chapter:verse[-–— verse] [translation] (anywhere in message)

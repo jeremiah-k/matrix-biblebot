@@ -39,10 +39,14 @@ async def get_latest_release_version() -> Optional[str]:
                 try:
                     response.raise_for_status()
                 except aiohttp.ClientResponseError as e:
-                    logger.debug(f"GitHub API error {e.status}: {e.message}")
+                    logger.debug(f"GitHub API error {e.status}: {e}")
                     return None
                 data = await response.json()
-                tag_name = data.get("tag_name", "").lstrip("v")
+                tag = data.get("tag_name")
+                if not tag:
+                    logger.debug("Latest release from GitHub missing tag_name")
+                    return None
+                tag_name = str(tag).lstrip("v")
                 logger.debug(f"Latest release from GitHub: {tag_name}")
                 return tag_name
 

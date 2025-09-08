@@ -1,5 +1,6 @@
 """Constants for message formatting, errors, and CLI output."""
 
+import shutil
 from pathlib import Path
 
 from .app import SERVICE_NAME
@@ -161,7 +162,7 @@ CLI_HELP_LOG_LEVEL = "Set logging level (default: {})"
 CLI_HELP_YES = (
     "Automatically agree to prompts (useful in CI/non-interactive environments)"
 )
-CLI_HELP_GENERATE_CONFIG = "Generate sample configuration files"
+CLI_HELP_GENERATE_CONFIG = "Generate a sample configuration file"
 CLI_HELP_INSTALL_SERVICE = "Install systemd user service"
 
 # CLI actions
@@ -196,7 +197,7 @@ WARN_OLD_MESSAGE = "Ignoring old message"
 
 # Systemd paths and commands
 SYSTEMD_USER_DIR = Path.home() / ".config" / "systemd" / "user"
-SYSTEMCTL_PATH = "/usr/bin/systemctl"
+SYSTEMCTL_PATH = shutil.which("systemctl") or "/usr/bin/systemctl"
 LOCAL_SHARE_DIR = ".local/share"
 PIPX_VENV_PATH = "%h/.local/pipx/venvs/matrix-biblebot/bin"
 DEFAULT_CONFIG_PATH = "%h/.config/matrix-biblebot/config.yaml"
