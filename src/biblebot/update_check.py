@@ -71,7 +71,7 @@ def compare_versions(current: str, latest: str) -> bool:
         current_ver = version.parse(current)
         latest_ver = version.parse(latest)
         return latest_ver > current_ver
-    except Exception as e:
+    except (TypeError, ValueError, version.InvalidVersion) as e:
         logger.debug(f"Error comparing versions '{current}' and '{latest}': {e}")
         return False
 

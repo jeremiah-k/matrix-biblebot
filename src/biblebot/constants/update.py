@@ -1,6 +1,6 @@
 """Constants for application update checks."""
 
-from biblebot import __version__
+from importlib.metadata import PackageNotFoundError, version
 
 __all__ = [
     "GITHUB_API_BASE",
@@ -21,4 +21,8 @@ RELEASES_PAGE_URL = f"https://github.com/{REPO_OWNER}/{REPO_NAME}/releases"
 
 # Update check configuration
 UPDATE_CHECK_TIMEOUT = 10  # seconds
-UPDATE_CHECK_USER_AGENT = f"BibleBot/{__version__}"
+try:
+    _VER = version("matrix-biblebot")
+except PackageNotFoundError:
+    _VER = "dev"
+UPDATE_CHECK_USER_AGENT = f"BibleBot/{_VER}"
