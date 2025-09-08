@@ -4,7 +4,7 @@ from pathlib import Path
 
 from .app import SERVICE_NAME
 
-__all__ = [
+__all__ = [  # noqa: RUF022
     "FALLBACK_MESSAGE_TOO_LONG",
     "TRUNCATION_INDICATOR",
     "REFERENCE_SEPARATOR_LEN",
@@ -199,7 +199,7 @@ WARN_OLD_MESSAGE = "Ignoring old message"
 # Systemd paths and commands
 SYSTEMD_USER_DIR = Path.home() / ".config" / "systemd" / "user"
 SYSTEMCTL_PATH = "/usr/bin/systemctl"
-LOCAL_BIN_DIR = ".local"
+LOCAL_BIN_DIR = ".local/bin"
 LOCAL_SHARE_DIR = ".local/share"
 CONFIG_SUBDIR = ".config"
 PIPX_VENV_PATH = "%h/.local/pipx/venvs/matrix-biblebot/bin"

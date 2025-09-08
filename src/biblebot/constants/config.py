@@ -2,7 +2,7 @@
 
 from pathlib import Path
 
-__all__ = [
+__all__ = [  # noqa: RUF022
     "CONFIG_DIR",
     "CREDENTIALS_FILE",
     "E2EE_STORE_DIR",
@@ -23,6 +23,7 @@ __all__ = [
     "CONFIG_DIR_PERMISSIONS",
     "CREDENTIALS_FILE_PERMISSIONS",
     "REQUIRED_CONFIG_KEYS",
+    "REQUIRED_CONFIG_KEYS_NESTED",
     "ENV_USER",
     "ENV_USERNAME",
     "SAMPLE_CONFIG_FILENAME",
@@ -82,8 +83,13 @@ CONFIG_DIR_PERMISSIONS = 0o700
 CREDENTIALS_FILE_PERMISSIONS = 0o600
 
 # Required configuration keys
+# Keep legacy for backward compat
 REQUIRED_CONFIG_KEYS = [
     CONFIG_MATRIX_ROOM_IDS,
+]
+# Prefer nested structure where supported
+REQUIRED_CONFIG_KEYS_NESTED = [
+    (CONFIG_KEY_MATRIX, CONFIG_MATRIX_SUBKEY_ROOM_IDS),
 ]
 
 # Environment variable names for system

@@ -36,14 +36,15 @@ async def get_latest_release_version() -> Optional[str]:
 
         async with aiohttp.ClientSession(timeout=timeout, headers=headers) as session:
             async with session.get(RELEASES_URL) as response:
-                if response.status == 200:
-                    data = await response.json()
-                    tag_name = data.get("tag_name", "").lstrip("v")
-                    logger.debug(f"Latest release from GitHub: {tag_name}")
-                    return tag_name
-                else:
-                    logger.debug(f"GitHub API returned status {response.status}")
+                try:
+                    response.raise_for_status()
+                except aiohttp.ClientResponseError as e:
+                    logger.debug(f"GitHub API error {e.status}: {e.message}")
                     return None
+                data = await response.json()
+                tag_name = data.get("tag_name", "").lstrip("v")
+                logger.debug(f"Latest release from GitHub: {tag_name}")
+                return tag_name
 
     except asyncio.TimeoutError:
         logger.debug("Update check timed out")
@@ -70,10 +71,11 @@ def compare_versions(current: str, latest: str) -> bool:
     try:
         current_ver = version.parse(current)
         latest_ver = version.parse(latest)
-        return latest_ver > current_ver
     except (TypeError, ValueError, version.InvalidVersion) as e:
         logger.debug(f"Error comparing versions '{current}' and '{latest}': {e}")
         return False
+    else:
+        return latest_ver > current_ver
 
 
 async def check_for_updates() -> Tuple[bool, Optional[str]]:

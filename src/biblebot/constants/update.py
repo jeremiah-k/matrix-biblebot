@@ -4,10 +4,10 @@ from importlib.metadata import PackageNotFoundError, version
 
 __all__ = [
     "GITHUB_API_BASE",
-    "REPO_OWNER",
-    "REPO_NAME",
-    "RELEASES_URL",
     "RELEASES_PAGE_URL",
+    "RELEASES_URL",
+    "REPO_NAME",
+    "REPO_OWNER",
     "UPDATE_CHECK_TIMEOUT",
     "UPDATE_CHECK_USER_AGENT",
 ]
@@ -25,4 +25,6 @@ try:
     _VER = version("matrix-biblebot")
 except PackageNotFoundError:
     _VER = "dev"
-UPDATE_CHECK_USER_AGENT = f"BibleBot/{_VER}"
+UPDATE_CHECK_USER_AGENT = (
+    f"BibleBot/{_VER} (+https://github.com/{REPO_OWNER}/{REPO_NAME})"
+)
