@@ -1388,7 +1388,12 @@ async def main(config_path=DEFAULT_CONFIG_FILENAME, config=None):
     bot.api_keys = api_keys
 
     # Perform update check on startup
-    await perform_startup_update_check()
+    try:
+        await perform_startup_update_check()
+    except asyncio.CancelledError:
+        raise
+    except Exception:
+        logger.debug("Startup update check failed", exc_info=True)
 
     if creds:
         logger.info("Using saved credentials.json for Matrix session")

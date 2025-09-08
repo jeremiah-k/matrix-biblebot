@@ -97,7 +97,7 @@ class TestUpdateCheck:
 
     def test_print_startup_banner(self):
         """Test startup banner prints version information."""
-        # Use mock to verify the logger.info call instead of caplog
+        # Use mock to verify the logger.info call - more reliable than caplog/capsys
         with patch("biblebot.update_check.logger.info") as mock_info:
             print_startup_banner()
             mock_info.assert_called_once()

@@ -206,21 +206,17 @@ def get_logger(name, *, force: bool = False):
                     m = re.fullmatch(r"(\d+(?:\.\d+)?)\s*([kmgt]?i?b)?", s)
                     if m:
                         num, unit = m.groups()
-                        factor = 1
-                        if unit in (None, "b"):
-                            factor = 1
-                        elif unit in ("kb",):
-                            factor = 1000
-                        elif unit in ("kib",):
-                            factor = 1024
-                        elif unit in ("mb",):
-                            factor = 1000**2
-                        elif unit in ("mib",):
-                            factor = 1024**2
-                        elif unit in ("gb",):
-                            factor = 1000**3
-                        elif unit in ("gib",):
-                            factor = 1024**3
+                        factors = {
+                            None: 1,
+                            "b": 1,
+                            "kb": 1000,
+                            "kib": 1024,
+                            "mb": 1000**2,
+                            "mib": 1024**2,
+                            "gb": 1000**3,
+                            "gib": 1024**3,
+                        }
+                        factor = factors.get(unit, 1)
                         max_bytes = int(float(num) * factor)
                 bc = config["logging"].get("backup_count", backup_count)
                 try:
