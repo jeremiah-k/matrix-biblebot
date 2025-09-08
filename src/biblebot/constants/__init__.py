@@ -7,6 +7,7 @@ the most commonly used constants for convenience, allowing for imports
 like `from biblebot.constants import APP_NAME`.
 """
 
+# ruff: noqa: F401, F403
 from .api import *
 from .app import *
 from .bible import *

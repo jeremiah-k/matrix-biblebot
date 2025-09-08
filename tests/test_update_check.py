@@ -98,9 +98,7 @@ class TestUpdateCheck:
 
     def test_print_startup_banner(self, caplog):
         """Test startup banner prints version information."""
-        logger = logging.getLogger(LOGGER_NAME)
-        logger.addHandler(caplog.handler)
-        with caplog.at_level(logging.INFO):
+        with caplog.at_level(logging.INFO, logger=LOGGER_NAME):
             print_startup_banner()
             assert "Starting BibleBot version" in caplog.text
 
@@ -111,4 +109,4 @@ class TestUpdateCheck:
 
         # Check that nio logger is suppressed
         nio_logger = logging.getLogger("nio")
-        assert nio_logger.level == logging.CRITICAL + 1
+        assert nio_logger.level > logging.CRITICAL

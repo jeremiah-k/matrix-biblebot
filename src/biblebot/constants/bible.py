@@ -21,13 +21,18 @@ TRANSLATION_ESV = "esv"
 TRANSLATION_KJV = "kjv"
 
 # Regular expression patterns
+_TX = "|".join(SUPPORTED_TRANSLATIONS)
 REFERENCE_PATTERNS = [
     # Book + chapter:verse[-\u2013 verse] [translation]
     re.compile(
-        r"^([\w\s]+?)\s+(\d+:\d+(?:\s*[-\u2013]\s*\d+)?)\s*(kjv|esv)?$", re.IGNORECASE
+        rf"^(?P<book>[\w\s]+?)\s+(?P<ref>\d+:\d+(?:\s*[-\u2013]\s*\d+)?)\s*(?P<translation>{_TX})?$",
+        re.IGNORECASE,
     ),
     # Book + chapter [translation]
-    re.compile(r"^([\w\s]+?)\s+(\d+)\s*(kjv|esv)?$", re.IGNORECASE),
+    re.compile(
+        rf"^(?P<book>[\w\s]+?)\s+(?P<ref>\d+)\s*(?P<translation>{_TX})?$",
+        re.IGNORECASE,
+    ),
 ]
 
 # Partial matching patterns (for detect_references_anywhere mode)
@@ -39,13 +44,13 @@ PARTIAL_REFERENCE_PATTERNS = [
     # Book + chapter:verse[-\u2013 verse] [translation] (anywhere in message)
     # Matches specific Bible book patterns to reduce false positives
     re.compile(
-        rf"\b({_PARTIAL_BOOK_PATTERN_STR})\s+(\d+:\d+(?:\s*[-\u2013]\s*\d+)?)\s*(kjv|esv)?\b",
+        rf"\b(?P<book>{_PARTIAL_BOOK_PATTERN_STR})\s+(?P<ref>\d+:\d+(?:\s*[-\u2013]\s*\d+)?)\s*(?P<translation>{_TX})?\b",
         re.IGNORECASE,
     ),
     # Book + chapter [translation] (anywhere in message)
     # Matches specific Bible book patterns to reduce false positives
     re.compile(
-        rf"\b({_PARTIAL_BOOK_PATTERN_STR})\s+(\d+)\s*(kjv|esv)?\b",
+        rf"\b(?P<book>{_PARTIAL_BOOK_PATTERN_STR})\s+(?P<ref>\d+)\s*(?P<translation>{_TX})?\b",
         re.IGNORECASE,
     ),
 ]

@@ -479,7 +479,7 @@ Examples:
             generate_config(args.config)
             return
         elif args.config_action == CMD_CHECK:
-            from .bot import load_config
+            from biblebot.bot import load_config
 
             config = load_config(args.config)
             if not config:
@@ -493,7 +493,7 @@ Examples:
                     "matrix_room_ids", []
                 )
                 print(f"  Matrix rooms: {len(rooms or [])}")
-                from .bot import load_environment
+                from biblebot.bot import load_environment
 
                 _, api_keys = load_environment(config, args.config)
                 print(
@@ -501,7 +501,7 @@ Examples:
                 )
 
                 # Check E2EE status
-                from .auth import check_e2ee_status
+                from biblebot.auth import check_e2ee_status
 
                 e2ee_status = check_e2ee_status()
                 print(
@@ -572,7 +572,7 @@ Examples:
             ok = run_async(interactive_logout())
             sys.exit(0 if ok else 1)
         elif args.auth_action == CMD_STATUS:
-            from .auth import print_e2ee_status
+            from biblebot.auth import print_e2ee_status
 
             # Show authentication status
             creds = load_credentials()
@@ -594,7 +594,7 @@ Examples:
 
     elif args.command == CMD_SERVICE:
         if args.service_action == CMD_INSTALL:
-            from .setup_utils import install_service
+            from biblebot.setup_utils import install_service
 
             install_service()
             return

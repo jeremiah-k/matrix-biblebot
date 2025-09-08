@@ -2,15 +2,15 @@
 
 # Component loggers to suppress (similar to mmrelay)
 COMPONENT_LOGGERS = {
-    "matrix_nio": [
+    "matrix_nio": (
         "nio",
         "nio.client",
         "nio.http",
         "nio.crypto",
         "nio.responses",
         "nio.rooms",
-    ],
-    "aiohttp": ["aiohttp", "aiohttp.access"],
+    ),
+    "aiohttp": ("aiohttp", "aiohttp.access"),
 }
 
 # Define custom log level styles
@@ -28,7 +28,7 @@ DEFAULT_LOG_BACKUP_COUNT = 5
 LOG_SIZE_BYTES_MULTIPLIER = 1024 * 1024
 
 # Log levels
-LOG_LEVELS = ("error", "warning", "info", "debug")
+LOG_LEVELS = ("critical", "error", "warning", "info", "debug")
 DEFAULT_LOG_LEVEL = "info"
 
 # Logger names
