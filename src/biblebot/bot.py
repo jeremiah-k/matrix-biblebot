@@ -950,7 +950,7 @@ class BibleBot:
                     passage = f"{book_name} {verse_reference}"
 
                     # Get optional translation group safely
-                    trans_group = match.group("translation")
+                    trans_group = match.groupdict().get("translation")
                     translation = (
                         trans_group.lower() if trans_group else self.default_translation
                     )

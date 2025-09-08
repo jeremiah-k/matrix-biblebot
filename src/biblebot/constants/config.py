@@ -22,8 +22,6 @@ __all__ = [  # noqa: RUF022
     "CONFIG_DETECT_REFERENCES_ANYWHERE",
     "CONFIG_DIR_PERMISSIONS",
     "CREDENTIALS_FILE_PERMISSIONS",
-    "REQUIRED_CONFIG_KEYS",
-    "REQUIRED_CONFIG_KEYS_NESTED",
     "ENV_USER",
     "ENV_USERNAME",
     "SAMPLE_CONFIG_FILENAME",
@@ -38,9 +36,6 @@ __all__ = [  # noqa: RUF022
     "E2EE_KEY_ERROR",
     "E2EE_KEY_READY",
     "DEFAULT_CONFIG_FILENAME_MAIN",
-    "STATUS_KEY_ERROR",
-    "STATUS_KEY_AVAILABLE",
-    "STATUS_KEY_PLATFORM_SUPPORTED",
 ]
 
 # Configuration paths
@@ -82,15 +77,6 @@ CONFIG_DETECT_REFERENCES_ANYWHERE = "detect_references_anywhere"
 CONFIG_DIR_PERMISSIONS = 0o700
 CREDENTIALS_FILE_PERMISSIONS = 0o600
 
-# Required configuration keys
-# Keep legacy for backward compat
-REQUIRED_CONFIG_KEYS = [
-    CONFIG_MATRIX_ROOM_IDS,
-]
-# Prefer nested structure where supported
-REQUIRED_CONFIG_KEYS_NESTED = [
-    (CONFIG_KEY_MATRIX, CONFIG_MATRIX_SUBKEY_ROOM_IDS),
-]
 
 # Environment variable names for system
 ENV_USER = "USER"
@@ -115,8 +101,3 @@ E2EE_KEY_READY = "ready"
 
 # Default values
 DEFAULT_CONFIG_FILENAME_MAIN = DEFAULT_CONFIG_FILENAME
-
-# DEPRECATED: use E2EE_KEY_* directly; aliases kept for compatibility. TODO: Remove after next minor release.
-STATUS_KEY_ERROR = E2EE_KEY_ERROR
-STATUS_KEY_AVAILABLE = E2EE_KEY_AVAILABLE
-STATUS_KEY_PLATFORM_SUPPORTED = E2EE_KEY_PLATFORM_SUPPORTED

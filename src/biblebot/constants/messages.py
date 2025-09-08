@@ -71,9 +71,7 @@ __all__ = [  # noqa: RUF022
     "WARN_OLD_MESSAGE",
     "SYSTEMD_USER_DIR",
     "SYSTEMCTL_PATH",
-    "LOCAL_BIN_DIR",
     "LOCAL_SHARE_DIR",
-    "CONFIG_SUBDIR",
     "PIPX_VENV_PATH",
     "DEFAULT_CONFIG_PATH",
     "WORKING_DIRECTORY",
@@ -199,9 +197,7 @@ WARN_OLD_MESSAGE = "Ignoring old message"
 # Systemd paths and commands
 SYSTEMD_USER_DIR = Path.home() / ".config" / "systemd" / "user"
 SYSTEMCTL_PATH = "/usr/bin/systemctl"
-LOCAL_BIN_DIR = ".local/bin"
 LOCAL_SHARE_DIR = ".local/share"
-CONFIG_SUBDIR = ".config"
 PIPX_VENV_PATH = "%h/.local/pipx/venvs/matrix-biblebot/bin"
 DEFAULT_CONFIG_PATH = "%h/.config/matrix-biblebot/config.yaml"
 WORKING_DIRECTORY = "%h/.config/matrix-biblebot"
