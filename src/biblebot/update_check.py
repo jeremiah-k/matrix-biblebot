@@ -11,9 +11,8 @@ from biblebot import __version__
 from biblebot.constants.app import LOGGER_NAME
 from biblebot.constants.logging import COMPONENT_LOGGERS
 from biblebot.constants.update import (
+    RELEASES_PAGE_URL,
     RELEASES_URL,
-    REPO_NAME,
-    REPO_OWNER,
     UPDATE_CHECK_TIMEOUT,
     UPDATE_CHECK_USER_AGENT,
 )
@@ -52,8 +51,8 @@ async def get_latest_release_version() -> Optional[str]:
     except aiohttp.ClientError as e:
         logger.debug(f"Network error during update check: {e}")
         return None
-    except Exception as e:
-        logger.debug(f"Unexpected error during update check: {e}")
+    except (ValueError, KeyError, TypeError) as e:
+        logger.debug(f"Unexpected data while checking updates: {e}")
         return None
 
 
@@ -134,11 +133,9 @@ async def perform_startup_update_check() -> None:
         if update_available and latest_version:
             logger.info("🔄 A new version of BibleBot is available!")
             logger.info(f"   Latest version: {latest_version}")
-            logger.info(
-                f"   Visit: https://github.com/{REPO_OWNER}/{REPO_NAME}/releases"
-            )
+            logger.info(f"   Visit: {RELEASES_PAGE_URL}")
         else:
             logger.debug("BibleBot is up to date")
 
-    except Exception as e:
-        logger.debug(f"Update check failed: {e}")
+    except Exception:
+        logger.debug("Update check failed with unexpected error", exc_info=True)
