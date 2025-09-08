@@ -64,11 +64,11 @@ from biblebot.constants.config import (
 )
 from biblebot.constants.logging import LOGGER_NIO
 from biblebot.constants.matrix import (
+    _PLACEHOLDER_ROOM_IDS,
     DEFAULT_RETRY_AFTER_MS,
     MAX_RATE_LIMIT_RETRIES,
     MIN_PRACTICAL_CHUNK_SIZE,
     SYNC_TIMEOUT_MS,
-    _PLACEHOLDER_ROOM_IDS,
 )
 from biblebot.constants.messages import (
     ERROR_AUTH_INSTRUCTIONS,
@@ -1380,10 +1380,7 @@ async def main(config_path=DEFAULT_CONFIG_FILENAME_MAIN, config=None):
     bot.api_keys = api_keys
 
     # Perform update check on startup
-    try:
-        await perform_startup_update_check()
-    except Exception as e:
-        logger.debug(f"Update check failed: {e}")
+    await perform_startup_update_check()
 
     if creds:
         logger.info("Using saved credentials.json for Matrix session")

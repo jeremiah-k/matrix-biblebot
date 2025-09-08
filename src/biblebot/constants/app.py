@@ -1,5 +1,24 @@
 """Application-level constants."""
 
+__all__ = [
+    "APP_NAME",
+    "APP_DISPLAY_NAME",
+    "APP_DESCRIPTION",
+    "LOGGER_NAME",
+    "SERVICE_NAME",
+    "SERVICE_DESCRIPTION",
+    "SERVICE_RESTART_SEC",
+    "EXECUTABLE_NAME",
+    "DIR_TOOLS",
+    "DIR_SHARE",
+    "PLATFORM_WINDOWS",
+    "FILE_ENCODING_UTF8",
+    "CHAR_DOT",
+    "CHAR_SLASH",
+    "CHAR_COMMA",
+    "FILE_MODE_READ",
+]
+
 # Application constants
 APP_NAME = "matrix-biblebot"
 APP_DISPLAY_NAME = "Matrix BibleBot"

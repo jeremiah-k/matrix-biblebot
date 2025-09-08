@@ -7,6 +7,7 @@ from biblebot.auth import (
     check_e2ee_status,
     get_store_dir,
 )
+
 from .test_constants import TEST_HOMESERVER, TEST_USER_ID
 
 

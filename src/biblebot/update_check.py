@@ -12,6 +12,8 @@ from biblebot.constants.app import LOGGER_NAME
 from biblebot.constants.logging import COMPONENT_LOGGERS
 from biblebot.constants.update import (
     RELEASES_URL,
+    REPO_NAME,
+    REPO_OWNER,
     UPDATE_CHECK_TIMEOUT,
     UPDATE_CHECK_USER_AGENT,
 )
@@ -103,7 +105,7 @@ def suppress_component_loggers() -> None:
     Sets external library loggers to CRITICAL+1 to effectively silence them,
     similar to how mmrelay handles component logging.
     """
-    for _component, loggers in COMPONENT_LOGGERS.items():
+    for loggers in COMPONENT_LOGGERS.values():
         for logger_name in loggers:
             logging.getLogger(logger_name).setLevel(logging.CRITICAL + 1)
 

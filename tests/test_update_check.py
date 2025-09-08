@@ -5,6 +5,7 @@ from unittest.mock import patch
 
 import pytest
 
+from biblebot.constants.app import LOGGER_NAME
 from biblebot.update_check import (
     check_for_updates,
     compare_versions,
@@ -97,8 +98,6 @@ class TestUpdateCheck:
 
     def test_print_startup_banner(self, caplog):
         """Test startup banner prints version information."""
-        from biblebot.constants.app import LOGGER_NAME
-
         logger = logging.getLogger(LOGGER_NAME)
         logger.addHandler(caplog.handler)
         with caplog.at_level(logging.INFO):
@@ -107,8 +106,6 @@ class TestUpdateCheck:
 
     def test_suppress_component_loggers(self):
         """Test component logger suppression."""
-        import logging
-
         # Test that loggers get suppressed
         suppress_component_loggers()
 

@@ -1,4 +1,5 @@
 """Constants related to configuration files and keys."""
+
 from pathlib import Path
 
 # Configuration paths

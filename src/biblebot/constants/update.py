@@ -2,6 +2,15 @@
 
 from biblebot import __version__
 
+__all__ = [
+    "GITHUB_API_BASE",
+    "REPO_OWNER",
+    "REPO_NAME",
+    "RELEASES_URL",
+    "UPDATE_CHECK_TIMEOUT",
+    "UPDATE_CHECK_USER_AGENT",
+]
+
 # GitHub API configuration
 GITHUB_API_BASE = "https://api.github.com"
 REPO_OWNER = "jeremiah-k"

@@ -13,8 +13,8 @@ from rich.console import Console
 from rich.logging import RichHandler
 
 from biblebot.constants.app import APP_DISPLAY_NAME
+from biblebot.constants.logging import COMPONENT_LOGGERS as _COMPONENT_LOGGERS
 from biblebot.constants.logging import (
-    COMPONENT_LOGGERS as _COMPONENT_LOGGERS,
     DEFAULT_LOG_BACKUP_COUNT,
     DEFAULT_LOG_SIZE_MB,
     LOG_SIZE_BYTES_MULTIPLIER,

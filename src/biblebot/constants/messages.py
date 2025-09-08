@@ -1,5 +1,8 @@
 """Constants for message formatting, errors, and CLI output."""
+
 from pathlib import Path
+
+from .app import SERVICE_NAME
 
 FALLBACK_MESSAGE_TOO_LONG = "[Message too long]"
 TRUNCATION_INDICATOR = "..."  # Indicator for truncated text
@@ -123,18 +126,16 @@ CONFIG_SUBDIR = ".config"
 PIPX_VENV_PATH = "%h/.local/pipx/venvs/matrix-biblebot/bin"
 DEFAULT_CONFIG_PATH = "%h/.config/matrix-biblebot/config.yaml"
 WORKING_DIRECTORY = "%h/.config/matrix-biblebot"
-EXEC_START_TEMPLATE = (
-    f"%h/{LOCAL_BIN_DIR}/bin/biblebot --config {DEFAULT_CONFIG_PATH}"
-)
+EXEC_START_TEMPLATE = f"%h/{LOCAL_BIN_DIR}/bin/biblebot --config {DEFAULT_CONFIG_PATH}"
 PATH_ENVIRONMENT = "%h/.local/bin:%h/.local/pipx/venvs/matrix-biblebot/bin:/usr/local/bin:/usr/bin:/bin"
 
 SYSTEMCTL_COMMANDS = {
-    "start": f"{SYSTEMCTL_PATH} {SYSTEMCTL_ARG_USER} start biblebot.service",
-    "stop": f"{SYSTEMCTL_PATH} {SYSTEMCTL_ARG_USER} stop biblebot.service",
-    "restart": f"{SYSTEMCTL_PATH} {SYSTEMCTL_ARG_USER} restart biblebot.service",
-    "status": f"{SYSTEMCTL_PATH} {SYSTEMCTL_ARG_USER} status biblebot.service",
-    "enable": f"{SYSTEMCTL_PATH} {SYSTEMCTL_ARG_USER} enable biblebot.service",
-    "disable": f"{SYSTEMCTL_PATH} {SYSTEMCTL_ARG_USER} disable biblebot.service",
+    "start": f"{SYSTEMCTL_PATH} {SYSTEMCTL_ARG_USER} start {SERVICE_NAME}",
+    "stop": f"{SYSTEMCTL_PATH} {SYSTEMCTL_ARG_USER} stop {SERVICE_NAME}",
+    "restart": f"{SYSTEMCTL_PATH} {SYSTEMCTL_ARG_USER} restart {SERVICE_NAME}",
+    "status": f"{SYSTEMCTL_PATH} {SYSTEMCTL_ARG_USER} status {SERVICE_NAME}",
+    "enable": f"{SYSTEMCTL_PATH} {SYSTEMCTL_ARG_USER} enable {SERVICE_NAME}",
+    "disable": f"{SYSTEMCTL_PATH} {SYSTEMCTL_ARG_USER} disable {SERVICE_NAME}",
 }
 
 

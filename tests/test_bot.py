@@ -8,6 +8,7 @@ import yaml
 
 from biblebot import bot
 from biblebot.bot import BibleBot, validate_and_normalize_book_name
+
 from .test_constants import (
     TEST_ACCESS_TOKEN,
     TEST_BIBLE_REFERENCE,
