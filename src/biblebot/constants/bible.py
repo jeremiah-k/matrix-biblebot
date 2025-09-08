@@ -1,4 +1,43 @@
-"""Bible-specific constants for BibleBot."""
+"""Bible-specific constants."""
+import re
+
+# Bible translation constants
+DEFAULT_TRANSLATION = "kjv"
+SUPPORTED_TRANSLATIONS = ("kjv", "esv")
+
+# Translation identifiers
+TRANSLATION_ESV = "esv"
+TRANSLATION_KJV = "kjv"
+
+# Regular expression patterns
+REFERENCE_PATTERNS = [
+    # Book + chapter:verse[-\u2013 verse] [translation]
+    re.compile(
+        r"^([\w\s]+?)\s+(\d+:\d+(?:\s*[-\u2013]\s*\d+)?)\s*(kjv|esv)?$", re.IGNORECASE
+    ),
+    # Book + chapter [translation]
+    re.compile(r"^([\w\s]+?)\s+(\d+)\s*(kjv|esv)?$", re.IGNORECASE),
+]
+
+# Partial matching patterns (for detect_references_anywhere mode)
+# More restrictive patterns to reduce false positives
+_PARTIAL_BOOK_PATTERN_STR = (
+    r"(?:[1-3]\s+[A-Za-z]+(?:\s+[A-Za-z]+)?|[A-Za-z]+(?:\s+of\s+[A-Za-z]+)?)"
+)
+PARTIAL_REFERENCE_PATTERNS = [
+    # Book + chapter:verse[-\u2013 verse] [translation] (anywhere in message)
+    # Matches specific Bible book patterns to reduce false positives
+    re.compile(
+        rf"\b({_PARTIAL_BOOK_PATTERN_STR})\s+(\d+:\d+(?:\s*[-\u2013]\s*\d+)?)\s*(kjv|esv)?\b",
+        re.IGNORECASE,
+    ),
+    # Book + chapter [translation] (anywhere in message)
+    # Matches specific Bible book patterns to reduce false positives
+    re.compile(
+        rf"\b({_PARTIAL_BOOK_PATTERN_STR})\s+(\d+)\s*(kjv|esv)?\b",
+        re.IGNORECASE,
+    ),
+]
 
 # Bible book abbreviations mapping
 BOOK_ABBREVIATIONS = {

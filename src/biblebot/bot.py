@@ -25,9 +25,8 @@ from nio import (
     RoomResolveAliasError,
 )
 
-from .auth import get_store_dir, load_credentials
-from .bible_constants import BOOK_ABBREVIATIONS
-from .constants import (
+from biblebot.auth import get_store_dir, load_credentials
+from biblebot.constants.api import (
     API_PARAM_FALSE,
     API_PARAM_INCLUDE_FOOTNOTES,
     API_PARAM_INCLUDE_HEADINGS,
@@ -36,10 +35,21 @@ from .constants import (
     API_PARAM_INCLUDE_VERSE_NUMBERS,
     API_PARAM_Q,
     API_REQUEST_TIMEOUT_SEC,
-    APP_NAME,
     CACHE_MAX_SIZE,
     CACHE_TTL_SECONDS,
-    CHAR_DOT,
+    ESV_API_URL,
+    KJV_API_URL_TEMPLATE,
+)
+from biblebot.constants.app import APP_NAME, CHAR_DOT, FILE_ENCODING_UTF8, LOGGER_NAME
+from biblebot.constants.bible import (
+    BOOK_ABBREVIATIONS,
+    DEFAULT_TRANSLATION,
+    PARTIAL_REFERENCE_PATTERNS,
+    REFERENCE_PATTERNS,
+    TRANSLATION_ESV,
+    TRANSLATION_KJV,
+)
+from biblebot.constants.config import (
     CONFIG_DETECT_REFERENCES_ANYWHERE,
     CONFIG_KEY_MATRIX,
     CONFIG_MATRIX_E2EE,
@@ -49,33 +59,35 @@ from .constants import (
     CONFIG_PRESERVE_POETRY_FORMATTING,
     DEFAULT_CONFIG_FILENAME_MAIN,
     DEFAULT_ENV_FILENAME,
-    DEFAULT_TRANSLATION,
     ENV_ESV_API_KEY,
     ENV_MATRIX_ACCESS_TOKEN,
+)
+from biblebot.constants.logging import LOGGER_NIO
+from biblebot.constants.matrix import (
+    DEFAULT_RETRY_AFTER_MS,
+    MAX_RATE_LIMIT_RETRIES,
+    MIN_PRACTICAL_CHUNK_SIZE,
+    SYNC_TIMEOUT_MS,
+    _PLACEHOLDER_ROOM_IDS,
+)
+from biblebot.constants.messages import (
     ERROR_AUTH_INSTRUCTIONS,
     ERROR_NO_CREDENTIALS_AND_TOKEN,
     ERROR_PASSAGE_NOT_FOUND,
-    ESV_API_URL,
-    FILE_ENCODING_UTF8,
+    FALLBACK_MESSAGE_TOO_LONG,
     INFO_API_KEY_FOUND,
     INFO_LOADING_ENV,
     INFO_NO_API_KEY,
     INFO_NO_ENV_FILE,
     INFO_RESOLVED_ALIAS,
-    KJV_API_URL_TEMPLATE,
-    LOGGER_NAME,
-    LOGGER_NIO,
     MESSAGE_SUFFIX,
-    PARTIAL_REFERENCE_PATTERNS,
     REACTION_OK,
-    REFERENCE_PATTERNS,
-    SYNC_TIMEOUT_MS,
-    TRANSLATION_ESV,
-    TRANSLATION_KJV,
+    REFERENCE_SEPARATOR_LEN,
+    TRUNCATION_INDICATOR,
     WARN_COULD_NOT_RESOLVE_ALIAS,
     WARN_MATRIX_ACCESS_TOKEN_NOT_SET,
 )
-from .update_check import (
+from biblebot.update_check import (
     perform_startup_update_check,
     print_startup_banner,
     suppress_component_loggers,
@@ -83,12 +95,6 @@ from .update_check import (
 
 # Configure logging
 logger = logging.getLogger(LOGGER_NAME)
-
-# Constants
-FALLBACK_MESSAGE_TOO_LONG = "[Message too long]"
-MIN_PRACTICAL_CHUNK_SIZE = 8  # Minimum reasonable chunk size for splitting
-MAX_RATE_LIMIT_RETRIES = 3  # Maximum number of rate limit retries
-DEFAULT_RETRY_AFTER_MS = 1000  # Default retry delay in milliseconds
 
 
 # Create a comprehensive, frozen lookup in one go
@@ -98,11 +104,6 @@ _ALL_NAMES_TO_CANONICAL = MappingProxyType(
         **{name.lower(): name for name in set(BOOK_ABBREVIATIONS.values())},
     }
 )
-TRUNCATION_INDICATOR = "..."  # Indicator for truncated text
-REFERENCE_SEPARATOR_LEN = 3  # Length of " - " separator
-
-# Placeholder room IDs to skip from sample config
-_PLACEHOLDER_ROOM_IDS = frozenset({"#example:example.org", "!example:example.org"})
 
 
 # Custom exceptions for Bible text retrieval

@@ -9,10 +9,17 @@ import sys
 from pathlib import Path
 from typing import Awaitable, Optional, TypeVar
 
-from . import __version__
-from .auth import interactive_login, interactive_logout, load_credentials
-from .bot import main as bot_main
-from .constants import (
+from biblebot import __version__
+from biblebot.auth import interactive_login, interactive_logout, load_credentials
+from biblebot.bot import main as bot_main
+from biblebot.constants.app import LOGGER_NAME
+from biblebot.constants.config import (
+    CONFIG_DIR,
+    DEFAULT_CONFIG_FILENAME,
+    E2EE_KEY_AVAILABLE,
+)
+from biblebot.constants.logging import DEFAULT_LOG_LEVEL, LOG_LEVELS
+from biblebot.constants.messages import (
     CLI_ACTION_STORE_TRUE,
     CLI_ACTION_VERSION,
     CLI_ARG_CONFIG,
@@ -33,20 +40,14 @@ from .constants import (
     CMD_LOGOUT,
     CMD_SERVICE,
     CMD_STATUS,
-    CONFIG_DIR,
-    DEFAULT_CONFIG_FILENAME,
-    DEFAULT_LOG_LEVEL,
-    E2EE_KEY_AVAILABLE,
-    LOG_LEVELS,
-    LOGGER_NAME,
     MSG_CONFIG_EXISTS,
     MSG_DELETE_EXISTING,
     MSG_GENERATED_CONFIG,
     MSG_NO_CONFIG_PROMPT,
     SUCCESS_CONFIG_GENERATED,
 )
-from .log_utils import configure_logging, get_logger
-from .tools import copy_sample_config_to
+from biblebot.log_utils import configure_logging, get_logger
+from biblebot.tools import copy_sample_config_to
 
 # Configure logging
 logger = logging.getLogger(LOGGER_NAME)
@@ -107,7 +108,7 @@ def detect_configuration_state():
 
     # Try to load and validate config
     try:
-        from . import bot
+        from biblebot import bot
 
         config = bot.load_config(str(config_path))
         if not config:
@@ -118,7 +119,7 @@ def detect_configuration_state():
     # Check for proper authentication (credentials.json from auth flow)
     if not credentials_path.exists():
         # Check for legacy environment token (deprecated)
-        from .constants import ENV_MATRIX_ACCESS_TOKEN
+        from biblebot.constants import ENV_MATRIX_ACCESS_TOKEN
 
         if os.getenv(ENV_MATRIX_ACCESS_TOKEN):
             return (
@@ -222,7 +223,7 @@ def interactive_main():
         # Initialize logging first
         if config is None:
             try:
-                from .bot import load_config
+                from biblebot.bot import load_config
 
                 # Load config without logging message to avoid duplicate logging
                 # (config was already loaded in detect_configuration_state)

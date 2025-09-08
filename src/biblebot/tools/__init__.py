@@ -6,7 +6,7 @@ import shutil
 import warnings
 from contextlib import contextmanager
 
-from ..constants import SAMPLE_CONFIG_FILENAME
+from biblebot.constants import SAMPLE_CONFIG_FILENAME
 
 
 @contextmanager

@@ -14,20 +14,20 @@ import shutil
 import subprocess
 import sys
 
-from .constants import (
+from biblebot.constants.app import (
     APP_NAME,
-    CONFIG_DIR,
-    DEFAULT_CONFIG_PATH,
     DIR_SHARE,
     DIR_TOOLS,
-    ENV_USER,
-    ENV_USERNAME,
     EXECUTABLE_NAME,
     FILE_MODE_READ,
-    LOCAL_SHARE_DIR,
-    PIPX_VENV_PATH,
     SERVICE_DESCRIPTION,
     SERVICE_NAME,
+)
+from biblebot.constants.config import CONFIG_DIR, ENV_USER, ENV_USERNAME
+from biblebot.constants.messages import (
+    DEFAULT_CONFIG_PATH,
+    LOCAL_SHARE_DIR,
+    PIPX_VENV_PATH,
     SYSTEMCTL_ARG_IS_ENABLED,
     SYSTEMCTL_ARG_USER,
     SYSTEMCTL_COMMANDS,
@@ -35,7 +35,7 @@ from .constants import (
     SYSTEMD_USER_DIR,
     WARNING_EXECUTABLE_NOT_FOUND,
 )
-from .tools import copy_service_template_to
+from biblebot.tools import copy_service_template_to
 
 
 def get_executable_path():

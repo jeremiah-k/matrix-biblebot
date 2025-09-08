@@ -97,6 +97,10 @@ class TestUpdateCheck:
 
     def test_print_startup_banner(self, caplog):
         """Test startup banner prints version information."""
+        from biblebot.constants.app import LOGGER_NAME
+
+        logger = logging.getLogger(LOGGER_NAME)
+        logger.addHandler(caplog.handler)
         with caplog.at_level(logging.INFO):
             print_startup_banner()
             assert "Starting BibleBot version" in caplog.text

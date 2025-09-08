@@ -12,19 +12,17 @@ from pathlib import Path
 from rich.console import Console
 from rich.logging import RichHandler
 
-from .constants import APP_DISPLAY_NAME
+from biblebot.constants.app import APP_DISPLAY_NAME
+from biblebot.constants.logging import (
+    COMPONENT_LOGGERS as _COMPONENT_LOGGERS,
+    DEFAULT_LOG_BACKUP_COUNT,
+    DEFAULT_LOG_SIZE_MB,
+    LOG_SIZE_BYTES_MULTIPLIER,
+)
 
 # Initialize Rich console
 console = Console()
 
-# Define custom log level styles
-LOG_LEVEL_STYLES = {
-    "DEBUG": "dim blue",
-    "INFO": "green",
-    "WARNING": "yellow",
-    "ERROR": "bold red",
-    "CRITICAL": "bold white on red",
-}
 
 # Global config variable that will be set from main
 config = None
@@ -34,23 +32,6 @@ log_file_path = None
 
 # Track if component debug logging has been configured
 _component_debug_configured = False
-
-# Component logger mapping for data-driven configuration
-_COMPONENT_LOGGERS = {
-    "matrix_nio": [
-        "nio",
-        "nio.client",
-        "nio.http",
-        "nio.crypto",
-        "nio.responses",
-        "nio.rooms",
-    ],
-}
-
-# Default log settings
-DEFAULT_LOG_SIZE_MB = 10
-DEFAULT_LOG_BACKUP_COUNT = 5
-LOG_SIZE_BYTES_MULTIPLIER = 1024 * 1024
 
 
 def configure_component_debug_logging():
@@ -108,7 +89,7 @@ def get_log_dir():
     Returns:
         pathlib.Path: Path to the logs directory (may not exist).
     """
-    from .auth import get_config_dir
+    from biblebot.auth import get_config_dir
 
     return get_config_dir() / "logs"
 

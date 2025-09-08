@@ -7,33 +7,16 @@ from typing import Optional, Tuple
 import aiohttp
 from packaging import version
 
-from . import __version__
-from .constants import LOGGER_NAME
+from biblebot import __version__
+from biblebot.constants.app import LOGGER_NAME
+from biblebot.constants.logging import COMPONENT_LOGGERS
+from biblebot.constants.update import (
+    RELEASES_URL,
+    UPDATE_CHECK_TIMEOUT,
+    UPDATE_CHECK_USER_AGENT,
+)
 
 logger = logging.getLogger(LOGGER_NAME)
-
-# GitHub API configuration
-GITHUB_API_BASE = "https://api.github.com"
-REPO_OWNER = "jeremiah-k"
-REPO_NAME = "matrix-biblebot"
-RELEASES_URL = f"{GITHUB_API_BASE}/repos/{REPO_OWNER}/{REPO_NAME}/releases/latest"
-
-# Update check configuration
-UPDATE_CHECK_TIMEOUT = 10  # seconds
-UPDATE_CHECK_USER_AGENT = f"BibleBot/{__version__}"
-
-# Component loggers to suppress (similar to mmrelay)
-COMPONENT_LOGGERS = {
-    "matrix_nio": [
-        "nio",
-        "nio.client",
-        "nio.http",
-        "nio.crypto",
-        "nio.responses",
-        "nio.rooms",
-    ],
-    "aiohttp": ["aiohttp", "aiohttp.access"],
-}
 
 
 async def get_latest_release_version() -> Optional[str]:

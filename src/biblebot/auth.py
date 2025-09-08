@@ -35,7 +35,17 @@ from nio import (
     LoginResponse,
 )
 
-from .constants import (
+from biblebot.constants.api import (
+    DISCOVERY_ATTR_HOMESERVER_URL,
+    URL_PREFIX_HTTP,
+    URL_PREFIX_HTTPS,
+)
+from biblebot.constants.app import (
+    FILE_ENCODING_UTF8,
+    LOGGER_NAME,
+    PLATFORM_WINDOWS,
+)
+from biblebot.constants.config import (
     CONFIG_DIR,
     CONFIG_DIR_PERMISSIONS,
     CRED_KEY_ACCESS_TOKEN,
@@ -44,7 +54,6 @@ from .constants import (
     CRED_KEY_USER_ID,
     CREDENTIALS_FILE,
     CREDENTIALS_FILE_PERMISSIONS,
-    DISCOVERY_ATTR_HOMESERVER_URL,
     E2EE_KEY_AVAILABLE,
     E2EE_KEY_DEPENDENCIES_INSTALLED,
     E2EE_KEY_ERROR,
@@ -52,22 +61,18 @@ from .constants import (
     E2EE_KEY_READY,
     E2EE_KEY_STORE_EXISTS,
     E2EE_STORE_DIR,
+)
+from biblebot.constants.matrix import LOGIN_TIMEOUT_SEC, MATRIX_DEVICE_NAME
+from biblebot.constants.messages import (
     ERROR_E2EE_DEPS_MISSING,
     ERROR_E2EE_NOT_SUPPORTED,
-    FILE_ENCODING_UTF8,
-    LOGGER_NAME,
-    LOGIN_TIMEOUT_SEC,
-    MATRIX_DEVICE_NAME,
     MSG_E2EE_DEPS_NOT_FOUND,
     MSG_SERVER_DISCOVERY_FAILED,
-    PLATFORM_WINDOWS,
     PROMPT_HOMESERVER,
     PROMPT_LOGIN_AGAIN,
     PROMPT_PASSWORD,
     PROMPT_USERNAME,
     RESPONSE_YES_PREFIX,
-    URL_PREFIX_HTTP,
-    URL_PREFIX_HTTPS,
 )
 
 # Try to import certifi for better SSL handling
