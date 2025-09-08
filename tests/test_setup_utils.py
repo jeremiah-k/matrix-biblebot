@@ -94,9 +94,10 @@ class TestServiceInstallation:
         print_calls = [call[0][0] for call in mock_print.call_args_list]
         commands_text = " ".join(print_calls)
 
-        assert "systemctl --user start" in commands_text
-        assert "systemctl --user stop" in commands_text
-        assert "systemctl --user restart" in commands_text
+        # Commands are now stored as argv lists, so check for the list format
+        assert "'--user', 'start'" in commands_text
+        assert "'--user', 'stop'" in commands_text
+        assert "'--user', 'restart'" in commands_text
 
 
 class TestLingeringManagement:
