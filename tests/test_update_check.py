@@ -5,12 +5,12 @@ from unittest.mock import patch
 
 import pytest
 
+from biblebot.log_utils import suppress_component_loggers
 from biblebot.update_check import (
     check_for_updates,
     compare_versions,
     perform_startup_update_check,
     print_startup_banner,
-    suppress_component_loggers,
 )
 
 

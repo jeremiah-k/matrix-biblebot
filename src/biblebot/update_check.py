@@ -9,7 +9,6 @@ from packaging import version
 
 from biblebot import __version__
 from biblebot.constants.app import LOGGER_NAME
-from biblebot.constants.logging import COMPONENT_LOGGERS
 from biblebot.constants.update import (
     RELEASES_PAGE_URL,
     RELEASES_URL,
@@ -36,11 +35,7 @@ async def get_latest_release_version() -> Optional[str]:
 
         async with aiohttp.ClientSession(timeout=timeout, headers=headers) as session:
             async with session.get(RELEASES_URL) as response:
-                try:
-                    response.raise_for_status()
-                except aiohttp.ClientResponseError as e:
-                    logger.debug(f"GitHub API error {e.status}: {e}")
-                    return None
+                response.raise_for_status()
                 data = await response.json()
                 tag = data.get("tag_name")
                 if not tag:
@@ -52,6 +47,9 @@ async def get_latest_release_version() -> Optional[str]:
 
     except asyncio.TimeoutError:
         logger.debug("Update check timed out")
+        return None
+    except aiohttp.ClientResponseError as e:
+        logger.debug(f"GitHub API error {e.status}: {e}")
         return None
     except aiohttp.ClientError as e:
         logger.debug(f"Network error during update check: {e}")
@@ -101,18 +99,6 @@ async def check_for_updates() -> Tuple[bool, Optional[str]]:
     logger.debug(f"Update available: {update_available}")
 
     return update_available, latest_version
-
-
-def suppress_component_loggers() -> None:
-    """
-    Suppress noisy loggers from external libraries.
-
-    Sets external library loggers to CRITICAL+1 to effectively silence them,
-    similar to how mmrelay handles component logging.
-    """
-    for loggers in COMPONENT_LOGGERS.values():
-        for logger_name in loggers:
-            logging.getLogger(logger_name).setLevel(logging.CRITICAL + 1)
 
 
 def print_startup_banner() -> None:

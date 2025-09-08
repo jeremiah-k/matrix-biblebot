@@ -40,7 +40,12 @@ from biblebot.constants.api import (
     ESV_API_URL,
     KJV_API_URL_TEMPLATE,
 )
-from biblebot.constants.app import CHAR_DOT, FILE_ENCODING_UTF8, LOGGER_NAME
+from biblebot.constants.app import (
+    BIBLEBOT_HTTP_USER_AGENT,
+    CHAR_DOT,
+    FILE_ENCODING_UTF8,
+    LOGGER_NAME,
+)
 from biblebot.constants.bible import (
     BOOK_ABBREVIATIONS,
     DEFAULT_TRANSLATION,
@@ -87,11 +92,10 @@ from biblebot.constants.messages import (
     WARN_COULD_NOT_RESOLVE_ALIAS,
     WARN_MATRIX_ACCESS_TOKEN_NOT_SET,
 )
-from biblebot.constants.update import UPDATE_CHECK_USER_AGENT
+from biblebot.log_utils import suppress_component_loggers
 from biblebot.update_check import (
     perform_startup_update_check,
     print_startup_banner,
-    suppress_component_loggers,
 )
 
 # Configure logging
@@ -317,7 +321,7 @@ async def make_api_request(
         """
         # Merge a minimal default UA with caller-provided headers
         _base_headers = {
-            "User-Agent": UPDATE_CHECK_USER_AGENT,
+            "User-Agent": BIBLEBOT_HTTP_USER_AGENT,
             "Accept": "application/json",
         }
         _headers = {**_base_headers, **(headers or {})}
@@ -1392,7 +1396,7 @@ async def main(config_path=DEFAULT_CONFIG_FILENAME, config=None):
         await perform_startup_update_check()
     except asyncio.CancelledError:
         raise
-    except Exception:
+    except Exception:  # noqa: BLE001 – intentional guard to keep startup resilient
         logger.debug("Startup update check failed", exc_info=True)
 
     if creds:

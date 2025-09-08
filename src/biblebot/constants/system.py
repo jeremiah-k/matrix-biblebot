@@ -20,10 +20,10 @@ __all__ = [
 
 # System paths
 SYSTEMD_USER_DIR = Path.home() / ".config" / "systemd" / "user"
-LOCAL_SHARE_DIR = ".local/share"
+LOCAL_SHARE_DIR = Path.home() / ".local" / "share"
 
 # Systemctl configuration
-SYSTEMCTL_PATH = shutil.which("systemctl") or "/usr/bin/systemctl"
+SYSTEMCTL_PATH = shutil.which("systemctl")
 SYSTEMCTL_ARG_USER = "--user"
 SYSTEMCTL_ARG_IS_ENABLED = "is-enabled"
 
@@ -34,11 +34,15 @@ WORKING_DIRECTORY = "%h/.config/matrix-biblebot"
 PATH_ENVIRONMENT = "%h/.local/bin:%h/.local/pipx/venvs/matrix-biblebot/bin:/usr/local/bin:/usr/bin:/bin"
 
 # Systemctl commands
-SYSTEMCTL_COMMANDS = {
-    "start": f"{SYSTEMCTL_PATH} {SYSTEMCTL_ARG_USER} start {SERVICE_NAME}",
-    "stop": f"{SYSTEMCTL_PATH} {SYSTEMCTL_ARG_USER} stop {SERVICE_NAME}",
-    "restart": f"{SYSTEMCTL_PATH} {SYSTEMCTL_ARG_USER} restart {SERVICE_NAME}",
-    "status": f"{SYSTEMCTL_PATH} {SYSTEMCTL_ARG_USER} status {SERVICE_NAME}",
-    "enable": f"{SYSTEMCTL_PATH} {SYSTEMCTL_ARG_USER} enable {SERVICE_NAME}",
-    "disable": f"{SYSTEMCTL_PATH} {SYSTEMCTL_ARG_USER} disable {SERVICE_NAME}",
-}
+SYSTEMCTL_COMMANDS = (
+    {}
+    if SYSTEMCTL_PATH is None
+    else {
+        "start": [SYSTEMCTL_PATH, SYSTEMCTL_ARG_USER, "start", SERVICE_NAME],
+        "stop": [SYSTEMCTL_PATH, SYSTEMCTL_ARG_USER, "stop", SERVICE_NAME],
+        "restart": [SYSTEMCTL_PATH, SYSTEMCTL_ARG_USER, "restart", SERVICE_NAME],
+        "status": [SYSTEMCTL_PATH, SYSTEMCTL_ARG_USER, "status", SERVICE_NAME],
+        "enable": [SYSTEMCTL_PATH, SYSTEMCTL_ARG_USER, "enable", SERVICE_NAME],
+        "disable": [SYSTEMCTL_PATH, SYSTEMCTL_ARG_USER, "disable", SERVICE_NAME],
+    }
+)

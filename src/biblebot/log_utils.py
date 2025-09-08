@@ -141,8 +141,12 @@ def get_logger(name, *, force: bool = False):
     logger.propagate = False
 
     # Check if logger already has handlers to avoid duplicates
-    if logger.handlers and not force:
-        return logger
+    if logger.handlers:
+        if not force:
+            return logger
+        # If forcing, clear existing handlers before reconfiguring
+        for handler in logger.handlers[:]:
+            logger.removeHandler(handler)
 
     # Add handler for console logging (with or without colors)
     if color_enabled:
@@ -215,9 +219,12 @@ def get_logger(name, *, force: bool = False):
                             "mib": 1024**2,
                             "gb": 1000**3,
                             "gib": 1024**3,
+                            "tb": 1000**4,
+                            "tib": 1024**4,
                         }
-                        factor = factors.get(unit, 1)
-                        max_bytes = int(float(num) * factor)
+                        if unit not in factors:
+                            raise ValueError(f"Unknown size unit: {unit}")
+                        max_bytes = int(float(num) * factors[unit])
                 bc = config["logging"].get("backup_count", backup_count)
                 try:
                     backup_count = int(bc)
@@ -225,7 +232,11 @@ def get_logger(name, *, force: bool = False):
                     pass
 
             file_handler = RotatingFileHandler(
-                log_file, maxBytes=max_bytes, backupCount=backup_count, encoding="utf-8"
+                log_file,
+                maxBytes=max_bytes,
+                backupCount=backup_count,
+                encoding="utf-8",
+                delay=True,
             )
 
             file_handler.setFormatter(
@@ -269,6 +280,18 @@ def configure_logging(config_dict=None):
     config = config_dict
     # Allow reconfiguration after config changes
     _component_debug_configured = False
+
+
+def suppress_component_loggers() -> None:
+    """
+    Suppress noisy loggers from external libraries.
+
+    Sets external library loggers to CRITICAL+1 to effectively silence them,
+    similar to how mmrelay handles component logging.
+    """
+    for loggers in _COMPONENT_LOGGERS.values():
+        for logger_name in loggers:
+            logging.getLogger(logger_name).setLevel(logging.CRITICAL + 1)
 
     # Configure component debug logging (nio, etc.)
     configure_component_debug_logging()

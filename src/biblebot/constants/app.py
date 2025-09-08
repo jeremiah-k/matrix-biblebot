@@ -4,6 +4,7 @@ __all__ = [
     "APP_DESCRIPTION",
     "APP_DISPLAY_NAME",
     "APP_NAME",
+    "BIBLEBOT_HTTP_USER_AGENT",
     "CHAR_COMMA",
     "CHAR_DOT",
     "CHAR_SLASH",
@@ -48,3 +49,8 @@ CHAR_COMMA = ", "
 
 # File modes
 FILE_MODE_READ = "r"
+
+# HTTP User Agent
+BIBLEBOT_HTTP_USER_AGENT = (
+    f"{APP_NAME}/1.x (+https://github.com/jeremiah-k/matrix-biblebot)"
+)

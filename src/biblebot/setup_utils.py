@@ -13,6 +13,7 @@ import shlex
 import shutil
 import subprocess
 import sys
+from pathlib import Path
 
 from biblebot.constants.app import (
     APP_NAME,
@@ -119,14 +120,8 @@ def get_template_service_path():
         os.path.join(sys.prefix, DIR_SHARE, APP_NAME, SERVICE_NAME),
         os.path.join(sys.prefix, DIR_SHARE, APP_NAME, DIR_TOOLS, SERVICE_NAME),
         # Check in the user site-packages location
-        os.path.join(os.path.expanduser("~"), LOCAL_SHARE_DIR, APP_NAME, SERVICE_NAME),
-        os.path.join(
-            os.path.expanduser("~"),
-            LOCAL_SHARE_DIR,
-            APP_NAME,
-            DIR_TOOLS,
-            SERVICE_NAME,
-        ),
+        str(Path.home() / LOCAL_SHARE_DIR / APP_NAME / SERVICE_NAME),
+        str(Path.home() / LOCAL_SHARE_DIR / APP_NAME / DIR_TOOLS / SERVICE_NAME),
         # Check one level up from the package directory
         os.path.join(os.path.dirname(package_dir), DIR_TOOLS, SERVICE_NAME),
         # Check two levels up from the package directory (for development)
