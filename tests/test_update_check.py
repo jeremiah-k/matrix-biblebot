@@ -5,7 +5,6 @@ from unittest.mock import patch
 
 import pytest
 
-from biblebot.constants.app import LOGGER_NAME
 from biblebot.update_check import (
     check_for_updates,
     compare_versions,
@@ -96,19 +95,14 @@ class TestUpdateCheck:
             # Should not raise any exceptions
             await perform_startup_update_check()
 
-    def test_print_startup_banner(self, caplog):
+    def test_print_startup_banner(self):
         """Test startup banner prints version information."""
-        # Clear any existing handlers to ensure caplog captures the message
-        logger = logging.getLogger(LOGGER_NAME)
-        original_handlers = logger.handlers[:]
-        logger.handlers.clear()
-
-        with caplog.at_level(logging.INFO, logger=LOGGER_NAME):
+        # Use mock to verify the logger.info call instead of caplog
+        with patch("biblebot.update_check.logger.info") as mock_info:
             print_startup_banner()
-            assert "Starting BibleBot version" in caplog.text
-
-        # Restore original handlers
-        logger.handlers = original_handlers
+            mock_info.assert_called_once()
+            call_args = mock_info.call_args[0][0]
+            assert "Starting BibleBot version" in call_args
 
     def test_suppress_component_loggers(self):
         """Test component logger suppression."""
