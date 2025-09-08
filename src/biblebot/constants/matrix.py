@@ -1,12 +1,12 @@
 """Constants specific to the Matrix protocol and client."""
 
 __all__ = [
-    "MIN_PRACTICAL_CHUNK_SIZE",
-    "MAX_RATE_LIMIT_RETRIES",
     "DEFAULT_RETRY_AFTER_MS",
-    "SYNC_TIMEOUT_MS",
     "LOGIN_TIMEOUT_SEC",
+    "MAX_RATE_LIMIT_RETRIES",
     "MATRIX_DEVICE_NAME",
+    "MIN_PRACTICAL_CHUNK_SIZE",
+    "SYNC_TIMEOUT_MS",
 ]
 
 MIN_PRACTICAL_CHUNK_SIZE = 8  # Minimum reasonable chunk size for splitting

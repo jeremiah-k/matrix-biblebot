@@ -119,13 +119,10 @@ def get_template_service_path():
         os.path.join(sys.prefix, DIR_SHARE, APP_NAME, SERVICE_NAME),
         os.path.join(sys.prefix, DIR_SHARE, APP_NAME, DIR_TOOLS, SERVICE_NAME),
         # Check in the user site-packages location
-        os.path.join(
-            os.path.expanduser("~"), LOCAL_SHARE_DIR, DIR_SHARE, APP_NAME, SERVICE_NAME
-        ),
+        os.path.join(os.path.expanduser("~"), LOCAL_SHARE_DIR, APP_NAME, SERVICE_NAME),
         os.path.join(
             os.path.expanduser("~"),
             LOCAL_SHARE_DIR,
-            DIR_SHARE,
             APP_NAME,
             DIR_TOOLS,
             SERVICE_NAME,

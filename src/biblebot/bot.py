@@ -40,7 +40,7 @@ from biblebot.constants.api import (
     ESV_API_URL,
     KJV_API_URL_TEMPLATE,
 )
-from biblebot.constants.app import APP_NAME, CHAR_DOT, FILE_ENCODING_UTF8, LOGGER_NAME
+from biblebot.constants.app import CHAR_DOT, FILE_ENCODING_UTF8, LOGGER_NAME
 from biblebot.constants.bible import (
     BOOK_ABBREVIATIONS,
     DEFAULT_TRANSLATION,
@@ -87,6 +87,7 @@ from biblebot.constants.messages import (
     WARN_COULD_NOT_RESOLVE_ALIAS,
     WARN_MATRIX_ACCESS_TOKEN_NOT_SET,
 )
+from biblebot.constants.update import UPDATE_CHECK_USER_AGENT
 from biblebot.update_check import (
     perform_startup_update_check,
     print_startup_banner,
@@ -315,7 +316,10 @@ async def make_api_request(
         Returns the decoded JSON object (typically a dict or list) on HTTP 200 with valid JSON, or None on non-200 responses or if the response body cannot be parsed as JSON. Side effects: logs warnings on non-200 status and logs exceptions when JSON decoding fails.
         """
         # Merge a minimal default UA with caller-provided headers
-        _base_headers = {"User-Agent": APP_NAME, "Accept": "application/json"}
+        _base_headers = {
+            "User-Agent": UPDATE_CHECK_USER_AGENT,
+            "Accept": "application/json",
+        }
         _headers = {**_base_headers, **(headers or {})}
         async with sess.get(
             url, headers=_headers, params=params, timeout=req_timeout
@@ -759,6 +763,8 @@ class BibleBot:
         try:
             await self.client.sync(timeout=SYNC_TIMEOUT_MS, full_state=True)
             logger.info("Initial sync complete.")
+        except asyncio.CancelledError:
+            raise
         except Exception as e:
             # Check if this is the one_time_key_counts validation error
             error_msg = str(e)
@@ -773,6 +779,8 @@ class BibleBot:
                     await asyncio.sleep(1)  # Brief pause
                     await self.client.sync(timeout=SYNC_TIMEOUT_MS, full_state=False)
                     logger.info("Recovery sync complete.")
+                except asyncio.CancelledError:
+                    raise
                 except Exception as recovery_error:
                     logger.warning(f"Recovery sync also failed: {recovery_error}")
                     logger.info("Continuing with bot startup despite sync issues...")

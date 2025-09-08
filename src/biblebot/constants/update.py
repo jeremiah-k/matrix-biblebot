@@ -2,6 +2,8 @@
 
 from importlib.metadata import PackageNotFoundError, version
 
+from .app import APP_NAME
+
 __all__ = [
     "GITHUB_API_BASE",
     "RELEASES_PAGE_URL",
@@ -26,5 +28,5 @@ try:
 except PackageNotFoundError:
     _VER = "dev"
 UPDATE_CHECK_USER_AGENT = (
-    f"BibleBot/{_VER} (+https://github.com/{REPO_OWNER}/{REPO_NAME})"
+    f"{APP_NAME}/{_VER} (+https://github.com/{REPO_OWNER}/{REPO_NAME})"
 )

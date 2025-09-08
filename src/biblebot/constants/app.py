@@ -1,22 +1,22 @@
 """Application-level constants."""
 
 __all__ = [
-    "APP_NAME",
-    "APP_DISPLAY_NAME",
     "APP_DESCRIPTION",
-    "LOGGER_NAME",
-    "SERVICE_NAME",
-    "SERVICE_DESCRIPTION",
-    "SERVICE_RESTART_SEC",
-    "EXECUTABLE_NAME",
-    "DIR_TOOLS",
-    "DIR_SHARE",
-    "PLATFORM_WINDOWS",
-    "FILE_ENCODING_UTF8",
+    "APP_DISPLAY_NAME",
+    "APP_NAME",
+    "CHAR_COMMA",
     "CHAR_DOT",
     "CHAR_SLASH",
-    "CHAR_COMMA",
+    "DIR_SHARE",
+    "DIR_TOOLS",
+    "EXECUTABLE_NAME",
+    "FILE_ENCODING_UTF8",
     "FILE_MODE_READ",
+    "LOGGER_NAME",
+    "PLATFORM_WINDOWS",
+    "SERVICE_DESCRIPTION",
+    "SERVICE_NAME",
+    "SERVICE_RESTART_SEC",
 ]
 
 # Application constants

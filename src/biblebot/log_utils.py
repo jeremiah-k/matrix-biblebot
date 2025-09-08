@@ -255,8 +255,10 @@ def configure_logging(config_dict=None):
     Returns:
         None
     """
-    global config
+    global config, _component_debug_configured
     config = config_dict
+    # Allow reconfiguration after config changes
+    _component_debug_configured = False
 
     # Configure component debug logging (nio, etc.)
     configure_component_debug_logging()
