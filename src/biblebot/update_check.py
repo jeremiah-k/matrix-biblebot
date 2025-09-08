@@ -120,7 +120,7 @@ def suppress_component_loggers() -> None:
     Sets external library loggers to CRITICAL+1 to effectively silence them,
     similar to how mmrelay handles component logging.
     """
-    for component, loggers in COMPONENT_LOGGERS.items():
+    for _component, loggers in COMPONENT_LOGGERS.items():
         for logger_name in loggers:
             logging.getLogger(logger_name).setLevel(logging.CRITICAL + 1)
 
