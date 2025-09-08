@@ -11,6 +11,7 @@ from pathlib import Path
 
 from rich.console import Console
 from rich.logging import RichHandler
+from rich.theme import Theme
 
 from biblebot.constants.app import APP_DISPLAY_NAME
 from biblebot.constants.logging import COMPONENT_LOGGERS as _COMPONENT_LOGGERS
@@ -21,8 +22,17 @@ from biblebot.constants.logging import (
     LOG_SIZE_BYTES_MULTIPLIER,
 )
 
-# Initialize Rich console
-console = Console()
+# Initialize Rich console with custom log level theme
+log_theme = Theme(
+    {
+        "logging.level.debug": LOG_LEVEL_STYLES["DEBUG"],
+        "logging.level.info": LOG_LEVEL_STYLES["INFO"],
+        "logging.level.warning": LOG_LEVEL_STYLES["WARNING"],
+        "logging.level.error": LOG_LEVEL_STYLES["ERROR"],
+        "logging.level.critical": LOG_LEVEL_STYLES["CRITICAL"],
+    }
+)
+console = Console(theme=log_theme)
 
 
 # Global config variable that will be set from main
@@ -144,7 +154,6 @@ def get_logger(name):
             markup=True,
             log_time_format="%Y-%m-%d %H:%M:%S",
             omit_repeated_times=False,
-            level_styles=LOG_LEVEL_STYLES,
         )
         console_handler.setFormatter(logging.Formatter("%(name)s: %(message)s"))
     else:
