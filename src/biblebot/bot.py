@@ -57,7 +57,7 @@ from biblebot.constants.config import (
     CONFIG_MATRIX_ROOM_IDS,
     CONFIG_MATRIX_USER,
     CONFIG_PRESERVE_POETRY_FORMATTING,
-    DEFAULT_CONFIG_FILENAME_MAIN,
+    DEFAULT_CONFIG_FILENAME,
     DEFAULT_ENV_FILENAME,
     ENV_ESV_API_KEY,
     ENV_MATRIX_ACCESS_TOKEN,
@@ -1292,7 +1292,7 @@ class BibleBot:
 
 
 # Run bot
-async def main(config_path=DEFAULT_CONFIG_FILENAME_MAIN, config=None):
+async def main(config_path=DEFAULT_CONFIG_FILENAME, config=None):
     """
     Main entry point for the bot.
     Loads configuration, sets up the bot, and starts processing events.

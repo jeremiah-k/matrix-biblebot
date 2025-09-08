@@ -24,7 +24,8 @@ from biblebot.constants.app import (
     SERVICE_NAME,
 )
 from biblebot.constants.config import CONFIG_DIR, ENV_USER, ENV_USERNAME
-from biblebot.constants.messages import (
+from biblebot.constants.messages import WARNING_EXECUTABLE_NOT_FOUND
+from biblebot.constants.system import (
     DEFAULT_CONFIG_PATH,
     LOCAL_SHARE_DIR,
     PIPX_VENV_PATH,
@@ -33,7 +34,6 @@ from biblebot.constants.messages import (
     SYSTEMCTL_COMMANDS,
     SYSTEMCTL_PATH,
     SYSTEMD_USER_DIR,
-    WARNING_EXECUTABLE_NOT_FOUND,
 )
 from biblebot.tools import copy_service_template_to
 
