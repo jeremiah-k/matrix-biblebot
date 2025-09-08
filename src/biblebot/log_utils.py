@@ -6,6 +6,7 @@ similar to mmrelay's logging approach.
 """
 
 import logging
+import re
 from logging.handlers import RotatingFileHandler
 from pathlib import Path
 
@@ -201,8 +202,6 @@ def get_logger(name, *, force: bool = False):
                 if isinstance(val, (int, float)):
                     max_bytes = int(val * LOG_SIZE_BYTES_MULTIPLIER)
                 elif isinstance(val, str):
-                    import re
-
                     s = val.strip().lower()
                     m = re.fullmatch(r"(\d+(?:\.\d+)?)\s*([kmgt]?i?b)?", s)
                     if m:
