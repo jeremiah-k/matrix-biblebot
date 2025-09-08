@@ -3,6 +3,7 @@ PyYAML~=6.0
 python-dotenv~=1.1.0
 aiohttp>=3.11.0
 rich~=13.7
+packaging~=24.0
 # asyncio is part of the standard library in Python 3.8+, no need to include it
 
 # Testing and coverage dependencies (dev)
