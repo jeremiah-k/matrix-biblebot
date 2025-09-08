@@ -1,10 +1,5 @@
 """Constants for message formatting, errors, and CLI output."""
 
-import shutil
-from pathlib import Path
-
-from .app import SERVICE_NAME
-
 __all__ = [  # noqa: RUF022
     "FALLBACK_MESSAGE_TOO_LONG",
     "TRUNCATION_INDICATOR",
@@ -57,8 +52,6 @@ __all__ = [  # noqa: RUF022
     "CLI_ACTION_STORE_TRUE",
     "CLI_ACTION_VERSION",
     "WARNING_EXECUTABLE_NOT_FOUND",
-    "SYSTEMCTL_ARG_USER",
-    "SYSTEMCTL_ARG_IS_ENABLED",
     "ERROR_PASSAGE_NOT_FOUND",
     "WARN_MATRIX_ACCESS_TOKEN_NOT_SET",
     "SUCCESS_SERVICE_INSTALLED",
@@ -70,14 +63,6 @@ __all__ = [  # noqa: RUF022
     "WARN_COULD_NOT_RESOLVE_ALIAS",
     "WARN_CONFIG_DIR_PERMS",
     "WARN_OLD_MESSAGE",
-    "SYSTEMD_USER_DIR",
-    "SYSTEMCTL_PATH",
-    "LOCAL_SHARE_DIR",
-    "PIPX_VENV_PATH",
-    "DEFAULT_CONFIG_PATH",
-    "WORKING_DIRECTORY",
-    "PATH_ENVIRONMENT",
-    "SYSTEMCTL_COMMANDS",
     "WARN_E2EE_DEPS_NOT_FOUND_LOGIN",
     "PROMPT_PASSWORD",
 ]
@@ -173,8 +158,7 @@ CLI_ACTION_VERSION = "version"
 WARNING_EXECUTABLE_NOT_FOUND = "Warning: Could not find biblebot executable in PATH. Using current Python interpreter."
 
 # Systemctl commands
-SYSTEMCTL_ARG_USER = "--user"
-SYSTEMCTL_ARG_IS_ENABLED = "is-enabled"
+
 
 # Generic error messages for security (don't expose internal API errors)
 ERROR_PASSAGE_NOT_FOUND = "Error: The requested passage could not be found. Please check the book, chapter, and verse."
@@ -194,24 +178,6 @@ INFO_RESOLVED_ALIAS = "Resolved alias {} to room ID {}"
 WARN_COULD_NOT_RESOLVE_ALIAS = "Could not resolve alias"
 WARN_CONFIG_DIR_PERMS = "Could not set config dir perms to 0700"
 WARN_OLD_MESSAGE = "Ignoring old message"
-
-# Systemd paths and commands
-SYSTEMD_USER_DIR = Path.home() / ".config" / "systemd" / "user"
-SYSTEMCTL_PATH = shutil.which("systemctl") or "/usr/bin/systemctl"
-LOCAL_SHARE_DIR = ".local/share"
-PIPX_VENV_PATH = "%h/.local/pipx/venvs/matrix-biblebot/bin"
-DEFAULT_CONFIG_PATH = "%h/.config/matrix-biblebot/config.yaml"
-WORKING_DIRECTORY = "%h/.config/matrix-biblebot"
-PATH_ENVIRONMENT = "%h/.local/bin:%h/.local/pipx/venvs/matrix-biblebot/bin:/usr/local/bin:/usr/bin:/bin"
-
-SYSTEMCTL_COMMANDS = {
-    "start": f"{SYSTEMCTL_PATH} {SYSTEMCTL_ARG_USER} start {SERVICE_NAME}",
-    "stop": f"{SYSTEMCTL_PATH} {SYSTEMCTL_ARG_USER} stop {SERVICE_NAME}",
-    "restart": f"{SYSTEMCTL_PATH} {SYSTEMCTL_ARG_USER} restart {SERVICE_NAME}",
-    "status": f"{SYSTEMCTL_PATH} {SYSTEMCTL_ARG_USER} status {SERVICE_NAME}",
-    "enable": f"{SYSTEMCTL_PATH} {SYSTEMCTL_ARG_USER} enable {SERVICE_NAME}",
-    "disable": f"{SYSTEMCTL_PATH} {SYSTEMCTL_ARG_USER} disable {SERVICE_NAME}",
-}
 
 
 # Additional auth constants
