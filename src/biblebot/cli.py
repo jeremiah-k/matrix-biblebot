@@ -7,7 +7,7 @@ import logging
 import os
 import sys
 from pathlib import Path
-from typing import Awaitable, Optional, TypeVar
+from typing import Awaitable, TypeVar
 
 from biblebot import __version__
 from biblebot.auth import interactive_login, interactive_logout, load_credentials
@@ -113,13 +113,13 @@ def detect_configuration_state():
         config = bot.load_config(str(config_path))
         if not config:
             return "setup", "Invalid configuration. Setup is required.", None
-    except (ValueError, KeyError, TypeError, OSError) as e:
+    except (ImportError, ValueError, KeyError, TypeError, OSError) as e:
         return "setup", f"Configuration error: {e}", None
 
     # Check for proper authentication (credentials.json from auth flow)
     if not credentials_path.exists():
         # Check for legacy environment token (deprecated)
-        from biblebot.constants import ENV_MATRIX_ACCESS_TOKEN
+        from biblebot.constants.config import ENV_MATRIX_ACCESS_TOKEN
 
         if os.getenv(ENV_MATRIX_ACCESS_TOKEN):
             return (
@@ -177,8 +177,11 @@ def generate_config(config_path):
 
     copy_sample_config_to(str(config_path))
 
-    # Set restrictive permissions (readable/writable by owner only)
-    os.chmod(config_path, 0o600)
+    # Set restrictive permissions (readable/writable by owner only; ignore on platforms that don't support it)
+    try:
+        os.chmod(config_path, 0o600)
+    except (AttributeError, NotImplementedError, OSError):
+        pass
 
     print(MSG_GENERATED_CONFIG.format(config_path))
     print()
@@ -262,29 +265,6 @@ def interactive_main():
         except (OSError, ValueError, TypeError) as e:
             logger.exception(f"Unexpected error starting bot: {type(e).__name__}")
             sys.exit(1)
-
-    def _get_user_input(
-        prompt: str, cancellation_message: str = "Cancelled."
-    ) -> Optional[str]:
-        """
-        Prompt the user for input, returning the trimmed, lowercased response or None if the user cancels.
-
-        Reads a line from standard input using the provided prompt. Leading/trailing whitespace is removed
-        and the result is converted to lowercase before being returned. If the user cancels input (Ctrl+C
-        or EOF), prints the provided cancellation_message on its own line and returns None.
-
-        Parameters:
-            prompt: Text shown to the user when requesting input.
-            cancellation_message: Message printed when input is cancelled (default: "Cancelled.").
-
-        Returns:
-            The user's input as a stripped, lowercase string, or None if input was cancelled.
-        """
-        try:
-            return input(prompt).strip().lower()
-        except (EOFError, KeyboardInterrupt):
-            print(f"\n{cancellation_message}")
-            return None
 
     # Initialize basic logging for CLI messages
     configure_logging(None)

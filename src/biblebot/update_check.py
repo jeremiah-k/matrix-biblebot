@@ -137,5 +137,7 @@ async def perform_startup_update_check() -> None:
         else:
             logger.debug("BibleBot is up to date")
 
-    except Exception:
-        logger.debug("Update check failed with unexpected error", exc_info=True)
+    except asyncio.CancelledError:
+        raise
+    except (aiohttp.ClientError, asyncio.TimeoutError):
+        logger.debug("Update check failed due to network issues", exc_info=True)

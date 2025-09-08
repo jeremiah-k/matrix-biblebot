@@ -184,15 +184,24 @@ def get_logger(name):
             backup_count = DEFAULT_LOG_BACKUP_COUNT
 
             if config is not None and "logging" in config:
-                # Accept MB (int/float) and bytes (str ending with 'B')
                 val = config["logging"].get("max_log_size", None)
+                # Numbers mean MB
                 if isinstance(val, (int, float)):
                     max_bytes = int(val * LOG_SIZE_BYTES_MULTIPLIER)
-                elif isinstance(val, str) and val.lower().endswith("b"):
-                    max_bytes = int(val[:-1])
-                elif val is not None:
-                    max_bytes = val
-                backup_count = config["logging"].get("backup_count", backup_count)
+                elif isinstance(val, str):
+                    s = val.strip().lower()
+                    # Bytes like "1048576b"
+                    if s.endswith("b") and s[:-1].strip().isdigit():
+                        max_bytes = int(s[:-1].strip())
+                    elif s.isdigit():
+                        # Bare number treated as bytes
+                        max_bytes = int(s)
+                    # else: leave default
+                bc = config["logging"].get("backup_count", backup_count)
+                try:
+                    backup_count = int(bc)
+                except (TypeError, ValueError):
+                    pass
 
             file_handler = RotatingFileHandler(
                 log_file, maxBytes=max_bytes, backupCount=backup_count, encoding="utf-8"

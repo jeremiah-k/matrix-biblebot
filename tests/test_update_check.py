@@ -98,18 +98,9 @@ class TestUpdateCheck:
 
     def test_print_startup_banner(self, caplog):
         """Test startup banner prints version information."""
-        # Temporarily add caplog handler to the logger
-        logger = logging.getLogger(LOGGER_NAME)
-        original_handlers = logger.handlers[:]
-        logger.handlers = [caplog.handler]
-        logger.setLevel(logging.INFO)
-
-        try:
+        with caplog.at_level(logging.INFO, logger=LOGGER_NAME):
             print_startup_banner()
             assert "Starting BibleBot version" in caplog.text
-        finally:
-            # Restore original handlers
-            logger.handlers = original_handlers
 
     def test_suppress_component_loggers(self):
         """Test component logger suppression."""
