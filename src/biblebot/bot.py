@@ -939,18 +939,18 @@ class BibleBot:
             for pattern in search_patterns:
                 match = getattr(pattern, _match_name)(event.body)
                 if match:
-                    raw_book_name = match.group(1).strip()
+                    raw_book_name = match.group("book").strip()
 
                     # Validate and normalize the book name in one optimized step
                     book_name = validate_and_normalize_book_name(raw_book_name)
                     if not book_name:
                         continue  # Skip if not a valid Bible book
 
-                    verse_reference = match.group(2).strip()
+                    verse_reference = match.group("ref").strip()
                     passage = f"{book_name} {verse_reference}"
 
-                    # Get optional translation group safely (some patterns may define only 2 groups)
-                    trans_group = match.group(3) if match.re.groups >= 3 else None
+                    # Get optional translation group safely
+                    trans_group = match.group("translation")
                     translation = (
                         trans_group.lower() if trans_group else self.default_translation
                     )

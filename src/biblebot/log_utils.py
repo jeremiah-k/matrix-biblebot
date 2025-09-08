@@ -17,6 +17,7 @@ from biblebot.constants.logging import COMPONENT_LOGGERS as _COMPONENT_LOGGERS
 from biblebot.constants.logging import (
     DEFAULT_LOG_BACKUP_COUNT,
     DEFAULT_LOG_SIZE_MB,
+    LOG_LEVEL_STYLES,
     LOG_SIZE_BYTES_MULTIPLIER,
 )
 
@@ -143,6 +144,7 @@ def get_logger(name):
             markup=True,
             log_time_format="%Y-%m-%d %H:%M:%S",
             omit_repeated_times=False,
+            level_styles=LOG_LEVEL_STYLES,
         )
         console_handler.setFormatter(logging.Formatter("%(name)s: %(message)s"))
     else:
