@@ -40,9 +40,9 @@ __all__ = [  # noqa: RUF022
 ]
 
 # Configuration paths
-# Use XDG_CONFIG_HOME if set, otherwise default to ~/.config
-_CONFIG_HOME = os.environ.get("XDG_CONFIG_HOME", str(Path.home() / ".config"))
-CONFIG_DIR = Path(_CONFIG_HOME) / "matrix-biblebot"
+# Use XDG_CONFIG_HOME if set and non-empty, otherwise default to ~/.config
+_CONFIG_HOME = Path(os.environ.get("XDG_CONFIG_HOME") or Path.home() / ".config")
+CONFIG_DIR = _CONFIG_HOME / "matrix-biblebot"
 CREDENTIALS_FILE = CONFIG_DIR / "credentials.json"
 E2EE_STORE_DIR = CONFIG_DIR / "e2ee-store"
 DEFAULT_CONFIG_FILENAME = "config.yaml"
