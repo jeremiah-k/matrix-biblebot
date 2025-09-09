@@ -52,6 +52,8 @@ setup(
             "pytest>=8.0.0",
             "pytest-asyncio>=0.21.0",
             "pytest-cov>=4.0",
+            "pytest-aiohttp>=1.0",
+            "coverage>=7.6",
         ],
         "e2e": [
             "matrix-nio[e2e]>=0.25.2,<0.26",
