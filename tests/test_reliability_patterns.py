@@ -5,6 +5,7 @@ Tests fault tolerance, recovery mechanisms, and system resilience.
 
 import asyncio
 import time
+from contextlib import suppress
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -50,7 +51,7 @@ class TestReliabilityPatterns:
         # Mock network failures followed by recovery
         call_count = 0
 
-        async def failing_network(*args, **kwargs):
+        async def failing_network(*_args, **_kwargs):
             """
             Simulate a flaky network API that fails the first three calls then recovers.
 
@@ -82,10 +83,8 @@ class TestReliabilityPatterns:
                 room.room_id = mock_config["matrix_room_ids"][0]  # Use configured room
 
                 # The real bot doesn't have try/catch, so exceptions will propagate
-                try:
+                with suppress(Exception):
                     await bot.on_room_message(room, event)
-                except Exception:
-                    pass  # Expected for network failure cases
 
             # Should have attempted all requests and recovered
             assert call_count == 5
@@ -103,7 +102,7 @@ class TestReliabilityPatterns:
         bot.api_keys = {}
 
         # Mock API timeouts
-        async def timeout_api(*args, **kwargs):
+        async def timeout_api(*_args, **_kwargs):
             """
             Simulate a slow API call that always times out.
 
@@ -150,7 +149,7 @@ class TestReliabilityPatterns:
         # Mock partial API failures (some succeed, some fail)
         call_count = 0
 
-        async def partial_failure_api(*args, **kwargs):
+        async def partial_failure_api(*_args, **_kwargs):
             """
             Simulate a partially degraded API that fails on every other invocation.
 
@@ -185,10 +184,8 @@ class TestReliabilityPatterns:
                 room.room_id = mock_config["matrix_room_ids"][0]  # Use configured room
 
                 # The real bot doesn't have try/catch, so exceptions will propagate
-                try:
+                with suppress(Exception):
                     await bot.on_room_message(room, event)
-                except Exception:
-                    pass  # Expected for failure cases
 
             # Should have attempted all requests
             assert call_count == 6
@@ -207,7 +204,7 @@ class TestReliabilityPatterns:
         # Mock Matrix client failures
         call_count = 0
 
-        async def failing_room_send(*args, **kwargs):
+        async def failing_room_send(*_args, **_kwargs):
             """
             Simulated async replacement for Matrix client's `room_send` that fails on the first two calls and then succeeds.
 
@@ -237,10 +234,8 @@ class TestReliabilityPatterns:
                 room.room_id = mock_config["matrix_room_ids"][0]  # Use configured room
 
                 # The real bot doesn't have try/catch for Matrix client failures
-                try:
+                with suppress(Exception):
                     await bot.on_room_message(room, event)
-                except Exception:
-                    pass  # Expected for Matrix client failure cases
 
             # Should have attempted to send responses
             assert call_count >= 4
@@ -331,10 +326,8 @@ class TestReliabilityPatterns:
             room.room_id = mock_config["matrix_room_ids"][0]  # Use configured room
 
             # Should handle resource exhaustion gracefully
-            try:
+            with suppress(Exception):
                 await bot.on_room_message(room, event)
-            except Exception:
-                pass  # Expected memory error
 
             # Test passes if resource exhaustion is handled without crashing
             assert True
@@ -382,15 +375,11 @@ class TestReliabilityPatterns:
                 room.room_id = mock_config["matrix_room_ids"][0]  # Use configured room
 
                 # The real bot doesn't have try/catch, so exceptions will propagate
-                try:
+                with suppress(Exception):
                     await bot.on_room_message(room, event)
-                except Exception:
-                    pass  # Expected for failure cases
 
-            # Should have handled all failures independently
-            assert (
-                mock_client.room_send.call_count >= 0
-            )  # Keep lenient if failures dominate
+            # Should have handled some failures independently
+            assert mock_client.room_send.call_count >= 1
 
     async def test_graceful_degradation(self, mock_config, mock_client):
         """Test graceful degradation of service."""
@@ -432,7 +421,7 @@ class TestReliabilityPatterns:
 
     async def test_circuit_breaker_pattern(self, mock_config, mock_client):
         """
-        Verify the bot's behavior when the upstream text service fails consistently, exercising a circuit-breaker–like scenario.
+        Verify the bot's behavior when the upstream text service fails consistently, exercising a circuit-breaker-like scenario.
 
         This async test replaces `get_bible_text` with a coroutine that always raises, then sends multiple room events to the bot to ensure:
         - the bot attempts each request (no early crash),
@@ -475,13 +464,11 @@ class TestReliabilityPatterns:
                 room.room_id = mock_config["matrix_room_ids"][0]  # Use configured room
 
                 # The real bot doesn't have try/catch, so exceptions will propagate
-                try:
+                with suppress(Exception):
                     await bot.on_room_message(room, event)
-                except Exception:
-                    pass  # Expected for failure cases
 
-            # Should have attempted all requests
-            assert mock_client.room_send.call_count >= 0
+            # Should have attempted some requests (exact count depends on failures)
+            assert mock_client.room_send.call_count >= 1
 
     async def test_data_consistency_during_failures(self, mock_config, mock_client):
         """
@@ -539,13 +526,11 @@ class TestReliabilityPatterns:
                 room.room_id = mock_config["matrix_room_ids"][0]  # Use configured room
 
                 # The real bot doesn't have try/catch, so exceptions will propagate
-                try:
+                with suppress(Exception):
                     await bot.on_room_message(room, event)
-                except Exception:
-                    pass  # Expected for failure cases
 
-            # Should have handled all responses consistently
-            assert mock_client.room_send.call_count >= 0
+            # Should have handled some responses consistently
+            assert mock_client.room_send.call_count >= 1
 
     async def test_recovery_time_measurement(self, mock_config, mock_client):
         """
@@ -596,10 +581,8 @@ class TestReliabilityPatterns:
                 room.room_id = mock_config["matrix_room_ids"][0]  # Use configured room
 
                 # The real bot doesn't have try/catch, so exceptions will propagate
-                try:
+                with suppress(Exception):
                     await bot.on_room_message(room, event)
-                except Exception:
-                    pass  # Expected for recovery cases
                 await asyncio.sleep(0.1)  # Shorter spacing between requests
 
             recovery_end = time.monotonic()

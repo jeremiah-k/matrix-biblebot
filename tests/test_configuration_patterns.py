@@ -60,9 +60,12 @@ class TestConfigurationPatterns:
 
         for config in invalid_configs:
             # Should handle invalid configurations gracefully
-            bot = BibleBot(config=config)
-            # Bot should still be created but may have validation warnings
-            assert bot.config is not None
+            with patch("biblebot.bot.logger") as mock_logger:
+                bot = BibleBot(config=config)
+                # Bot should still be created but may have validation warnings
+                assert bot.config is not None
+                # Should log validation warnings for invalid configs
+                assert mock_logger.warning.called or mock_logger.error.called
 
     def test_environment_variable_configuration(self):
         """Test configuration from environment variables."""
@@ -148,18 +151,18 @@ class TestConfigurationPatterns:
         config_with_secrets = {
             "homeserver": "https://matrix.org",
             "user_id": "@test:matrix.org",
-            "access_token": "syt_very_secret_token_12345",
+            "access_token": "fake_token_for_tests",
             "device_id": "TEST_DEVICE",
         }
 
         bot = BibleBot(config=config_with_secrets)
 
         # Should store secrets securely
-        assert bot.config["access_token"] == "syt_very_secret_token_12345"
+        assert bot.config["access_token"] == "fake_token_for_tests"
 
         # Should not expose secrets in string representation
         bot_str = str(bot)
-        assert "syt_very_secret_token_12345" not in bot_str
+        assert "fake_token_for_tests" not in bot_str
 
     def test_configuration_validation_errors(self):
         """Test handling of configuration validation errors."""
@@ -239,7 +242,7 @@ class TestConfigurationPatterns:
         test_credentials = Credentials(
             homeserver="https://creds.matrix.org",
             user_id="@credstest:matrix.org",
-            access_token="creds_token",
+            access_token="creds_token",  # noqa: S106 - test fixture, not a real secret
             device_id="CREDS_DEVICE",
         )
 

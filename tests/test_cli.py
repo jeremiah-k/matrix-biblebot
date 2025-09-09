@@ -99,9 +99,7 @@ class TestGenerateConfig:
         # Only generates config.yaml, no .env file
         assert not (temp_config_dir / ".env").exists()
 
-    def test_generate_config_files_exist(
-        self, temp_config_dir, mock_sample_files, capsys
-    ):
+    def test_generate_config_files_exist(self, temp_config_dir, capsys):
         """Test config generation when files already exist."""
         config_path = temp_config_dir / "config.yaml"
 
@@ -114,9 +112,7 @@ class TestGenerateConfig:
         captured = capsys.readouterr()
         assert "A config file already exists at:" in captured.out
 
-    def test_generate_config_config_exists(
-        self, temp_config_dir, mock_sample_files, capsys
-    ):
+    def test_generate_config_config_exists(self, temp_config_dir, capsys):
         """Test config generation when config.yaml already exists."""
         config_path = temp_config_dir / "config.yaml"
 
@@ -133,7 +129,7 @@ class TestGenerateConfig:
     @patch("biblebot.cli.copy_sample_config_to")
     @patch("os.chmod")
     def test_generate_config_env_exists(
-        self, mock_chmod, mock_copy_config, temp_config_dir, mock_sample_files, capsys
+        self, mock_chmod, mock_copy_config, temp_config_dir, capsys
     ):
         """Test config generation when config doesn't exist (no longer checks .env)."""
         config_path = temp_config_dir / "config.yaml"
@@ -162,19 +158,20 @@ class TestArgumentParsing:
 
     def test_parse_basic_args(self):
         """Test parsing basic arguments."""
-        with patch("sys.argv", ["biblebot", "--log-level", "debug"]):
-            argparse.ArgumentParser()
-            cli_args = ["--log-level", "debug"]
+        # Test actual argument parsing
+        test_args = ["--log-level", "debug"]
+        parser = cli.create_parser()
+        args = parser.parse_args(test_args)
 
-            # Test that we can parse log level
-            assert "debug" in cli_args
+        assert args.log_level == "debug"
 
     def test_parse_config_arg(self):
         """Test parsing config argument."""
-        with patch("sys.argv", ["biblebot", "--config", "/custom/path.yaml"]):
-            cli_args = ["--config", "/custom/path.yaml"]
+        test_args = ["--config", "/custom/path.yaml"]
+        parser = cli.create_parser()
+        args = parser.parse_args(test_args)
 
-            assert "/custom/path.yaml" in cli_args
+        assert args.config == "/custom/path.yaml"
 
 
 class TestModernCommands:
@@ -854,7 +851,7 @@ class TestDetectConfigurationState:
         """Test when config file doesn't exist."""
         from pathlib import Path
 
-        mock_get_path.return_value = Path("/tmp/config.yaml")
+        mock_get_path.return_value = Path("/tmp/config.yaml")  # noqa: S108
         mock_exists.return_value = False
 
         state, message, config = cli.detect_configuration_state()
@@ -869,7 +866,7 @@ class TestDetectConfigurationState:
         """Test when config is invalid."""
         from pathlib import Path
 
-        mock_get_path.return_value = Path("/tmp/config.yaml")
+        mock_get_path.return_value = Path("/tmp/config.yaml")  # noqa: S108
         mock_exists.return_value = True
         mock_load_config.return_value = None
 
@@ -885,7 +882,7 @@ class TestDetectConfigurationState:
         """Test when config loading raises an exception."""
         from pathlib import Path
 
-        mock_get_path.return_value = Path("/tmp/config.yaml")
+        mock_get_path.return_value = Path("/tmp/config.yaml")  # noqa: S108
         mock_exists.return_value = True
         mock_load_config.side_effect = ValueError("Invalid YAML")
 
@@ -904,7 +901,7 @@ class TestDetectConfigurationState:
         """Test when legacy MATRIX_ACCESS_TOKEN is present."""
         from pathlib import Path
 
-        mock_get_path.return_value = Path("/tmp/config.yaml")
+        mock_get_path.return_value = Path("/tmp/config.yaml")  # noqa: S108
         # First call for config file exists, second call for credentials file doesn't exist
         mock_exists.side_effect = [True, False]
         mock_load_config.return_value = {"test": "config"}
@@ -931,7 +928,7 @@ class TestDetectConfigurationState:
         """Test when credentials are invalid."""
         from pathlib import Path
 
-        mock_get_path.return_value = Path("/tmp/config.yaml")
+        mock_get_path.return_value = Path("/tmp/config.yaml")  # noqa: S108
         mock_exists.return_value = True
         mock_load_config.return_value = {"test": "config"}
         mock_getenv.return_value = None
@@ -958,7 +955,7 @@ class TestDetectConfigurationState:
         """Test when credentials loading raises an exception."""
         from pathlib import Path
 
-        mock_get_path.return_value = Path("/tmp/config.yaml")
+        mock_get_path.return_value = Path("/tmp/config.yaml")  # noqa: S108
         mock_exists.return_value = True
         mock_load_config.return_value = {"test": "config"}
         mock_getenv.return_value = None
