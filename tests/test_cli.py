@@ -1,6 +1,5 @@
 """Tests for the CLI module."""
 
-import argparse
 from unittest.mock import AsyncMock, MagicMock, Mock, patch
 
 import pytest

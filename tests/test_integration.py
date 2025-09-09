@@ -98,7 +98,7 @@ api_keys:
                     creds = auth.Credentials(
                         homeserver="https://matrix.org",
                         user_id="@test:matrix.org",
-                        access_token="test_token",
+                        access_token="test_token",  # noqa: S106
                         device_id="TEST_DEVICE",
                     )
 
@@ -109,7 +109,7 @@ api_keys:
 
                     assert loaded_creds is not None
                     assert loaded_creds.user_id == "@test:matrix.org"
-                    assert loaded_creds.access_token == "test_token"
+                    assert loaded_creds.access_token == "test_token"  # noqa: S105
 
                     # Test logout (cleanup)
                     with patch("biblebot.auth.AsyncClient") as mock_client_class:
@@ -213,13 +213,15 @@ class TestConfigValidation:
         config = bot.load_config(str(config_file))
         matrix_token, api_keys = bot.load_environment(config, str(config_file))
 
-        assert matrix_token == "file_token"
+        assert matrix_token == "file_token"  # noqa: S105
         assert api_keys["esv"] == "file_key"
 
         # Test with OS environment override
         with patch.dict("os.environ", {"MATRIX_ACCESS_TOKEN": "env_token"}):
             matrix_token, api_keys = bot.load_environment(config, str(config_file))
-            assert matrix_token == "env_token"  # OS env should override file
+            assert (
+                matrix_token == "env_token"
+            )  # noqa: S105 - OS env should override file
 
 
 class TestErrorScenarios:
@@ -271,7 +273,7 @@ class TestErrorScenarios:
             creds = auth.Credentials(
                 homeserver="https://matrix.org",
                 user_id="@test:matrix.org",
-                access_token="test_token",
+                access_token="test_token",  # noqa: S106
             )
 
             # Should raise permission error when trying to create temp file

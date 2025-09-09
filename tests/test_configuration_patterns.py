@@ -31,7 +31,7 @@ class TestConfigurationPatterns:
         # Should have loaded configuration
         assert bot.config["homeserver"] == "https://matrix.org"
         assert bot.config["user_id"] == "@test:matrix.org"
-        assert bot.config["access_token"] == "test_token"
+        assert bot.config["access_token"] == "test_token"  # noqa: S105
         assert bot.config["device_id"] == "TEST_DEVICE"
 
     def test_configuration_validation_patterns(self):
@@ -167,7 +167,7 @@ class TestConfigurationPatterns:
         bot = BibleBot(config=config_with_secrets)
 
         # Should store secrets securely
-        assert bot.config["access_token"] == "fake_token_for_tests"
+        assert bot.config["access_token"] == "fake_token_for_tests"  # noqa: S105
 
         # Should not expose secrets in string representation
         bot_str = str(bot)

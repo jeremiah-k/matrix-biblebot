@@ -52,7 +52,7 @@ class E2EETestFramework:
         client = AsyncMock()
         client.device_id = "TEST_DEVICE_ID"
         client.user_id = "@test:example.org"
-        client.access_token = "test_token"
+        client.access_token = "test_token"  # noqa: S105
 
         # Mock rooms
         if rooms is None:
@@ -351,7 +351,7 @@ class TestEnvironmentLoading:
         config = bot.load_config(str(temp_config_file))
         matrix_token, api_keys = bot.load_environment(config, str(temp_config_file))
 
-        assert matrix_token == "env_token"
+        assert matrix_token == "env_token"  # noqa: S105
         assert api_keys["esv"] == "env_esv_key"
 
     @patch.dict("os.environ", {}, clear=True)

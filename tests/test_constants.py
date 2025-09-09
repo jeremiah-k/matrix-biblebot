@@ -3,7 +3,7 @@
 # Test configuration values
 TEST_HOMESERVER = "https://matrix.org"
 TEST_USER_ID = "@testbot:matrix.org"
-TEST_ACCESS_TOKEN = "test_access_token"
+TEST_ACCESS_TOKEN = "test_access_token"  # noqa: S105
 TEST_DEVICE_ID = "TEST_DEVICE"
 TEST_ROOM_ID = "!room:matrix.org"
 TEST_ROOM_IDS = ["!room1:matrix.org", "!room2:matrix.org"]
