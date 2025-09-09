@@ -132,13 +132,9 @@ _ALL_NAMES_TO_CANONICAL = MappingProxyType(
 class PassageNotFound(Exception):
     """Raised when a Bible passage cannot be found or retrieved."""
 
-    pass
-
 
 class APIKeyMissing(Exception):
     """Raised when a required API key is missing."""
-
-    pass
 
 
 # Patchable cache constants for backward compatibility and testing

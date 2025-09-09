@@ -18,7 +18,6 @@ import platform
 import shutil
 import ssl
 import tempfile
-import warnings
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Optional
@@ -31,8 +30,6 @@ from nio import (
     AsyncClientConfig,
     DiscoveryInfoError,
     DiscoveryInfoResponse,
-    LoginError,
-    LoginResponse,
 )
 
 from biblebot.constants.api import (
