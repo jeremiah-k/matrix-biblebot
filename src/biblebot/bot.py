@@ -156,6 +156,9 @@ def _clean_book_name(book_str: str) -> str:
     Returns:
         str: The cleaned, space-separated, lower-case book name.
     """
+    # Ensure book_str is not None or empty before processing
+    if not book_str or not book_str.strip():
+        return ""
     return " ".join(book_str.lower().replace(CHAR_DOT, "").strip().split())
 
 
@@ -165,6 +168,9 @@ def validate_and_normalize_book_name(book_str: str) -> str | None:
 
     This accepts common variants (abbreviations, punctuation, mixed case, and extra whitespace) and normalizes them before lookup. If the input corresponds to a known book it returns the canonical full name (e.g., "1 timothy"), otherwise returns None.
     """
+    # Ensure book_str is not None or empty before processing
+    if not book_str or not book_str.strip():
+        return None
     clean_str = _clean_book_name(book_str)
     return _ALL_NAMES_TO_CANONICAL.get(clean_str)
 
@@ -1001,6 +1007,10 @@ class BibleBot:
                 match = getattr(pattern, _match_name)(event.body)
                 if match:
                     raw_book_name = match.group("book").strip()
+
+                    # Ensure raw_book_name is not None or empty before processing
+                    if not raw_book_name:
+                        continue  # Skip if book name is empty
 
                     # Validate and normalize the book name in one optimized step
                     book_name = validate_and_normalize_book_name(raw_book_name)

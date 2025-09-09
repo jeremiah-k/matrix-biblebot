@@ -226,20 +226,47 @@ def save_credentials(creds: Credentials) -> None:
             tmp.close()
 
     if not tmp_name:
-        logger.error("Failed to create temporary file for credentials.")
+        logger.error(
+            "Failed to create temporary file for credentials. "
+            "Possible causes: insufficient disk space, permission issues, "
+            f"or directory {path.parent} is not writable."
+        )
         return
 
     try:
         os.chmod(tmp_name, CREDENTIALS_FILE_PERMISSIONS)
-        os.replace(tmp_name, path)
+        # Verify both files are on the same filesystem before using os.replace
+        tmp_stat = os.stat(tmp_name)
+        try:
+            dest_stat = os.stat(path.parent)
+            same_filesystem = tmp_stat.st_dev == dest_stat.st_dev
+        except OSError:
+            # Parent directory might not exist or be accessible, assume same filesystem
+            same_filesystem = True
+
+        if same_filesystem:
+            os.replace(tmp_name, path)
+        else:
+            # Cross-filesystem move - use copy and delete
+            logger.debug("Cross-filesystem move detected, using copy+delete fallback")
+            import shutil
+
+            shutil.copy2(tmp_name, path)
+            os.unlink(tmp_name)
+
         logger.info(f"Saved credentials to {path}")
-    except OSError:
-        logger.exception(f"Failed to save credentials to {path}")
+    except OSError as e:
+        logger.error(
+            f"Failed to save credentials to {path}. "
+            f"Error: {e}. "
+            "Possible causes: insufficient permissions, disk full, "
+            "filesystem issues, or cross-filesystem move attempted."
+        )
         # On failure, clean up the temporary file.
         try:
             os.unlink(tmp_name)
-        except OSError as e:
-            logger.debug(f"Failed to clean up temp file: {e}")
+        except OSError as cleanup_error:
+            logger.debug(f"Failed to clean up temp file: {cleanup_error}")
 
 
 def load_credentials() -> Optional[Credentials]:
@@ -455,7 +482,9 @@ def _get_user_input(
         return None
 
     if not value:
-        logger.error(f"{field_name} cannot be empty.")
+        # Ensure field_name is valid before using it in error message
+        safe_field_name = field_name if field_name and field_name.strip() else "Field"
+        logger.error(f"{safe_field_name} cannot be empty.")
         return None
 
     return value

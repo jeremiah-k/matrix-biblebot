@@ -199,12 +199,14 @@ The bot supports End-to-End Encryption for secure communication in encrypted roo
 ### Quick Start
 
 1. Install the bot: `pipx install matrix-biblebot`
-2. Run the bot: `biblebot` (it will guide you through setup)
-3. Follow the interactive prompts to:
+2. Authenticate with Matrix: `biblebot auth login` (required first step)
+3. Run the bot: `biblebot` (it will guide you through setup)
+4. Follow the interactive prompts to:
    - Generate configuration file
-   - Edit your Matrix room IDs (server/user are handled by 'biblebot auth login')
-   - Authenticate with your Matrix account
-4. The bot will start automatically once configured
+   - Edit your Matrix room IDs (server/user credentials are already saved from step 2)
+5. The bot will start automatically once configured
+
+**Note**: You must run `biblebot auth login` before running `biblebot` to ensure proper authentication.
 
 ### Running the Bot
 
