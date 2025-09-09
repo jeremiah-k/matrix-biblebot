@@ -124,6 +124,13 @@ def get_template_service_path():
     """
     # Try to find the service template file in various locations (Path-based)
     pkg = Path(__file__).parent
+    # Guard against shallow paths when guessing repo root for dev setups
+    resolved = Path(__file__).resolve()
+    parents = resolved.parents
+    try:
+        repo_root = parents[2]
+    except IndexError:
+        repo_root = parents[-1]
 
     template_paths = [
         # Package dir (post-install)
@@ -141,7 +148,7 @@ def get_template_service_path():
         # Two levels up (dev)
         pkg.parent.parent / DIR_TOOLS / SERVICE_NAME,
         # Repo root (dev)
-        Path(__file__).resolve().parents[2] / DIR_TOOLS / SERVICE_NAME,
+        repo_root / DIR_TOOLS / SERVICE_NAME,
         # CWD fallback
         Path.cwd() / DIR_TOOLS / SERVICE_NAME,
     ]
@@ -185,7 +192,7 @@ def get_template_service_content():
         service_template = (
             importlib.resources.files("biblebot.tools")
             .joinpath("biblebot.service")
-            .read_text()
+            .read_text(encoding="utf-8")
         )
         return service_template
     except (FileNotFoundError, ImportError, OSError) as e:
@@ -411,16 +418,36 @@ def service_needs_update():
     if not executable_path:
         return False, "Could not determine biblebot start command"
 
-    # Determine acceptable ExecStart patterns
-    acceptable_snippets = []
+    # Build variants that mirror create_service_file() quoting to avoid false positives
+    acceptable_snippets: list[str] = []
     if executable_path == sys.executable:
-        acceptable_snippets.append(f"{shlex.quote(sys.executable)} -m biblebot")
+        acceptable_snippets.extend(
+            [
+                f"{_systemd_quote(sys.executable)} -m biblebot",
+                f"{shlex.quote(sys.executable)} -m biblebot",
+                f"{sys.executable} -m biblebot",
+            ]
+        )
     else:
-        acceptable_snippets.append(executable_path)
-        acceptable_snippets.append(shlex.quote(executable_path))
+        acceptable_snippets.extend(
+            [
+                _systemd_quote(executable_path),
+                shlex.quote(executable_path),
+                executable_path,
+            ]
+        )
+    # Focus only on the ExecStart= line to reduce accidental matches
+    execstart_line = next(
+        (
+            ln
+            for ln in existing_service.splitlines()
+            if ln.strip().startswith("ExecStart=")
+        ),
+        "",
+    )
 
     # Check if the ExecStart uses a valid command
-    if not any(snippet in existing_service for snippet in acceptable_snippets):
+    if not any(snippet in execstart_line for snippet in acceptable_snippets):
         return True, "Service file ExecStart does not match the current installation"
 
     # Check if the PATH environment includes pipx paths

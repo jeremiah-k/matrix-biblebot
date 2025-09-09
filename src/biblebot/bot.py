@@ -359,7 +359,7 @@ async def make_api_request(
             async with aiohttp.ClientSession(timeout=req_timeout) as new_session:
                 return await _request(new_session)
     except (aiohttp.ClientError, asyncio.TimeoutError):
-        logger.exception(f"Network error fetching {url}")
+        logger.warning(f"Network error fetching {url}", exc_info=False)
         return None
 
 
