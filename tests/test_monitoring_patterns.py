@@ -281,7 +281,7 @@ class TestMonitoringPatterns:
         error_count = 0
         from random import Random
 
-        rng = Random(12345)
+        rng = Random(12345)  # noqa: S311
 
         async def error_prone_api(*args, **kwargs):
             """
@@ -398,7 +398,7 @@ class TestMonitoringPatterns:
         total_responses = 0
         from random import Random
 
-        rng = Random(12345)
+        rng = Random(12345)  # noqa: S311
 
         async def variable_speed_api(*args, **kwargs):
             """

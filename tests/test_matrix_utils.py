@@ -237,7 +237,6 @@ def test_save_credentials(
     mock_credentials_path, mock_chmod, mock_replace, mock_temp_file, tmp_path
 ):
     """Test credentials saving with atomic write."""
-    from pathlib import Path
 
     from biblebot.auth import Credentials
 
