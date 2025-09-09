@@ -260,7 +260,7 @@ def comprehensive_cleanup():
     yield
 
     # Force cleanup of all async tasks and event loops
-    try:
+    try:  # noqa: S110 - intentional try-except-pass for test cleanup
         try:
             loop = asyncio.get_running_loop()
         except RuntimeError:
@@ -293,9 +293,9 @@ def comprehensive_cleanup():
                 with contextlib.suppress(Exception):
                     loop.close()
 
-    except (
+    except (  # noqa: S110 - intentional try-except-pass for test cleanup
         Exception
-    ):  # noqa: BLE001, S110 - test cleanup needs broad exception handling
+    ):  # noqa: BLE001 - test cleanup needs broad exception handling
         # Suppress cleanup errors to avoid affecting test results
         pass
 
