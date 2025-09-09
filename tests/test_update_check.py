@@ -54,6 +54,12 @@ class TestUpdateCheck:
         """Test check_for_updates when no update is available."""
 
         async def mock_get_latest():
+            """
+            Async test helper that simulates retrieving the latest release version.
+            
+            Returns:
+                str: A semantic version string ("1.0.0") used by tests to represent the latest available release.
+            """
             return "1.0.0"
 
         with patch(
@@ -70,6 +76,12 @@ class TestUpdateCheck:
         """Test check_for_updates when API call fails."""
 
         async def mock_get_latest():
+            """
+            Async test stub that simulates failure to retrieve the latest release version.
+            
+            Returns:
+                None: Indicates no version was obtained (e.g., API failure or no release found).
+            """
             return None
 
         with patch(

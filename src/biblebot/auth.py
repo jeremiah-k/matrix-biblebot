@@ -379,17 +379,16 @@ async def discover_homeserver(
     client: AsyncClient, homeserver: str, timeout: float = 10.0
 ) -> str:
     """
-    Attempt to discover the server's canonical homeserver URL via the Matrix discovery API and fall back to the provided homeserver on error or timeout.
-
-    If discovery succeeds and returns a homeserver URL, that URL is returned. Any discovery errors, unexpected exceptions, or a timeout cause the function to return the original `homeserver` argument.
-
+    Discover the server's canonical homeserver URL via the Matrix discovery API, falling back to the provided homeserver on timeout or error.
+    
+    Uses client.discovery_info() and waits up to `timeout` seconds for a response. If the discovery response contains a homeserver URL that can be used, that URL is returned; otherwise the original `homeserver` argument is returned.
+    
     Parameters:
-        client (AsyncClient): Matrix client to use for discovery.
-        homeserver (str): Fallback homeserver URL to use if discovery fails or times out.
+        homeserver (str): Fallback homeserver URL to return when discovery fails or times out.
         timeout (float): Maximum seconds to wait for the discovery request (default 10.0).
-
+    
     Returns:
-        str: The discovered homeserver URL, or the provided `homeserver` if discovery did not yield a URL.
+        str: Discovered homeserver URL, or the provided `homeserver` if discovery did not produce a usable URL.
     """
     try:
         logger.debug(f"Attempting server discovery for {homeserver}")
@@ -430,15 +429,19 @@ def _get_user_input(
     prompt: str, provided_value: Optional[str], field_name: str
 ) -> Optional[str]:
     """
-    Get user input with consistent KeyboardInterrupt handling.
-
-    Args:
-        prompt: The prompt to display to the user
-        provided_value: Value if already provided (optional)
-        field_name: Name of the field for error messages
-
+    Prompt for a value unless one is already provided; return None on cancellation or empty input.
+    
+    If `provided_value` is non-empty, it is returned immediately. Otherwise the user is prompted with
+    `prompt`; an EOFError or KeyboardInterrupt is treated as cancellation and returns None. If the
+    entered value is empty after stripping, returns None and logs an error using `field_name` for context.
+    
+    Parameters:
+        prompt (str): Prompt shown to the user when requesting input.
+        provided_value (Optional[str]): Pre-supplied value to use instead of prompting.
+        field_name (str): Name used in error messages when input is empty.
+    
     Returns:
-        The input value, or None if cancelled or empty
+        Optional[str]: The provided or entered value, or None if cancelled or empty.
     """
     if provided_value:
         return provided_value
@@ -462,17 +465,17 @@ async def interactive_login(
     password: Optional[str] = None,
 ) -> bool:
     """
-    Perform an interactive Matrix login, persist credentials to the configured credentials file, and return whether login succeeded.
-
-    Prompts for any missing homeserver, username, or password values; if saved credentials exist the user is asked whether to create a new device session. The function will attempt server discovery to normalize the homeserver URL, enable end-to-end encryption if dependencies and platform support are available (creating an E2EE store when enabled), and save a Credentials record (homeserver, user_id, access_token, device_id) on successful login. On user cancellation, timeouts, or login errors the function returns False. If the user declines to re-login when credentials already exist, the function returns True (treating the existing session as a successful state).
-
+    Perform an interactive Matrix login, persist credentials, and return whether a usable session exists.
+    
+    Prompts for any missing homeserver, username, or password. Performs server discovery to normalize the homeserver URL, enables end-to-end encryption and a local store when available, and saves a Credentials record (homeserver, user_id, access_token, device_id) on successful login. Returns False on user cancellation, timeouts, or login errors. If saved credentials already exist and the user declines to re-login, the function returns True (treats the existing session as a retained success).
+    
     Parameters:
-        homeserver (Optional[str]): Optional homeserver URL or host to use; if omitted, the user is prompted. A scheme (http/https) will be added if missing.
-        username (Optional[str]): Optional Matrix localpart or full user ID; if omitted the user is prompted. A bare localpart will be transformed into a full user ID using the homeserver host.
-        password (Optional[str]): Optional password; if omitted the user is prompted (input is hidden).
-
+        homeserver (Optional[str]): Optional homeserver URL or host; if omitted the user is prompted. A scheme (http/https) will be prepended if missing.
+        username (Optional[str]): Optional Matrix localpart (e.g., "alice") or full MXID (e.g., "@alice:example.org"); if omitted the user is prompted. A bare localpart will be converted to an MXID using the original server domain.
+        password (Optional[str]): Optional password; if omitted the user is prompted with hidden input.
+    
     Returns:
-        bool: True if login completed or an existing session was kept; False on cancellation, timeout, or any login error.
+        bool: True if login completed successfully or an existing session was kept; False on cancellation, timeout, network or login errors.
     """
     existing_creds = load_credentials()
     if existing_creds:

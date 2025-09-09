@@ -36,6 +36,14 @@ class DuplicateConstantError(NameError):
     """Raised when duplicate constants are found during import."""
 
     def __init__(self, duplicates):
+        """
+        Initialize the DuplicateConstantError with the given duplicate names.
+        
+        Parameters:
+            duplicates (Iterable[str]): Names of constants that were found more than once; stored as a tuple on the instance.
+        
+        The exception message will include the tuple of duplicate names.
+        """
         self.duplicates = tuple(duplicates)
         super().__init__(
             f"Duplicate constants found in biblebot.constants: {self.duplicates}"

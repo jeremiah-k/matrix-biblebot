@@ -21,10 +21,11 @@ logger = logging.getLogger(LOGGER_NAME)
 
 async def get_latest_release_version() -> Optional[str]:
     """
-    Fetch the latest release version from GitHub.
-
-    Returns:
-        Optional[str]: The latest release version tag, or None if unable to fetch.
+    Asynchronously fetch the latest GitHub release tag for BibleBot.
+    
+    Queries the configured RELEASES_URL (GitHub releases API) and returns the release's `tag_name`
+    with a leading "v" stripped (e.g., "v1.2.3" -> "1.2.3"). Returns None if the tag is missing
+    or the request/response cannot be obtained or parsed.
     """
     try:
         timeout = aiohttp.ClientTimeout(total=UPDATE_CHECK_TIMEOUT)
@@ -61,14 +62,10 @@ async def get_latest_release_version() -> Optional[str]:
 
 def compare_versions(current: str, latest: str) -> bool:
     """
-    Compare two version strings to determine if an update is available.
-
-    Args:
-        current (str): Current version string
-        latest (str): Latest available version string
-
-    Returns:
-        bool: True if latest version is newer than current version
+    Return True if the `latest` version string represents a newer version than `current`.
+    
+    Both inputs are parsed with `packaging.version.parse` (supports PEP 440 and similar version formats).
+    If either version cannot be parsed, the function returns False.
     """
     try:
         current_ver = version.parse(current)
@@ -82,10 +79,12 @@ def compare_versions(current: str, latest: str) -> bool:
 
 async def check_for_updates() -> Tuple[bool, Optional[str]]:
     """
-    Check if a newer version of BibleBot is available.
-
+    Determine whether a newer BibleBot release is available.
+    
+    Fetches the latest release tag from the configured source and compares it to the running package version.
+    
     Returns:
-        Tuple[bool, Optional[str]]: (update_available, latest_version)
+        Tuple[bool, Optional[str]]: A pair (update_available, latest_version) where `update_available` is True if a newer release exists, and `latest_version` is the latest release tag (without a leading "v") or None if the latest version could not be determined.
     """
     current_version = __version__
     logger.debug(f"Current version: {current_version}")
@@ -103,19 +102,18 @@ async def check_for_updates() -> Tuple[bool, Optional[str]]:
 
 def print_startup_banner() -> None:
     """
-    Print the startup banner with version information.
-
-    This should be called once at the very beginning of startup.
+    Log a startup banner containing the current BibleBot version.
+    
+    Intended to be called once at the very start of application startup.
     """
     logger.info(f"Starting BibleBot version {__version__}")
 
 
 async def perform_startup_update_check() -> None:
     """
-    Perform an update check on startup and log the result.
-
-    This function is designed to be called during bot startup.
-    Only shows update notification if current version is older than latest release.
+    Check for a newer release on startup and log a user-facing notification if one is available.
+    
+    This coroutine calls the update-check routine, and if a newer version is found logs an informational message with the latest version and releases page URL; otherwise it logs that the application is up to date. Intended to be awaited during application startup.
     """
     logger.debug("Performing startup update check...")
 
