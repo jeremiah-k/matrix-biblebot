@@ -48,8 +48,8 @@ setup(
     python_requires=">=3.9",
     install_requires=[
         "matrix-nio>=0.25.2,<0.26",
-        "PyYAML>=6.0",
-        "python-dotenv>=1.1.0",
+        "PyYAML~=6.0",
+        "python-dotenv~=1.1.0",
         "aiohttp>=3.11.0",
         "rich~=13.7",
         "packaging~=24.0",
@@ -69,6 +69,6 @@ setup(
     packages=find_packages(where="src"),
     package_dir={"": "src"},
     include_package_data=True,
-    package_data={"biblebot.tools": ["*.yaml", "*.env", "*.service"]},
+    package_data={"biblebot.tools": ["*.yaml", "*.service"]},
     entry_points={"console_scripts": ["biblebot = biblebot.cli:main"]},
 )

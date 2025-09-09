@@ -82,7 +82,7 @@ class TestServiceInstallation:
     @patch("biblebot.setup_utils.get_template_service_content", return_value=None)
     def test_create_service_file_no_template(self, _mock_get_template, _mock_get_exec):
         """Test service file creation when template is not found."""
-        mock_get_exec.return_value = "/usr/bin/biblebot"
+        _mock_get_exec.return_value = "/usr/bin/biblebot"
         result = setup_utils.create_service_file()
         assert result is False
 

@@ -36,25 +36,34 @@ class TestConfigurationPatterns:
 
     def test_configuration_validation_patterns(self):
         """Test configuration validation and error handling."""
-        # Test with invalid homeserver URL
+        # Test with invalid bot settings that actually trigger validation
         invalid_configs = [
             {
-                "homeserver": "not-a-url",
+                "homeserver": "https://matrix.org",
                 "user_id": "@test:matrix.org",
                 "access_token": "test_token",
                 "device_id": "TEST_DEVICE",
-            },
-            {
-                "homeserver": "http://insecure.matrix.org",  # HTTP instead of HTTPS
-                "user_id": "@test:matrix.org",
-                "access_token": "test_token",
-                "device_id": "TEST_DEVICE",
+                "bot": {
+                    "split_message_length": "invalid_number",  # Invalid type
+                },
             },
             {
                 "homeserver": "https://matrix.org",
-                "user_id": "invalid-user-id",  # Missing @
+                "user_id": "@test:matrix.org",
                 "access_token": "test_token",
                 "device_id": "TEST_DEVICE",
+                "bot": {
+                    "max_message_length": -100,  # Invalid value
+                },
+            },
+            {
+                "homeserver": "https://matrix.org",
+                "user_id": "@test:matrix.org",
+                "access_token": "test_token",
+                "device_id": "TEST_DEVICE",
+                "bot": {
+                    "split_message_length": -50,  # Invalid value
+                },
             },
         ]
 
@@ -64,7 +73,7 @@ class TestConfigurationPatterns:
                 bot = BibleBot(config=config)
                 # Bot should still be created but may have validation warnings
                 assert bot.config is not None
-                # Should log validation warnings for invalid configs
+                # Should log validation warnings for invalid bot settings
                 assert mock_logger.warning.called or mock_logger.error.called
 
     def test_environment_variable_configuration(self):

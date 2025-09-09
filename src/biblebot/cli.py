@@ -356,38 +356,8 @@ def interactive_main():
         _run_bot(get_default_config_path(), config=config)
 
 
-def main():
-    """
-    Entry point for the BibleBot command-line interface.
-
-    Runs either an interactive guided startup flow (when invoked with no CLI arguments)
-    or a modern grouped command dispatcher (when subcommands/flags are supplied).
-
-    Behavior summary:
-    - Interactive mode (no args): performs setup/login/run flow that can generate a sample
-      config, prompt for authentication, or start the bot depending on current state.
-    - Subcommands:
-      - config generate: create a starter configuration file at the given --config path.
-      - config check: validate an existing configuration file and print summary info
-        (Matrix room count, configured API keys, E2EE support).
-      - auth login [--homeserver --username --password]: perform interactive or
-        non-interactive Matrix login and save credentials.
-      - auth logout: remove stored credentials and E2EE state.
-      - auth status: print authentication and E2EE status.
-      - service install: install or update the per-user systemd service.
-
-    Notes:
-    - The default config path is used when --config is not provided.
-    - --log-level controls logging verbosity.
-    - The function may create files (sample config), install a service, modify stored
-      credentials/E2EE data, or start the bot process. It also exits the process with
-      appropriate status codes for command errors, validation failures, or runtime errors.
-    """
-    # If no arguments provided, use interactive mode
-    if len(sys.argv) == 1:
-        interactive_main()
-        return
-
+def create_parser():
+    """Create and return the argument parser for testing purposes."""
     default_config_path = get_default_config_path()
 
     # Main parser
@@ -473,6 +443,42 @@ Examples:
         CMD_INSTALL, help="Install or update systemd user service"
     )
 
+    return parser
+
+
+def main():
+    """
+    Entry point for the BibleBot command-line interface.
+
+    Runs either an interactive guided startup flow (when invoked with no CLI arguments)
+    or a modern grouped command dispatcher (when subcommands/flags are supplied).
+
+    Behavior summary:
+    - Interactive mode (no args): performs setup/login/run flow that can generate a sample
+      config, prompt for authentication, or start the bot depending on current state.
+    - Subcommands:
+      - config generate: create a starter configuration file at the given --config path.
+      - config check: validate an existing configuration file and print summary info
+        (Matrix room count, configured API keys, E2EE support).
+      - auth login [--homeserver --username --password]: perform interactive or
+        non-interactive Matrix login and save credentials.
+      - auth logout: remove stored credentials and E2EE state.
+      - auth status: print authentication and E2EE status.
+      - service install: install or update the per-user systemd service.
+
+    Notes:
+    - The default config path is used when --config is not provided.
+    - --log-level controls logging verbosity.
+    - The function may create files (sample config), install a service, modify stored
+      credentials/E2EE data, or start the bot process. It also exits the process with
+      appropriate status codes for command errors, validation failures, or runtime errors.
+    """
+    # If no arguments provided, use interactive mode
+    if len(sys.argv) == 1:
+        interactive_main()
+        return
+
+    parser = create_parser()
     args = parser.parse_args()
 
     # Set up logging
