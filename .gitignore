@@ -44,6 +44,9 @@ nosetests.xml
 coverage.xml
 *.cover
 
+# Test reports
+junit.xml
+
 # Logs
 *.log
 logs/

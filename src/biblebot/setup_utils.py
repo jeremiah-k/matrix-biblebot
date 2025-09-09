@@ -13,29 +13,30 @@ import shlex
 import shutil
 import subprocess
 import sys
+from pathlib import Path
 
-from .constants import (
+from biblebot.constants.app import (
     APP_NAME,
-    CONFIG_DIR,
-    DEFAULT_CONFIG_PATH,
     DIR_SHARE,
     DIR_TOOLS,
-    ENV_USER,
-    ENV_USERNAME,
     EXECUTABLE_NAME,
     FILE_MODE_READ,
-    LOCAL_SHARE_DIR,
-    PIPX_VENV_PATH,
     SERVICE_DESCRIPTION,
     SERVICE_NAME,
+)
+from biblebot.constants.config import CONFIG_DIR, ENV_USER, ENV_USERNAME
+from biblebot.constants.messages import WARNING_EXECUTABLE_NOT_FOUND
+from biblebot.constants.system import (
+    DEFAULT_CONFIG_PATH,
+    LOCAL_SHARE_DIR,
+    PIPX_VENV_PATH,
     SYSTEMCTL_ARG_IS_ENABLED,
     SYSTEMCTL_ARG_USER,
     SYSTEMCTL_COMMANDS,
     SYSTEMCTL_PATH,
     SYSTEMD_USER_DIR,
-    WARNING_EXECUTABLE_NOT_FOUND,
 )
-from .tools import copy_service_template_to
+from biblebot.tools import copy_service_template_to
 
 
 def get_executable_path():
@@ -79,14 +80,36 @@ def service_exists():
 
 def print_service_commands():
     """Print the commands for controlling the systemd user service."""
-    print(f"  {SYSTEMCTL_COMMANDS['start']}    # Start the service")
-    print(f"  {SYSTEMCTL_COMMANDS['stop']}     # Stop the service")
-    print(f"  {SYSTEMCTL_COMMANDS['restart']}  # Restart the service")
-    print(f"  {SYSTEMCTL_COMMANDS['status']}   # Check service status")
+    if not SYSTEMCTL_COMMANDS:
+        print("  systemctl commands not available on this system.")
+        return
+
+    order = [
+        ("start", "# Start the service"),
+        ("stop", "# Stop the service"),
+        ("restart", "# Restart the service"),
+        ("status", "# Check service status"),
+    ]
+    for key, comment in order:
+        cmd = SYSTEMCTL_COMMANDS.get(key)
+        if not cmd:
+            continue
+        if isinstance(cmd, (list, tuple)):
+            printable = shlex.join([str(c) for c in cmd])
+        else:
+            printable = str(cmd)
+        print(f"  {printable}  {comment}")
 
 
 def read_service_file():
-    """Read the content of the service file if it exists."""
+    """
+    Return the text content of the installed user systemd service file, or None if the file does not exist.
+    
+    Reads the service file using UTF-8 encoding.
+    
+    Returns:
+        str | None: The file contents as a string, or None when the service file is not present.
+    """
     service_path = get_user_service_path()
     if service_path.exists():
         return service_path.read_text(encoding="utf-8")
@@ -103,53 +126,47 @@ def get_template_service_path():
     the first existing path.
 
     Returns:
-        str or None: Absolute path to the first found template file, or None if no
+        pathlib.Path | None: Absolute path to the first found template file, or None if no
         candidate exists.
     """
-    # Try to find the service template file
-    package_dir = os.path.dirname(__file__)
+    # Try to find the service template file in various locations (Path-based)
+    pkg = Path(__file__).parent
+    # Find repository root by looking for marker files (more robust than fixed depth)
+    repo_root = None
+    p = Path(__file__).resolve()
+    for parent in p.parents:
+        if (parent / ".git").exists() or (parent / "setup.py").exists():
+            repo_root = parent
+            break
+    # No fallback - if no repo marker is found, repo_root stays None
 
-    # Try to find the service template file in various locations
     template_paths = [
-        # Check in the package directory (where it should be after installation)
-        os.path.join(package_dir, SERVICE_NAME),
-        # Check in a tools subdirectory of the package
-        os.path.join(package_dir, DIR_TOOLS, SERVICE_NAME),
-        # Check in the data files location (where it should be after installation)
-        os.path.join(sys.prefix, DIR_SHARE, APP_NAME, SERVICE_NAME),
-        os.path.join(sys.prefix, DIR_SHARE, APP_NAME, DIR_TOOLS, SERVICE_NAME),
-        # Check in the user site-packages location
-        os.path.join(
-            os.path.expanduser("~"), LOCAL_SHARE_DIR, DIR_SHARE, APP_NAME, SERVICE_NAME
-        ),
-        os.path.join(
-            os.path.expanduser("~"),
-            LOCAL_SHARE_DIR,
-            DIR_SHARE,
-            APP_NAME,
-            DIR_TOOLS,
-            SERVICE_NAME,
-        ),
-        # Check one level up from the package directory
-        os.path.join(os.path.dirname(package_dir), DIR_TOOLS, SERVICE_NAME),
-        # Check two levels up from the package directory (for development)
-        os.path.join(
-            os.path.dirname(os.path.dirname(package_dir)), DIR_TOOLS, SERVICE_NAME
-        ),
-        # Check in the repository root (for development)
-        os.path.join(
-            os.path.dirname(os.path.dirname(os.path.dirname(__file__))),
-            DIR_TOOLS,
-            SERVICE_NAME,
-        ),
-        # Check in the current directory (fallback)
-        os.path.join(os.getcwd(), DIR_TOOLS, SERVICE_NAME),
+        # Package dir (post-install)
+        pkg / SERVICE_NAME,
+        # Package tools subdir
+        pkg / DIR_TOOLS / SERVICE_NAME,
+        # sys.prefix share dirs
+        Path(sys.prefix) / DIR_SHARE / APP_NAME / SERVICE_NAME,
+        Path(sys.prefix) / DIR_SHARE / APP_NAME / DIR_TOOLS / SERVICE_NAME,
+        # User local share
+        LOCAL_SHARE_DIR / APP_NAME / SERVICE_NAME,
+        LOCAL_SHARE_DIR / APP_NAME / DIR_TOOLS / SERVICE_NAME,
+        # One level up from package (dev)
+        pkg.parent / DIR_TOOLS / SERVICE_NAME,
+        # Two levels up (dev)
+        pkg.parent.parent / DIR_TOOLS / SERVICE_NAME,
+        # CWD fallback
+        Path.cwd() / DIR_TOOLS / SERVICE_NAME,
     ]
 
+    # Add repo root path only if we found a valid repository
+    if repo_root is not None:
+        template_paths.insert(-1, repo_root / DIR_TOOLS / SERVICE_NAME)
+
     # Try each path until we find one that exists
-    for path in template_paths:
-        if os.path.exists(path):
-            return path
+    for p in template_paths:
+        if p.is_file():
+            return p
 
     # If we get here, we couldn't find the template
     return None
@@ -158,13 +175,19 @@ def get_template_service_path():
 def get_template_service_content():
     """
     Return the systemd service template content to use when creating the user service.
-
-    Tries the following sources in order and returns the first successfully read content:
-    1. A stable copy provided by copy_service_template_to(...).
+    
+    Tries sources in this order and returns the first successfully read template string:
+    1. A stable copy provided by copy_service_template_to().
     2. The packaged resource `biblebot.tools:biblebot.service` via importlib.resources.
-    3. A path found by get_template_service_path().
-
-    If none of the sources can be read, returns a built-in default service template string suitable for a typical user install.
+    3. A file path found by get_template_service_path().
+    
+    If all attempts fail, returns a built-in default service template suitable for a typical user install.
+    
+    Returns:
+        str: The service unit file content.
+    
+    Notes:
+        - Errors encountered while attempting each source are printed to stdout; unexpected exceptions are allowed to propagate.
     """
     # Use the copy helper function to get a stable template file
     import tempfile
@@ -185,7 +208,7 @@ def get_template_service_content():
         service_template = (
             importlib.resources.files("biblebot.tools")
             .joinpath("biblebot.service")
-            .read_text()
+            .read_text(encoding="utf-8")
         )
         return service_template
     except (FileNotFoundError, ImportError, OSError) as e:
@@ -234,6 +257,8 @@ def is_service_enabled():
     Returns:
         bool: True when the service is enabled, False otherwise (including on errors).
     """
+    if SYSTEMCTL_PATH is None:
+        return False
     try:
         result = subprocess.run(
             [
@@ -257,6 +282,8 @@ def is_service_active():
 
     Checks the service status by invoking `systemctl --user is-active <SERVICE_NAME>`. Any errors or unexpected results are treated as the service not being active and result in False.
     """
+    if SYSTEMCTL_PATH is None:
+        return False
     try:
         result = subprocess.run(
             [SYSTEMCTL_PATH, SYSTEMCTL_ARG_USER, "is-active", SERVICE_NAME],
@@ -324,7 +351,11 @@ def create_service_file():
     # Replace ExecStart line to use discovered command and default config path
     exec_start_line = f'ExecStart={exec_cmd} --config "{DEFAULT_CONFIG_PATH}"'
     service_content, n = re.subn(
-        r"^ExecStart=.*$", exec_start_line, service_template, flags=re.MULTILINE
+        r"^ExecStart=.*$",
+        exec_start_line,
+        service_template,
+        count=1,
+        flags=re.MULTILINE,
     )
     if n == 0:
         service_content = re.sub(
@@ -356,6 +387,9 @@ def reload_daemon():
         bool: True if the daemon-reload command completed successfully; False on failure
         (command returned non-zero or an OSError occurred).
     """
+    if SYSTEMCTL_PATH is None:
+        print("systemctl not available on this system")
+        return False
     try:
         # Using absolute path for security
         subprocess.run(
@@ -402,30 +436,59 @@ def service_needs_update():
     if not executable_path:
         return False, "Could not determine biblebot start command"
 
-    # Determine acceptable ExecStart patterns
-    acceptable_snippets = []
+    # Build variants that mirror create_service_file() quoting to avoid false positives
+    acceptable_snippets: list[str] = []
     if executable_path == sys.executable:
-        acceptable_snippets.append(f"{shlex.quote(sys.executable)} -m biblebot")
+        acceptable_snippets.extend(
+            [
+                f"{shlex.quote(sys.executable)} -m biblebot",
+                f"{sys.executable} -m biblebot",
+            ]
+        )
     else:
-        acceptable_snippets.append(executable_path)
-        acceptable_snippets.append(shlex.quote(executable_path))
+        acceptable_snippets.extend(
+            [
+                shlex.quote(executable_path),
+                executable_path,
+            ]
+        )
+    # Focus only on the ExecStart= line to reduce accidental matches
+    execstart_line = next(
+        (
+            ln
+            for ln in existing_service.splitlines()
+            if ln.strip().startswith("ExecStart=")
+        ),
+        "",
+    )
 
     # Check if the ExecStart uses a valid command
-    if not any(snippet in existing_service for snippet in acceptable_snippets):
+    if not any(snippet in execstart_line for snippet in acceptable_snippets):
         return True, "Service file ExecStart does not match the current installation"
 
     # Check if the PATH environment includes pipx paths
-    requires_pipx = "/pipx/" in executable_path
-    if requires_pipx and PIPX_VENV_PATH not in existing_service:
+    # Detect pipx requirement from the unit body itself
+    requires_pipx = "pipx" in existing_service
+    pipx_ok = (str(PIPX_VENV_PATH) in existing_service) or (
+        "pipx/venvs" in existing_service
+    )
+    if requires_pipx and not pipx_ok:
         return True, "Service file does not include pipx paths in PATH environment"
 
     # Check if the service file has been modified recently
-    template_mtime = os.path.getmtime(template_path)
-    service_path = get_user_service_path()
-    if os.path.exists(service_path):
-        service_mtime = os.path.getmtime(service_path)
-        if template_mtime > service_mtime:
-            return True, "Template service file is newer than installed service file"
+    try:
+        template_mtime = template_path.stat().st_mtime
+        service_path = get_user_service_path()
+        if service_path.exists():
+            service_mtime = service_path.stat().st_mtime
+            if template_mtime > service_mtime:
+                return (
+                    True,
+                    "Template service file is newer than installed service file",
+                )
+    except OSError:
+        # If either file vanished mid-check, don't force an update here.
+        pass
 
     return False, "Service file is up to date"
 
@@ -501,6 +564,9 @@ def start_service():
     Returns:
         bool: True if successful, False otherwise.
     """
+    if SYSTEMCTL_PATH is None:
+        print("systemctl not available on this system")
+        return False
     try:
         subprocess.run(
             [SYSTEMCTL_PATH, SYSTEMCTL_ARG_USER, "start", SERVICE_NAME], check=True
@@ -517,12 +583,14 @@ def start_service():
 def show_service_status():
     """
     Print the systemd user service status for the configured SERVICE_NAME.
-
-    Runs `systemctl --user status <SERVICE_NAME>` and prints the command output to stdout.
-
-    Returns:
-        bool: True if the status command was executed and output printed; False if the command could not be run due to an OS or subprocess error.
+    
+    Runs `systemctl --user status <SERVICE_NAME>` and prints its stdout and stderr to stdout.
+    Returns True if the status command was run and exited with code 0; returns False if
+    `systemctl` is not available or if an OS/subprocess error occurred.
     """
+    if SYSTEMCTL_PATH is None:
+        print("systemctl not available on this system")
+        return False
     try:
         result = subprocess.run(
             [SYSTEMCTL_PATH, SYSTEMCTL_ARG_USER, "status", SERVICE_NAME],
@@ -565,6 +633,11 @@ def install_service():
         bool: True on normal completion (including cases where the user declines optional actions);
               False if a fatal step failed (e.g., creating the service file or reloading the daemon).
     """
+    if SYSTEMCTL_PATH is None:
+        print("systemctl not available on this system")
+        print("Cannot install systemd user service without systemctl")
+        return False
+
     # Check if service already exists
     existing_service = read_service_file()
     service_path = get_user_service_path()

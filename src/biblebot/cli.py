@@ -7,12 +7,19 @@ import logging
 import os
 import sys
 from pathlib import Path
-from typing import Awaitable, Optional, TypeVar
+from typing import Awaitable, TypeVar
 
-from . import __version__
-from .auth import interactive_login, interactive_logout, load_credentials
-from .bot import main as bot_main
-from .constants import (
+from biblebot import __version__
+from biblebot.auth import interactive_login, interactive_logout, load_credentials
+from biblebot.bot import main as bot_main
+from biblebot.constants.app import LOGGER_NAME
+from biblebot.constants.config import (
+    CONFIG_DIR,
+    DEFAULT_CONFIG_FILENAME,
+    E2EE_KEY_AVAILABLE,
+)
+from biblebot.constants.logging import DEFAULT_LOG_LEVEL, LOG_LEVELS
+from biblebot.constants.messages import (
     CLI_ACTION_STORE_TRUE,
     CLI_ACTION_VERSION,
     CLI_ARG_CONFIG,
@@ -33,20 +40,14 @@ from .constants import (
     CMD_LOGOUT,
     CMD_SERVICE,
     CMD_STATUS,
-    CONFIG_DIR,
-    DEFAULT_CONFIG_FILENAME,
-    DEFAULT_LOG_LEVEL,
-    E2EE_KEY_AVAILABLE,
-    LOG_LEVELS,
-    LOGGER_NAME,
     MSG_CONFIG_EXISTS,
     MSG_DELETE_EXISTING,
     MSG_GENERATED_CONFIG,
     MSG_NO_CONFIG_PROMPT,
     SUCCESS_CONFIG_GENERATED,
 )
-from .log_utils import configure_logging, get_logger
-from .tools import copy_sample_config_to
+from biblebot.log_utils import configure_logging, get_logger
+from biblebot.tools import copy_sample_config_to
 
 # Configure logging
 logger = logging.getLogger(LOGGER_NAME)
@@ -86,17 +87,18 @@ def get_default_config_path():
 
 def detect_configuration_state():
     """
-    Determine the CLI's current configuration/authentication state.
-
-    Returns a 3-tuple (state, message, config) where `state` is one of:
-    - "setup": no valid config present; user should run configuration setup.
-    - "auth": configuration exists but credentials are missing or invalid; user should authenticate.
-    - "ready_legacy": a legacy MATRIX_ACCESS_TOKEN environment token is present (E2EE not supported); user may migrate to the modern auth flow.
-    - "ready": configuration and credentials are present and valid; bot can be started.
-
-    The accompanying `message` is a user-facing string describing the detected condition and recommended next steps.
-    The `config` is the loaded configuration dictionary if available, None otherwise.
-    Errors encountered while loading or validating the configuration or credentials are mapped to the appropriate state ("setup" or "auth") with an explanatory message rather than being raised.
+    Determine the CLI's current configuration and authentication state.
+    
+    Returns a tuple (state, message, config) where:
+    - state (str): One of:
+        - "setup": no valid config file found; user should run configuration setup.
+        - "auth": config exists but credentials are missing or invalid; user should authenticate.
+        - "ready_legacy": a legacy MATRIX_ACCESS_TOKEN environment token is present (legacy auth, E2EE not supported); user may migrate to modern auth.
+        - "ready": valid config and credentials are present; the bot can be started.
+    - message (str): Human-facing explanation of the detected condition and suggested next steps.
+    - config (dict|None): Loaded configuration dictionary when available, otherwise None.
+    
+    Errors encountered while loading or validating the configuration or credentials are not raised; they are mapped to an appropriate state ("setup" or "auth") with an explanatory message.
     """
     config_path = get_default_config_path()
     credentials_path = CONFIG_DIR / "credentials.json"
@@ -107,18 +109,18 @@ def detect_configuration_state():
 
     # Try to load and validate config
     try:
-        from . import bot
+        from biblebot import bot
 
         config = bot.load_config(str(config_path))
         if not config:
             return "setup", "Invalid configuration. Setup is required.", None
-    except (ValueError, KeyError, TypeError, OSError) as e:
+    except (ImportError, ValueError, KeyError, TypeError, OSError) as e:
         return "setup", f"Configuration error: {e}", None
 
     # Check for proper authentication (credentials.json from auth flow)
     if not credentials_path.exists():
         # Check for legacy environment token (deprecated)
-        from .constants import ENV_MATRIX_ACCESS_TOKEN
+        from biblebot.constants.config import ENV_MATRIX_ACCESS_TOKEN
 
         if os.getenv(ENV_MATRIX_ACCESS_TOKEN):
             return (
@@ -176,8 +178,11 @@ def generate_config(config_path):
 
     copy_sample_config_to(str(config_path))
 
-    # Set restrictive permissions (readable/writable by owner only)
-    os.chmod(config_path, 0o600)
+    # Set restrictive permissions (readable/writable by owner only; ignore on platforms that don't support it)
+    try:
+        os.chmod(config_path, 0o600)
+    except (AttributeError, NotImplementedError, OSError):
+        pass
 
     print(MSG_GENERATED_CONFIG.format(config_path))
     print()
@@ -189,40 +194,55 @@ def generate_config(config_path):
 
 def interactive_main():
     """
-    Interactive CLI entry that guides the user through initial setup, authentication, and starting the bot.
-
-    This function provides a streamlined UX:
-    - If no config exists: generates sample config and exits with instructions
-    - If config exists but no auth: automatically prompts for login, then starts bot
-    - If config and auth exist: immediately starts the bot
-
-    No unnecessary "Would you like to..." prompts - just does what the user expects.
-
+    Launch an interactive CLI flow that ensures configuration and authentication are in place, then starts the bot.
+    
+    Detects the current state (setup, auth, ready_legacy, ready) and performs the appropriate action:
+    - setup: generates a sample configuration file and prints next steps.
+    - auth: prompts for interactive login (skipped in CI/test environments); on success, starts the bot.
+    - ready_legacy: starts the bot using a legacy access token (deprecated flow).
+    - ready: starts the bot normally.
+    
     Side effects:
     - May create a configuration file on disk.
-    - May launch the interactive login flow.
-    - May start the bot by calling bot_main via run_async.
-    - Uses proper logging instead of print statements.
-
+    - May run the interactive authentication flow.
+    - May start the bot process.
+    
     Returns:
         None
+    """
+    """
+    Start the BibleBot process for a given configuration and handle common startup failures.
+    
+    Parameters:
+        config_path (str): Path to the configuration file to use.
+        legacy (bool): If True, run in legacy-token compatibility mode (no E2EE).
+        config (dict | None): Pre-loaded configuration object to avoid reloading from disk.
+    
+    This function configures logging, imports the bot entry point, and runs the bot using the provided configuration.
+    On startup failures it logs and exits the process with a non-zero status.
     """
 
     def _run_bot(config_path: str, legacy: bool = False, config: dict = None):
         """
-        Run the BibleBot process for the given configuration and handle common startup errors.
-
-        Uses proper logging instead of print statements.
-
+        Start the BibleBot process using the given configuration and handle common startup failures.
+        
+        If a preloaded config is provided, it is used to configure logging and avoid reloading the file; otherwise the function attempts to load the config from config_path (falling back to default logging on load errors). After logging is configured, this function imports and runs the bot (preferring bot.main_with_config when available). If legacy is True, the startup is run in legacy mode.
+        
         Parameters:
             config_path (str): Path to the configuration file.
-            legacy (bool): Whether to run in legacy mode.
-            config (dict): Pre-loaded configuration to avoid duplicate loading.
+            legacy (bool): Run in legacy mode when True.
+            config (dict | None): Pre-loaded configuration to use instead of re-reading the file.
+        
+        Behavior and side effects:
+            - Config loading may configure logging; if loading fails, default logging is used.
+            - Runs the bot to completion (blocking); uses run_async to execute the bot entrypoint.
+            - On KeyboardInterrupt the function logs a stop message and returns.
+            - On startup failures (RuntimeError, ConnectionError, FileNotFoundError, OSError, ValueError, TypeError) the function logs the error and exits the process with status code 1.
         """
         # Initialize logging first
         if config is None:
             try:
-                from .bot import load_config
+                from biblebot.bot import load_config
 
                 # Load config without logging message to avoid duplicate logging
                 # (config was already loaded in detect_configuration_state)
@@ -261,29 +281,6 @@ def interactive_main():
         except (OSError, ValueError, TypeError) as e:
             logger.exception(f"Unexpected error starting bot: {type(e).__name__}")
             sys.exit(1)
-
-    def _get_user_input(
-        prompt: str, cancellation_message: str = "Cancelled."
-    ) -> Optional[str]:
-        """
-        Prompt the user for input, returning the trimmed, lowercased response or None if the user cancels.
-
-        Reads a line from standard input using the provided prompt. Leading/trailing whitespace is removed
-        and the result is converted to lowercase before being returned. If the user cancels input (Ctrl+C
-        or EOF), prints the provided cancellation_message on its own line and returns None.
-
-        Parameters:
-            prompt: Text shown to the user when requesting input.
-            cancellation_message: Message printed when input is cancelled (default: "Cancelled.").
-
-        Returns:
-            The user's input as a stripped, lowercase string, or None if input was cancelled.
-        """
-        try:
-            return input(prompt).strip().lower()
-        except (EOFError, KeyboardInterrupt):
-            print(f"\n{cancellation_message}")
-            return None
 
     # Initialize basic logging for CLI messages
     configure_logging(None)
@@ -361,18 +358,30 @@ def interactive_main():
 
 def main():
     """
-    Run the BibleBot command-line interface.
-
-    If invoked with no arguments, enters the interactive setup/run flow. When called with arguments, provides modern grouped subcommands:
-    - config generate / check: create a sample config or validate an existing config file.
-    - auth login / logout / status: perform interactive Matrix login/logout and show authentication/E2EE status.
-    - service install: install or update the per-user systemd service.
-
-    Side effects:
-    - May create files (sample config), install a service, modify credentials/E2EE state, or start the running bot.
-    - May call sys.exit with non-zero codes on errors or after certain operations (e.g., failed validation, missing config, failed auth, or bot runtime errors).
-
-    Logging is configured from the --log-level argument. The default config path is used when --config is not provided.
+    Entry point for the BibleBot command-line interface.
+    
+    Runs either an interactive guided startup flow (when invoked with no CLI arguments)
+    or a modern grouped command dispatcher (when subcommands/flags are supplied).
+    
+    Behavior summary:
+    - Interactive mode (no args): performs setup/login/run flow that can generate a sample
+      config, prompt for authentication, or start the bot depending on current state.
+    - Subcommands:
+      - config generate: create a starter configuration file at the given --config path.
+      - config check: validate an existing configuration file and print summary info
+        (Matrix room count, configured API keys, E2EE support).
+      - auth login [--homeserver --username --password]: perform interactive or
+        non-interactive Matrix login and save credentials.
+      - auth logout: remove stored credentials and E2EE state.
+      - auth status: print authentication and E2EE status.
+      - service install: install or update the per-user systemd service.
+    
+    Notes:
+    - The default config path is used when --config is not provided.
+    - --log-level controls logging verbosity.
+    - The function may create files (sample config), install a service, modify stored
+      credentials/E2EE data, or start the bot process. It also exits the process with
+      appropriate status codes for command errors, validation failures, or runtime errors.
     """
     # If no arguments provided, use interactive mode
     if len(sys.argv) == 1:
@@ -478,7 +487,7 @@ Examples:
             generate_config(args.config)
             return
         elif args.config_action == CMD_CHECK:
-            from .bot import load_config
+            from biblebot.bot import load_config
 
             config = load_config(args.config)
             if not config:
@@ -492,7 +501,7 @@ Examples:
                     "matrix_room_ids", []
                 )
                 print(f"  Matrix rooms: {len(rooms or [])}")
-                from .bot import load_environment
+                from biblebot.bot import load_environment
 
                 _, api_keys = load_environment(config, args.config)
                 print(
@@ -500,7 +509,7 @@ Examples:
                 )
 
                 # Check E2EE status
-                from .auth import check_e2ee_status
+                from biblebot.auth import check_e2ee_status
 
                 e2ee_status = check_e2ee_status()
                 print(
@@ -571,7 +580,7 @@ Examples:
             ok = run_async(interactive_logout())
             sys.exit(0 if ok else 1)
         elif args.auth_action == CMD_STATUS:
-            from .auth import print_e2ee_status
+            from biblebot.auth import print_e2ee_status
 
             # Show authentication status
             creds = load_credentials()
@@ -593,7 +602,7 @@ Examples:
 
     elif args.command == CMD_SERVICE:
         if args.service_action == CMD_INSTALL:
-            from .setup_utils import install_service
+            from biblebot.setup_utils import install_service
 
             install_service()
             return

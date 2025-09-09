@@ -41,7 +41,7 @@ class TestCachePerformance:
     def test_cache_performance_bulk_operations(self):
         """
         Measure bulk cache set/get performance.
-        
+
         Clears the internal passage cache if present, performs 50 bulk cache-set operations
         and 50 corresponding cache-get operations, and enforces timing budgets for the
         bulk set and bulk get phases. Get assertions (non-None results) are only made
@@ -188,7 +188,7 @@ class TestBookNormalizationPerformance:
     def test_normalization_performance_mixed_case(self):
         """
         Measure performance of validate_and_normalize_book_name on mixed-case book names.
-        
+
         Runs 200 iterations over a set of mixed-case book name variants and asserts each call returns a string.
         When not running on a slow CI runner (CI_SLOW_RUNNER unset), the total elapsed time must be under 3.5 seconds.
         """
@@ -392,12 +392,12 @@ class TestStressPerformance:
     def test_rapid_cache_operations(self):
         """
         Run a stress test that performs 500 rapid alternating cache set/get operations and verifies correctness and performance.
-        
+
         The test clears the internal passage cache (if present), then performs 500 iterations of:
         - storing a passage via the internal cache-set helper,
         - retrieving it via the internal cache-get helper and asserting the result is not None,
         - retrieving it again using different casing for key and version and asserting the result matches the original retrieval (case-insensitive behavior).
-        
+
         It measures the total elapsed time and, unless the CI_SLOW_RUNNER environment variable is set, asserts the test completes in under 10 seconds.
         """
         # Clear cache
@@ -430,7 +430,7 @@ class TestStressPerformance:
     def test_concurrent_normalization_stress(self):
         """
         Stress-test concurrent normalization of Bible book names using multiple threads.
-        
+
         Spawns several worker threads that repeatedly call bot.validate_and_normalize_book_name on a fixed set of book-name variants and record each result in the shared `results` list; any exceptions are collected in the shared `errors` list. After joining all threads the test asserts there were no errors, that some results were produced, and that the total run completed within the expected time budget (5.0 seconds).
         """
         import threading
@@ -441,7 +441,7 @@ class TestStressPerformance:
         def normalize_worker():
             """
             Worker that performs 100 iterations of book-name normalization and records outcomes.
-            
+
             Repeatedly calls bot.validate_and_normalize_book_name on a fixed set of book-name variants and appends each result to the outer-scope list `results`. Any exception encountered is caught and appended to the outer-scope list `errors`. Designed to be used as a threaded worker in concurrency/stress tests.
             """
             try:

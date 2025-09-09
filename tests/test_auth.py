@@ -8,6 +8,7 @@ import nio.exceptions
 import pytest
 
 from biblebot import auth
+from biblebot.auth import _get_user_input
 
 
 @pytest.fixture
@@ -959,3 +960,88 @@ class TestDiscoverHomeserverExceptions:
         result = await auth.discover_homeserver(mock_client, "https://matrix.org")
 
         assert result == "https://matrix.org"  # Falls back to provided
+
+
+class TestGetUserInput:
+    """Test the _get_user_input helper function."""
+
+    def test_provided_value_returned_directly(self):
+        """Test that provided values are returned without prompting."""
+        result = _get_user_input("Enter value: ", "provided_value", "TestField")
+        assert result == "provided_value"
+
+    @patch("builtins.input", return_value="  user_input  ")
+    def test_successful_input_stripped(self, mock_input):
+        """Test that user input is properly stripped."""
+        result = _get_user_input("Enter value: ", None, "TestField")
+        assert result == "user_input"
+        mock_input.assert_called_once_with("Enter value: ")
+
+    @patch("builtins.input", side_effect=KeyboardInterrupt)
+    @patch("biblebot.auth.logger")
+    def test_keyboard_interrupt_handling(self, mock_logger, mock_input):
+        """Test that KeyboardInterrupt is handled gracefully."""
+        result = _get_user_input("Enter value: ", None, "TestField")
+        assert result is None
+        mock_logger.info.assert_called_once_with("\nLogin cancelled.")
+
+    @patch("builtins.input", side_effect=EOFError)
+    @patch("biblebot.auth.logger")
+    def test_eof_error_handling(self, mock_logger, mock_input):
+        """Test that EOFError is handled gracefully."""
+        result = _get_user_input("Enter value: ", None, "TestField")
+        assert result is None
+        mock_logger.info.assert_called_once_with("\nLogin cancelled.")
+
+    @patch("builtins.input", return_value="")
+    @patch("biblebot.auth.logger")
+    def test_empty_input_handling(self, mock_logger, mock_input):
+        """Test that empty input is handled with appropriate error."""
+        result = _get_user_input("Enter value: ", None, "TestField")
+        assert result is None
+        mock_logger.error.assert_called_once_with("TestField cannot be empty.")
+
+    @patch("builtins.input", return_value="   ")
+    @patch("biblebot.auth.logger")
+    def test_whitespace_only_input_handling(self, mock_logger, mock_input):
+        """Test that whitespace-only input is treated as empty."""
+        result = _get_user_input("Enter value: ", None, "TestField")
+        assert result is None
+        mock_logger.error.assert_called_once_with("TestField cannot be empty.")
+
+
+class TestInteractiveLoginCancellation:
+    """Test cancellation scenarios in interactive_login function."""
+
+    @pytest.mark.asyncio
+    @patch("biblebot.auth.load_credentials", return_value=None)
+    @patch("biblebot.auth._get_user_input", return_value=None)
+    async def test_homeserver_input_cancellation(self, mock_get_input, mock_load_creds):
+        """Test that cancelling homeserver input returns False."""
+        result = await auth.interactive_login()
+        assert result is False
+        mock_get_input.assert_called_once()
+
+    @pytest.mark.asyncio
+    @patch("biblebot.auth.load_credentials", return_value=None)
+    @patch("biblebot.auth._get_user_input", side_effect=["matrix.example.com", None])
+    async def test_username_input_cancellation(self, mock_get_input, mock_load_creds):
+        """Test that cancelling username input returns False."""
+        result = await auth.interactive_login()
+        assert result is False
+        assert mock_get_input.call_count == 2
+
+    @pytest.mark.asyncio
+    @patch("biblebot.auth.load_credentials", return_value=None)
+    @patch(
+        "biblebot.auth._get_user_input", side_effect=["matrix.example.com", "user123"]
+    )
+    @patch("biblebot.auth.getpass.getpass", side_effect=KeyboardInterrupt)
+    @patch("biblebot.auth.logger")
+    async def test_password_input_cancellation(
+        self, mock_logger, mock_getpass, mock_get_input, mock_load_creds
+    ):
+        """Test that cancelling password input returns False."""
+        result = await auth.interactive_login()
+        assert result is False
+        mock_logger.info.assert_called_with("\nLogin cancelled.")

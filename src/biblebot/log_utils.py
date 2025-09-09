@@ -6,25 +6,36 @@ similar to mmrelay's logging approach.
 """
 
 import logging
+import os
+import re
 from logging.handlers import RotatingFileHandler
 from pathlib import Path
 
 from rich.console import Console
 from rich.logging import RichHandler
+from rich.theme import Theme
 
-from .constants import APP_DISPLAY_NAME
+from biblebot.constants.app import APP_DISPLAY_NAME
+from biblebot.constants.logging import COMPONENT_LOGGERS as _COMPONENT_LOGGERS
+from biblebot.constants.logging import (
+    DEFAULT_LOG_BACKUP_COUNT,
+    DEFAULT_LOG_SIZE_MB,
+    LOG_LEVEL_STYLES,
+    LOG_SIZE_BYTES_MULTIPLIER,
+)
 
-# Initialize Rich console
-console = Console()
+# Initialize Rich console with custom log level theme
+log_theme = Theme(
+    {
+        "logging.level.debug": LOG_LEVEL_STYLES["DEBUG"],
+        "logging.level.info": LOG_LEVEL_STYLES["INFO"],
+        "logging.level.warning": LOG_LEVEL_STYLES["WARNING"],
+        "logging.level.error": LOG_LEVEL_STYLES["ERROR"],
+        "logging.level.critical": LOG_LEVEL_STYLES["CRITICAL"],
+    }
+)
+console = Console(theme=log_theme)
 
-# Define custom log level styles
-LOG_LEVEL_STYLES = {
-    "DEBUG": "dim blue",
-    "INFO": "green",
-    "WARNING": "yellow",
-    "ERROR": "bold red",
-    "CRITICAL": "bold white on red",
-}
 
 # Global config variable that will be set from main
 config = None
@@ -34,23 +45,6 @@ log_file_path = None
 
 # Track if component debug logging has been configured
 _component_debug_configured = False
-
-# Component logger mapping for data-driven configuration
-_COMPONENT_LOGGERS = {
-    "matrix_nio": [
-        "nio",
-        "nio.client",
-        "nio.http",
-        "nio.crypto",
-        "nio.responses",
-        "nio.rooms",
-    ],
-}
-
-# Default log settings
-DEFAULT_LOG_SIZE_MB = 10
-DEFAULT_LOG_BACKUP_COUNT = 5
-LOG_SIZE_BYTES_MULTIPLIER = 1024 * 1024
 
 
 def configure_component_debug_logging():
@@ -108,21 +102,21 @@ def get_log_dir():
     Returns:
         pathlib.Path: Path to the logs directory (may not exist).
     """
-    from .auth import get_config_dir
+    from biblebot.auth import get_config_dir
 
     return get_config_dir() / "logs"
 
 
-def get_logger(name):
+def get_logger(name, *, force: bool = False):
     """
-    Create and configure a logger with console output and optional file logging.
-
-    The logger uses Rich for colorized console output with timestamps and supports
-    optional rotating file logging.
-
+    Create and configure a logger that writes to the console (colorized via Rich when enabled) and optionally to a rotating file.
+    
+    Configurable behavior (log level, color, file path, rotation size/count, and whether file logging is enabled) is read from the module-level `config` under the "logging" key when available. If a logger with the same name already has handlers, the function returns it unchanged unless `force` is True, in which case existing handlers are removed and the logger is reconfigured.
+    
     Parameters:
-        name (str): The name of the logger to create.
-
+        name (str): Logger name to create or reconfigure.
+        force (bool): If True, remove existing handlers and reconfigure even if handlers are present.
+    
     Returns:
         logging.Logger: The configured logger instance.
     """
@@ -148,7 +142,11 @@ def get_logger(name):
 
     # Check if logger already has handlers to avoid duplicates
     if logger.handlers:
-        return logger
+        if not force:
+            return logger
+        # If forcing, clear existing handlers before reconfiguring
+        for handler in logger.handlers[:]:
+            logger.removeHandler(handler)
 
     # Add handler for console logging (with or without colors)
     if color_enabled:
@@ -183,7 +181,8 @@ def get_logger(name):
     if log_to_file:
         # Determine log file path
         if config is not None and config.get("logging", {}).get("filename"):
-            log_file = Path(config["logging"]["filename"])
+            raw = config["logging"]["filename"]
+            log_file = Path(os.path.expandvars(os.path.expanduser(raw)))
         else:
             # Default to standard log directory
             log_file = get_log_dir() / "biblebot.log"
@@ -203,18 +202,48 @@ def get_logger(name):
             backup_count = DEFAULT_LOG_BACKUP_COUNT
 
             if config is not None and "logging" in config:
-                # Accept MB (int/float) and bytes (str ending with 'B')
                 val = config["logging"].get("max_log_size", None)
+                # Numbers mean MB
                 if isinstance(val, (int, float)):
                     max_bytes = int(val * LOG_SIZE_BYTES_MULTIPLIER)
-                elif isinstance(val, str) and val.lower().endswith("b"):
-                    max_bytes = int(val[:-1])
-                elif val is not None:
-                    max_bytes = val
-                backup_count = config["logging"].get("backup_count", backup_count)
+                elif isinstance(val, str):
+                    s = val.strip().lower()
+                    m = re.fullmatch(r"(\d+(?:\.\d+)?)\s*([kmgt]?i?b)?", s)
+                    if m:
+                        num, unit = m.groups()
+                        factors = {
+                            # Keep semantics consistent: numeric and unitless-string both mean MB
+                            None: LOG_SIZE_BYTES_MULTIPLIER,
+                            "b": 1,
+                            "kb": 1000,
+                            "kib": 1024,
+                            "mb": 1000**2,
+                            "mib": 1024**2,
+                            "gb": 1000**3,
+                            "gib": 1024**3,
+                            "tb": 1000**4,
+                            "tib": 1024**4,
+                        }
+                        if unit in factors:
+                            max_bytes = int(float(num) * factors[unit])
+                        else:
+                            logging.getLogger(__name__).warning(
+                                "Unknown size unit '%s' in max_log_size; using default %d bytes",
+                                unit,
+                                max_bytes,
+                            )
+                bc = config["logging"].get("backup_count", backup_count)
+                try:
+                    backup_count = int(bc)
+                except (TypeError, ValueError):
+                    pass
 
             file_handler = RotatingFileHandler(
-                log_file, maxBytes=max_bytes, backupCount=backup_count, encoding="utf-8"
+                log_file,
+                maxBytes=max_bytes,
+                backupCount=backup_count,
+                encoding="utf-8",
+                delay=True,
             )
 
             file_handler.setFormatter(
@@ -240,22 +269,28 @@ def get_logger(name):
 
 def configure_logging(config_dict=None):
     """
-    Set the module-wide logging configuration and apply per-component debug settings.
-
-    This stores the provided configuration dict in the module-level `config` variable (or clears it when None)
-    and then applies component-specific debug levels by calling `configure_component_debug_logging()`.
-
+    Set the module-level logging configuration and reset per-component debug state.
+    
+    Stores the given mapping in the module-global `config` (or clears it when None) so subsequent
+    calls to get_logger and related functions use the new settings, and resets the internal
+    _component_debug_configured flag so per-component debug levels will be reapplied on next
+    configuration run.
     Parameters:
-        config_dict (dict | None): Global configuration mapping for logging. Expected keys are the same
-            logging keys consumed elsewhere in this module (for example: `"level"`, `"color_enabled"`,
-            `"log_to_file"`, `"filename"`, `"max_log_size"`, `"backup_count"`, and a `"debug"` mapping
-            for per-component overrides). If None, the global configuration is cleared.
-
-    Returns:
-        None
+        config_dict (dict | None): Logging configuration mapping (e.g., keys like "level",
+            "color_enabled", "log_to_file", "filename", "max_log_size", "backup_count", and a
+            "debug" mapping for per-component overrides). If None, clears global logging config.
     """
-    global config
+    global config, _component_debug_configured
     config = config_dict
+    # Allow reconfiguration after config changes
+    _component_debug_configured = False
 
+
+def configure_component_loggers() -> None:
+    """
+    Apply per-component logging configuration for external libraries.
+    
+    Reads the module logging configuration and for each known external component either enables a configured debug level or silences that component's loggers. Delegates to `configure_component_debug_logging()` and is safe to call multiple times; if the global logging config is not set, it is a no-op.
+    """
     # Configure component debug logging (nio, etc.)
     configure_component_debug_logging()

@@ -1,4 +1,59 @@
-"""Bible-specific constants for BibleBot."""
+"""Bible-specific constants."""
+
+import re
+
+__all__ = [
+    "BOOK_ABBREVIATIONS",
+    "DEFAULT_TRANSLATION",
+    "PARTIAL_REFERENCE_PATTERNS",
+    "REFERENCE_PATTERNS",
+    "SUPPORTED_TRANSLATIONS",
+    "TRANSLATION_ESV",
+    "TRANSLATION_KJV",
+]
+
+# Bible translation constants
+DEFAULT_TRANSLATION = "kjv"
+SUPPORTED_TRANSLATIONS = ("kjv", "esv")
+
+# Translation identifiers
+TRANSLATION_ESV = "esv"
+TRANSLATION_KJV = "kjv"
+
+# Regular expression patterns
+_TX = "|".join(SUPPORTED_TRANSLATIONS)
+REFERENCE_PATTERNS = [
+    # Book + chapter:verse[- (U+2012–U+2015) verse] [translation]
+    re.compile(
+        f"^(?P<book>[\\w\\s]+?)\\s+(?P<ref>\\d+:\\d+(?:\\s*[-\\u2012-\\u2015]\\s*\\d+)?)\\s*(?P<translation>{_TX})?$",
+        re.IGNORECASE,
+    ),
+    # Book + chapter [translation]
+    re.compile(
+        f"^(?P<book>[\\w\\s]+?)\\s+(?P<ref>\\d+)\\s*(?P<translation>{_TX})?$",
+        re.IGNORECASE,
+    ),
+]
+
+# Partial matching patterns (for detect_references_anywhere mode)
+# More restrictive patterns to reduce false positives
+_PARTIAL_BOOK_PATTERN_STR = (
+    r"(?:[1-3]\s+[A-Za-z]+(?:\s+[A-Za-z]+)?|[A-Za-z]+(?:\s+of\s+[A-Za-z]+)?)"
+)
+PARTIAL_REFERENCE_PATTERNS = [
+    # Book + chapter:verse[- (U+2012–U+2015) verse] [translation] (anywhere in message)
+    # Matches specific Bible book patterns to reduce false positives
+    re.compile(
+        f"\\b(?P<book>{_PARTIAL_BOOK_PATTERN_STR})\\s+(?P<ref>\\d+:\\d+(?:\\s*[-\\u2012-\\u2015]\\s*\\d+)?)\\s*(?P<translation>{_TX})?\\b",
+        re.IGNORECASE,
+    ),
+    # Book + chapter [translation] (anywhere in message)
+    # Matches specific Bible book patterns to reduce false positives
+    re.compile(
+        f"\\b(?P<book>{_PARTIAL_BOOK_PATTERN_STR})\\s+(?P<ref>\\d+)\\s*(?P<translation>{_TX})?\\b",
+        re.IGNORECASE,
+    ),
+]
 
 # Bible book abbreviations mapping
 BOOK_ABBREVIATIONS = {
@@ -60,6 +115,9 @@ BOOK_ABBREVIATIONS = {
     "song": "Song of Solomon",
     "sos": "Song of Solomon",
     "so": "Song of Solomon",
+    "song of songs": "Song of Solomon",
+    "cant": "Song of Solomon",
+    "canticles": "Song of Solomon",
     "isa": "Isaiah",
     "is": "Isaiah",
     "jer": "Jeremiah",
