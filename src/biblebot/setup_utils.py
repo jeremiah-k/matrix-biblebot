@@ -80,10 +80,14 @@ def service_exists():
 
 def print_service_commands():
     """Print the commands for controlling the systemd user service."""
-    print(f"  {SYSTEMCTL_COMMANDS['start']}    # Start the service")
-    print(f"  {SYSTEMCTL_COMMANDS['stop']}     # Stop the service")
-    print(f"  {SYSTEMCTL_COMMANDS['restart']}  # Restart the service")
-    print(f"  {SYSTEMCTL_COMMANDS['status']}   # Check service status")
+    if not SYSTEMCTL_COMMANDS:
+        print("  systemctl commands not available on this system.")
+        return
+
+    print(f"  {shlex.join(SYSTEMCTL_COMMANDS['start'])}    # Start the service")
+    print(f"  {shlex.join(SYSTEMCTL_COMMANDS['stop'])}     # Stop the service")
+    print(f"  {shlex.join(SYSTEMCTL_COMMANDS['restart'])}  # Restart the service")
+    print(f"  {shlex.join(SYSTEMCTL_COMMANDS['status'])}   # Check service status")
 
 
 def read_service_file():
@@ -120,8 +124,8 @@ def get_template_service_path():
         os.path.join(sys.prefix, DIR_SHARE, APP_NAME, SERVICE_NAME),
         os.path.join(sys.prefix, DIR_SHARE, APP_NAME, DIR_TOOLS, SERVICE_NAME),
         # Check in the user site-packages location
-        str(Path.home() / LOCAL_SHARE_DIR / APP_NAME / SERVICE_NAME),
-        str(Path.home() / LOCAL_SHARE_DIR / APP_NAME / DIR_TOOLS / SERVICE_NAME),
+        str(LOCAL_SHARE_DIR / APP_NAME / SERVICE_NAME),
+        str(LOCAL_SHARE_DIR / APP_NAME / DIR_TOOLS / SERVICE_NAME),
         # Check one level up from the package directory
         os.path.join(os.path.dirname(package_dir), DIR_TOOLS, SERVICE_NAME),
         # Check two levels up from the package directory (for development)

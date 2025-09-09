@@ -222,9 +222,14 @@ def get_logger(name, *, force: bool = False):
                             "tb": 1000**4,
                             "tib": 1024**4,
                         }
-                        if unit not in factors:
-                            raise ValueError(f"Unknown size unit: {unit}")
-                        max_bytes = int(float(num) * factors[unit])
+                        if unit in factors:
+                            max_bytes = int(float(num) * factors[unit])
+                        else:
+                            logging.getLogger(__name__).warning(
+                                "Unknown size unit '%s' in max_log_size; using default %d bytes",
+                                unit,
+                                max_bytes,
+                            )
                 bc = config["logging"].get("backup_count", backup_count)
                 try:
                     backup_count = int(bc)

@@ -2,7 +2,7 @@
 
 from importlib.metadata import PackageNotFoundError, version
 
-from .app import APP_NAME
+from biblebot.constants.app import APP_NAME
 
 __all__ = [
     "GITHUB_API_BASE",

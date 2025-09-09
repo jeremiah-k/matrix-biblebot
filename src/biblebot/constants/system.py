@@ -3,7 +3,7 @@
 import shutil
 from pathlib import Path
 
-from .app import SERVICE_NAME
+from biblebot.constants.app import SERVICE_NAME
 
 __all__ = [
     "DEFAULT_CONFIG_PATH",

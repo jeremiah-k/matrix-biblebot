@@ -94,10 +94,10 @@ class TestServiceInstallation:
         print_calls = [call[0][0] for call in mock_print.call_args_list]
         commands_text = " ".join(print_calls)
 
-        # Commands are now stored as argv lists, so check for the list format
-        assert "'--user', 'start'" in commands_text
-        assert "'--user', 'stop'" in commands_text
-        assert "'--user', 'restart'" in commands_text
+        # Commands should now be formatted as user-friendly shell strings
+        assert "systemctl --user start" in commands_text
+        assert "systemctl --user stop" in commands_text
+        assert "systemctl --user restart" in commands_text
 
 
 class TestLingeringManagement:
@@ -254,10 +254,10 @@ class TestServiceTemplateHandling:
         assert "Description={SERVICE_DESCRIPTION}" in content
         assert "ExecStart=%h/.local/bin/biblebot" in content
 
-    @patch("subprocess.run")
-    def test_check_loginctl_available_true(self, mock_run):
+    @patch("shutil.which")
+    def test_check_loginctl_available_true(self, mock_which):
         """Test loginctl availability check - available."""
-        mock_run.return_value.returncode = 0
+        mock_which.return_value = "/bin/loginctl"
 
         result = setup_utils.check_loginctl_available()
         assert result is True
