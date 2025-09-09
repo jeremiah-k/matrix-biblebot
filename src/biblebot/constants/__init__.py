@@ -20,17 +20,6 @@ from . import messages as _messages
 from . import system as _system
 from . import update as _update
 
-# Import all constants from submodules
-from .api import *  # noqa: F403
-from .app import *  # noqa: F403
-from .bible import *  # noqa: F403
-from .config import *  # noqa: F403
-from .logging import *  # noqa: F403
-from .matrix import *  # noqa: F403
-from .messages import *  # noqa: F403
-from .system import *  # noqa: F403
-from .update import *  # noqa: F403
-
 
 class DuplicateConstantError(NameError):
     """Raised when duplicate constants are found during import."""
@@ -51,10 +40,30 @@ class DuplicateConstantError(NameError):
 
 
 _modules = (_api, _app, _bible, _config, _logging, _matrix, _messages, _system, _update)
-__all__ = tuple(name for m in _modules for name in getattr(m, "__all__", []))
+_missing_all = [
+    getattr(m, "__name__", str(m)) for m in _modules if not hasattr(m, "__all__")
+]
+if _missing_all:
+    raise ImportError(
+        f"Each constants submodule must define __all__; missing: {_missing_all}"
+    )
+__all__ = ("DuplicateConstantError",) + tuple(
+    name for m in _modules for name in getattr(m, "__all__", [])
+)
 
 # Verify that there are no duplicate constants being exported.
 if len(__all__) != len(set(__all__)):
     counts = Counter(__all__)
     duplicates = [name for name, count in counts.items() if count > 1]
     raise DuplicateConstantError(sorted(duplicates))
+
+# Import all constants from submodules (after validation)
+from .api import *  # noqa: F403
+from .app import *  # noqa: F403
+from .bible import *  # noqa: F403
+from .config import *  # noqa: F403
+from .logging import *  # noqa: F403
+from .matrix import *  # noqa: F403
+from .messages import *  # noqa: F403
+from .system import *  # noqa: F403
+from .update import *  # noqa: F403

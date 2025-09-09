@@ -3,6 +3,7 @@
 BibleBot supports optional Matrix End-to-End Encryption so it can participate in encrypted rooms. E2EE is disabled by default and can be enabled with an extra dependency and configuration change.
 
 **Important**: E2EE requires proper authentication using `biblebot auth login` to bootstrap device keys. Manual access tokens (MATRIX_ACCESS_TOKEN) are not supported by BibleBot for enabling E2EE sessions.
+If you're running in unencrypted rooms, an access token still works; it just won't enable E2EE for that device.
 
 ## Install with E2EE
 
@@ -38,7 +39,8 @@ matrix:
     - "!roomid:your-matrix-server.org"
   e2ee:
     enabled: true
-    # Optional custom store path (default: ~/.config/matrix-biblebot/e2ee-store)
+    # Optional custom store path (default: $XDG_CONFIG_HOME/matrix-biblebot/e2ee-store,
+    # or ~/.config/matrix-biblebot/e2ee-store if XDG_CONFIG_HOME is unset)
     # store_path: /path/to/e2ee-store
 ```
 

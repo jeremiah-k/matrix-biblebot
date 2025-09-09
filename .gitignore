@@ -46,6 +46,8 @@ coverage.xml
 
 # Test reports
 junit.xml
+junit*.xml
+test-results/
 
 # Logs
 *.log

@@ -13,11 +13,16 @@ with open(
     if match:
         __version__ = match.group(1)
     else:
-        raise RuntimeError("Version string not found in src/biblebot/__init__.py")
+        raise RuntimeError(
+            "Version string not found in src/biblebot/__init__.py"
+        )  # noqa: TRY003
 
-# Read README file with proper resource management
-with open("README.md", encoding="utf-8") as f:
-    long_description = f.read()
+# Read README with fallback
+try:
+    with open("README.md", encoding="utf-8") as f:
+        long_description = f.read()
+except OSError:
+    long_description = "A simple Matrix bot that fetches Bible verses."
 
 setup(
     name="matrix-biblebot",
@@ -27,6 +32,8 @@ setup(
     description="A simple Matrix bot that fetches Bible verses",
     long_description=long_description,
     long_description_content_type="text/markdown",
+    license="MIT",
+    license_files=["LICENSE", "LICENSE.txt"],
     url="https://github.com/jeremiah-k/matrix-biblebot",
     project_urls={
         "Bug Tracker": "https://github.com/jeremiah-k/matrix-biblebot/issues"

@@ -23,7 +23,7 @@ TRANSLATION_KJV = "kjv"
 # Regular expression patterns
 _TX = "|".join(SUPPORTED_TRANSLATIONS)
 REFERENCE_PATTERNS = [
-    # Book + chapter:verse[- (U+2012–U+2015) verse] [translation]
+    # Book + chapter:verse[- (U+2012-U+2015) verse] [translation]
     re.compile(
         f"^(?P<book>[\\w\\s]+?)\\s+(?P<ref>\\d+:\\d+(?:\\s*[-\u2012-\u2015]\\s*\\d+)?)\\s*(?P<translation>{_TX})?$",
         re.IGNORECASE,
@@ -41,7 +41,7 @@ _PARTIAL_BOOK_PATTERN_STR = (
     r"(?:[1-3]\s+[A-Za-z]+(?:\s+[A-Za-z]+)?|[A-Za-z]+(?:\s+of\s+[A-Za-z]+)?)"
 )
 PARTIAL_REFERENCE_PATTERNS = [
-    # Book + chapter:verse[- (U+2012–U+2015) verse] [translation] (anywhere in message)
+    # Book + chapter:verse[- (U+2012-U+2015) verse] [translation] (anywhere in message)
     # Matches specific Bible book patterns to reduce false positives
     re.compile(
         f"\\b(?P<book>{_PARTIAL_BOOK_PATTERN_STR})\\s+(?P<ref>\\d+:\\d+(?:\\s*[-\u2012-\u2015]\\s*\\d+)?)\\s*(?P<translation>{_TX})?\\b",

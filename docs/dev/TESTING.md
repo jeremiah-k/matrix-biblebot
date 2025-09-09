@@ -177,7 +177,7 @@ class TestBibleBot:
         # E2EE dependencies are mocked upfront in conftest.py
         with patch("biblebot.bot.AsyncClient") as mock_client_class:
             # Arrange
-            mock_client = AsyncMock(spec=["required", "methods"])
+            mock_client = AsyncMock()
             mock_client_class.return_value = mock_client
 
             # Act
@@ -248,7 +248,7 @@ def sample_config():
 ### Environment Variable Testing
 
 ```python
-@patch.dict(os.environ, {"MATRIX_ACCESS_TOKEN": "test_token"})
+@patch.dict(os.environ, {"MATRIX_ACCESS_TOKEN": "test_token"}, clear=True)
 def test_environment_loading():
     # Test environment-dependent code
     pass

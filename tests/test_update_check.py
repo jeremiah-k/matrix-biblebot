@@ -16,11 +16,13 @@ from biblebot.update_check import (
 class TestUpdateCheck:
     """Test cases for update check functionality."""
 
-    def test_compare_versions_update_available(self):
+    @pytest.mark.parametrize(
+        "current,latest,expected",
+        [("1.0.0", "1.1.0", True), ("1.0.0", "2.0.0", True), ("1.0.0", "1.0.1", True)],
+    )
+    def test_compare_versions_update_available(self, current, latest, expected):
         """Test version comparison when update is available."""
-        assert compare_versions("1.0.0", "1.1.0") is True
-        assert compare_versions("1.0.0", "2.0.0") is True
-        assert compare_versions("1.0.0", "1.0.1") is True
+        assert compare_versions(current, latest) is expected
 
     def test_compare_versions_no_update(self):
         """Test version comparison when no update is available."""

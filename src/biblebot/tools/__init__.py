@@ -72,8 +72,17 @@ def open_service_template():
 def get_service_template_path():
     """
     Return the filesystem path to the packaged service template file as a string.
-    WARNING: Under zipped installs this may be ephemeral. Prefer copy_service_template_to().
+
+    .. deprecated::
+        Under zipped installs this may be ephemeral. Prefer copy_service_template_to()
+        or open_service_template().
     """
+    warnings.warn(
+        "get_service_template_path() may return ephemeral paths under zipped installs. "
+        "Use copy_service_template_to() or open_service_template() instead.",
+        DeprecationWarning,
+        stacklevel=2,
+    )
     res = importlib.resources.files(__package__) / "biblebot.service"
     with importlib.resources.as_file(res) as p:
         return str(p)

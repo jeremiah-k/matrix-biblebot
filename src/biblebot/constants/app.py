@@ -51,6 +51,13 @@ CHAR_COMMA = ", "
 FILE_MODE_READ = "r"
 
 # HTTP User Agent
+from importlib.metadata import version as _pkg_version  # stdlib
+
+try:
+    _APP_VER = _pkg_version(APP_NAME)
+except Exception:
+    _APP_VER = "0.0.0-dev"
+
 BIBLEBOT_HTTP_USER_AGENT = (
-    f"{APP_NAME}/1.x (+https://github.com/jeremiah-k/matrix-biblebot)"
+    f"{APP_NAME}/{_APP_VER} (+https://github.com/jeremiah-k/matrix-biblebot)"
 )

@@ -2,6 +2,8 @@
 # Matrix server and user details are handled by 'biblebot auth login'
 # Only configure room IDs and bot behavior here
 
+version: 1
+
 # Matrix-specific settings
 matrix:
   # List of Matrix room IDs or aliases where the bot should respond
