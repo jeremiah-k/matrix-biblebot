@@ -244,6 +244,8 @@ def is_service_enabled():
     Returns:
         bool: True when the service is enabled, False otherwise (including on errors).
     """
+    if SYSTEMCTL_PATH is None:
+        return False
     try:
         result = subprocess.run(
             [
@@ -267,6 +269,8 @@ def is_service_active():
 
     Checks the service status by invoking `systemctl --user is-active <SERVICE_NAME>`. Any errors or unexpected results are treated as the service not being active and result in False.
     """
+    if SYSTEMCTL_PATH is None:
+        return False
     try:
         result = subprocess.run(
             [SYSTEMCTL_PATH, SYSTEMCTL_ARG_USER, "is-active", SERVICE_NAME],
@@ -370,6 +374,9 @@ def reload_daemon():
         bool: True if the daemon-reload command completed successfully; False on failure
         (command returned non-zero or an OSError occurred).
     """
+    if SYSTEMCTL_PATH is None:
+        print("systemctl not available on this system")
+        return False
     try:
         # Using absolute path for security
         subprocess.run(
@@ -544,6 +551,9 @@ def start_service():
     Returns:
         bool: True if successful, False otherwise.
     """
+    if SYSTEMCTL_PATH is None:
+        print("systemctl not available on this system")
+        return False
     try:
         subprocess.run(
             [SYSTEMCTL_PATH, SYSTEMCTL_ARG_USER, "start", SERVICE_NAME], check=True
@@ -566,6 +576,9 @@ def show_service_status():
     Returns:
         bool: True if the status command was executed and output printed; False if the command could not be run due to an OS or subprocess error.
     """
+    if SYSTEMCTL_PATH is None:
+        print("systemctl not available on this system")
+        return False
     try:
         result = subprocess.run(
             [SYSTEMCTL_PATH, SYSTEMCTL_ARG_USER, "status", SERVICE_NAME],
@@ -608,6 +621,11 @@ def install_service():
         bool: True on normal completion (including cases where the user declines optional actions);
               False if a fatal step failed (e.g., creating the service file or reloading the daemon).
     """
+    if SYSTEMCTL_PATH is None:
+        print("systemctl not available on this system")
+        print("Cannot install systemd user service without systemctl")
+        return False
+
     # Check if service already exists
     existing_service = read_service_file()
     service_path = get_user_service_path()
