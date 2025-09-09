@@ -279,11 +279,6 @@ def is_service_active():
         return False
 
 
-def _systemd_quote(s: str) -> str:
-    """Quote a string for systemd ExecStart using double quotes."""
-    return '"' + s.replace('"', r"\"") + '"'
-
-
 def create_service_file():
     """
     Create or update the systemd user service file for BibleBot.
@@ -332,9 +327,9 @@ def create_service_file():
     # If get_executable_path returned the python interpreter, use module form
     exec_cmd = executable_path
     if exec_cmd == sys.executable:
-        exec_cmd = f"{_systemd_quote(sys.executable)} -m biblebot"
+        exec_cmd = f"{shlex.quote(sys.executable)} -m biblebot"
     else:
-        exec_cmd = _systemd_quote(exec_cmd)
+        exec_cmd = shlex.quote(exec_cmd)
 
     # Replace ExecStart line to use discovered command and default config path
     exec_start_line = f'ExecStart={exec_cmd} --config "{DEFAULT_CONFIG_PATH}"'
@@ -426,7 +421,6 @@ def service_needs_update():
     if executable_path == sys.executable:
         acceptable_snippets.extend(
             [
-                f"{_systemd_quote(sys.executable)} -m biblebot",
                 f"{shlex.quote(sys.executable)} -m biblebot",
                 f"{sys.executable} -m biblebot",
             ]
@@ -434,7 +428,6 @@ def service_needs_update():
     else:
         acceptable_snippets.extend(
             [
-                _systemd_quote(executable_path),
                 shlex.quote(executable_path),
                 executable_path,
             ]
