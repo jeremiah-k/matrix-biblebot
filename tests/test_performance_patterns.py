@@ -12,7 +12,7 @@ import pytest
 
 pytestmark = pytest.mark.asyncio
 
-from biblebot.bot import BibleBot
+from biblebot.bot import BibleBot  # noqa: E402
 
 
 class TestPerformancePatterns:

@@ -1181,7 +1181,7 @@ class BibleBot:
                             * (2 ** (MAX_RATE_LIMIT_RETRIES - retries))
                         )  # Exponential backoff
                         # Add ±20% jitter to avoid thundering herd
-                        delay = base_delay * random.uniform(
+                        delay = base_delay * random.uniform(  # noqa: S311
                             0.8, 1.2
                         )  # nosec B311 - not cryptographic
                         logger.warning(

@@ -13,8 +13,8 @@ import pytest
 
 pytestmark = pytest.mark.asyncio
 
-from biblebot.auth import load_credentials
-from biblebot.bot import BibleBot
+from biblebot.auth import load_credentials  # noqa: E402
+from biblebot.bot import BibleBot  # noqa: E402
 
 
 class TestIntegrationPatterns:

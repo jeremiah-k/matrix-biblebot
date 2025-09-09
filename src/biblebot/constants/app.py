@@ -51,8 +51,8 @@ CHAR_COMMA = ", "
 FILE_MODE_READ = "r"
 
 # HTTP User Agent
-from importlib.metadata import PackageNotFoundError
-from importlib.metadata import version as _pkg_version  # stdlib
+from importlib.metadata import PackageNotFoundError  # noqa: E402
+from importlib.metadata import version as _pkg_version  # noqa: E402 - stdlib
 
 try:
     _APP_VER = _pkg_version(APP_NAME)

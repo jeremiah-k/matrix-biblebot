@@ -300,7 +300,7 @@ class TestMonitoringPatterns:
 
             random.seed(12345)
 
-            if random.random() < 0.3:
+            if random.random() < 0.3:  # noqa: S311
                 error_count += 1
                 raise Exception("API Error")
             else:
@@ -413,7 +413,7 @@ class TestMonitoringPatterns:
 
             random.seed(12345)
 
-            response_time = random.uniform(0.01, 0.5)
+            response_time = random.uniform(0.01, 0.5)  # noqa: S311
             # Remove the actual sleep to speed up the test
             # await asyncio.sleep(response_time)
 

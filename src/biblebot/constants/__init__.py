@@ -67,12 +67,12 @@ if len(__all__) != len(set(__all__)):
     raise DuplicateConstantError(sorted(duplicates))
 
 # Import all constants from submodules (after validation)
-from .api import *  # noqa: F403
-from .app import *  # noqa: F403
-from .bible import *  # noqa: F403
-from .config import *  # noqa: F403
-from .logging import *  # noqa: F403
-from .matrix import *  # noqa: F403
-from .messages import *  # noqa: F403
-from .system import *  # noqa: F403
-from .update import *  # noqa: F403
+from .api import *  # noqa: F403, E402
+from .app import *  # noqa: F403, E402
+from .bible import *  # noqa: F403, E402
+from .config import *  # noqa: F403, E402
+from .logging import *  # noqa: F403, E402
+from .matrix import *  # noqa: F403, E402
+from .messages import *  # noqa: F403, E402
+from .system import *  # noqa: F403, E402
+from .update import *  # noqa: F403, E402
