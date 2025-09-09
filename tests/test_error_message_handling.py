@@ -83,7 +83,10 @@ class TestErrorMessageHandling:
         formatted_body = content["formatted_body"]
         assert "&lt;script&gt;" in formatted_body
         assert "&amp;" in formatted_body
-        assert "alert('xss')" not in formatted_body  # Script content should be escaped
+        assert (
+            "alert(&#x27;xss&#x27;)" in formatted_body
+            or "alert(&apos;xss&apos;)" in formatted_body
+        )  # Script content should be escaped
 
     @pytest.mark.asyncio
     async def test_decryption_failure_e2ee_disabled(self, mock_config):
@@ -114,7 +117,7 @@ class TestErrorMessageHandling:
         """Test decryption failure handling when E2EE is enabled."""
         # Enable E2EE in config
         e2ee_config = mock_config.copy()
-        e2ee_config["matrix"] = {"e2ee": {"enabled": True}}
+        e2ee_config["matrix"]["e2ee"]["enabled"] = True
 
         mock_client = AsyncMock()
         bot = BibleBot(config=e2ee_config, client=mock_client)

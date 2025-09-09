@@ -593,4 +593,4 @@ class TestReliabilityPatterns:
             expected_upper = num_requests * spacing + recovery_time + headroom
             assert recovery_end - recovery_start < expected_upper
             # Test passes if recovery time is measured correctly
-            assert mock_client.room_send.call_count >= 0
+            assert mock_client.room_send.call_count >= 1

@@ -548,8 +548,12 @@ def enable_lingering():
         if not loginctl_path:
             print("Error enabling lingering: loginctl not found")
             return False
+        sudo_path = shutil.which("sudo")
+        if not sudo_path:
+            print("Error enabling lingering: sudo not found")
+            return False
         result = subprocess.run(  # noqa: S603
-            ["sudo", loginctl_path, "enable-linger", username],  # noqa: S607
+            [sudo_path, loginctl_path, "enable-linger", username],
             check=False,
             capture_output=True,
             text=True,

@@ -282,8 +282,12 @@ def comprehensive_cleanup():
                         )
 
             # Shutdown any remaining executors
-            if hasattr(loop, "_default_executor") and loop._default_executor:
-                with contextlib.suppress(Exception):
+            with contextlib.suppress(Exception):
+                if hasattr(loop, "shutdown_default_executor"):
+                    # Python 3.9+ public API
+                    loop.run_until_complete(loop.shutdown_default_executor())
+                elif hasattr(loop, "_default_executor") and loop._default_executor:
+                    # Fallback for older Python versions
                     executor = loop._default_executor
                     loop._default_executor = None
                     executor.shutdown(wait=True)

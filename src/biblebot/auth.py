@@ -255,10 +255,9 @@ def save_credentials(creds: Credentials) -> None:
             os.unlink(tmp_name)
 
         logger.info(f"Saved credentials to {path}")
-    except OSError as e:
-        logger.error(
+    except OSError:
+        logger.exception(
             f"Failed to save credentials to {path}. "
-            f"Error: {e}. "
             "Possible causes: insufficient permissions, disk full, "
             "filesystem issues, or cross-filesystem move attempted."
         )
@@ -694,17 +693,11 @@ async def interactive_login(
 
             return False
     except asyncio.TimeoutError:
-        logger.error(f"Login timed out after {LOGIN_TIMEOUT_SEC} seconds")
-        logger.error(
-            "This may indicate network connectivity issues or a slow Matrix server"
-        )
+        logger.exception(f"Login timed out after {LOGIN_TIMEOUT_SEC} seconds")
         return False
-    except Exception as e:
+    except Exception:
         # Handle other exceptions during login (following mmrelay pattern)
-        logger.error(f"Login exception: {e}")
-        logger.error(f"Exception type: {type(e)}")
-        if hasattr(e, "message"):
-            logger.error(f"Exception message: {e.message}")
+        logger.exception("Login exception")
         return False
     finally:
         try:

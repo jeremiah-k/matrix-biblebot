@@ -254,8 +254,10 @@ class TestSecurityPatterns:
                 event.sender = user_id
                 event.server_timestamp = 1234567890000  # Converted to milliseconds
 
-                # Should not crash with invalid user IDs
-                await bot.on_room_message(MagicMock(), event)
+                # Use a valid, configured room so only the user-id validity is in play
+                room = MagicMock()
+                room.room_id = mock_config["matrix_room_ids"][0]
+                await bot.on_room_message(room, event)
                 assert not mock_client.room_send.called
                 mock_client.room_send.reset_mock()
 

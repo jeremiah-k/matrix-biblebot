@@ -12,6 +12,8 @@ import pytest
 
 from biblebot.bot import BibleBot
 
+pytestmark = pytest.mark.asyncio
+
 
 class TestMonitoringPatterns:
     """Test monitoring and observability patterns."""

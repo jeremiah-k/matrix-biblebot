@@ -7,7 +7,7 @@ import logging
 import os
 import sys
 from pathlib import Path
-from typing import Awaitable, TypeVar
+from typing import Awaitable, Optional, TypeVar
 
 from biblebot import __version__
 from biblebot.auth import interactive_login, interactive_logout, load_credentials
@@ -222,7 +222,9 @@ def interactive_main():
     On startup failures it logs and exits the process with a non-zero status.
     """
 
-    def _run_bot(config_path: str, legacy: bool = False, config: dict = None):
+    def _run_bot(
+        config_path: Path | str, legacy: bool = False, config: Optional[dict] = None
+    ):
         """
         Start the BibleBot process using the given configuration and handle common startup failures.
 
@@ -483,9 +485,8 @@ def main():
 
     # Set up logging
     log_level = getattr(logging, args.log_level.upper())
-    logging.basicConfig(
-        level=log_level, format="%(asctime)s - %(levelname)s - %(message)s"
-    )
+    configure_logging(None)
+    get_logger(LOGGER_NAME, force=True).setLevel(log_level)
 
     # Handle modern grouped commands
     if args.command == CMD_CONFIG:

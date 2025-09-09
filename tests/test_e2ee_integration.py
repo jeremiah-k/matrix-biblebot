@@ -4,7 +4,7 @@ import pytest
 
 try:
     from nio import LoginResponse as NioLoginResponse  # type: ignore[attr-defined]
-except Exception:
+except (ImportError, AttributeError):
     from nio.responses import LoginResponse as NioLoginResponse  # fallback
 
 from biblebot.auth import (
