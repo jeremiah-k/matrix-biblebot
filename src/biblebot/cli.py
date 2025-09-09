@@ -255,7 +255,7 @@ def interactive_main():
             # Use provided config
             configure_logging(config)
 
-        logger = get_logger(LOGGER_NAME)
+        logger = get_logger(LOGGER_NAME, force=True)
 
         mode = " (legacy mode)" if legacy else ""
         logger.info(f"Starting Matrix BibleBot{mode}...")

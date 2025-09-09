@@ -1,9 +1,10 @@
 # Generic, formatter-friendly config.
+[lint]
 select = ["B", "D3", "E", "F", "S"] # Add Bandit security rules
 
 # Never enforce `E501` (line length violations). This should be handled by formatters.
 ignore = ["E501"]
 
 # Per-file ignores
-[per-file-ignores]
+[lint.per-file-ignores]
 "tests/**" = ["S101"] # Allow assert statements in tests

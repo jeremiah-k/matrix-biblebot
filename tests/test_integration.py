@@ -266,7 +266,9 @@ class TestErrorScenarios:
     def test_file_permission_errors(self, tmp_path):
         """Test handling of file permission errors."""
         # Mock tempfile.NamedTemporaryFile to raise PermissionError
-        with patch("tempfile.NamedTemporaryFile") as mock_temp:
+        with patch("tempfile.NamedTemporaryFile") as mock_temp, patch.object(
+            auth, "CREDENTIALS_FILE", tmp_path / "credentials.json"
+        ):
             mock_temp.side_effect = PermissionError("Permission denied")
 
             # Attempting to save credentials should raise permission error

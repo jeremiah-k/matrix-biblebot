@@ -316,7 +316,7 @@ class TestConfigPerformance:
             },
         }
 
-        import yaml
+        yaml = pytest.importorskip("yaml")
 
         config_file = tmp_path / "config.yaml"
         with open(config_file, "w") as f:
@@ -334,8 +334,9 @@ class TestConfigPerformance:
             assert loading_time < 5.0  # Should complete in under 5 seconds
 
     @pytest.mark.slow
-    def test_environment_loading_performance(self, tmp_path):
+    def test_environment_loading_performance(self, tmp_path, monkeypatch):
         """Test environment loading performance."""
+        monkeypatch.chdir(tmp_path)
         # Create test .env file
         env_file = tmp_path / ".env"
         env_file.write_text("MATRIX_ACCESS_TOKEN=test_token\nESV_API_KEY=test_key")

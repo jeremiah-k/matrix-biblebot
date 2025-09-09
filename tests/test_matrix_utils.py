@@ -59,7 +59,7 @@ def mock_bible_bot():
     The mock is applied with spec=BibleBot and pre-populated with a minimal
     config useful for message-handling tests:
     - matrix.bot_user_id set to "@biblebot:matrix.org"
-    - matrix_room_ids set to ["!room:matrix.org"]
+    - matrix.room_ids set to ["!room:matrix.org"]
 
     Returns:
         MagicMock: A mocked BibleBot instance with the above config.
@@ -104,9 +104,12 @@ async def test_bible_bot_message_handling(
     # Test verse request handling
     await bot.on_room_message(mock_room, mock_event)
 
-    # Verify Bible text was fetched and both reaction and message were sent
+    # Verify Bible text was fetched and both reaction and message were sent (order-agnostic)
     mock_get_bible_text.assert_called_once()
-    assert mock_client.room_send.call_count == 2  # Reaction + message
+    assert mock_client.room_send.call_count == 2
+    types = [c.args[1] for c in mock_client.room_send.call_args_list]
+    assert "m.reaction" in types
+    assert "m.room.message" in types
 
 
 @patch("biblebot.bot.get_bible_text", new_callable=AsyncMock)

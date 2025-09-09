@@ -1,6 +1,6 @@
 """Application-level constants."""
 
-__all__ = [
+__all__ = (
     "APP_DESCRIPTION",
     "APP_DISPLAY_NAME",
     "APP_NAME",
@@ -18,7 +18,7 @@ __all__ = [
     "SERVICE_DESCRIPTION",
     "SERVICE_NAME",
     "SERVICE_RESTART_SEC",
-]
+)
 
 # Application constants
 APP_NAME = "matrix-biblebot"
@@ -51,11 +51,12 @@ CHAR_COMMA = ", "
 FILE_MODE_READ = "r"
 
 # HTTP User Agent
+from importlib.metadata import PackageNotFoundError
 from importlib.metadata import version as _pkg_version  # stdlib
 
 try:
     _APP_VER = _pkg_version(APP_NAME)
-except Exception:
+except PackageNotFoundError:
     _APP_VER = "0.0.0-dev"
 
 BIBLEBOT_HTTP_USER_AGENT = (

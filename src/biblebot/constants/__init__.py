@@ -14,7 +14,7 @@ from . import api as _api
 from . import app as _app
 from . import bible as _bible
 from . import config as _config
-from . import logging as _logging
+from . import logging as _const_logging
 from . import matrix as _matrix
 from . import messages as _messages
 from . import system as _system
@@ -39,7 +39,17 @@ class DuplicateConstantError(NameError):
         )
 
 
-_modules = (_api, _app, _bible, _config, _logging, _matrix, _messages, _system, _update)
+_modules = (
+    _api,
+    _app,
+    _bible,
+    _config,
+    _const_logging,
+    _matrix,
+    _messages,
+    _system,
+    _update,
+)
 _missing_all = [
     getattr(m, "__name__", str(m)) for m in _modules if not hasattr(m, "__all__")
 ]
@@ -47,9 +57,8 @@ if _missing_all:
     raise ImportError(
         f"Each constants submodule must define __all__; missing: {_missing_all}"
     )
-__all__ = ("DuplicateConstantError",) + tuple(
-    name for m in _modules for name in getattr(m, "__all__", [])
-)
+_exported = [name for m in _modules for name in getattr(m, "__all__", [])]
+__all__ = ("DuplicateConstantError", *_exported)
 
 # Verify that there are no duplicate constants being exported.
 if len(__all__) != len(set(__all__)):

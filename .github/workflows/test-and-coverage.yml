@@ -10,6 +10,10 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   test:
     runs-on: ubuntu-latest
@@ -49,7 +53,7 @@ jobs:
           echo "Will upload coverage: ${{ matrix.python-version == '3.11' }}"
 
       - name: Upload coverage reports to Codecov
-        if: matrix.python-version == '3.11'
+        if: matrix.python-version == '3.11' && (secrets.CODECOV_TOKEN != '')
         uses: codecov/codecov-action@v5
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
@@ -60,7 +64,7 @@ jobs:
           verbose: true
 
       - name: Upload test results to Codecov
-        if: ${{ !cancelled() }}
+        if: ${{ !cancelled() && (matrix.python-version == '3.11') && (secrets.CODECOV_TOKEN != '') }}
         uses: codecov/test-results-action@v1
         with:
           token: ${{ secrets.CODECOV_TOKEN }}

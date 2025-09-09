@@ -3,6 +3,11 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import nio
 import pytest
 
+try:
+    from nio import LoginResponse as NioLoginResponse  # type: ignore[attr-defined]
+except Exception:
+    from nio.responses import LoginResponse as NioLoginResponse  # fallback
+
 from biblebot.auth import (
     check_e2ee_status,
     get_store_dir,
@@ -37,7 +42,6 @@ class TestE2EEStatus:
         status = check_e2ee_status()
 
         assert status["platform_supported"] is True
-        # The actual implementation doesn't return platform field, just checks it
 
     @patch("platform.system", return_value="Windows")
     def test_check_e2ee_status_windows_unsupported(self, _mock_system):
@@ -70,7 +74,7 @@ class TestE2EEStatus:
                 assert status["ready"] is False  # But not ready (no creds)
 
     @patch("platform.system", return_value="Linux")
-    def test_check_e2ee_status_fully_available(self, mock_system, mock_credentials):
+    def test_check_e2ee_status_fully_available(self, _mock_system, mock_credentials):
         """Test E2EE status when fully available."""
         with patch("importlib.util.find_spec") as mock_find_spec:
             mock_find_spec.return_value = MagicMock()  # Mock olm module found
@@ -237,7 +241,7 @@ class TestInteractiveLogin:
         # Mock client login
         mock_client_instance = MagicMock()
         # Create a proper nio.LoginResponse instance
-        mock_response = nio.LoginResponse(
+        mock_response = NioLoginResponse(
             user_id="@biblebot:matrix.org",
             device_id="TEST_DEVICE",
             access_token="test_token",  # noqa: S106 - test value
