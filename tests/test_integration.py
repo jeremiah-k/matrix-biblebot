@@ -220,8 +220,8 @@ class TestConfigValidation:
         with patch.dict("os.environ", {"MATRIX_ACCESS_TOKEN": "env_token"}):
             matrix_token, api_keys = bot.load_environment(config, str(config_file))
             assert (
-                matrix_token == "env_token"
-            )  # noqa: S105 - OS env should override file
+                matrix_token == "env_token"  # noqa: S105 - OS env should override file
+            )
 
 
 class TestErrorScenarios:

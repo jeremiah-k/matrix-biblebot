@@ -260,7 +260,7 @@ def is_service_enabled():
     if SYSTEMCTL_PATH is None:
         return False
     try:
-        result = subprocess.run(
+        result = subprocess.run(  # noqa: S603
             [
                 SYSTEMCTL_PATH,
                 SYSTEMCTL_ARG_USER,
@@ -285,7 +285,7 @@ def is_service_active():
     if SYSTEMCTL_PATH is None:
         return False
     try:
-        result = subprocess.run(
+        result = subprocess.run(  # noqa: S603
             [SYSTEMCTL_PATH, SYSTEMCTL_ARG_USER, "is-active", SERVICE_NAME],
             check=False,  # Don't raise an exception if the service is not active
             capture_output=True,
@@ -392,7 +392,7 @@ def reload_daemon():
         return False
     try:
         # Using absolute path for security
-        subprocess.run(
+        subprocess.run(  # noqa: S603
             [SYSTEMCTL_PATH, SYSTEMCTL_ARG_USER, "daemon-reload"], check=True
         )
         print("Systemd user daemon reloaded")
@@ -524,7 +524,7 @@ def check_lingering_enabled():
         loginctl_path = shutil.which("loginctl")
         if not loginctl_path:
             return False
-        result = subprocess.run(
+        result = subprocess.run(  # noqa: S603
             [loginctl_path, "show-user", username, "--property=Linger"],
             check=False,
             capture_output=True,
@@ -548,8 +548,8 @@ def enable_lingering():
         if not loginctl_path:
             print("Error enabling lingering: loginctl not found")
             return False
-        result = subprocess.run(
-            ["sudo", loginctl_path, "enable-linger", username],
+        result = subprocess.run(  # noqa: S603
+            ["sudo", loginctl_path, "enable-linger", username],  # noqa: S607
             check=False,
             capture_output=True,
             text=True,
@@ -575,7 +575,7 @@ def start_service():
         print("systemctl not available on this system")
         return False
     try:
-        subprocess.run(
+        subprocess.run(  # noqa: S603
             [SYSTEMCTL_PATH, SYSTEMCTL_ARG_USER, "start", SERVICE_NAME], check=True
         )
         return True
@@ -599,7 +599,7 @@ def show_service_status():
         print("systemctl not available on this system")
         return False
     try:
-        result = subprocess.run(
+        result = subprocess.run(  # noqa: S603
             [SYSTEMCTL_PATH, SYSTEMCTL_ARG_USER, "status", SERVICE_NAME],
             check=False,  # Don't raise an exception if the service is not active
             capture_output=True,
@@ -719,7 +719,7 @@ def install_service():
             .startswith("y")
         ):
             try:
-                subprocess.run(
+                subprocess.run(  # noqa: S603
                     [SYSTEMCTL_PATH, SYSTEMCTL_ARG_USER, "enable", SERVICE_NAME],
                     check=True,
                 )
@@ -736,7 +736,7 @@ def install_service():
         print("The service is already running.")
         if input("Do you want to restart the service? (y/n): ").lower().startswith("y"):
             try:
-                subprocess.run(
+                subprocess.run(  # noqa: S603
                     [SYSTEMCTL_PATH, SYSTEMCTL_ARG_USER, "restart", SERVICE_NAME],
                     check=True,
                 )

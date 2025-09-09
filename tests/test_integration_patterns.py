@@ -267,8 +267,8 @@ class TestIntegrationPatterns:
                 credentials = load_credentials()
                 assert credentials is not None
                 assert (
-                    credentials.access_token == "integration_test_token"
-                )  # noqa: S105
+                    credentials.access_token == "integration_test_token"  # noqa: S105
+                )
 
                 # Use credentials with bot
                 config = {
@@ -285,8 +285,8 @@ class TestIntegrationPatterns:
 
                 bot._room_id_set = set(config["matrix_room_ids"])
                 assert (
-                    bot.config["access_token"] == "integration_test_token"
-                )  # noqa: S105
+                    bot.config["access_token"] == "integration_test_token"  # noqa: S105
+                )
 
         finally:
             os.unlink(credentials_file)
