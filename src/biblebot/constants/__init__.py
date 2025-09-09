@@ -29,6 +29,14 @@ __all__ += getattr(_messages, "__all__", [])
 __all__ += getattr(_system, "__all__", [])
 __all__ += getattr(_update, "__all__", [])
 
+# Verify that there are no duplicate constants being exported.
+if len(__all__) != len(set(__all__)):
+    from collections import Counter
+
+    counts = Counter(__all__)
+    duplicates = [name for name, count in counts.items() if count > 1]
+    raise NameError(f"Duplicate constants found in biblebot.constants: {duplicates}")
+
 from .api import *  # noqa: F403, E402
 from .app import *  # noqa: F403, E402
 from .bible import *  # noqa: F403, E402
