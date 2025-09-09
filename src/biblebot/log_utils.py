@@ -213,7 +213,8 @@ def get_logger(name, *, force: bool = False):
                     if m:
                         num, unit = m.groups()
                         factors = {
-                            None: 1,
+                            # Keep semantics consistent: numeric and unitless-string both mean MB
+                            None: LOG_SIZE_BYTES_MULTIPLIER,
                             "b": 1,
                             "kb": 1000,
                             "kib": 1024,

@@ -93,7 +93,7 @@ from biblebot.constants.messages import (
     WARN_COULD_NOT_RESOLVE_ALIAS,
     WARN_MATRIX_ACCESS_TOKEN_NOT_SET,
 )
-from biblebot.log_utils import configure_component_loggers
+from biblebot.log_utils import configure_component_loggers, configure_logging
 from biblebot.update_check import (
     perform_startup_update_check,
     print_startup_banner,
@@ -176,6 +176,9 @@ def load_config(config_file, log_loading=True):
     try:
         with open(config_file, "r", encoding=FILE_ENCODING_UTF8) as f:
             config = yaml.safe_load(f) or {}
+            if not isinstance(config, dict):
+                logger.error(f"Config root must be a mapping (dict) in {config_file}")
+                return None
 
             # Handle both old flat structure and new nested structure
             # Convert old flat structure to new nested structure for backward compatibility
@@ -1315,7 +1318,8 @@ async def main(config_path=DEFAULT_CONFIG_FILENAME, config=None):
             raise RuntimeError(f"Failed to load configuration from {config_path}")
 
     matrix_access_token, api_keys = load_environment(config, config_path)
-    # Now config's ready — wire up component loggers
+    # Now config's ready — publish it to log_utils and wire up component loggers
+    configure_logging(config)
     configure_component_loggers()
     creds = load_credentials()
 

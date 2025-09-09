@@ -92,8 +92,13 @@ def print_service_commands():
     ]
     for key, comment in order:
         cmd = SYSTEMCTL_COMMANDS.get(key)
-        if cmd:
-            print(f"  {shlex.join(cmd)}  {comment}")
+        if not cmd:
+            continue
+        if isinstance(cmd, (list, tuple)):
+            printable = shlex.join([str(c) for c in cmd])
+        else:
+            printable = str(cmd)
+        print(f"  {printable}  {comment}")
 
 
 def read_service_file():
@@ -114,7 +119,7 @@ def get_template_service_path():
     the first existing path.
 
     Returns:
-        str or None: Absolute path to the first found template file, or None if no
+        pathlib.Path | None: Absolute path to the first found template file, or None if no
         candidate exists.
     """
     # Try to find the service template file in various locations (Path-based)
@@ -143,8 +148,8 @@ def get_template_service_path():
 
     # Try each path until we find one that exists
     for p in template_paths:
-        if p.exists():
-            return str(p)
+        if p.is_file():
+            return p
 
     # If we get here, we couldn't find the template
     return None
@@ -264,6 +269,11 @@ def is_service_active():
         return False
 
 
+def _systemd_quote(s: str) -> str:
+    """Quote a string for systemd ExecStart using double quotes."""
+    return '"' + s.replace('"', r"\"") + '"'
+
+
 def create_service_file():
     """
     Create or update the systemd user service file for BibleBot.
@@ -312,9 +322,9 @@ def create_service_file():
     # If get_executable_path returned the python interpreter, use module form
     exec_cmd = executable_path
     if exec_cmd == sys.executable:
-        exec_cmd = f"{shlex.quote(sys.executable)} -m biblebot"
+        exec_cmd = f"{_systemd_quote(sys.executable)} -m biblebot"
     else:
-        exec_cmd = shlex.quote(exec_cmd)
+        exec_cmd = _systemd_quote(exec_cmd)
 
     # Replace ExecStart line to use discovered command and default config path
     exec_start_line = f'ExecStart={exec_cmd} --config "{DEFAULT_CONFIG_PATH}"'
@@ -416,16 +426,26 @@ def service_needs_update():
     # Check if the PATH environment includes pipx paths
     # Detect pipx requirement from the unit body itself
     requires_pipx = "pipx" in existing_service
-    if requires_pipx and PIPX_VENV_PATH not in existing_service:
+    pipx_ok = (str(PIPX_VENV_PATH) in existing_service) or (
+        "pipx/venvs" in existing_service
+    )
+    if requires_pipx and not pipx_ok:
         return True, "Service file does not include pipx paths in PATH environment"
 
     # Check if the service file has been modified recently
-    template_mtime = Path(template_path).stat().st_mtime
-    service_path = get_user_service_path()
-    if service_path.exists():
-        service_mtime = service_path.stat().st_mtime
-        if template_mtime > service_mtime:
-            return True, "Template service file is newer than installed service file"
+    try:
+        template_mtime = template_path.stat().st_mtime
+        service_path = get_user_service_path()
+        if service_path.exists():
+            service_mtime = service_path.stat().st_mtime
+            if template_mtime > service_mtime:
+                return (
+                    True,
+                    "Template service file is newer than installed service file",
+                )
+    except OSError:
+        # If either file vanished mid-check, don't force an update here.
+        pass
 
     return False, "Service file is up to date"
 
