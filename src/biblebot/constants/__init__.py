@@ -20,16 +20,23 @@ from . import messages as _messages
 from . import system as _system
 from . import update as _update
 
+
+class DuplicateConstantError(NameError):
+    """Raised when duplicate constants are found during import."""
+
+    pass
+
+
 # Import all constants from submodules
-from .api import *  # noqa: F403
-from .app import *  # noqa: F403
-from .bible import *  # noqa: F403
-from .config import *  # noqa: F403
-from .logging import *  # noqa: F403
-from .matrix import *  # noqa: F403
-from .messages import *  # noqa: F403
-from .system import *  # noqa: F403
-from .update import *  # noqa: F403
+from .api import *  # noqa: F403, E402
+from .app import *  # noqa: F403, E402
+from .bible import *  # noqa: F403, E402
+from .config import *  # noqa: F403, E402
+from .logging import *  # noqa: F403, E402
+from .matrix import *  # noqa: F403, E402
+from .messages import *  # noqa: F403, E402
+from .system import *  # noqa: F403, E402
+from .update import *  # noqa: F403, E402
 
 __all__ = []
 __all__ += getattr(_api, "__all__", [])
@@ -46,6 +53,6 @@ __all__ += getattr(_update, "__all__", [])
 if len(__all__) != len(set(__all__)):
     counts = Counter(__all__)
     duplicates = [name for name, count in counts.items() if count > 1]
-    raise NameError(  # noqa: TRY003
+    raise DuplicateConstantError(
         f"Duplicate constants found in biblebot.constants: {duplicates}"
     )

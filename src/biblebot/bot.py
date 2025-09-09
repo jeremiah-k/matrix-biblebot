@@ -4,6 +4,7 @@ import json
 import logging
 import os
 import random
+import re
 import textwrap
 import time
 from collections import OrderedDict
@@ -987,8 +988,6 @@ class BibleBot:
         """
         if self.preserve_poetry_formatting:
             # Poetry mode: preserve newlines, clean excess whitespace
-            import re
-
             formatted_text = re.sub(
                 r"[ \t]+", " ", text
             )  # Multiple spaces/tabs -> single space
@@ -1305,9 +1304,8 @@ async def main(config_path=DEFAULT_CONFIG_FILENAME, config=None):
         config_path (str): Path to the configuration file.
         config (dict, optional): Pre-loaded configuration. If provided, config_path is only used for environment loading.
     """
-    # Print startup banner and configure component loggers
+    # Print startup banner
     print_startup_banner()
-    configure_component_loggers()
 
     # Load config and environment variables (only if not already provided)
     if config is None:
@@ -1317,6 +1315,8 @@ async def main(config_path=DEFAULT_CONFIG_FILENAME, config=None):
             raise RuntimeError(f"Failed to load configuration from {config_path}")
 
     matrix_access_token, api_keys = load_environment(config, config_path)
+    # Now config's ready — wire up component loggers
+    configure_component_loggers()
     creds = load_credentials()
 
     # Determine E2EE configuration from config
@@ -1396,7 +1396,7 @@ async def main(config_path=DEFAULT_CONFIG_FILENAME, config=None):
         await perform_startup_update_check()
     except asyncio.CancelledError:
         raise
-    except Exception:  # noqa: BLE001 – intentional guard to keep startup resilient
+    except Exception:  # noqa: BLE001 - intentional guard to keep startup resilient
         logger.debug("Startup update check failed", exc_info=True)
 
     if creds:

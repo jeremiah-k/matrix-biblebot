@@ -319,7 +319,11 @@ def create_service_file():
     # Replace ExecStart line to use discovered command and default config path
     exec_start_line = f'ExecStart={exec_cmd} --config "{DEFAULT_CONFIG_PATH}"'
     service_content, n = re.subn(
-        r"^ExecStart=.*$", exec_start_line, service_template, flags=re.MULTILINE
+        r"^ExecStart=.*$",
+        exec_start_line,
+        service_template,
+        count=1,
+        flags=re.MULTILINE,
     )
     if n == 0:
         service_content = re.sub(

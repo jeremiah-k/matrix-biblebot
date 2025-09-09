@@ -6,6 +6,7 @@ similar to mmrelay's logging approach.
 """
 
 import logging
+import os
 import re
 from logging.handlers import RotatingFileHandler
 from pathlib import Path
@@ -181,7 +182,8 @@ def get_logger(name, *, force: bool = False):
     if log_to_file:
         # Determine log file path
         if config is not None and config.get("logging", {}).get("filename"):
-            log_file = Path(config["logging"]["filename"])
+            raw = config["logging"]["filename"]
+            log_file = Path(os.path.expandvars(os.path.expanduser(raw)))
         else:
             # Default to standard log directory
             log_file = get_log_dir() / "biblebot.log"

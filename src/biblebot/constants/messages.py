@@ -157,9 +157,6 @@ CLI_ACTION_VERSION = "version"
 # Warning messages
 WARNING_EXECUTABLE_NOT_FOUND = "Warning: Could not find biblebot executable in PATH. Using current Python interpreter."
 
-# Systemctl commands
-
-
 # Generic error messages for security (don't expose internal API errors)
 ERROR_PASSAGE_NOT_FOUND = "Error: The requested passage could not be found. Please check the book, chapter, and verse."
 
