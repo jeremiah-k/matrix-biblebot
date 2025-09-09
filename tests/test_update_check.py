@@ -1,11 +1,10 @@
 """Tests for update check functionality."""
 
-import logging
 from unittest.mock import patch
 
 import pytest
 
-from biblebot.log_utils import suppress_component_loggers
+from biblebot.log_utils import configure_component_loggers
 from biblebot.update_check import (
     check_for_updates,
     compare_versions,
@@ -104,11 +103,10 @@ class TestUpdateCheck:
             call_args = mock_info.call_args[0][0]
             assert "Starting BibleBot version" in call_args
 
-    def test_suppress_component_loggers(self):
-        """Test component logger suppression."""
-        # Test that loggers get suppressed
-        suppress_component_loggers()
+    def test_configure_component_loggers(self):
+        """Test component logger configuration."""
+        # Test that the function runs without error
+        configure_component_loggers()
 
-        # Check that nio logger is suppressed
-        nio_logger = logging.getLogger("nio")
-        assert nio_logger.level > logging.CRITICAL
+        # The function should complete without raising exceptions
+        # (Actual logger configuration depends on loaded config)

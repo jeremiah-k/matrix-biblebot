@@ -17,8 +17,6 @@ __all__ = [
     "SYSTEMCTL_PATH",
     "SYSTEMD_USER_DIR",
     "WORKING_DIRECTORY",
-    "_CONFIG_HOME",
-    "_DATA_HOME",
 ]
 
 # XDG Base Directory Specification paths

@@ -287,16 +287,13 @@ def configure_logging(config_dict=None):
     _component_debug_configured = False
 
 
-def suppress_component_loggers() -> None:
+def configure_component_loggers() -> None:
     """
-    Suppress noisy loggers from external libraries.
+    Configure component loggers from external libraries.
 
-    Sets external library loggers to CRITICAL+1 to effectively silence them,
-    similar to how mmrelay handles component logging.
+    Sets external library loggers based on configuration, either suppressing them
+    or enabling debug logging as specified in the config, similar to how mmrelay
+    handles component logging.
     """
-    for loggers in _COMPONENT_LOGGERS.values():
-        for logger_name in loggers:
-            logging.getLogger(logger_name).setLevel(logging.CRITICAL + 1)
-
     # Configure component debug logging (nio, etc.)
     configure_component_debug_logging()

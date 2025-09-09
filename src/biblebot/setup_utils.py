@@ -410,15 +410,16 @@ def service_needs_update():
         return True, "Service file ExecStart does not match the current installation"
 
     # Check if the PATH environment includes pipx paths
-    requires_pipx = "/pipx/" in executable_path
+    # Detect pipx requirement from the unit body itself
+    requires_pipx = "pipx" in existing_service
     if requires_pipx and PIPX_VENV_PATH not in existing_service:
         return True, "Service file does not include pipx paths in PATH environment"
 
     # Check if the service file has been modified recently
-    template_mtime = os.path.getmtime(template_path)
+    template_mtime = Path(template_path).stat().st_mtime
     service_path = get_user_service_path()
-    if os.path.exists(service_path):
-        service_mtime = os.path.getmtime(service_path)
+    if service_path.exists():
+        service_mtime = service_path.stat().st_mtime
         if template_mtime > service_mtime:
             return True, "Template service file is newer than installed service file"
 
