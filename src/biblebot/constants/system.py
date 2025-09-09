@@ -1,5 +1,6 @@
 """Constants for system paths, commands, and platform-specific operations."""
 
+import os
 import shutil
 from pathlib import Path
 
@@ -16,11 +17,17 @@ __all__ = [
     "SYSTEMCTL_PATH",
     "SYSTEMD_USER_DIR",
     "WORKING_DIRECTORY",
+    "_CONFIG_HOME",
+    "_DATA_HOME",
 ]
 
+# XDG Base Directory Specification paths
+_CONFIG_HOME = Path(os.environ.get("XDG_CONFIG_HOME") or Path.home() / ".config")
+_DATA_HOME = Path(os.environ.get("XDG_DATA_HOME") or Path.home() / ".local" / "share")
+
 # System paths
-SYSTEMD_USER_DIR = Path.home() / ".config" / "systemd" / "user"
-LOCAL_SHARE_DIR = Path.home() / ".local" / "share"
+SYSTEMD_USER_DIR = _CONFIG_HOME / "systemd" / "user"
+LOCAL_SHARE_DIR = _DATA_HOME
 
 # Systemctl configuration
 SYSTEMCTL_PATH = shutil.which("systemctl")

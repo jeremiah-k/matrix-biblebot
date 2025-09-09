@@ -13,7 +13,6 @@ import shlex
 import shutil
 import subprocess
 import sys
-from pathlib import Path
 
 from biblebot.constants.app import (
     APP_NAME,
