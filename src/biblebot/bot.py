@@ -319,9 +319,11 @@ async def make_api_request(
 
     async def _request(sess):
         """
-        Perform an HTTP GET on the outer-scope URL and return the parsed JSON response.
-
-        Returns the decoded JSON object (typically a dict or list) on HTTP 200 with valid JSON, or None on non-200 responses or if the response body cannot be parsed as JSON. Side effects: logs warnings on non-200 status and logs exceptions when JSON decoding fails.
+        Perform an HTTP GET to the outer-scope `url` using the provided aiohttp session and return the parsed JSON response.
+        
+        Uses a minimal default User-Agent and Accept header merged with any outer-scope `headers`, and applies outer-scope `params` and `req_timeout`. Returns the decoded JSON (usually a dict or list) when the response status is 200 and the body is valid JSON; returns None for non-200 responses or when the body cannot be parsed as JSON.
+        
+        Side effects: logs a warning for non-200 responses or unexpected Content-Type, and logs an exception when JSON decoding fails.
         """
         # Merge a minimal default UA with caller-provided headers
         _base_headers = {
@@ -552,23 +554,24 @@ async def get_kjv_text(passage, session=None):
 class BibleBot:
     def __init__(self, config, client=None):
         """
-        Create a BibleBot configured for operation.
-
-        Initializes internal state (config, optional Matrix client, API key store, joined-room set, and HTTP session placeholder)
-        and loads bot-specific settings from config["bot"] applying sensible defaults and coercions.
-
+        Initialize a BibleBot instance with configuration and an optional Matrix client.
+        
+        Reads bot-specific settings from config["bot"] (if present), applies sensible defaults and coerces/validates numeric and boolean options.
+        
+        Recognized config["bot"] keys:
+            - default_translation: default translation to use when none is specified (default: DEFAULT_TRANSLATION).
+            - cache_enabled: whether passage caching is enabled (default: True).
+            - max_message_length: maximum length of outgoing messages (default: 2000). Non‑positive values are reset to 2000.
+            - split_message_length: threshold to split long messages into multiple parts (default: 0 to disable). Non‑integer or negative values disable splitting; values greater than max_message_length are capped to max_message_length.
+            - preserve_poetry_formatting: preserve original line breaks for poetry-style passages (default: False).
+            - CONFIG_DETECT_REFERENCES_ANYWHERE: truthy string enables detecting references anywhere in a message (accepted: "true", "yes", "1", "on"); default is False.
+        
         Parameters:
-            config (dict): Parsed configuration mapping. Relevant bot keys in config["bot"]:
-                - default_translation: translation to use when none is specified (default: DEFAULT_TRANSLATION).
-                - cache_enabled: enable passage caching (default: True).
-                - max_message_length: maximum length of outgoing messages (default: 2000). Non-positive values are reset to 2000.
-                - split_message_length: threshold to split long messages into multiple parts (default: 0 to disable). Non-integer or negative values disable splitting; values above max_message_length are capped to max_message_length.
-                - preserve_poetry_formatting: preserve original line breaks for poetry-style passages (default: False).
-                - CONFIG_DETECT_REFERENCES_ANYWHERE: truthy string enables detecting references anywhere in a message (accepted values: "true", "yes", "1", "on"); default is False.
-
+            config (dict): Loaded configuration mapping used to populate bot settings.
+        
         Notes:
-            - `client` (AsyncClient) may be injected but is treated as a runtime service and is intentionally undocumented here.
-            - The instance enforces caps and type coercion for numeric settings to avoid generating oversized message chunks.
+            - The optional `client` parameter is a runtime Matrix AsyncClient and is treated as an injected service (not documented here).
+            - The initializer enforces type coercion and caps to avoid producing oversized message chunks.
         """
         self.config = config
         self.client = client  # Injected AsyncClient instance
@@ -739,16 +742,24 @@ class BibleBot:
 
     async def start(self):
         """
-        Start the bot and begin processing Matrix events.
-
-        Performs startup tasks and then enters the continuous event sync loop:
-        - Records the bot start time (milliseconds) in self.start_time.
-        - Resolves any room aliases in configuration and builds the internal room ID set.
-        - Ensures the bot is joined to all configured rooms.
-        - Performs an initial full-state sync; any exception during this step is logged and startup proceeds.
-        - Enters the long-running `sync_forever` loop to process events.
-
-        This method is asynchronous and does not return; it only returns when the client's sync loop ends or raises.
+        Start the bot: perform startup tasks and enter the continuous Matrix sync loop.
+        
+        Sets self.start_time (epoch ms), ensures an aiohttp session exists, resolves configured room aliases,
+        builds the internal room ID set, and attempts to join all configured rooms. Performs an initial full-state
+        sync (with a guarded recovery attempt for a known one_time_key_counts validation condition) and then
+        hands control to the client's long-running sync_forever loop to process events.
+        
+        Side effects:
+        - Updates self.start_time.
+        - May create and store an aiohttp.ClientSession in self.http_session.
+        - May join Matrix rooms and send network requests via the Matrix client.
+        
+        Exceptions:
+        - asyncio.CancelledError is re-raised to preserve cancellation semantics.
+        - aiohttp.ClientError (or subclasses) raised while creating the HTTP session may propagate.
+        
+        Returns:
+        - None; this coroutine only returns when the client's sync loop ends or is cancelled.
         """
         # Store bot start time in epoch milliseconds to compare with event.server_timestamp
         self.start_time = int(time.time() * 1000)
@@ -982,12 +993,12 @@ class BibleBot:
 
     def _format_text_for_display(self, text: str) -> tuple[str, str]:
         """
-        Format a passage for plain-text and HTML-safe display according to the bot's poetry-preservation setting.
-
-        When preserve_poetry_formatting is True, this preserves paragraph/newline structure (collapsing multiple blank lines to a single blank line), normalizes internal spaces, strips leading/trailing whitespace, and converts newlines to HTML <br /> tags for the HTML output. When False, all whitespace (including newlines) is collapsed to single spaces. Both returned strings are HTML-escaped where appropriate.
-
+        Format passage text for sending: produce a normalized plain-text string and an HTML-escaped representation.
+        
+        If the bot's preserve_poetry_formatting setting is true, paragraph and line breaks are preserved (consecutive blank lines collapsed) and internal spacing is normalized; newlines in the HTML representation are converted to <br />. Otherwise all whitespace (including newlines) is collapsed to single spaces in both plain and HTML variants.
+        
         Returns:
-            tuple[str, str]: (plain_text, html_text) — the normalized plain-text string and an HTML-safe representation suitable for sending as formatted message content.
+            tuple[str, str]: (plain_text, html_text) where html_text is escaped and safe for inclusion in an HTML-formatted message.
         """
         if self.preserve_poetry_formatting:
             # Poetry mode: preserve newlines, clean excess whitespace
@@ -1153,22 +1164,15 @@ class BibleBot:
 
     async def handle_scripture_command(self, room_id, passage, translation, event):
         """
-        Fetch the specified Bible passage and post it to the given Matrix room, handling splitting, truncation, reactions, and user-facing errors.
-
-        This coroutine fetches the text for `passage` using `translation` (or the bot's default), trims the result, reacts to the triggering event with a checkmark, and posts the passage to `room_id`. If the text exceeds configured length limits the bot will either:
-        - split the content across multiple messages (when `split_message_length` is enabled and practical), appending the canonical reference only to the final part;
-        - truncate the text and append an ellipsis plus the reference; or
-        - fall back to a short placeholder when truncation cannot produce a valid message.
-
-        Errors that occur while fetching (missing API key, passage not found, network/timeouts, or unexpected exceptions) are handled by posting an appropriate user-facing error message to the room; exceptions are not propagated.
+        Fetch a Bible passage and post it to a Matrix room, handling splitting, truncation, reactions, and user-facing errors.
+        
+        This coroutine retrieves the requested `passage` (using `translation` or the bot's default), reacts to the triggering `event` with a confirmation emoji, and posts the passage text to `room_id`. If the text exceeds configured limits it will attempt to split the content into multiple messages (when splitting is enabled and practical), otherwise it will truncate and append a reference suffix or fall back to a short placeholder. Network, missing-key, and "passage not found" conditions are reported to the room as user-facing messages; exceptions are handled internally and not propagated.
+        
         Parameters:
-            room_id (str): Matrix room ID where the response should be posted.
-            passage (str): Detected Bible passage reference (e.g., "John 3:16").
-            translation (str | None): Translation code to use; if None the bot's `default_translation` is used.
+            room_id: Matrix room ID where the response will be posted.
+            passage: Canonical passage string detected (e.g., "John 3:16").
+            translation: Translation code to request; if None the bot's configured default is used.
             event: The original Matrix event that triggered the command (used to send a reaction).
-
-        Returns:
-            None
         """
         # Use configured default translation if none specified
         if translation is None:
@@ -1300,12 +1304,17 @@ class BibleBot:
 # Run bot
 async def main(config_path=DEFAULT_CONFIG_FILENAME, config=None):
     """
-    Main entry point for the bot.
-    Loads configuration, sets up the bot, and starts processing events.
-
+    Start the BibleBot: load configuration and environment, create the Matrix client and bot, register handlers, and run the event loop.
+    
+    If `config` is not supplied the function reads and validates the YAML configuration at `config_path`. Environment variables and API keys are loaded (the `config_path` is still used for environment-related lookup when a preloaded `config` is provided). This routine constructs an AsyncClient (modern credentials flow when available, otherwise a legacy flow using MATRIX_ACCESS_TOKEN and explicit homeserver/user), configures optional end-to-end encryption (E2EE), uploads keys when required, instantiates and wires a BibleBot, registers event callbacks, performs a non-fatal startup update check, and starts the bot's main sync loop until shutdown. On exit it attempts orderly cleanup of the bot and the Matrix client.
+    
     Parameters:
-        config_path (str): Path to the configuration file.
-        config (dict, optional): Pre-loaded configuration. If provided, config_path is only used for environment loading.
+        config_path (str): Path to the configuration file used when loading config or when resolving environment-related settings.
+        config (dict | None): Pre-loaded configuration dictionary. If provided, the function will not load config from disk; `config_path` is still used for environment/key resolution.
+    
+    Raises:
+        RuntimeError: If configuration or required credentials/homeserver information are missing, or legacy authentication prerequisites are not met.
+        asyncio.CancelledError: Re-raised if startup tasks are cancelled (preserves cancellation semantics).
     """
     # Print startup banner
     print_startup_banner()

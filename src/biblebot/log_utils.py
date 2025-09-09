@@ -109,15 +109,14 @@ def get_log_dir():
 
 def get_logger(name, *, force: bool = False):
     """
-    Create and configure a logger with console output and optional file logging.
-
-    The logger uses Rich for colorized console output with timestamps and supports
-    optional rotating file logging.
-
+    Create and configure a logger that writes to the console (colorized via Rich when enabled) and optionally to a rotating file.
+    
+    Configurable behavior (log level, color, file path, rotation size/count, and whether file logging is enabled) is read from the module-level `config` under the "logging" key when available. If a logger with the same name already has handlers, the function returns it unchanged unless `force` is True, in which case existing handlers are removed and the logger is reconfigured.
+    
     Parameters:
-        name (str): The name of the logger to create.
-        force (bool): If True, force reconfiguration even if handlers exist.
-
+        name (str): Logger name to create or reconfigure.
+        force (bool): If True, remove existing handlers and reconfigure even if handlers are present.
+    
     Returns:
         logging.Logger: The configured logger instance.
     """
@@ -270,19 +269,16 @@ def get_logger(name, *, force: bool = False):
 
 def configure_logging(config_dict=None):
     """
-    Set the module-wide logging configuration and apply per-component debug settings.
-
-    This stores the provided configuration dict in the module-level `config` variable (or clears it when None)
-    and then applies component-specific debug levels by calling `configure_component_debug_logging()`.
-
+    Set the module-level logging configuration and reset per-component debug state.
+    
+    Stores the given mapping in the module-global `config` (or clears it when None) so subsequent
+    calls to get_logger and related functions use the new settings, and resets the internal
+    _component_debug_configured flag so per-component debug levels will be reapplied on next
+    configuration run.
     Parameters:
-        config_dict (dict | None): Global configuration mapping for logging. Expected keys are the same
-            logging keys consumed elsewhere in this module (for example: `"level"`, `"color_enabled"`,
-            `"log_to_file"`, `"filename"`, `"max_log_size"`, `"backup_count"`, and a `"debug"` mapping
-            for per-component overrides). If None, the global configuration is cleared.
-
-    Returns:
-        None
+        config_dict (dict | None): Logging configuration mapping (e.g., keys like "level",
+            "color_enabled", "log_to_file", "filename", "max_log_size", "backup_count", and a
+            "debug" mapping for per-component overrides). If None, clears global logging config.
     """
     global config, _component_debug_configured
     config = config_dict
@@ -292,11 +288,9 @@ def configure_logging(config_dict=None):
 
 def configure_component_loggers() -> None:
     """
-    Configure component loggers from external libraries.
-
-    Sets external library loggers based on configuration, either suppressing them
-    or enabling debug logging as specified in the config, similar to how mmrelay
-    handles component logging.
+    Apply per-component logging configuration for external libraries.
+    
+    Reads the module logging configuration and for each known external component either enables a configured debug level or silences that component's loggers. Delegates to `configure_component_debug_logging()` and is safe to call multiple times; if the global logging config is not set, it is a no-op.
     """
     # Configure component debug logging (nio, etc.)
     configure_component_debug_logging()
