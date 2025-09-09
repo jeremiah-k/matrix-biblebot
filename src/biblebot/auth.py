@@ -426,6 +426,36 @@ async def discover_homeserver(
     return homeserver
 
 
+def _get_user_input(
+    prompt: str, provided_value: Optional[str], field_name: str
+) -> Optional[str]:
+    """
+    Get user input with consistent KeyboardInterrupt handling.
+
+    Args:
+        prompt: The prompt to display to the user
+        provided_value: Value if already provided (optional)
+        field_name: Name of the field for error messages
+
+    Returns:
+        The input value, or None if cancelled or empty
+    """
+    if provided_value:
+        return provided_value
+
+    try:
+        value = input(prompt).strip()
+    except (EOFError, KeyboardInterrupt):
+        logger.info("\nLogin cancelled.")
+        return None
+
+    if not value:
+        logger.error(f"{field_name} cannot be empty.")
+        return None
+
+    return value
+
+
 async def interactive_login(
     homeserver: Optional[str] = None,
     username: Optional[str] = None,
@@ -456,30 +486,14 @@ async def interactive_login(
             logger.info("\nLogin cancelled.")
             return False
 
-    if homeserver:
-        hs = homeserver
-    else:
-        try:
-            hs = input(PROMPT_HOMESERVER).strip()
-        except (EOFError, KeyboardInterrupt):
-            logger.info("\nLogin cancelled.")
-            return False
-    if not hs:
-        logger.error("Homeserver cannot be empty.")
+    hs = _get_user_input(PROMPT_HOMESERVER, homeserver, "Homeserver")
+    if hs is None:
         return False
     if not (hs.startswith(URL_PREFIX_HTTP) or hs.startswith(URL_PREFIX_HTTPS)):
         hs = URL_PREFIX_HTTPS + hs
 
-    if username:
-        user_input = username
-    else:
-        try:
-            user_input = input(PROMPT_USERNAME).strip()
-        except (EOFError, KeyboardInterrupt):
-            logger.info("\nLogin cancelled.")
-            return False
-    if not user_input:
-        logger.error("Username cannot be empty.")
+    user_input = _get_user_input(PROMPT_USERNAME, username, "Username")
+    if user_input is None:
         return False
 
     # Handle username input - support both full MXIDs and bare localparts
