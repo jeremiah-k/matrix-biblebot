@@ -38,10 +38,10 @@ class DuplicateConstantError(NameError):
     def __init__(self, duplicates):
         """
         Initialize the DuplicateConstantError with the given duplicate names.
-        
+
         Parameters:
             duplicates (Iterable[str]): Names of constants that were found more than once; stored as a tuple on the instance.
-        
+
         The exception message will include the tuple of duplicate names.
         """
         self.duplicates = tuple(duplicates)

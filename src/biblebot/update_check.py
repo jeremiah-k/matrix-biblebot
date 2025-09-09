@@ -22,7 +22,7 @@ logger = logging.getLogger(LOGGER_NAME)
 async def get_latest_release_version() -> Optional[str]:
     """
     Asynchronously fetch the latest GitHub release tag for BibleBot.
-    
+
     Queries the configured RELEASES_URL (GitHub releases API) and returns the release's `tag_name`
     with a leading "v" stripped (e.g., "v1.2.3" -> "1.2.3"). Returns None if the tag is missing
     or the request/response cannot be obtained or parsed.
@@ -63,7 +63,7 @@ async def get_latest_release_version() -> Optional[str]:
 def compare_versions(current: str, latest: str) -> bool:
     """
     Return True if the `latest` version string represents a newer version than `current`.
-    
+
     Both inputs are parsed with `packaging.version.parse` (supports PEP 440 and similar version formats).
     If either version cannot be parsed, the function returns False.
     """
@@ -80,9 +80,9 @@ def compare_versions(current: str, latest: str) -> bool:
 async def check_for_updates() -> Tuple[bool, Optional[str]]:
     """
     Determine whether a newer BibleBot release is available.
-    
+
     Fetches the latest release tag from the configured source and compares it to the running package version.
-    
+
     Returns:
         Tuple[bool, Optional[str]]: A pair (update_available, latest_version) where `update_available` is True if a newer release exists, and `latest_version` is the latest release tag (without a leading "v") or None if the latest version could not be determined.
     """
@@ -103,7 +103,7 @@ async def check_for_updates() -> Tuple[bool, Optional[str]]:
 def print_startup_banner() -> None:
     """
     Log a startup banner containing the current BibleBot version.
-    
+
     Intended to be called once at the very start of application startup.
     """
     logger.info(f"Starting BibleBot version {__version__}")
@@ -112,7 +112,7 @@ def print_startup_banner() -> None:
 async def perform_startup_update_check() -> None:
     """
     Check for a newer release on startup and log a user-facing notification if one is available.
-    
+
     This coroutine calls the update-check routine, and if a newer version is found logs an informational message with the latest version and releases page URL; otherwise it logs that the application is up to date. Intended to be awaited during application startup.
     """
     logger.debug("Performing startup update check...")

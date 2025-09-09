@@ -56,7 +56,7 @@ class TestUpdateCheck:
         async def mock_get_latest():
             """
             Async test helper that simulates retrieving the latest release version.
-            
+
             Returns:
                 str: A semantic version string ("1.0.0") used by tests to represent the latest available release.
             """
@@ -78,7 +78,7 @@ class TestUpdateCheck:
         async def mock_get_latest():
             """
             Async test stub that simulates failure to retrieve the latest release version.
-            
+
             Returns:
                 None: Indicates no version was obtained (e.g., API failure or no release found).
             """

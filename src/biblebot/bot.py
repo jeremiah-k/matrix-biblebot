@@ -320,9 +320,9 @@ async def make_api_request(
     async def _request(sess):
         """
         Perform an HTTP GET to the outer-scope `url` using the provided aiohttp session and return the parsed JSON response.
-        
+
         Uses a minimal default User-Agent and Accept header merged with any outer-scope `headers`, and applies outer-scope `params` and `req_timeout`. Returns the decoded JSON (usually a dict or list) when the response status is 200 and the body is valid JSON; returns None for non-200 responses or when the body cannot be parsed as JSON.
-        
+
         Side effects: logs a warning for non-200 responses or unexpected Content-Type, and logs an exception when JSON decoding fails.
         """
         # Merge a minimal default UA with caller-provided headers
@@ -536,6 +536,8 @@ async def get_kjv_text(passage, session=None):
         PassageNotFound: If the API returns no result or an empty text for the requested passage.
     """
     encoded = quote(passage, safe=":")
+    # Use the original KJV API URL template directly rather than any discovered endpoint
+    # because the KJV API has a specific URL structure that doesn't follow standard discovery patterns
     API_URL = KJV_API_URL_TEMPLATE.format(passage=encoded)
     response = await make_api_request(API_URL, session=session)
 
@@ -555,9 +557,9 @@ class BibleBot:
     def __init__(self, config, client=None):
         """
         Initialize a BibleBot instance with configuration and an optional Matrix client.
-        
+
         Reads bot-specific settings from config["bot"] (if present), applies sensible defaults and coerces/validates numeric and boolean options.
-        
+
         Recognized config["bot"] keys:
             - default_translation: default translation to use when none is specified (default: DEFAULT_TRANSLATION).
             - cache_enabled: whether passage caching is enabled (default: True).
@@ -565,10 +567,10 @@ class BibleBot:
             - split_message_length: threshold to split long messages into multiple parts (default: 0 to disable). Non‑integer or negative values disable splitting; values greater than max_message_length are capped to max_message_length.
             - preserve_poetry_formatting: preserve original line breaks for poetry-style passages (default: False).
             - CONFIG_DETECT_REFERENCES_ANYWHERE: truthy string enables detecting references anywhere in a message (accepted: "true", "yes", "1", "on"); default is False.
-        
+
         Parameters:
             config (dict): Loaded configuration mapping used to populate bot settings.
-        
+
         Notes:
             - The optional `client` parameter is a runtime Matrix AsyncClient and is treated as an injected service (not documented here).
             - The initializer enforces type coercion and caps to avoid producing oversized message chunks.
@@ -670,6 +672,8 @@ class BibleBot:
             else:
                 resolved_ids.append(entry)
         # Update configuration with resolved IDs (support both schemas)
+        # This deduplicates room IDs and replaces aliases with their resolved room IDs
+        # to avoid duplicate joins and ensure we're working with canonical room IDs
         unique_ids = list(dict.fromkeys(resolved_ids))
         if (
             CONFIG_KEY_MATRIX in self.config
@@ -688,7 +692,9 @@ class BibleBot:
         Parameters:
             room_id_or_alias (str): A Matrix room identifier — either a room ID (e.g. "!abc:example.org") or an alias (e.g. "#room:example.org").
         """
-        # Skip placeholder room IDs from sample config
+        # Skip placeholder room IDs from sample config to prevent attempting to join
+        # non-existent rooms that are just examples in the configuration template
+        # This occurs when users haven't updated their config.yaml from the sample
         if (
             room_id_or_alias.startswith("!your_room_id:")
             or room_id_or_alias.endswith(":your_homeserver_domain")
@@ -743,21 +749,21 @@ class BibleBot:
     async def start(self):
         """
         Start the bot: perform startup tasks and enter the continuous Matrix sync loop.
-        
+
         Sets self.start_time (epoch ms), ensures an aiohttp session exists, resolves configured room aliases,
         builds the internal room ID set, and attempts to join all configured rooms. Performs an initial full-state
         sync (with a guarded recovery attempt for a known one_time_key_counts validation condition) and then
         hands control to the client's long-running sync_forever loop to process events.
-        
+
         Side effects:
         - Updates self.start_time.
         - May create and store an aiohttp.ClientSession in self.http_session.
         - May join Matrix rooms and send network requests via the Matrix client.
-        
+
         Exceptions:
         - asyncio.CancelledError is re-raised to preserve cancellation semantics.
         - aiohttp.ClientError (or subclasses) raised while creating the HTTP session may propagate.
-        
+
         Returns:
         - None; this coroutine only returns when the client's sync loop ends or is cancelled.
         """
@@ -765,7 +771,9 @@ class BibleBot:
         self.start_time = int(time.time() * 1000)
         logger.info("Initializing BibleBot...")
 
-        # Initialize HTTP session for connection pooling
+        # Initialize HTTP session for connection pooling and API requests
+        # This is created here (rather than in __init__) because aiohttp sessions
+        # must be created within an async context and after the event loop is running
         if self.http_session is None:
             try:
                 self.http_session = aiohttp.ClientSession(
@@ -831,6 +839,9 @@ class BibleBot:
         e2ee_enabled = e2ee_config.get("enabled", False)
 
         if not e2ee_enabled:
+            # E2EE is disabled in config but we received an encrypted message
+            # This happens when the bot is in an encrypted room but the user hasn't enabled E2EE support
+            # The bot cannot decrypt the message without E2EE enabled and proper key management
             logger.warning(
                 f"⚠️  Received encrypted message in room '{room.room_id}' but E2EE is disabled in config! "
                 f"Enable E2EE in your config.yaml under matrix.e2ee.enabled to decrypt messages. "
@@ -847,6 +858,8 @@ class BibleBot:
             # Set room_id on the event object for key request methods
             # This is necessary because MegolmEvent objects that failed to decrypt
             # may not have room_id set, but event.as_key_request() requires it
+            # This occurs when the nio library receives encrypted events but cannot
+            # decrypt them due to missing keys - the room_id field may be missing
             # Note: This mutates the event object to ensure proper key request functionality
             event.room_id = room.room_id
 
@@ -943,6 +956,8 @@ class BibleBot:
         This handles both unencrypted messages and successfully decrypted messages from encrypted rooms.
         """
         # Log message reception for debugging encrypted room issues
+        # This helps diagnose E2EE problems by showing whether the room is encrypted
+        # and whether the message was successfully decrypted (for encrypted rooms)
         logger.debug(
             f"Received RoomMessageText in room {room.room_id} from {event.sender}: "
             f"encrypted={room.encrypted}, decrypted={getattr(event, 'decrypted', False)}"
@@ -963,6 +978,9 @@ class BibleBot:
 
             passage = None
             translation = self.default_translation  # Default translation
+            # Iterate through regex patterns to find scripture references
+            # Uses either fullmatch() for exact matching or search() for partial matching
+            # depending on the detect_references_anywhere configuration setting
             for pattern in search_patterns:
                 match = getattr(pattern, _match_name)(event.body)
                 if match:
@@ -994,14 +1012,16 @@ class BibleBot:
     def _format_text_for_display(self, text: str) -> tuple[str, str]:
         """
         Format passage text for sending: produce a normalized plain-text string and an HTML-escaped representation.
-        
+
         If the bot's preserve_poetry_formatting setting is true, paragraph and line breaks are preserved (consecutive blank lines collapsed) and internal spacing is normalized; newlines in the HTML representation are converted to <br />. Otherwise all whitespace (including newlines) is collapsed to single spaces in both plain and HTML variants.
-        
+
         Returns:
             tuple[str, str]: (plain_text, html_text) where html_text is escaped and safe for inclusion in an HTML-formatted message.
         """
         if self.preserve_poetry_formatting:
             # Poetry mode: preserve newlines, clean excess whitespace
+            # This formatting preserves the structure of biblical poetry and verse formatting
+            # while cleaning up inconsistent spacing from API responses
             formatted_text = re.sub(
                 r"[ \t]+", " ", text
             )  # Multiple spaces/tabs -> single space
@@ -1023,12 +1043,15 @@ class BibleBot:
         """
         Split text into chunks of specified maximum length, preferring word boundaries.
 
+        This is used when split_message_length is configured to break long Bible passages
+        into multiple messages while preserving readability by avoiding mid-word breaks.
+
         Parameters:
-            text (str): The text to split
-            max_length (int): Maximum length for each chunk
+            text (str): The text to split (typically a Bible passage)
+            max_length (int): Maximum length for each chunk (from split_message_length config)
 
         Returns:
-            list[str]: List of text chunks
+            list[str]: List of text chunks, each under max_length characters
         """
         return textwrap.wrap(
             text,
@@ -1041,6 +1064,10 @@ class BibleBot:
     def _trim_reference_for_suffix(self, reference, reserve_fallback_space=False):
         """
         Ensure a Bible reference fits when appended with the message suffix by trimming or dropping it.
+
+        This algorithm calculates the available space for the reference by subtracting the message text,
+        separator (" - "), and suffix from the maximum message length. If the reference is too long,
+        it progressively trims characters and adds "..." until it fits, or returns None if impossible.
 
         If the full reference would cause the final message (text + " - " + reference + MESSAGE_SUFFIX) to exceed the bot's max_message_length, this returns a truncated reference that fits (using "..." when space allows) or None if the reference must be omitted.
 
@@ -1064,9 +1091,12 @@ class BibleBot:
             # reserving space for the worst-case scenario where the message text itself is
             # so long it must be replaced by FALLBACK_MESSAGE_TOO_LONG. This guarantees
             # the final combined message (text + reference + suffix) will not exceed max_message_length.
+            # This prevents edge cases where a very long reference could cause the fallback message
+            # to exceed the maximum length when the original text needs to be replaced.
             reserved_text_len = len(FALLBACK_MESSAGE_TOO_LONG)
         else:
             # Reserve space for at least 1 character of text in splitting path
+            # This is used when splitting messages where we know there will be actual text content
             reserved_text_len = 1
 
         budget = (
@@ -1165,9 +1195,9 @@ class BibleBot:
     async def handle_scripture_command(self, room_id, passage, translation, event):
         """
         Fetch a Bible passage and post it to a Matrix room, handling splitting, truncation, reactions, and user-facing errors.
-        
+
         This coroutine retrieves the requested `passage` (using `translation` or the bot's default), reacts to the triggering `event` with a confirmation emoji, and posts the passage text to `room_id`. If the text exceeds configured limits it will attempt to split the content into multiple messages (when splitting is enabled and practical), otherwise it will truncate and append a reference suffix or fall back to a short placeholder. Network, missing-key, and "passage not found" conditions are reported to the room as user-facing messages; exceptions are handled internally and not propagated.
-        
+
         Parameters:
             room_id: Matrix room ID where the response will be posted.
             passage: Canonical passage string detected (e.g., "John 3:16").
@@ -1305,13 +1335,13 @@ class BibleBot:
 async def main(config_path=DEFAULT_CONFIG_FILENAME, config=None):
     """
     Start the BibleBot: load configuration and environment, create the Matrix client and bot, register handlers, and run the event loop.
-    
+
     If `config` is not supplied the function reads and validates the YAML configuration at `config_path`. Environment variables and API keys are loaded (the `config_path` is still used for environment-related lookup when a preloaded `config` is provided). This routine constructs an AsyncClient (modern credentials flow when available, otherwise a legacy flow using MATRIX_ACCESS_TOKEN and explicit homeserver/user), configures optional end-to-end encryption (E2EE), uploads keys when required, instantiates and wires a BibleBot, registers event callbacks, performs a non-fatal startup update check, and starts the bot's main sync loop until shutdown. On exit it attempts orderly cleanup of the bot and the Matrix client.
-    
+
     Parameters:
         config_path (str): Path to the configuration file used when loading config or when resolving environment-related settings.
         config (dict | None): Pre-loaded configuration dictionary. If provided, the function will not load config from disk; `config_path` is still used for environment/key resolution.
-    
+
     Raises:
         RuntimeError: If configuration or required credentials/homeserver information are missing, or legacy authentication prerequisites are not met.
         asyncio.CancelledError: Re-raised if startup tasks are cancelled (preserves cancellation semantics).

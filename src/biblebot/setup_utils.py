@@ -104,9 +104,9 @@ def print_service_commands():
 def read_service_file():
     """
     Return the text content of the installed user systemd service file, or None if the file does not exist.
-    
+
     Reads the service file using UTF-8 encoding.
-    
+
     Returns:
         str | None: The file contents as a string, or None when the service file is not present.
     """
@@ -175,17 +175,17 @@ def get_template_service_path():
 def get_template_service_content():
     """
     Return the systemd service template content to use when creating the user service.
-    
+
     Tries sources in this order and returns the first successfully read template string:
     1. A stable copy provided by copy_service_template_to().
     2. The packaged resource `biblebot.tools:biblebot.service` via importlib.resources.
     3. A file path found by get_template_service_path().
-    
+
     If all attempts fail, returns a built-in default service template suitable for a typical user install.
-    
+
     Returns:
         str: The service unit file content.
-    
+
     Notes:
         - Errors encountered while attempting each source are printed to stdout; unexpected exceptions are allowed to propagate.
     """
@@ -583,7 +583,7 @@ def start_service():
 def show_service_status():
     """
     Print the systemd user service status for the configured SERVICE_NAME.
-    
+
     Runs `systemctl --user status <SERVICE_NAME>` and prints its stdout and stderr to stdout.
     Returns True if the status command was run and exited with code 0; returns False if
     `systemctl` is not available or if an OS/subprocess error occurred.

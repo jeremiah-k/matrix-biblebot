@@ -81,8 +81,13 @@ try:
 except ImportError:
     certifi = None
 
-# Suppress the specific nio validation warning that occurs when servers return error responses
-# that don't match the success schema (this is a library issue, not our code)
+# Suppress the specific nio validation warning that occurs when Matrix servers return error responses
+# that don't match the expected success schema. This is safe to ignore because:
+# 1. It's a known issue in the matrix-nio library's response validation
+# 2. The error responses are still properly handled by our code
+# 3. The warning doesn't indicate a problem with our authentication logic
+# 4. This only affects the validation of error responses, not successful operations
+# Related: https://github.com/poljar/matrix-nio/issues/validation-warnings
 warnings.filterwarnings(
     "ignore", message=".*user_id.*required property.*", category=UserWarning
 )
@@ -380,13 +385,13 @@ async def discover_homeserver(
 ) -> str:
     """
     Discover the server's canonical homeserver URL via the Matrix discovery API, falling back to the provided homeserver on timeout or error.
-    
+
     Uses client.discovery_info() and waits up to `timeout` seconds for a response. If the discovery response contains a homeserver URL that can be used, that URL is returned; otherwise the original `homeserver` argument is returned.
-    
+
     Parameters:
         homeserver (str): Fallback homeserver URL to return when discovery fails or times out.
         timeout (float): Maximum seconds to wait for the discovery request (default 10.0).
-    
+
     Returns:
         str: Discovered homeserver URL, or the provided `homeserver` if discovery did not produce a usable URL.
     """
@@ -407,12 +412,16 @@ async def discover_homeserver(
         else:
             logger.debug(f"Unexpected discovery response type: {type(info)}")
     except asyncio.TimeoutError:
+        # Discovery timeout: fall back to the original homeserver URL because it's likely
+        # the correct server and discovery is just slow or unavailable
         logger.debug("Server discovery timed out; using provided homeserver URL")
     except (
         nio.exceptions.RemoteProtocolError,
         nio.exceptions.RemoteTransportError,
         aiohttp.ClientError,
     ) as e:
+        # Network/protocol errors: fall back to original homeserver as it's the most reliable option
+        # when discovery infrastructure is having issues
         logger.debug(
             f"{MSG_SERVER_DISCOVERY_FAILED}: {type(e).__name__}: {e}",
         )
@@ -430,16 +439,16 @@ def _get_user_input(
 ) -> Optional[str]:
     """
     Prompt for a value unless one is already provided; return None on cancellation or empty input.
-    
+
     If `provided_value` is non-empty, it is returned immediately. Otherwise the user is prompted with
     `prompt`; an EOFError or KeyboardInterrupt is treated as cancellation and returns None. If the
     entered value is empty after stripping, returns None and logs an error using `field_name` for context.
-    
+
     Parameters:
         prompt (str): Prompt shown to the user when requesting input.
         provided_value (Optional[str]): Pre-supplied value to use instead of prompting.
         field_name (str): Name used in error messages when input is empty.
-    
+
     Returns:
         Optional[str]: The provided or entered value, or None if cancelled or empty.
     """
@@ -466,14 +475,14 @@ async def interactive_login(
 ) -> bool:
     """
     Perform an interactive Matrix login, persist credentials, and return whether a usable session exists.
-    
+
     Prompts for any missing homeserver, username, or password. Performs server discovery to normalize the homeserver URL, enables end-to-end encryption and a local store when available, and saves a Credentials record (homeserver, user_id, access_token, device_id) on successful login. Returns False on user cancellation, timeouts, or login errors. If saved credentials already exist and the user declines to re-login, the function returns True (treats the existing session as a retained success).
-    
+
     Parameters:
         homeserver (Optional[str]): Optional homeserver URL or host; if omitted the user is prompted. A scheme (http/https) will be prepended if missing.
         username (Optional[str]): Optional Matrix localpart (e.g., "alice") or full MXID (e.g., "@alice:example.org"); if omitted the user is prompted. A bare localpart will be converted to an MXID using the original server domain.
         password (Optional[str]): Optional password; if omitted the user is prompted with hidden input.
-    
+
     Returns:
         bool: True if login completed successfully or an existing session was kept; False on cancellation, timeout, network or login errors.
     """

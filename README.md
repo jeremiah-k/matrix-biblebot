@@ -96,8 +96,21 @@ To delete credentials and the E2EE store:
 biblebot auth logout
 ```
 
-**Legacy Token Setup (Deprecated):**
-⚠️ Manual access tokens are deprecated and do NOT support E2EE. If you have existing `MATRIX_ACCESS_TOKEN` environment variables, consider migrating to `biblebot auth login` for E2EE support.
+---
+
+> **⚠️ DEPRECATION NOTICE ⚠️**
+>
+> **Manual access tokens are deprecated and do not support E2EE encryption.**
+>
+> If you have existing `MATRIX_ACCESS_TOKEN` environment variables, consider migrating to the new authentication system:
+>
+> ```bash
+> biblebot auth login
+> ```
+>
+> This provides E2EE support, better security, and is the recommended authentication method.
+
+---
 
 ### Edit Configuration Files
 

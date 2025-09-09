@@ -88,7 +88,7 @@ def get_default_config_path():
 def detect_configuration_state():
     """
     Determine the CLI's current configuration and authentication state.
-    
+
     Returns a tuple (state, message, config) where:
     - state (str): One of:
         - "setup": no valid config file found; user should run configuration setup.
@@ -97,7 +97,7 @@ def detect_configuration_state():
         - "ready": valid config and credentials are present; the bot can be started.
     - message (str): Human-facing explanation of the detected condition and suggested next steps.
     - config (dict|None): Loaded configuration dictionary when available, otherwise None.
-    
+
     Errors encountered while loading or validating the configuration or credentials are not raised; they are mapped to an appropriate state ("setup" or "auth") with an explanatory message.
     """
     config_path = get_default_config_path()
@@ -195,18 +195,18 @@ def generate_config(config_path):
 def interactive_main():
     """
     Launch an interactive CLI flow that ensures configuration and authentication are in place, then starts the bot.
-    
+
     Detects the current state (setup, auth, ready_legacy, ready) and performs the appropriate action:
     - setup: generates a sample configuration file and prints next steps.
     - auth: prompts for interactive login (skipped in CI/test environments); on success, starts the bot.
     - ready_legacy: starts the bot using a legacy access token (deprecated flow).
     - ready: starts the bot normally.
-    
+
     Side effects:
     - May create a configuration file on disk.
     - May run the interactive authentication flow.
     - May start the bot process.
-    
+
     Returns:
         None
     """
@@ -225,14 +225,14 @@ def interactive_main():
     def _run_bot(config_path: str, legacy: bool = False, config: dict = None):
         """
         Start the BibleBot process using the given configuration and handle common startup failures.
-        
+
         If a preloaded config is provided, it is used to configure logging and avoid reloading the file; otherwise the function attempts to load the config from config_path (falling back to default logging on load errors). After logging is configured, this function imports and runs the bot (preferring bot.main_with_config when available). If legacy is True, the startup is run in legacy mode.
-        
+
         Parameters:
             config_path (str): Path to the configuration file.
             legacy (bool): Run in legacy mode when True.
             config (dict | None): Pre-loaded configuration to use instead of re-reading the file.
-        
+
         Behavior and side effects:
             - Config loading may configure logging; if loading fails, default logging is used.
             - Runs the bot to completion (blocking); uses run_async to execute the bot entrypoint.
@@ -359,10 +359,10 @@ def interactive_main():
 def main():
     """
     Entry point for the BibleBot command-line interface.
-    
+
     Runs either an interactive guided startup flow (when invoked with no CLI arguments)
     or a modern grouped command dispatcher (when subcommands/flags are supplied).
-    
+
     Behavior summary:
     - Interactive mode (no args): performs setup/login/run flow that can generate a sample
       config, prompt for authentication, or start the bot depending on current state.
@@ -375,7 +375,7 @@ def main():
       - auth logout: remove stored credentials and E2EE state.
       - auth status: print authentication and E2EE status.
       - service install: install or update the per-user systemd service.
-    
+
     Notes:
     - The default config path is used when --config is not provided.
     - --log-level controls logging verbosity.
