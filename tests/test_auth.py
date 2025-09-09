@@ -1,3 +1,4 @@
+# ruff: noqa: S105, S106, S108, ARG002
 """Tests for the auth module."""
 
 import json

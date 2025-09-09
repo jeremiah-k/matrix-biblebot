@@ -95,10 +95,10 @@ class TestFilePermissions:
         config_stat = config_path.stat()
 
         # Should be readable by owner (minimum requirement)
-        assert config_stat.st_mode & stat.S_IRUSR  # Owner read  # noqa: S101
+        assert config_stat.st_mode & stat.S_IRUSR  # Owner read
 
         # Should not be world-writable (security concern)
-        assert not (config_stat.st_mode & stat.S_IWOTH)  # No other write  # noqa: S101
+        assert not (config_stat.st_mode & stat.S_IWOTH)  # No other write
 
         # Note: Group write permission is acceptable for package files
         # as it's common in development environments

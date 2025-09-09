@@ -2,8 +2,6 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-pytestmark = pytest.mark.asyncio
-
 from biblebot.auth import load_credentials, save_credentials
 from biblebot.bot import BibleBot
 
@@ -77,6 +75,7 @@ def mock_bible_bot():
 
 
 @patch("biblebot.bot.get_bible_text", new_callable=AsyncMock)
+@pytest.mark.asyncio
 async def test_bible_bot_message_handling(
     mock_get_bible_text, mock_room, mock_event, test_config
 ):
@@ -111,6 +110,7 @@ async def test_bible_bot_message_handling(
 
 
 @patch("biblebot.bot.get_bible_text", new_callable=AsyncMock)
+@pytest.mark.asyncio
 async def test_bible_bot_ignore_own_messages(
     mock_get_bible_text, mock_room, mock_event, test_config
 ):
@@ -134,6 +134,7 @@ async def test_bible_bot_ignore_own_messages(
 
 
 @patch("biblebot.bot.get_bible_text", new_callable=AsyncMock)
+@pytest.mark.asyncio
 async def test_bible_bot_unsupported_room(
     mock_get_bible_text, mock_room, mock_event, test_config
 ):
@@ -157,6 +158,7 @@ async def test_bible_bot_unsupported_room(
 
 
 @patch("biblebot.bot.get_bible_text", new_callable=AsyncMock)
+@pytest.mark.asyncio
 async def test_bible_bot_api_error_handling(
     mock_get_bible_text, mock_room, mock_event, test_config
 ):
@@ -257,6 +259,7 @@ def test_save_credentials(mock_chmod, mock_replace, mock_temp_file, tmp_path):
 
 
 @patch("biblebot.bot.make_api_request", new_callable=AsyncMock)
+@pytest.mark.asyncio
 async def test_bible_api_verse_fetch(mock_api_request):
     """Test Bible API verse fetching."""
     # Mock API response
@@ -276,6 +279,7 @@ async def test_bible_api_verse_fetch(mock_api_request):
 
 
 @patch("biblebot.bot.make_api_request", new_callable=AsyncMock)
+@pytest.mark.asyncio
 async def test_bible_api_error_handling(mock_api_request):
     """Test Bible API error handling."""
     # Mock API error response
@@ -338,6 +342,7 @@ def test_bible_book_normalization():
         assert result is None, f"Expected None for invalid book: {invalid_name}"
 
 
+@pytest.mark.asyncio
 async def test_matrix_client_initialization(test_config):
     """Test Matrix client initialization."""
     mock_client = MagicMock()
@@ -353,6 +358,7 @@ async def test_matrix_client_initialization(test_config):
     assert bot.config == test_config
 
 
+@pytest.mark.asyncio
 async def test_matrix_room_joining(test_config):
     """Test Matrix room joining functionality."""
     mock_client = MagicMock()

@@ -23,7 +23,7 @@ def mock_credentials():
     return Credentials(
         homeserver=TEST_HOMESERVER,
         user_id=TEST_USER_ID,
-        access_token="test_token",
+        access_token="test_token",  # noqa: S106 - test fixture token
         device_id="TEST_DEVICE",
     )
 
@@ -32,7 +32,7 @@ class TestE2EEStatus:
     """Test E2EE status checking functionality."""
 
     @patch("platform.system", return_value="Linux")
-    def test_check_e2ee_status_linux_supported(self, mock_system):
+    def test_check_e2ee_status_linux_supported(self, _mock_system):
         """Test E2EE status on supported Linux platform."""
         status = check_e2ee_status()
 
@@ -40,7 +40,7 @@ class TestE2EEStatus:
         # The actual implementation doesn't return platform field, just checks it
 
     @patch("platform.system", return_value="Windows")
-    def test_check_e2ee_status_windows_unsupported(self, mock_system):
+    def test_check_e2ee_status_windows_unsupported(self, _mock_system):
         """Test E2EE status on unsupported Windows platform."""
         status = check_e2ee_status()
 
@@ -48,7 +48,7 @@ class TestE2EEStatus:
         assert "Windows" in status["error"]
 
     @patch("platform.system", return_value="Linux")
-    def test_check_e2ee_status_missing_deps(self, mock_system):
+    def test_check_e2ee_status_missing_deps(self, _mock_system):
         """Test E2EE status when dependencies are missing."""
         with patch("importlib.util.find_spec", return_value=None):
             status = check_e2ee_status()
@@ -57,7 +57,7 @@ class TestE2EEStatus:
             assert "E2EE dependencies not installed" in status["error"]
 
     @patch("platform.system", return_value="Linux")
-    def test_check_e2ee_status_deps_available_no_creds(self, mock_system):
+    def test_check_e2ee_status_deps_available_no_creds(self, _mock_system):
         """Test E2EE status when deps available but no credentials."""
         with patch("importlib.util.find_spec") as mock_find_spec:
             mock_find_spec.return_value = MagicMock()  # Mock olm module found
@@ -203,7 +203,7 @@ class TestDiscoverHomeserver:
         # Mock AsyncClient with discovery error
         mock_client = MagicMock()
 
-        async def _discovery_error(*args, **kwargs):
+        async def _discovery_error(*_args, **_kwargs):
             raise DiscoveryInfoError("Error")
 
         mock_client.discovery_info = _discovery_error
@@ -240,7 +240,7 @@ class TestInteractiveLogin:
         mock_response = nio.LoginResponse(
             user_id="@biblebot:matrix.org",
             device_id="TEST_DEVICE",
-            access_token="test_token",
+            access_token="test_token",  # noqa: S106 - test value
         )
         mock_client_instance.login = AsyncMock(return_value=mock_response)
         mock_client_instance.close = AsyncMock()

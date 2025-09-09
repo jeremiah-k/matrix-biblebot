@@ -20,7 +20,9 @@ class TestServiceUtilities:
     def test_get_executable_path_fallback(self):
         """Test executable path fallback."""
         with patch("shutil.which", return_value=None):
-            with patch("sys.executable", "/usr/bin/python3"):
+            import sys
+
+            with patch.object(sys, "executable", "/usr/bin/python3"):
                 path = setup_utils.get_executable_path()
                 assert path == "/usr/bin/python3"
 
@@ -71,14 +73,14 @@ class TestServiceInstallation:
             assert "%h/.config/matrix-biblebot/config.yaml" in content
 
     @patch("biblebot.setup_utils.get_executable_path", return_value=None)
-    def test_create_service_file_no_executable(self, mock_get_exec):
+    def test_create_service_file_no_executable(self, _mock_get_exec):
         """Test service file creation when executable is not found."""
         result = setup_utils.create_service_file()
         assert result is False
 
     @patch("biblebot.setup_utils.get_executable_path")
     @patch("biblebot.setup_utils.get_template_service_content", return_value=None)
-    def test_create_service_file_no_template(self, mock_get_template, mock_get_exec):
+    def test_create_service_file_no_template(self, _mock_get_template, _mock_get_exec):
         """Test service file creation when template is not found."""
         mock_get_exec.return_value = "/usr/bin/biblebot"
         result = setup_utils.create_service_file()

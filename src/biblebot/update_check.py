@@ -32,17 +32,20 @@ async def get_latest_release_version() -> Optional[str]:
         headers = {
             "User-Agent": UPDATE_CHECK_USER_AGENT,
             "Accept": "application/vnd.github.v3+json",
+            "X-GitHub-Api-Version": "2022-11-28",
         }
 
         async with aiohttp.ClientSession(timeout=timeout, headers=headers) as session:
             async with session.get(RELEASES_URL) as response:
                 response.raise_for_status()
                 data = await response.json()
+                if isinstance(data, list):
+                    data = data[0] if data else {}
                 tag = data.get("tag_name")
                 if not tag:
                     logger.debug("Latest release from GitHub missing tag_name")
                     return None
-                tag_name = str(tag).lstrip("v")
+                tag_name = str(tag).strip().lstrip("vV")
                 logger.debug(f"Latest release from GitHub: {tag_name}")
                 return tag_name
 
@@ -68,8 +71,8 @@ def compare_versions(current: str, latest: str) -> bool:
     If either version cannot be parsed, the function returns False.
     """
     try:
-        current_ver = version.parse(current)
-        latest_ver = version.parse(latest)
+        current_ver = version.parse(str(current))
+        latest_ver = version.parse(str(latest))
     except (TypeError, ValueError, version.InvalidVersion) as e:
         logger.debug(f"Error comparing versions '{current}' and '{latest}': {e}")
         return False
