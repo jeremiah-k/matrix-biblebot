@@ -132,9 +132,9 @@ class TestMonitoringPatterns:
         async def timed_api_call(*args, **kwargs):
             """
             Measure a short simulated async API call duration, append the elapsed time to the global `processing_times` list, and return a sample verse.
-            
+
             This coroutine records the elapsed wall-clock time for a small simulated delay, stores the duration in the module-level `processing_times` list, and returns a tuple of (verse_text, verse_reference).
-            
+
             Returns:
                 tuple[str, str]: A sample verse and its reference, e.g. ("Test verse", "John 3:16").
             """
@@ -223,7 +223,7 @@ class TestMonitoringPatterns:
     async def test_request_rate_monitoring(self, mock_config, mock_client):
         """
         Verify that the bot records request timestamps and that a nonzero request rate can be computed.
-        
+
         This test patches the external Bible API to append wall-clock timestamps to a shared list each time it is called, then sends five simulated room messages to the bot with short delays between them. It asserts that five timestamps were recorded and that the computed request rate (requests per second over the observed span) is greater than zero.
         """
         bot = BibleBot(config=mock_config, client=mock_client)
@@ -239,9 +239,9 @@ class TestMonitoringPatterns:
         async def timestamped_api_call(*args, **kwargs):
             """
             Append the current epoch time to the surrounding `request_times` list and return a fixed test verse.
-            
+
             This async helper simulates an API call by recording time.time() into an externally scoped `request_times` list (side effect) and returning a constant tuple ("Test verse", "John 3:16"). All positional and keyword arguments are accepted and ignored.
-            
+
             Returns:
                 tuple[str, str]: A fixed verse text and its reference.
             """
@@ -285,7 +285,7 @@ class TestMonitoringPatterns:
         error_count = 0
         from random import Random
 
-        rng = Random(12345)
+        rng = Random(12345)  # noqa: S311
 
         async def error_prone_api(*args, **kwargs):
             """
@@ -339,7 +339,7 @@ class TestMonitoringPatterns:
     async def test_resource_usage_monitoring(self, mock_config, mock_client):
         """
         Measure and assert that the bot's CPU time and memory usage do not decrease after processing several simulated requests.
-        
+
         This test imports the `resource` module (skipping the test if unavailable), records initial CPU user time and maximum resident set size, processes a batch of mocked incoming messages using a patched `get_bible_text`, then records final CPU and memory usage. On macOS (`sys.platform == "darwin"`) the test normalizes `ru_maxrss` from bytes to kilobytes. The test asserts that CPU time and memory usage are non-decreasing (CPU and memory deltas are >= 0).
         """
         resource = pytest.importorskip("resource")
@@ -406,14 +406,14 @@ class TestMonitoringPatterns:
         total_responses = 0
         from random import Random
 
-        rng = Random(12345)
+        rng = Random(12345)  # noqa: S311
 
         async def variable_speed_api(*args, **kwargs):
             """
             Simulate a Bible API call with a randomized response duration and update test counters.
-            
+
             This async helper uses the provided random generator `rng` to produce a pseudo response time in the range 0.01–0.5 seconds (no real I/O or sleeping). On each call it increments the nonlocal `total_responses` counter and increments `slow_responses` when the simulated response time exceeds 0.3 seconds. Returns a deterministic test verse tuple.
-            
+
             Returns:
                 tuple[str, str]: (verse_text, verse_reference), e.g. ("Test verse", "John 3:16")
             """
@@ -470,11 +470,11 @@ class TestMonitoringPatterns:
             # Extract verse reference from args if available
             """
             Record a simulated verse request and return a test verse.
-            
+
             If the caller provides a verse reference as the first positional argument, that reference is recorded;
             otherwise "John 3:16" is used. The function increments the module-level dict `verse_requests`
             for the chosen reference as a side effect.
-            
+
             Returns:
                 tuple[str, str]: (verse_text, verse_ref) where `verse_text` is a static test string and
                 `verse_ref` is the recorded verse reference.
@@ -509,7 +509,7 @@ class TestMonitoringPatterns:
     async def test_distributed_tracing_patterns(self, mock_config, mock_client):
         """
         Test distributed tracing patterns for BibleBot.
-        
+
         Creates a BibleBot with mocked config and client, patches the external `get_bible_text`
         call with an async helper that simulates a traced API call (sleeping briefly and
         appending a span dict to a local `trace_spans` list). Sends several synthetic

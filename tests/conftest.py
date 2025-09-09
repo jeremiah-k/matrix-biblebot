@@ -41,12 +41,12 @@ class MockLoginError(Exception):
     def __init__(self, message="", status_code=None, errcode=None):
         """
         Initialize the MockLoginError.
-        
+
         Parameters:
             message (str): Human-readable error message (defaults to empty string).
             status_code (Optional[int]): HTTP-like status code associated with the error, if any.
             errcode (Optional[str]): Matrix/MX-style error code or internal error identifier, if any.
-        
+
         Sets:
             self.message, self.status_code, self.errcode
         """
@@ -58,11 +58,11 @@ class MockLoginError(Exception):
     def __repr__(self):
         """
         Return an unambiguous developer-friendly string representation of the MockLoginError.
-        
+
         The resulting string includes the `message`, `status_code`, and `errcode`
         attributes in a form suitable for debugging, e.g.
         `MockLoginError(message='...', status_code=400, errcode='M_FORBIDDEN')`.
-        
+
         Returns:
             str: The formatted representation.
         """
@@ -73,7 +73,7 @@ class MockRoomResolveAliasError(Exception):
     def __init__(self, message=""):
         """
         Initialize the MockRoomResolveAliasError.
-        
+
         Parameters:
             message (str): Optional human-readable error message describing the alias resolution failure.
         """
@@ -83,7 +83,7 @@ class MockRoomResolveAliasError(Exception):
     def __repr__(self):
         """
         Return a concise, developer-friendly string representation of the error.
-        
+
         The representation includes the error's message attribute in the form
         `MockRoomResolveAliasError(message=<message>)` and is intended for debugging.
         """
@@ -94,7 +94,7 @@ class MockDiscoveryInfoResponse:
     def __init__(self, homeserver_url=None):
         """
         Initialize a MockDiscoveryInfoResponse.
-        
+
         Parameters:
             homeserver_url (str | None): The homeserver base URL to simulate in tests (e.g. "https://matrix.example"). If None, no URL is set.
         """
@@ -105,7 +105,7 @@ class MockLoginResponse:
     def __init__(self, user_id=None, device_id=None, access_token=None):
         """
         Initialize a MockLoginResponse container with optional authentication fields.
-        
+
         Parameters:
             user_id (str, optional): Matrix user identifier (e.g. '@alice:example.org').
             device_id (str, optional): Device identifier for the logged-in session.
@@ -169,12 +169,12 @@ nio_mock.__spec__.origin = "mocked"
 def clear_env(keys):
     """
     Remove the given environment variables from os.environ and return their previous values.
-    
+
     If a variable from `keys` is not present in the environment it is ignored.
-    
+
     Parameters:
         keys (iterable[str]): Names of environment variables to remove.
-    
+
     Returns:
         dict: Mapping of each removed variable name to its previous value.
     """
@@ -247,7 +247,7 @@ def cleanup_asyncmock_objects(request):
 def mock_submit_coro(monkeypatch):
     """
     Pytest fixture that patches biblebot.bot._submit_coro (if present) with a synchronous runner for coroutine objects.
-    
+
     The replacement runner returns None for non-coroutine inputs. For coroutine inputs it creates a temporary event loop, runs the coroutine to completion (so AsyncMock coroutines are actually awaited), closes the loop, and returns a concurrent.futures.Future that is already resolved with the coroutine's result or completed with the raised exception. Yields control to the test; monkeypatch restores the original attribute on teardown.
     """
     import inspect
@@ -294,7 +294,7 @@ def mock_submit_coro(monkeypatch):
 def comprehensive_cleanup():
     """
     Perform comprehensive asynchronous resource cleanup after a test.
-    
+
     This autouse teardown fixture cancels pending asyncio tasks, attempts to shut down
     and close non-main event loops and their executors, resets the global event loop
     reference, and forces garbage collection while suppressing common warnings about

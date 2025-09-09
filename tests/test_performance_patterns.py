@@ -22,7 +22,7 @@ class TestPerformancePatterns:
     def mock_config(self):
         """
         Return a fixed mock Matrix configuration used by the performance tests.
-        
+
         The dictionary contains keys required to instantiate a BibleBot in tests:
         - "homeserver": URL of the Matrix homeserver.
         - "user_id": test user ID.
@@ -50,7 +50,7 @@ class TestPerformancePatterns:
     async def test_message_processing_performance(self, mock_config, mock_client):
         """
         Measure concurrent message-processing performance of BibleBot.
-        
+
         Creates a BibleBot using the provided fixtures, patches the external Bible API to return a fixed verse, generates 100 mock events and processes 10 of them concurrently, then measures elapsed time. Asserts that handling completes within 5.0 seconds and that the Matrix client's room_send was invoked at least once per processed message.
         """
         bot = BibleBot(config=mock_config, client=mock_client)
@@ -161,9 +161,9 @@ class TestPerformancePatterns:
         async def mock_api_call(*_args, **_kwargs):
             """
             Simulate an external Bible API call for tests.
-            
+
             Increments the enclosing nonlocal `call_count` each time it's invoked, waits a short variable delay to emulate network latency (0.1 + (call_count % 3) * 0.05 seconds), and returns a (verse_text, verse_reference) tuple where `verse_text` is "Verse {n}" and `verse_reference` is "John 3:{n}" with n equal to the current call count.
-            
+
             Returns:
                 tuple[str, str]: (verse_text, verse_reference)
             """
@@ -214,9 +214,9 @@ class TestPerformancePatterns:
         async def rate_limited_api(*_args, **_kwargs):
             """
             Simulate a rate-limited asynchronous Bible API call for tests.
-            
+
             Appends the current high-resolution timestamp to the external list `request_times`, awaits ~0.1 seconds to mimic a rate-limit delay, and returns a fixed (verse_text, verse_reference) tuple.
-            
+
             Returns:
                 tuple[str, str]: A fixed (verse_text, verse_reference) pair, e.g. ("Rate limited verse", "John 3:16").
             """

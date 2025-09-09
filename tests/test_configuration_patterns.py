@@ -196,7 +196,7 @@ class TestConfigurationPatterns:
     def test_configuration_type_validation(self):
         """
         Verify that configurations with incorrect value types are handled gracefully.
-        
+
         Creates several configs where fields have the wrong types (e.g., numeric homeserver,
         list user_id, string matrix_room_ids) and ensures constructing a BibleBot does not
         crash and results in a non-None config object.
@@ -300,12 +300,12 @@ class TestConfigurationPatterns:
     def test_configuration_schema_validation(self):
         """
         Validate that a configuration dict conforms to the expected schema for BibleBot.
-        
+
         Constructs a BibleBot with a known-good configuration and asserts:
         - `homeserver` is an HTTPS URL (starts with "https://").
         - `user_id` begins with "@".
         - `matrix_room_ids`, if present, is a list.
-        
+
         This test ensures required shape and basic value formats are accepted by the bot.
         """
         # Valid configuration schema
@@ -375,7 +375,7 @@ class TestConfigurationPatterns:
     def test_configuration_hot_reload_patterns(self):
         """
         Verify that updating the bot's configuration at runtime (hot reload) is applied to the running instance.
-        
+
         Creates a BibleBot with an initial set of matrix_room_ids, updates bot.config with an expanded list, and asserts the bot's configuration reflects the added rooms (the new list is longer than the original).
         """
         initial_config = {

@@ -19,14 +19,14 @@ class TestEdgeCases:
     def mock_config(self):
         """
         Provide a minimal mock Matrix client configuration for edge-case tests.
-        
+
         Returns a dict with the keys used by tests:
         - homeserver: base URL of the Matrix homeserver (str)
         - user_id: the bot/user ID (str)
         - access_token: authentication token (str)
         - device_id: device identifier (str)
         - matrix_room_ids: list of room IDs the bot should consider (list[str])
-        
+
         Used by fixtures to construct a BibleBot instance without real network configuration.
         """
         return {
@@ -94,7 +94,7 @@ class TestEdgeCases:
     async def test_extremely_long_messages(self, mock_config, mock_client):
         """
         Verify on_room_message handles extremely long messages and detects embedded scripture references.
-        
+
         Sets up a BibleBot with mocked config/client, enables partial-reference detection, and patches get_bible_text to return a valid verse. Sends an ~10k-character message that contains an embedded reference ("John 3:16") and asserts the bot processes it without crashing and attempts to send a reply (client.room_send is called).
         """
         bot = BibleBot(config=mock_config, client=mock_client)
@@ -322,7 +322,7 @@ class TestEdgeCases:
     async def test_room_id_edge_cases(self, mock_config, mock_client):
         """
         Verify BibleBot.on_room_message handles a variety of room_id formats without raising.
-        
+
         Sets up a BibleBot with mocked client/config, patches get_bible_text to return a valid verse,
         and sends messages from several room_id edge cases (normal, long, subdomain, with port,
         localhost, and IP-like). The test ensures processing completes for each room_id variant

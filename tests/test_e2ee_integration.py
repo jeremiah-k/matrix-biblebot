@@ -209,9 +209,9 @@ class TestDiscoverHomeserver:
         async def _discovery_error(*_args, **_kwargs):
             """
             Async helper that simulates a homeserver discovery failure by always raising DiscoveryInfoError.
-            
+
             Used in tests to mock AsyncClient.discovery_info behavior when discovery should fail.
-            
+
             Raises:
                 DiscoveryInfoError: Always raised with message "Error".
             """

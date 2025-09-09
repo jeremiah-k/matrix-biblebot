@@ -31,11 +31,11 @@ class MockEncryptedRoom:
     def __init__(self, room_id, encrypted=True):
         """
         Initialize the mock room.
-        
+
         Parameters:
             room_id (str): Unique identifier for the room.
             encrypted (bool): Whether the room is encrypted (default True).
-        
+
         The instance will expose `room_id`, `encrypted`, and a generated `display_name` in the form "Test Room {room_id}".
         """
         self.room_id = room_id
@@ -49,10 +49,10 @@ class MockUnencryptedRoom:
     def __init__(self, room_id):
         """
         Create a minimal mock room representing an unencrypted Matrix room.
-        
+
         Parameters:
             room_id (str): Matrix room identifier to assign to the mock room.
-        
+
         The instance will expose these attributes:
             room_id (str): the provided room identifier.
             encrypted (bool): always False for this mock.
@@ -70,17 +70,17 @@ class E2EETestFramework:
     def create_mock_client(rooms=None, should_upload_keys=False):
         """
         Create a preconfigured AsyncMock Matrix client for tests.
-        
+
         Returns an AsyncMock that mimics a nio AsyncClient with:
         - device_id, user_id, and access_token set to stable test values.
         - a `rooms` mapping (by default includes one encrypted and one unencrypted mock room).
         - `should_upload_keys` flag set from the argument.
         - async-mocked methods: `keys_upload`, `sync`, `room_send`, and `close`.
-        
+
         Parameters:
             rooms (dict|None): Optional mapping of room_id -> room-like objects to use instead of the defaults.
             should_upload_keys (bool): If True, the mock client's `should_upload_keys` attribute will be True.
-        
+
         Returns:
             AsyncMock: A configured mock client suitable for E2EE-related tests.
         """
@@ -114,12 +114,12 @@ class E2EETestFramework:
     def mock_e2ee_dependencies():
         """
         Provide a context manager that mocks Matrix E2EE-related dependencies for tests.
-        
+
         When used as a with-block, this context manager:
         - Patches builtin import to return mocks for "olm", "nio.crypto", and "nio.store".
         - Replaces nio.AsyncClientConfig.__init__ and __post_init__ to avoid ImportWarning/side effects and to supply a mock store factory.
         - Supplies a MockSqliteStore implementation that exposes the public methods expected by the code under test without touching a real database.
-        
+
         Return:
             A context manager usable as `with mock_e2ee_dependencies():` which applies the above patches for the duration of the block.
         """
@@ -131,7 +131,7 @@ class E2EETestFramework:
         def _mock_import(name, globals=None, locals=None, fromlist=(), level=0):
             """
             Return a mock module for E2EE-related imports or delegate to the real import.
-            
+
             When called with a module name of "olm", "nio.crypto", or "nio.store", returns a MagicMock to allow tests to run without the real E2EE libraries. For any other module name, calls and returns the result of the original import function.
             """
             if name in ("olm", "nio.crypto", "nio.store"):
@@ -154,9 +154,9 @@ class E2EETestFramework:
                 # Accept all arguments that real SqliteStore expects but don't use them
                 """
                 Create a drop-in mock replacement for a SqliteStore.
-                
+
                 This constructor accepts the same parameters as the real SqliteStore (for compatibility with code that constructs a store) but does not persist data or use any of the arguments. It exists solely so the mock can be instantiated in place of the real store without raising unexpected argument errors.
-                
+
                 Parameters:
                     user_id (str | None): Ignored; accepted for API compatibility.
                     device_id (str | None): Ignored; accepted for API compatibility.
@@ -165,7 +165,7 @@ class E2EETestFramework:
                     store_name (str | None): Ignored; accepted for API compatibility.
                     *args: Additional positional arguments are accepted and ignored.
                     **kwargs: Additional keyword arguments are accepted and ignored.
-                
+
                 Notes:
                     - No state is persisted and no external resources are used.
                 """
@@ -175,7 +175,7 @@ class E2EETestFramework:
                 # Don't connect to database
                 """
                 No-op dataclass post-initializer that intentionally avoids establishing a database connection.
-                
+
                 Used in tests/mocks to override any automatic initialization side effects (such as opening a DB) during object construction.
                 """
                 pass
@@ -184,7 +184,7 @@ class E2EETestFramework:
             def load_account(self):
                 """
                 Stub placeholder for loading a stored account or credentials.
-                
+
                 Returns:
                     None: No account is loaded by this implementation; always returns None.
                 """
@@ -193,7 +193,7 @@ class E2EETestFramework:
             def save_account(self, account):
                 """
                 Store an account object in the mock sqlite store for use by tests.
-                
+
                 The account is kept in-memory so subsequent store operations (e.g., retrieval by the test harness) can access the same account data without touching a real database. The provided `account` should be the account-like object produced by the client/library under test (typically containing identifiers such as user_id and/or device_id) and will replace any previously stored account with the same identity.
                 """
                 pass
@@ -202,9 +202,9 @@ class E2EETestFramework:
             def load_device_keys(self):
                 """
                 Return stored device keys.
-                
+
                 For this mock implementation, no device keys are persisted; always returns an empty dictionary.
-                
+
                 Returns:
                     dict: Mapping of device IDs to stored key metadata (empty in this mock).
                 """
@@ -213,7 +213,7 @@ class E2EETestFramework:
             def save_device_keys(self, device_keys):
                 """
                 No-op placeholder for storing device keys in the mock store.
-                
+
                 This method exists to satisfy the storage interface expected by E2EE codepaths but does not persist or modify any state in the mock implementation. The provided `device_keys` argument is accepted and ignored.
                 """
                 pass
@@ -222,10 +222,10 @@ class E2EETestFramework:
             def load_sessions(self):
                 """
                 Return an empty session mapping.
-                
+
                 This method provides a no-op implementation that always returns a fresh, empty dictionary
                 representing stored sessions (used by tests to avoid persistent session storage).
-                
+
                 Returns:
                     dict: An empty dictionary representing session storage.
                 """
@@ -234,7 +234,7 @@ class E2EETestFramework:
             def save_session(self, session):
                 """
                 Persist a session object into the mock store's in-memory storage for tests.
-                
+
                 The provided `session` (typically a serializable mapping or object representing client session state)
                 is stored in the store instance so subsequent test code can retrieve it. This method mutates the
                 store's internal state and does not return a value.
@@ -245,7 +245,7 @@ class E2EETestFramework:
             def load_inbound_group_sessions(self):
                 """
                 Return an empty mapping of inbound group sessions.
-                
+
                 This mock implementation is used in tests to simulate a storage backend that has
                 no stored inbound group sessions; callers should expect an empty dict.
                 """
@@ -254,9 +254,9 @@ class E2EETestFramework:
             def save_inbound_group_session(self, session):
                 """
                 Persist an inbound group session used for end-to-end encryption.
-                
+
                 In the mock/store used for tests this is a no-op (accepts the session to match the real store API but does not perform durable persistence).
-                
+
                 Parameters:
                     session: The inbound group session object to be saved (opaque to the caller).
                 """
@@ -266,9 +266,9 @@ class E2EETestFramework:
             def load_outgoing_key_requests(self):
                 """
                 Return stored outgoing room key requests.
-                
+
                 For the mock store used in tests this always returns an empty dict (no pending outgoing requests).
-                
+
                 Returns:
                     dict: Mapping of request_id to outgoing request data (empty in this mock).
                 """
@@ -277,12 +277,12 @@ class E2EETestFramework:
             def add_outgoing_key_request(self, request):
                 """
                 Record an outgoing room key request in the store.
-                
+
                 Stores the provided outgoing key request so it can later be queried or removed
                 by the test framework. The `request` argument is the outgoing key request
                 object produced by the SDK (a RoomKeyRequest-like object) and is stored by
                 its identifying fields.
-                
+
                 No value is returned.
                 """
                 pass
@@ -290,12 +290,12 @@ class E2EETestFramework:
             def remove_outgoing_key_request(self, request):
                 """
                 Remove a stored outgoing room key request from the store.
-                
+
                 Removes the outgoing key request represented by `request` from the persistent
                 store used for E2EE key-request bookkeeping. If the request is not present
                 this is a no-op. The method mutates the store state and is typically called
                 after a request has been successfully sent or cancelled.
-                
+
                 Parameters:
                     request: The outgoing key request object (e.g., an `OutgoingRoomKeyRequest`-like
                         instance) to remove. The object should contain the identifier used by the
@@ -307,7 +307,7 @@ class E2EETestFramework:
             def load_encrypted_rooms(self):
                 """
                 Return the set of room IDs that are considered encrypted.
-                
+
                 This implementation always returns an empty set (no encrypted rooms).
                 Returns:
                     set: A set of room ID strings (empty).
@@ -317,7 +317,7 @@ class E2EETestFramework:
             def save_encrypted_rooms(self, rooms):
                 """
                 Mark the given rooms as encrypted in the test framework's internal store/state.
-                
+
                 Parameters:
                     rooms (iterable): An iterable of room identifiers or room-like objects to be saved/marked as encrypted. This method updates the framework's mock storage or internal mapping; it does not return a value.
                 """
@@ -326,7 +326,7 @@ class E2EETestFramework:
             def delete_encrypted_room(self, room_id):
                 """
                 Remove an encrypted mock room by its room_id from the framework's internal state.
-                
+
                 If the specified room_id is not present, the call is a no-op.
                 """
                 pass
@@ -335,9 +335,9 @@ class E2EETestFramework:
             def load_sync_token(self):
                 """
                 Return the stored sync token used to resume a Matrix /sync.
-                
+
                 In this mock implementation there is no persistent storage, so it always returns None.
-                
+
                 Returns:
                     Optional[str]: The saved sync token, or None if not available.
                 """
@@ -346,9 +346,9 @@ class E2EETestFramework:
             def save_sync_token(self, token):
                 """
                 Save the current sync token.
-                
+
                 This method saves the provided sync token, which can be used to resume a sync session from the last known state. The token is typically received from a call to `sync()` and should be persisted to allow the bot to resume from where it left off, reducing unnecessary server load.
-                
+
                 Parameters:
                     token (str): The sync token to save.
                 """
@@ -358,7 +358,7 @@ class E2EETestFramework:
             def verify_device(self, device):
                 """
                 Determine whether a given device should be treated as verified/trusted for E2EE operations.
-                
+
                 Parameters:
                     device: The device object to evaluate (typically a device dict or model from the Matrix client).
                 Returns:
@@ -369,9 +369,9 @@ class E2EETestFramework:
             def unverify_device(self, device):
                 """
                 Mark the given device as unverified for testing E2EE behavior.
-                
+
                 This forces the client's representation of `device` to be treated as unverified (clearing or setting any verification/trust flags) so code paths that depend on device verification (e.g., sending with ignore_unverified_devices) can be exercised in tests.
-                
+
                 Parameters:
                     device: Identifier or device object representing the device to unverify. The exact accepted form matches the test framework's device representations.
                 """
@@ -380,12 +380,12 @@ class E2EETestFramework:
             def is_device_verified(self, device):
                 """
                 Return whether a device is considered verified.
-                
+
                 In this mock implementation used for E2EE tests, every device is treated as unverified and this always returns False.
-                
+
                 Parameters:
                     device: The device object or identifier to check (ignored by this mock).
-                
+
                 Returns:
                     bool: Always False.
                 """
@@ -394,10 +394,10 @@ class E2EETestFramework:
             def blacklist_device(self, device):
                 """
                 Mark a device as blacklisted so it will be excluded from E2EE operations (e.g., ignored for sending encrypted messages or key requests).
-                
+
                 Parameters:
                     device: The device identifier or device object to blacklist; its exact form depends on the surrounding E2EE client implementation.
-                
+
                 Notes:
                     This method performs an in-place change to the object's device tracking state and does not return a value.
                 """
@@ -406,10 +406,10 @@ class E2EETestFramework:
             def unblacklist_device(self, device):
                 """
                 Unblacklist a previously blacklisted device.
-                
+
                 Removes the given device from the internal blacklist so it will no longer be treated as blocked.
                 This is a no-op if the device is not currently blacklisted.
-                
+
                 Parameters:
                     device: The device identifier (e.g., device ID string) or device object to remove from the blacklist.
                 """
@@ -418,7 +418,7 @@ class E2EETestFramework:
             def is_device_blacklisted(self, device):
                 """
                 Check whether a device is blacklisted.
-                
+
                 This mock implementation always returns False (no device is treated as blacklisted).
                 The `device` argument is accepted for API compatibility but is ignored.
                 Returns:
@@ -429,7 +429,7 @@ class E2EETestFramework:
             def ignore_device(self, device):
                 """
                 Mark the given remote device as ignored for E2EE operations in the test framework.
-                
+
                 Parameters:
                     device: The device object (e.g., a mock Matrix device) to be treated as ignored; after calling this, the framework will skip verification/processing for that device.
                 """
@@ -438,11 +438,11 @@ class E2EETestFramework:
             def unignore_device(self, device):
                 """
                 Mark the given device as no longer ignored by this client.
-                
+
                 This updates the object's internal state so that future operations will treat
                 `device` as active/eligible (for message sending, key requests, etc.). Does not
                 return a value.
-                
+
                 Parameters:
                     device: The device object or identifier to un-ignore; its type depends on
                         the caller's device representation (e.g., a Device model or device id).
@@ -452,7 +452,7 @@ class E2EETestFramework:
             def ignore_devices(self, devices):
                 """
                 Mark the given devices as ignored for encryption checks.
-                
+
                 Parameters:
                     devices (iterable[str]): Device IDs to mark as ignored (i.e., treated as unverified/ignored for outgoing encrypted messaging).
                 """
@@ -461,12 +461,12 @@ class E2EETestFramework:
             def is_device_ignored(self, device):
                 """
                 Determine whether the given device should be ignored for messaging/key operations.
-                
+
                 Currently this implementation always returns False (no devices are ignored).
-                
+
                 Parameters:
                     device: The device object or identifier to evaluate.
-                
+
                 Returns:
                     bool: False indicating the device is not ignored.
                 """
@@ -476,7 +476,7 @@ class E2EETestFramework:
             def upgrade_to_v2(self):
                 """
                 Migrate the instance from schema/version 1 to schema/version 2 in place.
-                
+
                 Performs any necessary transformations on internal state so the object conforms to
                 the v2 data model. This method mutates the instance and is intended to be
                 idempotent when called on an already-upgraded instance. No value is returned.
@@ -488,12 +488,12 @@ class E2EETestFramework:
             # Don't raise ImportWarning for E2EE dependencies in tests
             """
             Initialize a mocked client config for tests.
-            
+
             Sets attributes on the config object to avoid ImportWarning and to provide a fake persistent store:
             - sets `store_sync_tokens` from kwargs (defaults to True)
             - sets `encryption_enabled` from kwargs (defaults to False)
             - sets `store` to a factory that returns a MockSqliteStore instance
-            
+
             The `store` factory has the signature (user_id, device_id, store_path, pickle_key, store_name) and returns a MockSqliteStore constructed with those values. This function does not return a value; it mutates `self`.
             """
             object.__setattr__(
@@ -509,16 +509,16 @@ class E2EETestFramework:
             ):
                 """
                 Factory that constructs a MockSqliteStore for tests.
-                
+
                 Creates and returns a MockSqliteStore configured for the given Matrix identity and storage settings. Intended for use in test patches where a real sqlite-backed store must be replaced.
-                
+
                 Parameters:
                     user_id (str): Matrix user ID the store will represent.
                     device_id (str): Device ID the store will represent.
                     store_path (str | Path): Filesystem path (or path-like) used as the store location.
                     pickle_key (bytes | str | None): Key used for (de)serialization by the mock store, if applicable.
                     store_name (str): Logical name for the store instance.
-                
+
                 Returns:
                     MockSqliteStore: A test double implementing the same interface as the real sqlite store.
                 """
@@ -532,12 +532,12 @@ class E2EETestFramework:
             def __enter__(self):
                 """
                 Enter the context: create an ExitStack, install patches that mock imports and nix AsyncClientConfig initialization, and return the context manager instance.
-                
+
                 This sets up:
                 - a patched builtins.__import__ that delegates to a test import hook,
                 - a no-op __post_init__ for nio.AsyncClientConfig,
                 - a replacement __init__ for nio.AsyncClientConfig (mock_client_config_init).
-                
+
                 Returns:
                     self: the context manager instance, ready to be used with `with`.
                 """
@@ -556,7 +556,7 @@ class E2EETestFramework:
             def __exit__(self, exc_type, exc_val, exc_tb):
                 """
                 Exit the context manager by closing the internal patch stack.
-                
+
                 Any exception information passed via exc_type, exc_val, and exc_tb is ignored; this method does not suppress exceptions (returns None).
                 """
                 self.stack.close()

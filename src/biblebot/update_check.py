@@ -66,7 +66,7 @@ async def get_latest_release_version() -> Optional[str]:
 def compare_versions(current: str, latest: str) -> bool:
     """
     Return True if `latest` represents a newer version than `current`.
-    
+
     Both inputs are parsed with `packaging.version.parse` (PEP 440–compatible). If either value cannot be parsed as a version, the function returns False.
     """
     try:

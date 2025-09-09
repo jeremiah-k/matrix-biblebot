@@ -195,13 +195,13 @@ def generate_config(config_path: Path | str) -> bool:
 def interactive_main():
     """
     Run an interactive CLI startup flow that ensures a valid configuration and authentication are present, then launches the bot.
-    
+
     This orchestrates the user-facing startup paths detected by detect_configuration_state():
     - "setup": creates a sample configuration file and prints next steps.
     - "auth": launches an interactive Matrix login (skipped in CI/test environments); on success, starts the bot.
     - "ready_legacy": starts the bot using a legacy access token (deprecated path).
     - "ready": starts the bot normally.
-    
+
     Side effects:
     - May create or modify files on disk (configuration).
     - May launch an interactive login flow (unless running in CI/test).
@@ -213,18 +213,18 @@ def interactive_main():
     ):
         """
         Start the BibleBot process using the provided configuration.
-        
+
         This function ensures logging is configured (using the given preloaded `config` when supplied,
         or by attempting to load `config_path`), then imports and runs the bot entrypoint. If the
         bot module exposes `main_with_config`, it will be preferred and invoked with the already-loaded
         configuration to avoid re-reading the file. The call blocks until the bot exits.
-        
+
         Parameters:
             config_path: Path to the configuration file (string or Path). Used when `config` is not supplied.
             legacy: If True, annotate startup as legacy mode (affects startup mode only).
             config: Optional preloaded configuration dictionary; when provided, it will be used to
                 configure logging and passed to the bot entrypoint to prevent reloading the file.
-        
+
         Side effects:
             - Configures application logging (from `config` when available, otherwise attempts to load
               config from `config_path` and falls back to default logging on load errors).
@@ -353,17 +353,17 @@ def interactive_main():
 def create_parser():
     """
     Create the CLI argument parser and subparsers used by the program.
-    
+
     Builds the top-level argparse.ArgumentParser with global options (config path, log level, version, and a yes/force flag),
     and the following subcommand groups with their actions:
-    
+
     - config: "generate" (create sample config) and "check" (validate config).
     - auth: "login" (interactive or non-interactive Matrix login), "logout" (remove credentials and E2EE state),
       and "status" (show auth and E2EE status).
       - The "login" action accepts optional --homeserver, --username, and --password; when any of these are provided,
         the other two are required for a non-interactive login attempt.
     - service: "install" (install or update per-user systemd service).
-    
+
     Returns:
         tuple: (parser, config_parser, auth_parser, service_parser) where each element is an argparse parser
         for the corresponding command namespace.

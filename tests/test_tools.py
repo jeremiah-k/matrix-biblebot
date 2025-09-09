@@ -14,9 +14,9 @@ from biblebot import tools
 def _get_sample_config_path_no_warnings():
     """
     Return the sample configuration file path while suppressing DeprecationWarning.
-    
+
     This test helper calls tools.get_sample_config_path() inside a warnings context that ignores DeprecationWarning so tests don't fail or emit noise when the underlying API is deprecated.
-    
+
     Returns:
         str: Path to the sample configuration file (as returned by tools.get_sample_config_path()).
     """
@@ -180,7 +180,7 @@ class TestErrorHandling:
     def test_missing_sample_files_handling(self, mock_exists):
         """
         Verify that _get_sample_config_path_no_warnings() returns a path string containing "sample_config.yaml" even when the filesystem reports the sample file as missing.
-        
+
         The test patches Path.exists (via the mock_exists fixture) to always return False and asserts the helper still returns a string path referencing the sample config file.
         """
         mock_exists.return_value = False

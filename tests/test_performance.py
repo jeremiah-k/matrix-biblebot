@@ -110,7 +110,7 @@ class TestBookNormalizationPerformance:
     def test_normalization_performance_common_books(self):
         """
         Measure performance of book-name normalization on a list of common Bible books.
-        
+
         Runs 200 iterations over a predefined list of common book names, calling
         bot.validate_and_normalize_book_name for each entry and asserting each result
         is a string. Records total elapsed time and, unless the CI_SLOW_RUNNER
@@ -154,7 +154,7 @@ class TestBookNormalizationPerformance:
     def test_normalization_performance_abbreviations(self):
         """
         Measure performance of book-name normalization for common abbreviations.
-        
+
         Runs 200 iterations over a representative set of abbreviated book names (including spaced variants)
         and verifies each normalization returns a string. When the CI_SLOW_RUNNER environment variable is
         not set, asserts the total run completes within 3.5 seconds and the average time per normalization
@@ -203,7 +203,7 @@ class TestBookNormalizationPerformance:
     def test_normalization_performance_mixed_case(self):
         """
         Test performance of validate_and_normalize_book_name using mixed-case book names.
-        
+
         Runs 200 iterations over a predefined list of mixed-case book-name variants and asserts each normalization returns a string.
         When the CI_SLOW_RUNNER environment variable is not set, the total elapsed time for the loop must be under 3.5 seconds.
         """
@@ -397,7 +397,7 @@ class TestMemoryPerformance:
     def test_normalization_memory_usage(self):
         """
         Run repeated book-name normalizations to detect memory-growth issues.
-        
+
         Performs 10,000 calls to bot.validate_and_normalize_book_name cycling through 100 distinct inputs.
         Each result is asserted to be either a string (normalized name) or None (invalid input).
         The test passes implicitly if it completes without excessive memory consumption or crashes.
@@ -418,12 +418,12 @@ class TestStressPerformance:
     def test_rapid_cache_operations(self):
         """
         Stress-test mixed cache operations by performing 500 rapid set/get cycles and asserting functional correctness and performance.
-        
+
         Clears the internal passage cache (if present), then for 500 iterations:
         - stores a passage via the internal cache-set helper,
         - retrieves it via the internal cache-get helper and asserts the result is not None,
         - retrieves it again using different casing for the key and version and asserts the result equals the first retrieval (verifies case-insensitive behavior).
-        
+
         Measures total elapsed time and, unless the CI_SLOW_RUNNER environment variable is set, asserts the test completes in under 10 seconds.
         """
         # Clear cache

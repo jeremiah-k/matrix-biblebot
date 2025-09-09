@@ -42,7 +42,7 @@ from biblebot.tools import copy_service_template_to
 def get_executable_path():
     """
     Locate the BibleBot executable on the system.
-    
+
     Searches the PATH for the configured entry-point name (EXECUTABLE_NAME) using shutil.which and returns its full path if found. If no standalone executable is found, returns the current Python interpreter path (sys.executable) as a fallback.
     """
     biblebot_path = shutil.which(EXECUTABLE_NAME)
@@ -117,7 +117,7 @@ def read_service_file():
 def get_template_service_path():
     """
     Locate the systemd service template file for the application.
-    
+
     Searches a set of candidate locations in this order and returns the first existing file:
     1. Package installation directories (package root and tools subdirectory).
     2. sys.prefix share locations for the application.
@@ -125,7 +125,7 @@ def get_template_service_path():
     4. Development locations relative to the package (one and two levels up).
     5. Repository tools directory (if a repository root is detected by presence of `.git` or `setup.py`).
     6. Current working directory tools subdirectory.
-    
+
     Returns:
         pathlib.Path | None: Absolute path to the first found service template file, or None if no candidate exists.
     """
@@ -175,13 +175,13 @@ def get_template_service_path():
 def get_template_service_content():
     """
     Return the systemd service unit template content to use when creating the user service.
-    
+
     Tries sources in order and returns the first successfully read template string:
     1) A stable copy produced by copy_service_template_to().
     2) The packaged resource `biblebot.tools:biblebot.service` via importlib.resources.
     3) A filesystem path returned by get_template_service_path().
     If none of these yield a readable template, returns a built-in default unit suitable for a normal user install. The returned template may contain the `{SERVICE_DESCRIPTION}` placeholder which callers substitute as needed.
-    
+
     Returns:
         str: Service unit file content (UTF-8 text). Errors encountered while attempting each source are printed; unexpected exceptions are allowed to propagate.
     """
@@ -295,17 +295,17 @@ def is_service_active():
 def create_service_file():
     """
     Create or update the user-level systemd service unit for BibleBot.
-    
+
     Determines an appropriate ExecStart command (preferring an installed `biblebot` executable on PATH,
     falling back to `sys.executable -m biblebot`), injects that command with the `--config DEFAULT_CONFIG_PATH`
     argument into a service template, and writes the resulting unit to the user systemd service path.
-    
+
     Side effects:
     - Ensures the user systemd service directory and the application config directory exist.
     - Reads the service template via get_template_service_content().
     - Writes the final unit file to the path returned by get_user_service_path().
     - Emits status/error messages to stdout/stderr.
-    
+
     Returns:
         bool: True if the service file was successfully created or updated; False on failure
         (template resolution or I/O errors).
@@ -343,7 +343,7 @@ def create_service_file():
     def _q(arg: str) -> str:
         """
         Return the input as a string, wrapping it in double quotes if it contains a space or tab.
-        
+
         This is a small utility to produce a shell-friendly representation: if `arg` contains a space or a tab character it is returned enclosed in double quotes; otherwise the original value is returned as a string.
         """
         return f'"{arg}"' if (" " in arg or "\t" in arg) else str(arg)
@@ -380,11 +380,11 @@ def create_service_file():
 def reload_daemon():
     """
     Reload the systemd user daemon so user unit changes are recognized.
-    
+
     This runs the configured systemctl (SYSTEMCTL_PATH) with the user-scoped
     daemon-reload action. If SYSTEMCTL_PATH is not set or the command fails
     (e.g., non-zero exit status or an OSError), the function returns False.
-    
+
     Returns:
         bool: True when daemon reload succeeds; False when systemctl is unavailable or an error occurs.
     """
@@ -509,7 +509,7 @@ def check_loginctl_available():
 def _get_current_username() -> str:
     """
     Return the current username, preferring environment variables.
-    
+
     Checks the environment variables ENV_USER then ENV_USERNAME and returns their value if set; otherwise falls back to getpass.getuser(). Always returns a non-empty string username.
     """
     return os.environ.get(ENV_USER) or os.environ.get(ENV_USERNAME) or getpass.getuser()
@@ -543,9 +543,9 @@ def check_lingering_enabled():
 def enable_lingering():
     """
     Enable systemd "lingering" for the current user so user services can run when the user is not logged in.
-    
+
     Determines the target username (from environment or system account) and runs `sudo loginctl enable-linger <username>`. Returns True if the command succeeds (exit code 0). Returns False if loginctl or sudo are not available, the command fails, or an OS/subprocess error occurs.
-    
+
     Notes:
     - This function has the side effect of invoking an external command and requires sudo privileges to succeed.
     """
@@ -580,7 +580,7 @@ def enable_lingering():
 def start_service():
     """
     Start the BibleBot systemd user service.
-    
+
     Attempts to run `systemctl --user start <SERVICE_NAME>` using the configured SYSTEMCTL_PATH.
     Returns True when the start command executes successfully; returns False if systemctl is not
     available on the system or if the start command fails.
@@ -633,17 +633,17 @@ def show_service_status():
 def install_service():
     """
     Install or update the BibleBot systemd user service.
-    
+
     Interactive routine that ensures a user-level systemd unit exists and matches the current installation;
     creates or updates the unit file, reloads the user systemd daemon, and optionally enables/starts/restarts
     the service and enables user lingering based on interactive prompts. Outputs progress, prompts, and a final
     status summary to stdout.
-    
+
     Side effects:
     - May create or overwrite the user systemd unit file.
     - Runs `systemctl --user daemon-reload` and may run `systemctl --user enable|start|restart`.
     - May invoke `loginctl` (and `sudo loginctl enable-linger`) to manage user lingering.
-    
+
     Returns:
         bool: True on normal completion (including when the user declines optional actions);
               False if a fatal operation failed (for example, creating the service file or reloading the daemon).

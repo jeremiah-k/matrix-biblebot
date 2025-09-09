@@ -11,7 +11,7 @@ from biblebot.bot import BibleBot
 def mock_config():
     """
     Return a minimal sample configuration dict used by tests.
-    
+
     The returned dict contains keys expected by the code under test:
     - "matrix": configuration for Matrix client:
         - "homeserver": base URL of the homeserver.

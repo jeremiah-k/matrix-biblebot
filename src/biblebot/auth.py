@@ -306,9 +306,9 @@ def get_store_dir() -> Path:
 def check_e2ee_status() -> dict:
     """
     Return the E2EE readiness and availability status.
-    
+
     Performs platform and dependency checks, inspects whether the local E2EE store directory exists (without creating it), and checks for saved Matrix credentials to determine whether encrypted sessions can be used.
-    
+
     Returns:
         dict: A mapping keyed by E2EE status constants with the following entries:
             - E2EE_KEY_AVAILABLE (bool): True if the current platform is supported and required Python dependencies are installed.
@@ -317,7 +317,7 @@ def check_e2ee_status() -> dict:
             - E2EE_KEY_PLATFORM_SUPPORTED (bool): False if the platform is unsupported (Windows).
             - E2EE_KEY_ERROR (Optional[str]): Human-readable error message when a check fails; otherwise None.
             - E2EE_KEY_READY (bool): True when E2EE is available, persisted credentials exist, and the store directory exists (ready for encrypted sessions).
-    
+
     Notes:
         - This function does not create the E2EE store directory; it only checks for its existence.
         - It may call load_credentials() to determine whether credentials are present.
@@ -405,13 +405,13 @@ async def discover_homeserver(
 ) -> str:
     """
     Discover the server's canonical homeserver URL via Matrix discovery, falling back to the provided homeserver on timeout or error.
-    
+
     This awaits client.discovery_info() for up to `timeout` seconds; if the discovery response contains a usable homeserver URL that differs from the input, that URL is returned. On timeout, network/protocol errors, or unexpected responses the original `homeserver` is returned unchanged.
-    
+
     Parameters:
         homeserver (str): Fallback homeserver URL to return when discovery does not yield a usable URL.
         timeout (float): Maximum seconds to wait for the discovery request (default 10.0).
-    
+
     Returns:
         str: The discovered homeserver URL, or the provided `homeserver` if discovery fails or is inconclusive.
     """
@@ -445,7 +445,7 @@ async def discover_homeserver(
         logger.debug(
             f"{MSG_SERVER_DISCOVERY_FAILED}: {type(e).__name__}: {e}",
         )
-    except Exception as e:
+    except Exception:
         logger.exception("Unexpected error during server discovery")
 
     logger.debug(f"Using original homeserver URL: {homeserver}")

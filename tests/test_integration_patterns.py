@@ -47,13 +47,13 @@ class TestIntegrationPatterns:
     def mock_client(self):
         """
         Create a MagicMock that simulates a Matrix client for integration tests.
-        
+
         The returned mock exposes commonly used async methods as AsyncMock instances:
         - room_send: simulate sending messages to a room
         - join: simulate joining a room
         - sync: simulate the client's sync loop
         - close: simulate cleanup/close
-        
+
         Returns:
             MagicMock: A mock client whose async methods can be awaited and inspected by tests.
         """
@@ -320,7 +320,7 @@ class TestIntegrationPatterns:
     async def test_message_formatting_integration(self, mock_config, mock_client):
         """
         Verify that when a verse is requested the bot sends a formatted Matrix message containing both plain-text and HTML-formatted content.
-        
+
         This integration-style test:
         - Mocks biblebot.bot.get_bible_text to return verse text and reference.
         - Seeds the bot's configured room set and simulates an incoming room message event.

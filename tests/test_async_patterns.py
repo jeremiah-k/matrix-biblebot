@@ -55,11 +55,11 @@ class TestAsyncPatterns:
     def mock_room(self):
         """
         Create a MagicMock configured to represent a Matrix room for tests.
-        
+
         The mock has these attributes:
         - room_id: "!room:matrix.org"
         - display_name: "Test Room"
-        
+
         Returns:
             MagicMock: A mock room object with the attributes above.
         """
@@ -72,14 +72,14 @@ class TestAsyncPatterns:
     def mock_event(self):
         """
         Create a MagicMock that simulates a Matrix room event for use in async tests.
-        
+
         The mock exposes commonly accessed attributes used across the test suite:
         - sender (str): example "@user:matrix.org"
         - body (str): human-readable event body, e.g. "John 3:16"
         - event_id (str): example "$event123"
         - server_timestamp (int): epoch milliseconds (set to 1234567890000)
         - source (dict): nested structure with content.body matching `body`
-        
+
         Returns:
             MagicMock: A mock object shaped like a Matrix event, ready for test scenarios.
         """
@@ -229,7 +229,7 @@ class TestAsyncPatterns:
     async def test_async_rate_limiting_patterns(self, mock_config, mock_client):
         """
         Verify the bot handles rate-limited API calls by introducing delays between requests.
-        
+
         Patches asyncio.sleep and the get_bible_text coroutine, simulates multiple sequential rate-limited requests that await a short delay before fetching a passage, and asserts that the delay (asyncio.sleep) was invoked during the process.
         """
         BibleBot(config=mock_config, client=mock_client)
@@ -245,7 +245,7 @@ class TestAsyncPatterns:
                 async def rate_limited_call():
                     """
                     Asynchronously perform a simulated rate-limited retrieval of the passage "John 3:16".
-                    
+
                     Awaits a short delay to emulate rate limiting, then awaits and returns the result of calling the `mock_get_bible` coroutine with "John 3:16".
                     Returns:
                         The value returned by `mock_get_bible("John 3:16")` (typically a tuple or object containing verse text and reference).
@@ -268,10 +268,10 @@ class TestAsyncPatterns:
         async def quick_task():
             """
             Short cancellable coroutine that sleeps briefly and returns "completed".
-            
+
             Awaits asyncio.sleep(0.1) and then returns the literal string "completed".
             If the task is cancelled while sleeping, asyncio.CancelledError will propagate to the caller.
-            
+
             Returns:
                 str: "completed" when the coroutine finishes normally.
             """
@@ -380,7 +380,7 @@ class TestAsyncPatterns:
         async def mock_shutdown():
             """
             Mark the test's shutdown flag to simulate a graceful shutdown.
-            
+
             When awaited, sets the nonlocal `shutdown_called` variable to True so tests can assert that shutdown logic ran.
             """
             nonlocal shutdown_called
@@ -402,7 +402,7 @@ class TestAsyncPatterns:
             async def background_task():
                 """
                 Run a short asynchronous background task and mark completion.
-                
+
                 Sleeps for ~0.1 seconds and sets the surrounding scope's nonlocal variable `task_completed` to True to indicate the background work finished.
                 """
                 nonlocal task_completed

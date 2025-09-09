@@ -85,14 +85,14 @@ class TestGenerateConfig:
         def create_file(path):
             """
             Write a minimal sample configuration file to the given path and return the path.
-            
+
             This function creates or overwrites a file at `path` containing the literal
             string "sample config content". `path` may be a string or a pathlib.Path.
             The function returns the original `path` value.
-            
+
             Parameters:
                 path: Destination file path (str or pathlib.Path).
-            
+
             Returns:
                 The same `path` that was passed in.
             """
@@ -150,14 +150,14 @@ class TestGenerateConfig:
         def create_file(path):
             """
             Write a minimal sample configuration file to the given path and return the path.
-            
+
             This function creates or overwrites a file at `path` containing the literal
             string "sample config content". `path` may be a string or a pathlib.Path.
             The function returns the original `path` value.
-            
+
             Parameters:
                 path: Destination file path (str or pathlib.Path).
-            
+
             Returns:
                 The same `path` that was passed in.
             """
@@ -290,7 +290,7 @@ class TestModernCommands:
         def mock_load_credentials():
             """
             Return a fresh MockCredentials instance for tests.
-            
+
             Provides a new MockCredentials object to simulate stored user credentials in test scenarios.
             """
             return MockCredentials()

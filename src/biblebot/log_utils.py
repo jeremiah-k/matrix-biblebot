@@ -110,13 +110,13 @@ def get_log_dir():
 def get_logger(name, *, force: bool = False):
     """
     Create or reconfigure a named logger that writes to the console (Rich-colored when enabled) and optionally to a rotating file.
-    
+
     Reads settings from the module-level `config["logging"]` when present (level, color_enabled, log_to_file, filename, max_log_size, backup_count). If a logger with the given name already has handlers the existing logger is returned unchanged unless `force` is True, in which case handlers are removed and the logger is rebuilt. File logging defaults to enabled; failures creating the log file fall back to console-only logging.
-    
+
     Parameters:
         name (str): Logger name to create or reconfigure.
         force (bool): If True, remove existing handlers and reconfigure even if handlers are present.
-    
+
     Returns:
         logging.Logger: The configured logger instance.
     """
@@ -273,12 +273,12 @@ def get_logger(name, *, force: bool = False):
 def configure_logging(config_dict=None):
     """
     Set or clear the module-level logging configuration and reset component debug state.
-    
+
     When provided, stores config_dict in the module-global `config` so subsequent calls to get_logger
     and related helpers use the new settings. Passing None clears the stored configuration. This
     function also resets the internal `_component_debug_configured` flag so per-component debug levels
     will be reapplied the next time component configuration is applied.
-    
+
     Parameters:
         config_dict (dict | None): Logging configuration mapping (or None to clear). Expected keys
             include top-level logging options (e.g., "level", "color_enabled", "log_to_file",

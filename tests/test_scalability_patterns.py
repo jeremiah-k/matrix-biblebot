@@ -22,7 +22,7 @@ class TestScalabilityPatterns:
     def mock_config(self):
         """
         Fixture providing a mocked Matrix-like configuration dictionary for scalability tests.
-        
+
         Returns a dict containing the minimal fields the tests expect:
         - homeserver: homeserver URL used by the client (string).
         - user_id: Matrix user identifier used in events (string).
@@ -60,7 +60,7 @@ class TestScalabilityPatterns:
     async def test_high_volume_message_processing(self, mock_config, mock_client):
         """
         Simulate 100 concurrent incoming messages to a single room and assert throughput and per-message I/O behavior.
-        
+
         Runs a high-volume scenario with a deterministic patched Bible API, measures total processing time and messages/sec, and asserts:
         - total processing completes in under 30 seconds,
         - throughput exceeds 3 messages/second,
@@ -261,17 +261,17 @@ class TestScalabilityPatterns:
     async def test_api_request_scaling(self, mock_config, mock_client):
         """
         Test that external API request latency remains stable under concurrent load.
-        
+
         Creates a BibleBot with a mocked Matrix client and patches the external `get_bible_text`
         call to an async helper that simulates ~10ms latency while recording each call's
         duration. It then concurrently sends 50 simulated room message events to the bot,
         collects per-call timings, and asserts:
-        
+
         - Exactly 50 API calls were recorded.
         - The average API time stays within a permissive budget derived from the median
           observed latency (avg < median + 0.25).
         - The worst single-call time stays within a permissive spike allowance (max < median + 0.45).
-        
+
         This test focuses on measuring per-request latency under load and uses relaxed
         tolerances to reduce CI flakiness.
         """
@@ -288,7 +288,7 @@ class TestScalabilityPatterns:
         async def timed_api_call(*_args, **_kwargs):
             """
             Simulate a short (~10 ms) external API call, record its duration, and return a fixed verse tuple.
-            
+
             This async helper accepts arbitrary positional and keyword arguments (they are ignored), sleeps approximately 10 milliseconds to emulate network latency, appends the measured call duration (seconds) to the external list `api_call_times`, and returns a (verse_text, reference) tuple — ("Test verse", "John 3:16").
             """
             start = time.perf_counter()
@@ -332,7 +332,7 @@ class TestScalabilityPatterns:
     async def test_connection_pool_scaling(self, mock_config, mock_client):
         """
         Verify the bot's external-request connection pooling scales under concurrent load.
-        
+
         Creates a BibleBot with a mocked client and configuration, patches get_bible_text with an async helper that simulates ~50 ms latency while tracking concurrent callers, then drives 30 concurrent on_room_message calls. Asserts the observed peak concurrent connections is greater than 1 (uses multiple connections) and does not exceed the number of requests (<= 30).
         """
         bot = BibleBot(config=mock_config, client=mock_client)
@@ -349,11 +349,11 @@ class TestScalabilityPatterns:
         async def connection_tracking_api(*_args, **_kwargs):
             """
             Simulated async API that tracks concurrent "connections" and returns a fixed verse.
-            
+
             Increments the enclosing active_connections counter and updates max_connections to record peak concurrency,
             awaits ~50 ms to simulate external latency, then decrements active_connections and returns a fixed
             (verse, reference) tuple. Accepts arbitrary positional and keyword arguments (ignored).
-            
+
             Returns:
                 tuple[str, str]: A fixed (verse, reference) pair ("Test verse", "John 3:16").
             """
