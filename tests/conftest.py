@@ -172,7 +172,7 @@ def cleanup_asyncmock_objects(request):
     yield
 
     # Only force garbage collection for tests that might create AsyncMock objects
-    test_file = request.node.fspath.basename
+    test_file = request.node.path.name
 
     # List of test files/patterns that use AsyncMock
     asyncmock_patterns = [
@@ -224,17 +224,14 @@ def mock_submit_coro(monkeypatch):
         temp_loop = asyncio.new_event_loop()
         try:
             result = temp_loop.run_until_complete(coro)
-            future = Future()
-            future.set_result(result)
-            return future
-        except (
-            Exception
-        ) as e:  # noqa: BLE001 - test fixture needs broad exception handling
-            future = Future()
-            future.set_exception(e)
-            return future
+            outcome_ok, payload = True, result
+        except Exception as e:
+            outcome_ok, payload = False, e
         finally:
             temp_loop.close()
+        future = Future()
+        (future.set_result if outcome_ok else future.set_exception)(payload)
+        return future
 
     # Try to patch any _submit_coro functions that might exist
     try:
@@ -285,7 +282,8 @@ def comprehensive_cleanup():
             with contextlib.suppress(Exception):
                 if hasattr(loop, "shutdown_default_executor"):
                     # Python 3.9+ public API
-                    loop.run_until_complete(loop.shutdown_default_executor())
+                    if not loop.is_running():
+                        loop.run_until_complete(loop.shutdown_default_executor())
                 elif hasattr(loop, "_default_executor") and loop._default_executor:
                     # Fallback for older Python versions
                     executor = loop._default_executor

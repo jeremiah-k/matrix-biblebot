@@ -581,8 +581,8 @@ class BibleBot:
         Recognized config["bot"] keys:
             - default_translation: default translation to use when none is specified (default: DEFAULT_TRANSLATION).
             - cache_enabled: whether passage caching is enabled (default: True).
-            - max_message_length: maximum length of outgoing messages (default: 2000). Non‑positive values are reset to 2000.
-            - split_message_length: threshold to split long messages into multiple parts (default: 0 to disable). Non‑integer or negative values disable splitting; values greater than max_message_length are capped to max_message_length.
+            - max_message_length: maximum length of outgoing messages (default: 2000). Non-positive values are reset to 2000.
+            - split_message_length: threshold to split long messages into multiple parts (default: 0 to disable). Non-integer or negative values disable splitting; values greater than max_message_length are capped to max_message_length.
             - preserve_poetry_formatting: preserve original line breaks for poetry-style passages (default: False).
             - CONFIG_DETECT_REFERENCES_ANYWHERE: truthy string enables detecting references anywhere in a message (accepted: "true", "yes", "1", "on"); default is False.
 

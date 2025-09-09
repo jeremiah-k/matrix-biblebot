@@ -73,7 +73,7 @@ def run_async(coro: Awaitable[T]) -> T:
     return asyncio.run(coro)
 
 
-def get_default_config_path():
+def get_default_config_path() -> Path:
     """
     Return the default configuration file path used by the CLI.
 
@@ -85,7 +85,7 @@ def get_default_config_path():
     return CONFIG_DIR / DEFAULT_CONFIG_FILENAME
 
 
-def detect_configuration_state():
+def detect_configuration_state() -> tuple[str, str, Optional[dict]]:
     """
     Determine the CLI's current configuration and authentication state.
 
@@ -149,7 +149,7 @@ def detect_configuration_state():
     return "ready", "Bot is configured and ready to start.", config
 
 
-def generate_config(config_path):
+def generate_config(config_path: Path | str) -> bool:
     """
     Create a sample configuration file at config_path by copying the bundled template.
 
@@ -209,17 +209,6 @@ def interactive_main():
 
     Returns:
         None
-    """
-    """
-    Start the BibleBot process for a given configuration and handle common startup failures.
-    
-    Parameters:
-        config_path (str): Path to the configuration file to use.
-        legacy (bool): If True, run in legacy-token compatibility mode (no E2EE).
-        config (dict | None): Pre-loaded configuration object to avoid reloading from disk.
-    
-    This function configures logging, imports the bot entry point, and runs the bot using the provided configuration.
-    On startup failures it logs and exits the process with a non-zero status.
     """
 
     def _run_bot(

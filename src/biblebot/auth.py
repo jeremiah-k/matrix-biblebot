@@ -442,9 +442,7 @@ async def discover_homeserver(
             f"{MSG_SERVER_DISCOVERY_FAILED}: {type(e).__name__}: {e}",
         )
     except Exception as e:
-        logger.exception(
-            f"Unexpected error during server discovery: {type(e).__name__}: {e}"
-        )
+        logger.exception("Unexpected error during server discovery")
 
     logger.debug(f"Using original homeserver URL: {homeserver}")
     return homeserver

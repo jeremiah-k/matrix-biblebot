@@ -340,16 +340,18 @@ def create_service_file():
         "{SERVICE_DESCRIPTION}", SERVICE_DESCRIPTION
     )
 
-    # Compute ExecStart command
-    # If get_executable_path returned the python interpreter, use module form
-    exec_cmd = executable_path
-    if exec_cmd == sys.executable:
-        exec_cmd = f"{shlex.quote(sys.executable)} -m biblebot"
+    # Compute ExecStart command (systemd-friendly: quote only when needed, with double quotes)
+    if executable_path == sys.executable:
+        exec_parts = [sys.executable, "-m", "biblebot"]
     else:
-        exec_cmd = shlex.quote(exec_cmd)
+        exec_parts = [executable_path]
 
-    # Replace ExecStart line to use discovered command and default config path
-    exec_start_line = f'ExecStart={exec_cmd} --config "{DEFAULT_CONFIG_PATH}"'
+    def _q(arg: str) -> str:
+        return f'"{arg}"' if (" " in arg or "\t" in arg) else str(arg)
+
+    exec_start_line = "ExecStart=" + " ".join(
+        _q(p) for p in (*exec_parts, "--config", str(DEFAULT_CONFIG_PATH))
+    )
     service_content, n = re.subn(
         r"^ExecStart=.*$",
         exec_start_line,

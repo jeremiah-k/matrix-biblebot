@@ -12,7 +12,7 @@ import pytest
 
 pytestmark = pytest.mark.asyncio
 
-from biblebot.bot import BibleBot  # noqa: E402
+from biblebot.bot import BibleBot
 
 
 class TestReliabilityPatterns:
@@ -253,7 +253,7 @@ class TestReliabilityPatterns:
 
         call_count = 0
 
-        async def random_failure_api(*args, **kwargs):
+        async def random_failure_api(*_, **__):
             """
             Simulate an unreliable external API: returns a verse tuple or deterministically fails.
 
@@ -305,7 +305,7 @@ class TestReliabilityPatterns:
         bot.api_keys = {}
 
         # Mock resource exhaustion
-        async def resource_exhausted_api(*args, **kwargs):
+        async def resource_exhausted_api(*_, **__):
             """
             Simulate an API that always fails due to resource exhaustion.
 
@@ -345,7 +345,7 @@ class TestReliabilityPatterns:
         # Mock cascading failures (one failure leads to others)
         failure_started = False
 
-        async def cascading_failure_api(*args, **kwargs):
+        async def cascading_failure_api(*_, **__):
             """
             Simulate an API that fails once with an initial error and then fails subsequently as a cascading failure.
 
@@ -391,7 +391,7 @@ class TestReliabilityPatterns:
         bot.start_time = 1234567880000  # Converted to milliseconds
 
         # Mock degraded service (slower responses, limited functionality)
-        async def degraded_api(*args, **kwargs):
+        async def degraded_api(*_, **__):
             """
             Simulate a degraded external API: asynchronously waits a short delay and returns a degraded response.
 
@@ -439,7 +439,7 @@ class TestReliabilityPatterns:
         bot.api_keys = {}
 
         # Mock service that fails consistently
-        async def consistently_failing_api(*args, **kwargs):
+        async def consistently_failing_api(*_, **__):
             """
             Simulate an API that is permanently unavailable by always raising an Exception.
 
@@ -452,7 +452,9 @@ class TestReliabilityPatterns:
             """
             raise Exception("Service consistently down")
 
-        with patch("biblebot.bot.get_bible_text", side_effect=consistently_failing_api):
+        with patch(
+            "biblebot.bot.get_bible_text", side_effect=consistently_failing_api
+        ) as mock_get_bible:
             # Send multiple requests to trigger circuit breaker
             for i in range(5):
                 event = MagicMock()
@@ -467,8 +469,8 @@ class TestReliabilityPatterns:
                 with suppress(Exception):
                     await bot.on_room_message(room, event)
 
-            # Should have attempted some requests (exact count depends on failures)
-            assert mock_client.room_send.call_count >= 1
+            # Should have attempted all requests
+            assert mock_get_bible.call_count == 5
 
     async def test_data_consistency_during_failures(self, mock_config, mock_client):
         """
@@ -495,7 +497,7 @@ class TestReliabilityPatterns:
 
         response_iter = iter(responses)
 
-        async def inconsistent_api(*args, **kwargs):
+        async def inconsistent_api(*_, **__):
             """
             Return the next simulated API response from an enclosing response iterator.
 
@@ -553,7 +555,7 @@ class TestReliabilityPatterns:
         recovery_time = 0.2  # Shorter recovery time
         start_time = time.monotonic()
 
-        async def recovering_api(*args, **kwargs):
+        async def recovering_api(*_, **__):
             """
             Simulate an API that fails until a configured recovery window has elapsed.
 

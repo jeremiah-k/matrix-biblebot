@@ -46,6 +46,7 @@ class TestSecurityPatterns:
         client.user_id = mock_config["user_id"]  # Set user_id to match config
         return client
 
+    @pytest.mark.asyncio
     async def test_input_sanitization(self, mock_config, mock_client):
         """Test input sanitization and validation."""
         bot = BibleBot(config=mock_config, client=mock_client)
@@ -84,6 +85,7 @@ class TestSecurityPatterns:
                 # Reset for next iteration
                 mock_client.room_send.reset_mock()
 
+    @pytest.mark.asyncio
     async def test_rate_limiting_protection(self, mock_config, mock_client):
         """Test rate limiting protection against spam."""
         bot = BibleBot(config=mock_config, client=mock_client)
@@ -116,6 +118,7 @@ class TestSecurityPatterns:
             # Should have processed requests (basic rate limiting test)
             assert mock_client.room_send.call_count > 0
 
+    @pytest.mark.asyncio
     async def test_access_token_protection(self, mock_config, mock_client):
         """Test access token protection and handling."""
         # Test that access tokens are not logged or exposed
@@ -161,6 +164,7 @@ class TestSecurityPatterns:
                         call_args = mock_chmod.call_args
                         assert call_args[0][1] == 0o600
 
+    @pytest.mark.asyncio
     async def test_homeserver_validation(self, mock_config, mock_client):
         """Test homeserver URL validation."""
         # Test various homeserver URLs
@@ -203,6 +207,7 @@ class TestSecurityPatterns:
             bot._room_id_set = set(config["matrix_room_ids"])
             # Bot should still be created but may have validation warnings
 
+    @pytest.mark.asyncio
     async def test_user_id_handling(self, mock_config, mock_client):
         """Test Matrix user ID handling - bot trusts server-validated user IDs."""
         bot = BibleBot(config=mock_config, client=mock_client)
@@ -250,6 +255,7 @@ class TestSecurityPatterns:
             await bot.on_room_message(room, event)
             assert not mock_client.room_send.called
 
+    @pytest.mark.asyncio
     async def test_room_id_validation(self, mock_config, mock_client):
         """Test Matrix room ID validation."""
         bot = BibleBot(config=mock_config, client=mock_client)
@@ -284,6 +290,7 @@ class TestSecurityPatterns:
             await bot.join_matrix_room(room_id)
             # Should handle invalid room IDs gracefully
 
+    @pytest.mark.asyncio
     async def test_message_content_filtering(self, mock_config, mock_client):
         """Test message content filtering and sanitization."""
         bot = BibleBot(config=mock_config, client=mock_client)
@@ -320,6 +327,7 @@ class TestSecurityPatterns:
                 # Reset for next iteration
                 mock_client.room_send.reset_mock()
 
+    @pytest.mark.asyncio
     async def test_error_message_sanitization(self, mock_config, mock_client):
         """Test that error messages don't leak sensitive information."""
         bot = BibleBot(config=mock_config, client=mock_client)
@@ -382,6 +390,7 @@ class TestSecurityPatterns:
             assert bot is not None
             # Bot should be created but may have validation warnings
 
+    @pytest.mark.asyncio
     async def test_api_response_validation(self, mock_config, mock_client):
         """Test validation of API responses."""
         bot = BibleBot(config=mock_config, client=mock_client)
@@ -410,9 +419,12 @@ class TestSecurityPatterns:
                 event.sender = "@user:matrix.org"
                 event.server_timestamp = 1234567890000  # Converted to milliseconds
 
-                # Should handle malformed responses gracefully
-                await bot.on_room_message(MagicMock(), event)
+                # Should handle malformed responses gracefully (valid room so path is exercised)
+                room = MagicMock()
+                room.room_id = mock_config["matrix_room_ids"][0]
+                await bot.on_room_message(room, event)
 
+    @pytest.mark.asyncio
     async def test_denial_of_service_protection(self, mock_config, mock_client):
         """Test protection against denial of service attacks."""
         bot = BibleBot(config=mock_config, client=mock_client)
@@ -446,9 +458,9 @@ class TestSecurityPatterns:
                 # Should handle resource-intensive inputs without hanging
                 import time
 
-                start_time = time.time()
+                start_time = time.monotonic()
                 await bot.on_room_message(room, event)
-                end_time = time.time()
+                end_time = time.monotonic()
 
                 # Verify that processing doesn't take too long (DoS protection)
                 processing_time = end_time - start_time
@@ -459,6 +471,7 @@ class TestSecurityPatterns:
                 # Verify that the bot still responds (doesn't crash)
                 # The bot should either process the message or ignore it gracefully
 
+    @pytest.mark.asyncio
     async def test_privilege_escalation_prevention(self, mock_config, mock_client):
         """Test prevention of privilege escalation attempts."""
         bot = BibleBot(config=mock_config, client=mock_client)
