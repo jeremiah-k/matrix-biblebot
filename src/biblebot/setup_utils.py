@@ -124,13 +124,16 @@ def get_template_service_path():
     """
     # Try to find the service template file in various locations (Path-based)
     pkg = Path(__file__).parent
-    # Guard against shallow paths when guessing repo root for dev setups
-    resolved = Path(__file__).resolve()
-    parents = resolved.parents
-    try:
-        repo_root = parents[2]
-    except IndexError:
-        repo_root = parents[-1]
+    # Find repository root by looking for marker files (more robust than fixed depth)
+    repo_root = None
+    p = Path(__file__).resolve()
+    for parent in p.parents:
+        if (parent / ".git").exists() or (parent / "setup.py").exists():
+            repo_root = parent
+            break
+    if repo_root is None:
+        # Fallback for when no repo marker is found
+        repo_root = p.parents[-1] if p.parents else p.parent
 
     template_paths = [
         # Package dir (post-install)
