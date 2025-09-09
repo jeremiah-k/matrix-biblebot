@@ -13,6 +13,7 @@ import shlex
 import shutil
 import subprocess
 import sys
+from pathlib import Path
 
 from biblebot.constants.app import (
     APP_NAME,
@@ -83,10 +84,16 @@ def print_service_commands():
         print("  systemctl commands not available on this system.")
         return
 
-    print(f"  {shlex.join(SYSTEMCTL_COMMANDS['start'])}    # Start the service")
-    print(f"  {shlex.join(SYSTEMCTL_COMMANDS['stop'])}     # Stop the service")
-    print(f"  {shlex.join(SYSTEMCTL_COMMANDS['restart'])}  # Restart the service")
-    print(f"  {shlex.join(SYSTEMCTL_COMMANDS['status'])}   # Check service status")
+    order = [
+        ("start", "# Start the service"),
+        ("stop", "# Stop the service"),
+        ("restart", "# Restart the service"),
+        ("status", "# Check service status"),
+    ]
+    for key, comment in order:
+        cmd = SYSTEMCTL_COMMANDS.get(key)
+        if cmd:
+            print(f"  {shlex.join(cmd)}  {comment}")
 
 
 def read_service_file():
@@ -110,41 +117,34 @@ def get_template_service_path():
         str or None: Absolute path to the first found template file, or None if no
         candidate exists.
     """
-    # Try to find the service template file
-    package_dir = os.path.dirname(__file__)
+    # Try to find the service template file in various locations (Path-based)
+    pkg = Path(__file__).parent
 
-    # Try to find the service template file in various locations
     template_paths = [
-        # Check in the package directory (where it should be after installation)
-        os.path.join(package_dir, SERVICE_NAME),
-        # Check in a tools subdirectory of the package
-        os.path.join(package_dir, DIR_TOOLS, SERVICE_NAME),
-        # Check in the data files location (where it should be after installation)
-        os.path.join(sys.prefix, DIR_SHARE, APP_NAME, SERVICE_NAME),
-        os.path.join(sys.prefix, DIR_SHARE, APP_NAME, DIR_TOOLS, SERVICE_NAME),
-        # Check in the user site-packages location
-        str(LOCAL_SHARE_DIR / APP_NAME / SERVICE_NAME),
-        str(LOCAL_SHARE_DIR / APP_NAME / DIR_TOOLS / SERVICE_NAME),
-        # Check one level up from the package directory
-        os.path.join(os.path.dirname(package_dir), DIR_TOOLS, SERVICE_NAME),
-        # Check two levels up from the package directory (for development)
-        os.path.join(
-            os.path.dirname(os.path.dirname(package_dir)), DIR_TOOLS, SERVICE_NAME
-        ),
-        # Check in the repository root (for development)
-        os.path.join(
-            os.path.dirname(os.path.dirname(os.path.dirname(__file__))),
-            DIR_TOOLS,
-            SERVICE_NAME,
-        ),
-        # Check in the current directory (fallback)
-        os.path.join(os.getcwd(), DIR_TOOLS, SERVICE_NAME),
+        # Package dir (post-install)
+        pkg / SERVICE_NAME,
+        # Package tools subdir
+        pkg / DIR_TOOLS / SERVICE_NAME,
+        # sys.prefix share dirs
+        Path(sys.prefix) / DIR_SHARE / APP_NAME / SERVICE_NAME,
+        Path(sys.prefix) / DIR_SHARE / APP_NAME / DIR_TOOLS / SERVICE_NAME,
+        # User local share
+        LOCAL_SHARE_DIR / APP_NAME / SERVICE_NAME,
+        LOCAL_SHARE_DIR / APP_NAME / DIR_TOOLS / SERVICE_NAME,
+        # One level up from package (dev)
+        pkg.parent / DIR_TOOLS / SERVICE_NAME,
+        # Two levels up (dev)
+        pkg.parent.parent / DIR_TOOLS / SERVICE_NAME,
+        # Repo root (dev)
+        Path(__file__).resolve().parents[2] / DIR_TOOLS / SERVICE_NAME,
+        # CWD fallback
+        Path.cwd() / DIR_TOOLS / SERVICE_NAME,
     ]
 
     # Try each path until we find one that exists
-    for path in template_paths:
-        if os.path.exists(path):
-            return path
+    for p in template_paths:
+        if p.exists():
+            return str(p)
 
     # If we get here, we couldn't find the template
     return None
