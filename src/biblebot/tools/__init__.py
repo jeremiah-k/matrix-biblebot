@@ -42,13 +42,20 @@ def get_sample_config_path():
 
 def copy_sample_config_to(dst_path: str) -> str:
     """
-    Copy the bundled sample configuration to dst_path and return dst_path.
+    Copy the bundled sample configuration to dst_path and return the actual file path.
     Always yields a stable file even under zipped installs.
     """
     res = importlib.resources.files(__package__) / SAMPLE_CONFIG_FILENAME
+    dst = pathlib.Path(dst_path)
+    # If dst is an existing dir or a path without a suffix, treat as directory
+    if dst.exists() and dst.is_dir():
+        dst = dst / SAMPLE_CONFIG_FILENAME
+    elif dst.suffix == "":
+        dst = dst / SAMPLE_CONFIG_FILENAME
     with importlib.resources.as_file(res) as p:
-        shutil.copy2(p, dst_path)
-    return dst_path
+        dst.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(p, dst)
+    return str(dst)
 
 
 @contextmanager
@@ -74,9 +81,16 @@ def get_service_template_path():
 
 def copy_service_template_to(dst_path: str) -> str:
     """
-    Copy the packaged service template to dst_path and return dst_path.
+    Copy the packaged service template to dst_path and return the actual file path.
     """
-    res = importlib.resources.files(__package__) / "biblebot.service"
+    filename = "biblebot.service"
+    res = importlib.resources.files(__package__) / filename
+    dst = pathlib.Path(dst_path)
+    if dst.exists() and dst.is_dir():
+        dst = dst / filename
+    elif dst.suffix == "":
+        dst = dst / filename
     with importlib.resources.as_file(res) as p:
-        shutil.copy2(p, dst_path)
-    return dst_path
+        dst.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(p, dst)
+    return str(dst)

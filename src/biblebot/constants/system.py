@@ -33,10 +33,24 @@ SYSTEMCTL_ARG_USER = "--user"
 SYSTEMCTL_ARG_IS_ENABLED = "is-enabled"
 
 # Service paths and environment
-PIPX_VENV_PATH = "%h/.local/pipx/venvs/matrix-biblebot/bin"
-DEFAULT_CONFIG_PATH = "%h/.config/matrix-biblebot/config.yaml"
-WORKING_DIRECTORY = "%h/.config/matrix-biblebot"
-PATH_ENVIRONMENT = "%h/.local/bin:%h/.local/pipx/venvs/matrix-biblebot/bin:/usr/local/bin:/usr/bin:/bin"
+# Filesystem-safe equivalents (expand %h to real home for Python use)
+HOME = str(Path.home())
+PIPX_VENV_PATH = "%h/.local/pipx/venvs/matrix-biblebot/bin"  # For systemd
+PIPX_VENV_PATH_FS = f"{HOME}/.local/pipx/venvs/matrix-biblebot/bin"  # For Python
+DEFAULT_CONFIG_PATH = "%h/.config/matrix-biblebot/config.yaml"  # For systemd
+DEFAULT_CONFIG_PATH_FS = f"{HOME}/.config/matrix-biblebot/config.yaml"  # For Python
+WORKING_DIRECTORY = "%h/.config/matrix-biblebot"  # For systemd
+WORKING_DIRECTORY_FS = f"{HOME}/.config/matrix-biblebot"  # For Python
+PATH_ENVIRONMENT = "%h/.local/bin:%h/.local/pipx/venvs/matrix-biblebot/bin:/usr/local/bin:/usr/bin:/bin"  # For systemd
+PATH_ENVIRONMENT_FS = (
+    f"{HOME}/.local/bin:{PIPX_VENV_PATH_FS}:/usr/local/bin:/usr/bin:/bin"  # For Python
+)
+
+
+def expand_percent_h(value: str) -> str:
+    """Expand systemd-style %h placeholders to actual home directory."""
+    return value.replace("%h", HOME)
+
 
 # Systemctl commands
 SYSTEMCTL_COMMANDS = (

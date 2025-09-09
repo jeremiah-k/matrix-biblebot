@@ -146,7 +146,10 @@ def get_logger(name, *, force: bool = False):
             return logger
         # If forcing, clear existing handlers before reconfiguring
         for handler in logger.handlers[:]:
-            logger.removeHandler(handler)
+            try:
+                handler.close()
+            finally:
+                logger.removeHandler(handler)
 
     # Add handler for console logging (with or without colors)
     if color_enabled:

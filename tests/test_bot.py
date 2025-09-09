@@ -1840,7 +1840,7 @@ class TestEnvironmentLoadingExtra:
         matrix_token, api_keys = bot.load_environment(config, config_path)
 
         # matrix_token should be a string (or None)
-        assert matrix_token == TEST_ACCESS_TOKEN or matrix_token is None
+        assert matrix_token == TEST_ACCESS_TOKEN
         # api_keys should be a dictionary
         assert isinstance(api_keys, dict)
         assert "esv" in api_keys

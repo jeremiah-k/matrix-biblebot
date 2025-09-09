@@ -289,8 +289,10 @@ def test_main_with_credentials_e2ee_enabled():
 ### 5. Test Error Conditions
 
 ```python
+import pytest
+@pytest.mark.asyncio
 @patch("biblebot.bible_api.get_scripture")
-def test_scripture_api_failure(mock_get_scripture):
+async def test_scripture_api_failure(mock_get_scripture):
     mock_get_scripture.side_effect = requests.RequestException("API Error")
 
     # Test error handling

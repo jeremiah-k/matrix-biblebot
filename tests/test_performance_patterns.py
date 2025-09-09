@@ -10,6 +10,8 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
+pytestmark = pytest.mark.asyncio
+
 from biblebot.bot import BibleBot
 
 
@@ -51,7 +53,9 @@ class TestPerformancePatterns:
         bot.api_keys = {}
 
         # Mock Bible API response
-        with patch("biblebot.bot.get_bible_text") as mock_get_bible:
+        with patch(
+            "biblebot.bot.get_bible_text", new_callable=AsyncMock
+        ) as mock_get_bible:
             mock_get_bible.return_value = ("Test verse", "John 3:16")
 
             # Create multiple mock events
@@ -103,7 +107,9 @@ class TestPerformancePatterns:
         )  # Set start_time for message filtering
 
         # Create and process many events to test memory management
-        with patch("biblebot.bot.get_bible_text") as mock_get_bible:
+        with patch(
+            "biblebot.bot.get_bible_text", new_callable=AsyncMock
+        ) as mock_get_bible:
             mock_get_bible.return_value = ("Test verse", "John 3:16")
 
             for i in range(50):
@@ -250,7 +256,9 @@ class TestPerformancePatterns:
         room = MagicMock()
         room.room_id = mock_config["matrix_room_ids"][0]
 
-        with patch("biblebot.bot.get_bible_text") as mock_get_bible:
+        with patch(
+            "biblebot.bot.get_bible_text", new_callable=AsyncMock
+        ) as mock_get_bible:
             mock_get_bible.return_value = ("In the beginning was the Word", "John 1:1")
 
             # Should handle large messages without issues
@@ -391,7 +399,9 @@ class TestPerformancePatterns:
         room = MagicMock()
         room.room_id = mock_config["matrix_room_ids"][0]  # Use configured room
 
-        with patch("biblebot.bot.get_bible_text") as mock_get_bible:
+        with patch(
+            "biblebot.bot.get_bible_text", new_callable=AsyncMock
+        ) as mock_get_bible:
             mock_get_bible.return_value = ("Test verse", "John 3:16")
 
             await bot.on_room_message(room, event)

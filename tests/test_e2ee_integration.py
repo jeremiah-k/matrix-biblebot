@@ -220,6 +220,7 @@ class TestInteractiveLogin:
     @patch("biblebot.auth.getpass.getpass")
     @patch("biblebot.auth.input")
     @patch("biblebot.auth.AsyncClient")
+    @pytest.mark.asyncio
     async def test_interactive_login_success(
         self, mock_client, mock_input, mock_getpass
     ):
@@ -259,6 +260,7 @@ class TestInteractiveLogin:
 
     @patch("biblebot.auth.load_credentials")
     @patch("biblebot.auth.input")
+    @pytest.mark.asyncio
     async def test_interactive_login_existing_credentials_cancel(
         self, mock_input, mock_load, mock_credentials
     ):
@@ -277,6 +279,7 @@ class TestInteractiveLogin:
     @patch("biblebot.auth.input")
     @patch("biblebot.auth.AsyncClient")
     @patch("biblebot.auth.asyncio.wait_for")
+    @pytest.mark.asyncio
     async def test_interactive_login_timeout(
         self, mock_wait_for, mock_client, mock_input, mock_getpass
     ):
@@ -311,6 +314,7 @@ class TestInteractiveLogout:
 
     @patch("biblebot.auth.getpass.getpass")
     @patch("biblebot.auth.AsyncClient")
+    @pytest.mark.asyncio
     async def test_interactive_logout_success(
         self, mock_client, mock_getpass, mock_credentials
     ):
@@ -334,6 +338,7 @@ class TestInteractiveLogout:
             mock_client_instance.logout.assert_called_once()
 
     @patch("biblebot.auth.load_credentials")
+    @pytest.mark.asyncio
     async def test_interactive_logout_no_credentials(self, mock_load):
         """Test interactive logout when no credentials exist."""
         from biblebot.auth import interactive_logout
@@ -346,6 +351,7 @@ class TestInteractiveLogout:
 
     @patch("biblebot.auth.getpass.getpass")
     @patch("biblebot.auth.AsyncClient")
+    @pytest.mark.asyncio
     async def test_interactive_logout_server_error(
         self, mock_client, mock_getpass, mock_credentials
     ):

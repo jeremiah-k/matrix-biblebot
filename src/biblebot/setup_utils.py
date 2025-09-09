@@ -521,8 +521,11 @@ def check_lingering_enabled():
     """
     try:
         username = _get_current_username()
+        loginctl_path = shutil.which("loginctl")
+        if not loginctl_path:
+            return False
         result = subprocess.run(
-            ["loginctl", "show-user", username, "--property=Linger"],
+            [loginctl_path, "show-user", username, "--property=Linger"],
             check=False,
             capture_output=True,
             text=True,
@@ -541,8 +544,12 @@ def enable_lingering():
     try:
         username = _get_current_username()
         print(f"Enabling lingering for user {username}...")
+        loginctl_path = shutil.which("loginctl")
+        if not loginctl_path:
+            print("Error enabling lingering: loginctl not found")
+            return False
         result = subprocess.run(
-            ["sudo", "loginctl", "enable-linger", username],
+            ["sudo", loginctl_path, "enable-linger", username],
             check=False,
             capture_output=True,
             text=True,

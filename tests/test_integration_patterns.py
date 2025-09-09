@@ -11,6 +11,8 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
+pytestmark = pytest.mark.asyncio
+
 from biblebot.auth import load_credentials
 from biblebot.bot import BibleBot
 
@@ -94,19 +96,18 @@ class TestIntegrationPatterns:
             # Process complete workflow
             await bot.on_room_message(room, event)
 
-            # Verify complete workflow
+            # Verify complete workflow (order-agnostic)
             assert mock_client.room_send.call_count == 2  # Reaction + message
-
-            # Check reaction was sent
-            reaction_call = mock_client.room_send.call_args_list[0]
-            assert reaction_call[0][0] == "!room1:matrix.org"
-            assert "m.reaction" in reaction_call[0][1]
-
-            # Check verse message was sent
-            message_call = mock_client.room_send.call_args_list[1]
-            assert message_call[0][0] == "!room1:matrix.org"
-            assert "m.room.message" in message_call[0][1]
-            message_content = message_call[0][2]
+            types = [c.args[1] for c in mock_client.room_send.call_args_list]
+            assert "m.reaction" in types
+            assert "m.room.message" in types
+            msg_call = next(
+                c
+                for c in mock_client.room_send.call_args_list
+                if c.args[1] == "m.room.message"
+            )
+            assert msg_call.args[0] == "!room1:matrix.org"
+            message_content = msg_call.args[2]
             assert "John 3:16" in message_content["body"]
             assert "For God so loved the world" in message_content["body"]
 

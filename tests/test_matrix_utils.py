@@ -2,6 +2,8 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
+pytestmark = pytest.mark.asyncio
+
 from biblebot.auth import load_credentials, save_credentials
 from biblebot.bot import BibleBot
 
@@ -44,9 +46,9 @@ def test_config():
         "matrix": {
             "homeserver": "https://matrix.org",
             "bot_user_id": "@biblebot:matrix.org",
-            "access_token": "test_token",
+            "access_token": "notasecret",  # test-only
+            "room_ids": ["!room:matrix.org"],
         },
-        "matrix_room_ids": ["!room:matrix.org"],
         "bible_api": {"base_url": "https://api.scripture.api.bible"},
     }
 
@@ -66,8 +68,10 @@ def mock_bible_bot():
     """
     mock_bot = MagicMock(spec=BibleBot)
     mock_bot.config = {
-        "matrix": {"bot_user_id": "@biblebot:matrix.org"},
-        "matrix_room_ids": ["!room:matrix.org"],
+        "matrix": {
+            "bot_user_id": "@biblebot:matrix.org",
+            "room_ids": ["!room:matrix.org"],
+        }
     }
     return mock_bot
 
@@ -96,7 +100,7 @@ async def test_bible_bot_message_handling(
     bot = BibleBot(config=test_config, client=mock_client)
     bot.start_time = 1234567880000  # Before event timestamp
     # Populate room ID set for testing (normally done in initialize())
-    bot._room_id_set = set(test_config["matrix_room_ids"])
+    bot._room_id_set = set(test_config["matrix"]["room_ids"])
 
     # Test verse request handling
     await bot.on_room_message(mock_room, mock_event)
@@ -121,7 +125,7 @@ async def test_bible_bot_ignore_own_messages(
     bot = BibleBot(config=test_config, client=mock_client)
     bot.start_time = 1234567880000
     # Populate room ID set for testing (normally done in initialize())
-    bot._room_id_set = set(test_config["matrix_room_ids"])
+    bot._room_id_set = set(test_config["matrix"]["room_ids"])
 
     await bot.on_room_message(mock_room, mock_event)
 
@@ -144,7 +148,7 @@ async def test_bible_bot_unsupported_room(
     bot = BibleBot(config=test_config, client=mock_client)
     bot.start_time = 1234567880000
     # Populate room ID set for testing (normally done in initialize())
-    bot._room_id_set = set(test_config["matrix_room_ids"])
+    bot._room_id_set = set(test_config["matrix"]["room_ids"])
 
     await bot.on_room_message(mock_room, mock_event)
 
@@ -170,7 +174,7 @@ async def test_bible_bot_api_error_handling(
     bot = BibleBot(config=test_config, client=mock_client)
     bot.start_time = 1234567880000
     # Populate room ID set for testing (normally done in initialize())
-    bot._room_id_set = set(test_config["matrix_room_ids"])
+    bot._room_id_set = set(test_config["matrix"]["room_ids"])
 
     await bot.on_room_message(mock_room, mock_event)
 
