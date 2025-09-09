@@ -81,16 +81,9 @@ try:
 except ImportError:
     certifi = None
 
-# Suppress the specific nio validation warning that occurs when Matrix servers return error responses
-# that don't match the expected success schema. This is safe to ignore because:
-# 1. It's a known issue in the matrix-nio library's response validation
-# 2. The error responses are still properly handled by our code
-# 3. The warning doesn't indicate a problem with our authentication logic
-# 4. This only affects the validation of error responses, not successful operations
-# Related: https://github.com/poljar/matrix-nio/issues/validation-warnings
-warnings.filterwarnings(
-    "ignore", message=".*user_id.*required property.*", category=UserWarning
-)
+# Note: We do not suppress matrix-nio warnings. Instead, we handle errors properly
+# by checking response types explicitly and providing appropriate error handling.
+# This follows the pattern used by other successful matrix-nio implementations.
 
 logger = logging.getLogger(LOGGER_NAME)
 
@@ -612,32 +605,15 @@ async def interactive_login(
 
     logger.info(f"Logging in to {hs} as {user}")
     try:
-        # Temporarily suppress nio validation warnings for login responses
-        # This prevents "user_id required property" errors when the server returns error responses
-        with warnings.catch_warnings():
-            warnings.filterwarnings(
-                "ignore", message="Error validating response", category=UserWarning
-            )
-            warnings.filterwarnings(
-                "ignore", message=".*user_id.*required property.*", category=UserWarning
-            )
-            # Also suppress at the logger level
-            nio_logger = logging.getLogger("nio.responses")
-            original_level = nio_logger.level
-            nio_logger.setLevel(logging.ERROR)
+        # Perform login without warning suppression - handle errors properly instead
+        resp = await asyncio.wait_for(
+            client.login(password=pwd, device_name=MATRIX_DEVICE_NAME),
+            timeout=LOGIN_TIMEOUT_SEC,
+        )
 
-            try:
-                resp = await asyncio.wait_for(
-                    client.login(password=pwd, device_name=MATRIX_DEVICE_NAME),
-                    timeout=LOGIN_TIMEOUT_SEC,
-                )
-            finally:
-                # Restore original logging level
-                nio_logger.setLevel(original_level)
-
-        # Check response type explicitly to avoid validation issues
-        if isinstance(resp, LoginResponse):
-            # Login successful
+        # Check response type explicitly - following mmrelay pattern
+        if hasattr(resp, "access_token"):
+            # Login successful - check for access_token attribute like mmrelay does
             creds = Credentials(
                 homeserver=hs,
                 user_id=resp.user_id,
@@ -647,59 +623,59 @@ async def interactive_login(
             save_credentials(creds)
             logger.info("Login successful! Credentials saved.")
             return True
-        elif isinstance(resp, LoginError):
-            # Login failed with proper error response
-            logger.error(f"Login failed: {resp.message}")
-            logger.info(f"Error status code: {resp.status_code}")
-            logger.info(f"Full error response: {resp}")
-
-            # Provide user-friendly error messages based on the error
-            error_message = resp.message.lower()
-            errcode = getattr(resp, "errcode", None) or getattr(resp, "code", None)
-            if (
-                errcode == "M_LIMIT_EXCEEDED"
-                or "limit" in error_message
-                or "too many" in error_message
-            ):
-                logger.error(
-                    "❌ Too many login attempts. Please wait a few minutes and try again."
-                )
-                if getattr(resp, "retry_after_ms", None) is not None:
-                    wait_time = resp.retry_after_ms / 1000 / 60  # Convert to minutes
-                    logger.error(
-                        f"   Server requests waiting {wait_time:.1f} minutes before retry."
-                    )
-            elif errcode == "M_FORBIDDEN" or "forbidden" in error_message:
-                logger.error(
-                    "❌ Invalid username or password. Please check your credentials and try again."
-                )
-            elif "not found" in error_message or "unknown" in error_message:
-                logger.error(
-                    "❌ User not found. Please check your username and homeserver."
-                )
-            else:
-                logger.error(f"❌ Login failed: {resp.message}")
-
-            return False
         else:
-            # Unexpected response type
-            logger.error(f"❌ Unexpected login response type: {type(resp)}")
-            logger.error(f"Response content: {resp}")
+            # Login failed - handle error response properly
+            logger.error(f"Login failed: {resp}")
+
+            # Extract error details if available
+            if hasattr(resp, "message"):
+                logger.error(f"Error message: {resp.message}")
+                error_message = resp.message.lower()
+
+                # Provide user-friendly error messages based on the error
+                errcode = getattr(resp, "errcode", None) or getattr(resp, "code", None)
+                if (
+                    errcode == "M_LIMIT_EXCEEDED"
+                    or "limit" in error_message
+                    or "too many" in error_message
+                ):
+                    logger.error(
+                        "❌ Too many login attempts. Please wait a few minutes and try again."
+                    )
+                    if getattr(resp, "retry_after_ms", None) is not None:
+                        wait_time = (
+                            resp.retry_after_ms / 1000 / 60
+                        )  # Convert to minutes
+                        logger.error(
+                            f"   Server requests waiting {wait_time:.1f} minutes before retry."
+                        )
+                elif errcode == "M_FORBIDDEN" or "forbidden" in error_message:
+                    logger.error(
+                        "❌ Invalid username or password. Please check your credentials and try again."
+                    )
+                elif "not found" in error_message or "unknown" in error_message:
+                    logger.error(
+                        "❌ User not found. Please check your username and homeserver."
+                    )
+                else:
+                    logger.error(f"❌ Login failed: {resp.message}")
+
+            if hasattr(resp, "status_code"):
+                logger.error(f"Status code: {resp.status_code}")
+
             return False
     except asyncio.TimeoutError:
-        logger.exception("Login timed out after %s seconds", LOGIN_TIMEOUT_SEC)
-        return False
-    except (OSError, ValueError, RuntimeError, ssl.SSLError):
-        logger.exception("Login error")
-        return False
-    except (nio.exceptions.ProtocolError, aiohttp.ClientError, LoginError):
-        logger.exception(
-            "❌ Network error. Please check your internet connection and homeserver URL."
+        logger.error(f"Login timed out after {LOGIN_TIMEOUT_SEC} seconds")
+        logger.error(
+            "This may indicate network connectivity issues or a slow Matrix server"
         )
         return False
-    except Exception:
-        # Unexpected error
-        logger.exception("Unexpected login error")
+    except Exception as e:
+        # Handle other exceptions during login (following mmrelay pattern)
+        logger.error(f"Login exception: {e}")
+        logger.error(f"Exception type: {type(e)}")
+        if hasattr(e, "message"):
+            logger.error(f"Exception message: {e.message}")
         return False
     finally:
         try:
