@@ -1,3 +1,19 @@
+"""
+Matrix BibleBot - Core bot implementation.
+
+This module contains the main BibleBot class and supporting functions for:
+- Bible verse fetching from multiple APIs (bible-api.com, ESV API)
+- Matrix message handling and room management
+- Reference parsing and validation
+- Message formatting and splitting
+- Rate limiting and error handling
+- Configuration management and environment loading
+
+The bot supports both KJV (default) and ESV translations, with extensible
+architecture for additional Bible APIs. It handles both encrypted and
+unencrypted Matrix rooms, with proper E2EE support when available.
+"""
+
 import asyncio
 import html
 import json
