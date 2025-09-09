@@ -131,9 +131,7 @@ def get_template_service_path():
         if (parent / ".git").exists() or (parent / "setup.py").exists():
             repo_root = parent
             break
-    if repo_root is None:
-        # Fallback for when no repo marker is found
-        repo_root = p.parents[-1] if p.parents else p.parent
+    # No fallback - if no repo marker is found, repo_root stays None
 
     template_paths = [
         # Package dir (post-install)
@@ -150,11 +148,13 @@ def get_template_service_path():
         pkg.parent / DIR_TOOLS / SERVICE_NAME,
         # Two levels up (dev)
         pkg.parent.parent / DIR_TOOLS / SERVICE_NAME,
-        # Repo root (dev)
-        repo_root / DIR_TOOLS / SERVICE_NAME,
         # CWD fallback
         Path.cwd() / DIR_TOOLS / SERVICE_NAME,
     ]
+
+    # Add repo root path only if we found a valid repository
+    if repo_root is not None:
+        template_paths.insert(-1, repo_root / DIR_TOOLS / SERVICE_NAME)
 
     # Try each path until we find one that exists
     for p in template_paths:
