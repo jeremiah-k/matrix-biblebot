@@ -118,7 +118,7 @@ class TestSecurityPatterns:
         """Test access token protection and handling."""
         # Test that access tokens are not logged or exposed
         sensitive_config = mock_config.copy()
-        sensitive_config["access_token"] = "syt_very_secret_token_12345"
+        sensitive_config["access_token"] = "syt_very_secret_token_12345"  # noqa: S105
 
         bot = BibleBot(config=sensitive_config, client=mock_client)
 
@@ -127,7 +127,7 @@ class TestSecurityPatterns:
         bot._room_id_set = set(sensitive_config["matrix_room_ids"])
 
         # Verify token is stored securely
-        assert bot.config["access_token"] == "syt_very_secret_token_12345"
+        assert bot.config["access_token"] == "syt_very_secret_token_12345"  # noqa: S105
 
         # Test that token doesn't appear in string representation
         bot_str = str(bot)
@@ -138,7 +138,7 @@ class TestSecurityPatterns:
         test_credentials = Credentials(
             homeserver="https://matrix.org",
             user_id="@test:matrix.org",
-            access_token="secret_token",
+            access_token="secret_token",  # noqa: S106
             device_id="TEST_DEVICE",
         )
 
@@ -147,7 +147,7 @@ class TestSecurityPatterns:
                 with patch("biblebot.auth.os.chmod") as mock_chmod:
                     with patch("biblebot.auth.os.fsync"):
                         mock_temp_file = MagicMock()
-                        mock_temp_file.name = "/tmp/test_creds"
+                        mock_temp_file.name = "/tmp/test_creds"  # noqa: S108
                         mock_temp_file.fileno.return_value = 3
                         mock_temp.return_value.__enter__.return_value = mock_temp_file
 

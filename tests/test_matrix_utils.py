@@ -210,7 +210,7 @@ def test_load_credentials_success():
         assert credentials is not None
         assert credentials.homeserver == "https://matrix.org"
         assert credentials.user_id == "@test:matrix.org"
-        assert credentials.access_token == "test_token"
+        assert credentials.access_token == "test_token"  # noqa: S105
         assert credentials.device_id == "TEST_DEVICE"
 
 
@@ -245,7 +245,7 @@ def test_save_credentials(mock_chmod, mock_replace, mock_temp_file, tmp_path):
         test_credentials = Credentials(
             homeserver="https://matrix.org",
             user_id="@bot:matrix.org",
-            access_token="test_token",
+            access_token="test_token",  # noqa: S106
             device_id="TEST_DEVICE",
         )
 

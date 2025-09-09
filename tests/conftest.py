@@ -293,7 +293,9 @@ def comprehensive_cleanup():
                 with contextlib.suppress(Exception):
                     loop.close()
 
-    except Exception:  # noqa: BLE001 - test cleanup needs broad exception handling
+    except (
+        Exception
+    ):  # noqa: BLE001, S110 - test cleanup needs broad exception handling
         # Suppress cleanup errors to avoid affecting test results
         pass
 
