@@ -456,14 +456,28 @@ async def interactive_login(
             logger.info("\nLogin cancelled.")
             return False
 
-    hs = homeserver or input(PROMPT_HOMESERVER).strip()
+    if homeserver:
+        hs = homeserver
+    else:
+        try:
+            hs = input(PROMPT_HOMESERVER).strip()
+        except (EOFError, KeyboardInterrupt):
+            logger.info("\nLogin cancelled.")
+            return False
     if not hs:
         logger.error("Homeserver cannot be empty.")
         return False
     if not (hs.startswith(URL_PREFIX_HTTP) or hs.startswith(URL_PREFIX_HTTPS)):
         hs = URL_PREFIX_HTTPS + hs
 
-    user_input = username or input(PROMPT_USERNAME).strip()
+    if username:
+        user_input = username
+    else:
+        try:
+            user_input = input(PROMPT_USERNAME).strip()
+        except (EOFError, KeyboardInterrupt):
+            logger.info("\nLogin cancelled.")
+            return False
     if not user_input:
         logger.error("Username cannot be empty.")
         return False
@@ -483,7 +497,11 @@ async def interactive_login(
     if password is not None:
         pwd = password
     else:
-        pwd = getpass.getpass(PROMPT_PASSWORD)
+        try:
+            pwd = getpass.getpass(PROMPT_PASSWORD)
+        except (EOFError, KeyboardInterrupt):
+            logger.info("\nLogin cancelled.")
+            return False
 
     # E2EE-aware client config
     status = check_e2ee_status()
