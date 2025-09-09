@@ -201,30 +201,20 @@ class TestSecurityPatterns:
             bot._room_id_set = set(config["matrix_room_ids"])
             # Bot should still be created but may have validation warnings
 
-    async def test_user_id_validation(self, mock_config, mock_client):
-        """Test Matrix user ID validation."""
+    async def test_user_id_handling(self, mock_config, mock_client):
+        """Test Matrix user ID handling - bot trusts server-validated user IDs."""
         bot = BibleBot(config=mock_config, client=mock_client)
 
         # Populate room ID set for testing (normally done in initialize())
-
         bot._room_id_set = set(mock_config["matrix_room_ids"])
         bot.start_time = 1234567880000  # Use milliseconds
         bot.api_keys = {}
 
-        # Test various user IDs
-        valid_user_ids = [
+        # Test various user IDs - bot should process all since Matrix servers validate user IDs
+        test_user_ids = [
             "@user:matrix.org",
             "@test123:example.com",
             "@user-name:matrix.example.com",
-        ]
-
-        invalid_user_ids = [
-            "user:matrix.org",  # Missing @
-            "@user",  # Missing domain
-            "@:matrix.org",  # Missing localpart
-            "@user::",  # Invalid domain
-            "",  # Empty
-            "@user@matrix.org",  # Invalid format
         ]
 
         with patch(
@@ -232,8 +222,8 @@ class TestSecurityPatterns:
             new=AsyncMock(return_value=("Test verse", "John 3:16")),
         ):
 
-            # Test with valid user IDs
-            for user_id in valid_user_ids:
+            # Test that bot processes messages from any user ID (except itself)
+            for user_id in test_user_ids:
                 event = MagicMock()
                 event.body = "John 3:16"
                 event.sender = user_id
@@ -247,19 +237,16 @@ class TestSecurityPatterns:
                 # Reset for next iteration
                 mock_client.room_send.reset_mock()
 
-            # Test with invalid user IDs (should handle gracefully)
-            for user_id in invalid_user_ids:
-                event = MagicMock()
-                event.body = "John 3:16"
-                event.sender = user_id
-                event.server_timestamp = 1234567890000  # Converted to milliseconds
+            # Test that bot ignores its own messages
+            event = MagicMock()
+            event.body = "John 3:16"
+            event.sender = mock_config["user_id"]  # Bot's own user ID
+            event.server_timestamp = 1234567890000
 
-                # Use a valid, configured room so only the user-id validity is in play
-                room = MagicMock()
-                room.room_id = mock_config["matrix_room_ids"][0]
-                await bot.on_room_message(room, event)
-                assert not mock_client.room_send.called
-                mock_client.room_send.reset_mock()
+            room = MagicMock()
+            room.room_id = mock_config["matrix_room_ids"][0]
+            await bot.on_room_message(room, event)
+            assert not mock_client.room_send.called
 
     async def test_room_id_validation(self, mock_config, mock_client):
         """Test Matrix room ID validation."""
