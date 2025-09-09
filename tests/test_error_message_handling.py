@@ -7,6 +7,19 @@ import pytest
 from biblebot.bot import BibleBot
 
 
+@pytest.fixture
+def mock_config():
+    """Sample configuration for testing."""
+    return {
+        "matrix": {
+            "homeserver": "https://matrix.org",
+            "room_ids": ["!test:matrix.org"],
+            "e2ee": {"enabled": False},
+        },
+        "bible_api": {"default_translation": "kjv"},
+    }
+
+
 class TestErrorMessageHandling:
     """Test error message handling edge cases."""
 

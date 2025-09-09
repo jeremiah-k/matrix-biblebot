@@ -232,9 +232,18 @@ def test_load_credentials_file_not_exists(mock_credentials_path):
 @patch("biblebot.auth.tempfile.NamedTemporaryFile")
 @patch("biblebot.auth.os.replace")
 @patch("biblebot.auth.os.chmod")
-def test_save_credentials(mock_chmod, mock_replace, mock_temp_file, tmp_path):
+@patch("biblebot.auth.credentials_path")
+def test_save_credentials(
+    mock_credentials_path, mock_chmod, mock_replace, mock_temp_file, tmp_path
+):
     """Test credentials saving with atomic write."""
+    from pathlib import Path
+
     from biblebot.auth import Credentials
+
+    # Mock credentials path to use tmp_path
+    credentials_file = tmp_path / "credentials.json"
+    mock_credentials_path.return_value = credentials_file
 
     # Mock temporary file with proper fileno and fsync
     mock_temp = MagicMock()
@@ -243,8 +252,16 @@ def test_save_credentials(mock_chmod, mock_replace, mock_temp_file, tmp_path):
     mock_temp.fileno.return_value = 3  # Return a valid file descriptor
     mock_temp_file.return_value = mock_temp
 
-    # Mock os.fsync to avoid the fileno issue
-    with patch("biblebot.auth.os.fsync") as mock_fsync:
+    # Mock os.fsync and os.stat to avoid filesystem issues
+    with patch("biblebot.auth.os.fsync") as mock_fsync, patch(
+        "biblebot.auth.os.stat"
+    ) as mock_stat:
+
+        # Mock os.stat to simulate same filesystem (so os.replace is used)
+        mock_stat_result = MagicMock()
+        mock_stat_result.st_dev = 12345  # Same device ID for both temp and dest
+        mock_stat.return_value = mock_stat_result
+
         test_credentials = Credentials(
             homeserver="https://matrix.org",
             user_id="@bot:matrix.org",
@@ -258,7 +275,8 @@ def test_save_credentials(mock_chmod, mock_replace, mock_temp_file, tmp_path):
         mock_fsync.assert_called_once()  # Don't check specific args
         # Check that chmod was called with the temp file and correct permissions
         mock_chmod.assert_any_call(temp_name, 0o600)
-        mock_replace.assert_called_once()  # Now using os.replace
+        # Should use os.replace since we mocked same filesystem
+        mock_replace.assert_called_once_with(temp_name, credentials_file)
 
 
 @patch("biblebot.bot.make_api_request", new_callable=AsyncMock)
