@@ -305,18 +305,22 @@ def get_store_dir() -> Path:
 
 def check_e2ee_status() -> dict:
     """
-    Return a dictionary describing whether End-to-End Encryption (E2EE) is available and ready.
-
-    Performs platform and dependency checks, inspects whether the local E2EE store directory exists, and checks for saved Matrix credentials.
-
+    Return the E2EE readiness and availability status.
+    
+    Performs platform and dependency checks, inspects whether the local E2EE store directory exists (without creating it), and checks for saved Matrix credentials to determine whether encrypted sessions can be used.
+    
     Returns:
-        dict: Status mapping with these keys:
-            - E2EE_KEY_AVAILABLE (bool): True if platform is supported and required Python dependencies are present.
+        dict: A mapping keyed by E2EE status constants with the following entries:
+            - E2EE_KEY_AVAILABLE (bool): True if the current platform is supported and required Python dependencies are installed.
             - E2EE_KEY_DEPENDENCIES_INSTALLED (bool): True if required libraries (e.g., olm and nio) are importable.
-            - E2EE_KEY_STORE_EXISTS (bool): True if the configured E2EE store directory exists on disk.
-            - E2EE_KEY_PLATFORM_SUPPORTED (bool): False on unsupported platforms (Windows).
-            - E2EE_KEY_ERROR (Optional[str]): Human-readable error message when a check failed, otherwise None.
-            - E2EE_KEY_READY (bool): True when credentials are present and the E2EE store exists (ready for encrypted sessions).
+            - E2EE_KEY_STORE_EXISTS (bool): True if the configured E2EE store directory already exists on disk.
+            - E2EE_KEY_PLATFORM_SUPPORTED (bool): False if the platform is unsupported (Windows).
+            - E2EE_KEY_ERROR (Optional[str]): Human-readable error message when a check fails; otherwise None.
+            - E2EE_KEY_READY (bool): True when E2EE is available, persisted credentials exist, and the store directory exists (ready for encrypted sessions).
+    
+    Notes:
+        - This function does not create the E2EE store directory; it only checks for its existence.
+        - It may call load_credentials() to determine whether credentials are present.
     """
     status = {
         E2EE_KEY_AVAILABLE: False,
@@ -400,16 +404,16 @@ async def discover_homeserver(
     client: AsyncClient, homeserver: str, timeout: float = 10.0
 ) -> str:
     """
-    Discover the server's canonical homeserver URL via the Matrix discovery API, falling back to the provided homeserver on timeout or error.
-
-    Uses client.discovery_info() and waits up to `timeout` seconds for a response. If the discovery response contains a homeserver URL that can be used, that URL is returned; otherwise the original `homeserver` argument is returned.
-
+    Discover the server's canonical homeserver URL via Matrix discovery, falling back to the provided homeserver on timeout or error.
+    
+    This awaits client.discovery_info() for up to `timeout` seconds; if the discovery response contains a usable homeserver URL that differs from the input, that URL is returned. On timeout, network/protocol errors, or unexpected responses the original `homeserver` is returned unchanged.
+    
     Parameters:
-        homeserver (str): Fallback homeserver URL to return when discovery fails or times out.
+        homeserver (str): Fallback homeserver URL to return when discovery does not yield a usable URL.
         timeout (float): Maximum seconds to wait for the discovery request (default 10.0).
-
+    
     Returns:
-        str: Discovered homeserver URL, or the provided `homeserver` if discovery did not produce a usable URL.
+        str: The discovered homeserver URL, or the provided `homeserver` if discovery fails or is inconclusive.
     """
     try:
         logger.debug(f"Attempting server discovery for {homeserver}")
@@ -441,7 +445,7 @@ async def discover_homeserver(
         logger.debug(
             f"{MSG_SERVER_DISCOVERY_FAILED}: {type(e).__name__}: {e}",
         )
-    except Exception:
+    except Exception as e:
         logger.exception("Unexpected error during server discovery")
 
     logger.debug(f"Using original homeserver URL: {homeserver}")

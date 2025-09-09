@@ -39,31 +39,78 @@ class MockDiscoveryInfoError(Exception):
 
 class MockLoginError(Exception):
     def __init__(self, message="", status_code=None, errcode=None):
+        """
+        Initialize the MockLoginError.
+        
+        Parameters:
+            message (str): Human-readable error message (defaults to empty string).
+            status_code (Optional[int]): HTTP-like status code associated with the error, if any.
+            errcode (Optional[str]): Matrix/MX-style error code or internal error identifier, if any.
+        
+        Sets:
+            self.message, self.status_code, self.errcode
+        """
         super().__init__(message)
         self.message = message
         self.status_code = status_code
         self.errcode = errcode
 
     def __repr__(self):
+        """
+        Return an unambiguous developer-friendly string representation of the MockLoginError.
+        
+        The resulting string includes the `message`, `status_code`, and `errcode`
+        attributes in a form suitable for debugging, e.g.
+        `MockLoginError(message='...', status_code=400, errcode='M_FORBIDDEN')`.
+        
+        Returns:
+            str: The formatted representation.
+        """
         return f"MockLoginError(message={self.message!r}, status_code={self.status_code!r}, errcode={self.errcode!r})"
 
 
 class MockRoomResolveAliasError(Exception):
     def __init__(self, message=""):
+        """
+        Initialize the MockRoomResolveAliasError.
+        
+        Parameters:
+            message (str): Optional human-readable error message describing the alias resolution failure.
+        """
         super().__init__(message)
         self.message = message
 
     def __repr__(self):
+        """
+        Return a concise, developer-friendly string representation of the error.
+        
+        The representation includes the error's message attribute in the form
+        `MockRoomResolveAliasError(message=<message>)` and is intended for debugging.
+        """
         return f"MockRoomResolveAliasError(message={self.message!r})"
 
 
 class MockDiscoveryInfoResponse:
     def __init__(self, homeserver_url=None):
+        """
+        Initialize a MockDiscoveryInfoResponse.
+        
+        Parameters:
+            homeserver_url (str | None): The homeserver base URL to simulate in tests (e.g. "https://matrix.example"). If None, no URL is set.
+        """
         self.homeserver_url = homeserver_url
 
 
 class MockLoginResponse:
     def __init__(self, user_id=None, device_id=None, access_token=None):
+        """
+        Initialize a MockLoginResponse container with optional authentication fields.
+        
+        Parameters:
+            user_id (str, optional): Matrix user identifier (e.g. '@alice:example.org').
+            device_id (str, optional): Device identifier for the logged-in session.
+            access_token (str, optional): Access token issued for the session.
+        """
         self.user_id = user_id
         self.device_id = device_id
         self.access_token = access_token
@@ -121,13 +168,15 @@ nio_mock.__spec__.origin = "mocked"
 
 def clear_env(keys):
     """
-    Remove specified environment variables from os.environ and return their previous values.
-
+    Remove the given environment variables from os.environ and return their previous values.
+    
+    If a variable from `keys` is not present in the environment it is ignored.
+    
     Parameters:
-        keys (iterable): An iterable of environment variable names (strings) to remove.
-
+        keys (iterable[str]): Names of environment variables to remove.
+    
     Returns:
-        dict: A mapping of removed environment variable names to their previous values.
+        dict: Mapping of each removed variable name to its previous value.
     """
     removed = {}
     for k in keys:
@@ -197,13 +246,9 @@ def cleanup_asyncmock_objects(request):
 @pytest.fixture(autouse=True)
 def mock_submit_coro(monkeypatch):
     """
-    Replace any existing `_submit_coro` function with a synchronous runner that awaits AsyncMock coroutines and returns a concurrent.futures.Future with the result or exception.
-
-    This pytest fixture patches `biblebot.bot._submit_coro` (if present) with an implementation that:
-    - returns None for non-coroutines,
-    - creates a temporary event loop, runs the coroutine to completion, and returns a Future containing the result or exception.
-
-    Yields control to the test; `monkeypatch` will restore the original attribute after the test.
+    Pytest fixture that patches biblebot.bot._submit_coro (if present) with a synchronous runner for coroutine objects.
+    
+    The replacement runner returns None for non-coroutine inputs. For coroutine inputs it creates a temporary event loop, runs the coroutine to completion (so AsyncMock coroutines are actually awaited), closes the loop, and returns a concurrent.futures.Future that is already resolved with the coroutine's result or completed with the raised exception. Yields control to the test; monkeypatch restores the original attribute on teardown.
     """
     import inspect
 
@@ -248,11 +293,13 @@ def mock_submit_coro(monkeypatch):
 @pytest.fixture(autouse=True)
 def comprehensive_cleanup():
     """
-    Comprehensive resource cleanup fixture for tests that create async resources.
-
-    This fixture ensures all system resources are properly cleaned up after tests,
-    preventing resource warnings about unclosed sockets and event loops.
-    Particularly important for Python 3.10+ compatibility in CI environments.
+    Perform comprehensive asynchronous resource cleanup after a test.
+    
+    This autouse teardown fixture cancels pending asyncio tasks, attempts to shut down
+    and close non-main event loops and their executors, resets the global event loop
+    reference, and forces garbage collection while suppressing common warnings about
+    unclosed resources or never-awaited coroutines. Broad exception handling is used
+    to avoid test interruptions during cleanup.
     """
     yield
 

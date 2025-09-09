@@ -26,12 +26,12 @@ class DuplicateConstantError(NameError):
 
     def __init__(self, duplicates):
         """
-        Initialize the DuplicateConstantError with the given duplicate names.
-
+        Exception raised when two or more constants share the same name across submodules.
+        
+        Duplicates provided are converted to a tuple and stored on the instance as `self.duplicates`; the exception message includes that tuple.
+        
         Parameters:
-            duplicates (Iterable[str]): Names of constants that were found more than once; stored as a tuple on the instance.
-
-        The exception message will include the tuple of duplicate names.
+            duplicates (Iterable[str]): Iterable of duplicate constant names.
         """
         self.duplicates = tuple(duplicates)
         super().__init__(

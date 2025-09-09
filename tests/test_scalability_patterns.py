@@ -21,14 +21,14 @@ class TestScalabilityPatterns:
     @pytest.fixture
     def mock_config(self):
         """
-        Provide a mocked Matrix-like configuration dictionary used by scalability tests.
-
-        Returns a dict with keys:
-        - "homeserver": Home server URL.
-        - "user_id": Matrix user identifier.
-        - "access_token": Token used for authenticated requests.
-        - "device_id": Client device identifier.
-        - "matrix_room_ids": List of room IDs to initialize tests against.
+        Fixture providing a mocked Matrix-like configuration dictionary for scalability tests.
+        
+        Returns a dict containing the minimal fields the tests expect:
+        - homeserver: homeserver URL used by the client (string).
+        - user_id: Matrix user identifier used in events (string).
+        - access_token: token used for authenticated requests (string).
+        - device_id: client device identifier (string).
+        - matrix_room_ids: list of room IDs to initialize or simulate rooms (list of strings).
         """
         return {
             "homeserver": "https://matrix.org",
@@ -59,16 +59,12 @@ class TestScalabilityPatterns:
 
     async def test_high_volume_message_processing(self, mock_config, mock_client):
         """
-        Run a high-volume message processing scenario and assert throughput and per-message I/O behavior.
-
-        Simulates 100 concurrent incoming messages (from 10 distinct users) addressed to a single room while patching the external Bible text API to a deterministic response. Measures total processing time and messages-per-second, and verifies:
+        Simulate 100 concurrent incoming messages to a single room and assert throughput and per-message I/O behavior.
+        
+        Runs a high-volume scenario with a deterministic patched Bible API, measures total processing time and messages/sec, and asserts:
         - total processing completes in under 30 seconds,
         - throughput exceeds 3 messages/second,
-        - the mock Matrix client's room_send is invoked twice per message (reaction + response).
-
-        Parameters:
-            mock_config: pytest fixture providing a Matrix-like configuration (includes "matrix_room_ids").
-            mock_client: pytest fixture providing a mocked Matrix client with AsyncMock methods (e.g., room_send).
+        - the mock Matrix client's `room_send` is invoked twice per message (reaction + response).
         """
         bot = BibleBot(config=mock_config, client=mock_client)
 
@@ -263,7 +259,22 @@ class TestScalabilityPatterns:
         assert memory_growth < max_growth
 
     async def test_api_request_scaling(self, mock_config, mock_client):
-        """Test scaling of API requests."""
+        """
+        Test that external API request latency remains stable under concurrent load.
+        
+        Creates a BibleBot with a mocked Matrix client and patches the external `get_bible_text`
+        call to an async helper that simulates ~10ms latency while recording each call's
+        duration. It then concurrently sends 50 simulated room message events to the bot,
+        collects per-call timings, and asserts:
+        
+        - Exactly 50 API calls were recorded.
+        - The average API time stays within a permissive budget derived from the median
+          observed latency (avg < median + 0.25).
+        - The worst single-call time stays within a permissive spike allowance (max < median + 0.45).
+        
+        This test focuses on measuring per-request latency under load and uses relaxed
+        tolerances to reduce CI flakiness.
+        """
         bot = BibleBot(config=mock_config, client=mock_client)
 
         # Populate room ID set for testing (normally done in initialize())
@@ -276,9 +287,9 @@ class TestScalabilityPatterns:
 
         async def timed_api_call(*_args, **_kwargs):
             """
-            Simulate a timed API call that sleeps ~10ms, records elapsed time, and returns a fixed verse.
-
-            Accepts arbitrary positional and keyword arguments (ignored). Appends the measured call duration to the external list `api_call_times` and returns a tuple (verse_text, reference) — here ("Test verse", "John 3:16").
+            Simulate a short (~10 ms) external API call, record its duration, and return a fixed verse tuple.
+            
+            This async helper accepts arbitrary positional and keyword arguments (they are ignored), sleeps approximately 10 milliseconds to emulate network latency, appends the measured call duration (seconds) to the external list `api_call_times`, and returns a (verse_text, reference) tuple — ("Test verse", "John 3:16").
             """
             start = time.perf_counter()
             await asyncio.sleep(0.01)  # Simulate API latency
@@ -319,7 +330,11 @@ class TestScalabilityPatterns:
             assert max_api_time < max_budget
 
     async def test_connection_pool_scaling(self, mock_config, mock_client):
-        """Test connection pool scaling behavior."""
+        """
+        Verify the bot's external-request connection pooling scales under concurrent load.
+        
+        Creates a BibleBot with a mocked client and configuration, patches get_bible_text with an async helper that simulates ~50 ms latency while tracking concurrent callers, then drives 30 concurrent on_room_message calls. Asserts the observed peak concurrent connections is greater than 1 (uses multiple connections) and does not exceed the number of requests (<= 30).
+        """
         bot = BibleBot(config=mock_config, client=mock_client)
 
         # Populate room ID set for testing (normally done in initialize())
@@ -333,11 +348,14 @@ class TestScalabilityPatterns:
 
         async def connection_tracking_api(*_args, **_kwargs):
             """
-            Async mock API that simulates a short external request while tracking concurrent connections.
-
-            Increments the enclosing `active_connections` counter on entry and updates `max_connections` to record the peak concurrency, then awaits ~50ms to simulate latency before decrementing `active_connections` and returning a fixed (verse, reference) tuple ("Test verse", "John 3:16").
-
-            Accepts arbitrary positional and keyword arguments (ignored).
+            Simulated async API that tracks concurrent "connections" and returns a fixed verse.
+            
+            Increments the enclosing active_connections counter and updates max_connections to record peak concurrency,
+            awaits ~50 ms to simulate external latency, then decrements active_connections and returns a fixed
+            (verse, reference) tuple. Accepts arbitrary positional and keyword arguments (ignored).
+            
+            Returns:
+                tuple[str, str]: A fixed (verse, reference) pair ("Test verse", "John 3:16").
             """
             nonlocal active_connections, max_connections
             active_connections += 1

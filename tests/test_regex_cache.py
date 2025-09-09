@@ -5,6 +5,14 @@ from biblebot.cli import run_async
 
 
 def test_reference_patterns_basic():
+    """
+    Verify that the configured reference patterns match common Bible reference strings.
+    
+    Uses botmod.REFERENCE_PATTERNS when available, otherwise falls back to a default regex list.
+    For each example reference (e.g., "John 3:16", "1 Cor 15:1-4", "Genesis 1:1 kjv"), the test attempts
+    matching with every pattern. Patterns may be compiled regex objects or plain pattern strings;
+    both forms are supported. The test asserts that at least one pattern matches each example.
+    """
     pats = (
         botmod.REFERENCE_PATTERNS
         if hasattr(botmod, "REFERENCE_PATTERNS")

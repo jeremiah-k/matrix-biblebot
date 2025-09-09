@@ -444,7 +444,11 @@ class TestCacheConfiguration:
         assert result is None
 
     def test_cache_disabled_set(self):
-        """Test cache set does nothing when disabled."""
+        """
+        Ensure that calling _cache_set with cache_enabled=False does not modify the global passage cache.
+        
+        This test clears the module-level _passage_cache, calls _cache_set with cache disabled, and asserts the cache remains empty.
+        """
         # Clear any existing cache
         from biblebot.bot import _passage_cache
 

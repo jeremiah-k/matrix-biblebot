@@ -40,6 +40,13 @@ class TestUpdateCheck:
         """Test check_for_updates when update is available."""
 
         async def mock_get_latest():
+            """
+            Coroutine that simulates fetching the latest release version for tests.
+            
+            Always returns the string "1.1.0".
+            Returns:
+                str: The mocked latest version ("1.1.0").
+            """
             return "1.1.0"
 
         with patch(
@@ -99,6 +106,13 @@ class TestUpdateCheck:
         """Test startup update check runs without exceptions."""
 
         async def mock_check_for_updates():
+            """
+            Async test helper that simulates an update check returning no update and a fixed latest version.
+            
+            Returns:
+                tuple: (update_available, latest_version) where `update_available` is False and
+                `latest_version` is the string "1.0.0".
+            """
             return False, "1.0.0"
 
         with patch(

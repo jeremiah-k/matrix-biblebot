@@ -12,8 +12,13 @@ from biblebot.constants import SAMPLE_CONFIG_FILENAME
 @contextmanager
 def open_sample_config():
     """
-    Yield a real filesystem Path to the bundled sample config for the duration
-    of the context. Prefer this over get_sample_config_path().
+    Context manager that yields a real filesystem Path to the bundled sample configuration file.
+    
+    Yields:
+        pathlib.Path: A Path pointing to the packaged sample config file. The returned path is guaranteed
+        to refer to an actual file on the host filesystem only for the duration of the context; do not
+        use it after exiting the context. Prefer this context manager over retrieving a raw path string
+        from the package (which may be ephemeral under certain installation formats).
     """
     res = importlib.resources.files(__package__) / SAMPLE_CONFIG_FILENAME
     with importlib.resources.as_file(res) as p:
@@ -42,8 +47,13 @@ def get_sample_config_path():
 
 def copy_sample_config_to(dst_path: str) -> str:
     """
-    Copy the bundled sample configuration to dst_path and return the actual file path.
-    Always yields a stable file even under zipped installs.
+    Copy the bundled sample configuration file to the given destination and return the path to the copied file.
+    
+    If dst_path points to an existing directory or has no suffix, the sample filename is appended. The destination directory is created if necessary. Returns a filesystem path to the copied file (stable on zipped installs because the resource is copied out).
+    Parameters:
+        dst_path (str): Destination file path or directory where the sample config should be placed.
+    Returns:
+        str: Filesystem path to the copied sample configuration file.
     """
     res = importlib.resources.files(__package__) / SAMPLE_CONFIG_FILENAME
     dst = pathlib.Path(dst_path)
@@ -61,8 +71,13 @@ def copy_sample_config_to(dst_path: str) -> str:
 @contextmanager
 def open_service_template():
     """
-    Yield a real filesystem Path to the packaged service template for the
-    duration of the context.
+    Yield a temporary filesystem Path to the packaged `biblebot.service` template.
+    
+    Yields:
+        pathlib.Path: A Path pointing to the bundled `biblebot.service` file that is guaranteed
+        to exist and be usable only for the lifetime of the context manager. The path may
+        be ephemeral (e.g., a temporary file) and should not be relied on after exiting the
+        context.
     """
     res = importlib.resources.files(__package__) / "biblebot.service"
     with importlib.resources.as_file(res) as p:
@@ -90,7 +105,9 @@ def get_service_template_path():
 
 def copy_service_template_to(dst_path: str) -> str:
     """
-    Copy the packaged service template to dst_path and return the actual file path.
+    Copy the packaged service template ("biblebot.service") to a filesystem destination and return the final file path as a string.
+    
+    If dst_path names an existing directory, or if it has no suffix, the function will place the service template inside that directory using the filename "biblebot.service". Parent directories are created as needed. The returned string is the path to the copied file on the local filesystem.
     """
     filename = "biblebot.service"
     res = importlib.resources.files(__package__) / filename

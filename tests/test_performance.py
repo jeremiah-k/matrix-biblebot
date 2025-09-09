@@ -108,7 +108,15 @@ class TestBookNormalizationPerformance:
 
     @pytest.mark.slow
     def test_normalization_performance_common_books(self):
-        """Test normalization performance for common book names."""
+        """
+        Measure performance of book-name normalization on a list of common Bible books.
+        
+        Runs 200 iterations over a predefined list of common book names, calling
+        bot.validate_and_normalize_book_name for each entry and asserting each result
+        is a string. Records total elapsed time and, unless the CI_SLOW_RUNNER
+        environment variable is set, enforces a total-time budget (< 4.0 s) and an
+        average-per-call budget (< 6 ms).
+        """
         common_books = [
             "Genesis",
             "Exodus",
@@ -144,7 +152,14 @@ class TestBookNormalizationPerformance:
 
     @pytest.mark.slow
     def test_normalization_performance_abbreviations(self):
-        """Test normalization performance for abbreviations."""
+        """
+        Measure performance of book-name normalization for common abbreviations.
+        
+        Runs 200 iterations over a representative set of abbreviated book names (including spaced variants)
+        and verifies each normalization returns a string. When the CI_SLOW_RUNNER environment variable is
+        not set, asserts the total run completes within 3.5 seconds and the average time per normalization
+        is under 6 ms.
+        """
         abbreviations = [
             "Gen",
             "Ex",
@@ -187,10 +202,10 @@ class TestBookNormalizationPerformance:
     @pytest.mark.slow
     def test_normalization_performance_mixed_case(self):
         """
-        Measure performance of validate_and_normalize_book_name on mixed-case book names.
-
-        Runs 200 iterations over a set of mixed-case book name variants and asserts each call returns a string.
-        When not running on a slow CI runner (CI_SLOW_RUNNER unset), the total elapsed time must be under 3.5 seconds.
+        Test performance of validate_and_normalize_book_name using mixed-case book names.
+        
+        Runs 200 iterations over a predefined list of mixed-case book-name variants and asserts each normalization returns a string.
+        When the CI_SLOW_RUNNER environment variable is not set, the total elapsed time for the loop must be under 3.5 seconds.
         """
         mixed_case_books = [
             "genesis",
@@ -380,7 +395,13 @@ class TestMemoryPerformance:
 
     @pytest.mark.slow
     def test_normalization_memory_usage(self):
-        """Test book normalization doesn't leak memory."""
+        """
+        Run repeated book-name normalizations to detect memory-growth issues.
+        
+        Performs 10,000 calls to bot.validate_and_normalize_book_name cycling through 100 distinct inputs.
+        Each result is asserted to be either a string (normalized name) or None (invalid input).
+        The test passes implicitly if it completes without excessive memory consumption or crashes.
+        """
         # Test many normalizations
         for i in range(10000):
             book_name = f"TestBook{i % 100}"
@@ -396,14 +417,14 @@ class TestStressPerformance:
 
     def test_rapid_cache_operations(self):
         """
-        Run a stress test that performs 500 rapid alternating cache set/get operations and verifies correctness and performance.
-
-        The test clears the internal passage cache (if present), then performs 500 iterations of:
-        - storing a passage via the internal cache-set helper,
-        - retrieving it via the internal cache-get helper and asserting the result is not None,
-        - retrieving it again using different casing for key and version and asserting the result matches the original retrieval (case-insensitive behavior).
-
-        It measures the total elapsed time and, unless the CI_SLOW_RUNNER environment variable is set, asserts the test completes in under 10 seconds.
+        Stress-test mixed cache operations by performing 500 rapid set/get cycles and asserting functional correctness and performance.
+        
+        Clears the internal passage cache (if present), then for 500 iterations:
+        - stores a passage via the internal cache-set helper,
+        - retrieves it via the internal cache-get helper and asserts the result is not None,
+        - retrieves it again using different casing for the key and version and asserts the result equals the first retrieval (verifies case-insensitive behavior).
+        
+        Measures total elapsed time and, unless the CI_SLOW_RUNNER environment variable is set, asserts the test completes in under 10 seconds.
         """
         # Clear cache
         if hasattr(bot, "_passage_cache"):

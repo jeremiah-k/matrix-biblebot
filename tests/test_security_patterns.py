@@ -16,7 +16,17 @@ class TestSecurityPatterns:
 
     @pytest.fixture
     def mock_config(self):
-        """Mock configuration for security tests."""
+        """
+        Pytest fixture returning a standard mock Matrix configuration used by security tests.
+        
+        Returns:
+            dict: Mock configuration with keys:
+                - homeserver (str): Base URL of the Matrix homeserver (e.g., "https://matrix.org").
+                - user_id (str): Matrix user identifier used by the test client.
+                - access_token (str): Placeholder access token for authenticating the mock client.
+                - device_id (str): Device identifier for the mock client.
+                - matrix_room_ids (list[str]): List of room IDs the mock client is configured to use.
+        """
         return {
             "homeserver": "https://matrix.org",
             "user_id": "@test:matrix.org",
@@ -166,7 +176,15 @@ class TestSecurityPatterns:
 
     @pytest.mark.asyncio
     async def test_homeserver_validation(self, mock_config, mock_client):
-        """Test homeserver URL validation."""
+        """
+        Validate handling of various homeserver URL values when constructing a BibleBot.
+        
+        This test verifies that well-formed HTTPS homeserver URLs (including hostnames and optional port)
+        are accepted and preserved in bot.config["homeserver"], while malformed or non-HTTPS values are
+        handled gracefully during bot construction (the bot is created but may emit validation warnings).
+        The test does not require network access; it simply sets a room-id set on the bot to simulate
+        post-initialization state and ensures construction does not raise for either valid or invalid inputs.
+        """
         # Test various homeserver URLs
         valid_homeservers = [
             "https://matrix.org",

@@ -8,7 +8,12 @@ from biblebot.bot import BibleBot
 
 @pytest.fixture
 def mock_room():
-    """Mock Matrix room fixture for testing room message handling."""
+    """
+    Create a MagicMock representing a Matrix room for tests.
+    
+    Returns:
+        MagicMock: Mock room object with `room_id` set to "!room:matrix.org".
+    """
     mock_room = MagicMock()
     mock_room.room_id = "!room:matrix.org"
     return mock_room
@@ -237,6 +242,7 @@ def test_save_credentials(
     mock_credentials_path, mock_chmod, mock_replace, mock_temp_file, tmp_path
 ):
     """Test credentials saving with atomic write."""
+    from pathlib import Path
 
     from biblebot.auth import Credentials
 
