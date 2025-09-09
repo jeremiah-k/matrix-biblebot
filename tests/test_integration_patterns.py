@@ -47,14 +47,15 @@ class TestIntegrationPatterns:
     def mock_client(self):
         """
         Create a MagicMock that simulates a Matrix client for integration tests.
-
-        Returns a MagicMock with AsyncMock attributes commonly used by BibleBot tests:
-        - room_send: async send messages to a room
-        - join: async join a room
-        - sync: async sync loop
-        - close: async cleanup/close
-
-        The mock can be awaited/inspected by test code to assert calls and payloads.
+        
+        The returned mock exposes commonly used async methods as AsyncMock instances:
+        - room_send: simulate sending messages to a room
+        - join: simulate joining a room
+        - sync: simulate the client's sync loop
+        - close: simulate cleanup/close
+        
+        Returns:
+            MagicMock: A mock client whose async methods can be awaited and inspected by tests.
         """
         client = MagicMock()
         client.room_send = AsyncMock()
@@ -317,7 +318,14 @@ class TestIntegrationPatterns:
         assert mock_client.join.call_count == len(rooms_to_join)
 
     async def test_message_formatting_integration(self, mock_config, mock_client):
-        """Test message formatting in integrated workflow."""
+        """
+        Verify that when a verse is requested the bot sends a formatted Matrix message containing both plain-text and HTML-formatted content.
+        
+        This integration-style test:
+        - Mocks biblebot.bot.get_bible_text to return verse text and reference.
+        - Seeds the bot's configured room set and simulates an incoming room message event.
+        - Asserts the bot calls the Matrix client's room_send with message content that includes both "body" and "formatted_body", uses the "org.matrix.custom.html" format, and contains the verse text and its reference in the plain body.
+        """
         bot = BibleBot(config=mock_config, client=mock_client)
 
         # Populate room ID set for testing (normally done in initialize())

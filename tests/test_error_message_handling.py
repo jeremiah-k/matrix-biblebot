@@ -9,7 +9,17 @@ from biblebot.bot import BibleBot
 
 @pytest.fixture
 def mock_config():
-    """Sample configuration for testing."""
+    """
+    Return a minimal sample configuration dict used by tests.
+    
+    The returned dict contains keys expected by the code under test:
+    - "matrix": configuration for Matrix client:
+        - "homeserver": base URL of the homeserver.
+        - "room_ids": list with a single test room id.
+        - "e2ee": dict with "enabled" boolean controlling end-to-end encryption.
+    - "bible_api": API settings:
+        - "default_translation": default Bible translation identifier (e.g., "kjv").
+    """
     return {
         "matrix": {
             "homeserver": "https://matrix.org",

@@ -18,14 +18,14 @@ class TestEndToEndWorkflow:
     def temp_workspace(self, tmp_path):
         """
         Create a temporary workspace directory populated with sample configuration files for tests.
-
-        The workspace directory (created as tmp_path / "biblebot_test") will contain:
-        - config.yaml: a YAML config with keys `matrix_homeserver`, `matrix_user`, `matrix_room_ids`, and `matrix.e2ee.enabled` set to False.
+        
+        The function creates a directory named "biblebot_test" under the provided tmp_path and writes two files:
+        - config.yaml: YAML with keys `matrix_homeserver`, `matrix_user`, `matrix_room_ids`, and `matrix.e2ee.enabled` (False).
         - .env: environment file containing `MATRIX_ACCESS_TOKEN=test_token` and `ESV_API_KEY=test_key`.
-
+        
         Parameters:
-            tmp_path (pathlib.Path): Base temporary directory provided by pytest.
-
+            tmp_path (pathlib.Path): Base temporary directory (pytest tmp_path fixture).
+        
         Returns:
             pathlib.Path: Path to the created workspace directory.
         """
@@ -84,7 +84,16 @@ api_keys:
 
     @pytest.mark.asyncio
     async def test_authentication_workflow(self, temp_workspace):
-        """Test the authentication workflow."""
+        """
+        Integration test that verifies saving/loading of credentials and the interactive logout cleanup.
+        
+        This async test uses the temp_workspace fixture (a Path to a temporary config directory) and patches auth.CONFIG_DIR, auth.CREDENTIALS_FILE, and auth.E2EE_STORE_DIR to operate inside that workspace. It performs three checks:
+        1. Saves a Credentials object to disk via auth.save_credentials and verifies auth.load_credentials returns the same user_id and access_token.
+        2. Mocks the AsyncClient used during logout and calls auth.interactive_logout, asserting it returns True.
+        3. Verifies that credentials.json is removed from the workspace as part of the logout cleanup.
+        
+        Side effects: creates and deletes a credentials.json file inside temp_workspace.
+        """
         # Patch the config directory to use our temp workspace
         with patch.object(auth, "CONFIG_DIR", temp_workspace):
             with patch.object(
@@ -360,7 +369,13 @@ class TestCLIIntegration:
     def test_config_check_command_integration(
         self, mock_load_config, mock_load_env, mock_e2ee_status
     ):
-        """Test config check command with real module integration."""
+        """
+        Verify the config-check flow integrates load_config, load_environment, and check_e2ee_status correctly.
+        
+        Loads a mock config with two Matrix room IDs, a mock environment returning one non-empty API key (esv),
+        and a mocked E2EE status indicating availability. Asserts the config contains two rooms, exactly one
+        non-empty API key is present, and E2EE is reported available.
+        """
         # Setup mocks - check_e2ee_status is a sync function, use regular Mock
         mock_load_config.return_value = {
             "matrix_room_ids": ["!room1:matrix.org", "!room2:matrix.org"]

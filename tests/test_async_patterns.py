@@ -54,14 +54,14 @@ class TestAsyncPatterns:
     @pytest.fixture
     def mock_room(self):
         """
-        Create a MagicMock representing a Matrix room for tests.
-
-        The mock has the following attributes set:
+        Create a MagicMock configured to represent a Matrix room for tests.
+        
+        The mock has these attributes:
         - room_id: "!room:matrix.org"
         - display_name: "Test Room"
-
+        
         Returns:
-            MagicMock: A mock room object configured with the attributes above.
+            MagicMock: A mock room object with the attributes above.
         """
         room = MagicMock()
         room.room_id = "!room:matrix.org"
@@ -71,17 +71,17 @@ class TestAsyncPatterns:
     @pytest.fixture
     def mock_event(self):
         """
-        Create and return a MagicMock that simulates a Matrix room event for tests.
-
-        The returned mock has commonly accessed attributes used by the test suite:
-        - sender: str, example "@user:matrix.org"
-        - body: str, human-readable event body ("John 3:16")
-        - event_id: str, example "$event123"
-        - server_timestamp: int, epoch milliseconds (set to 1234567890000; intentionally after test start times)
-        - source: dict with nested content.body matching `body`
-
+        Create a MagicMock that simulates a Matrix room event for use in async tests.
+        
+        The mock exposes commonly accessed attributes used across the test suite:
+        - sender (str): example "@user:matrix.org"
+        - body (str): human-readable event body, e.g. "John 3:16"
+        - event_id (str): example "$event123"
+        - server_timestamp (int): epoch milliseconds (set to 1234567890000)
+        - source (dict): nested structure with content.body matching `body`
+        
         Returns:
-            MagicMock: A mock object shaped like a Matrix event, ready for use in async test scenarios.
+            MagicMock: A mock object shaped like a Matrix event, ready for test scenarios.
         """
         event = MagicMock()
         event.sender = "@user:matrix.org"
@@ -227,7 +227,11 @@ class TestAsyncPatterns:
             mock_api.assert_called_once()
 
     async def test_async_rate_limiting_patterns(self, mock_config, mock_client):
-        """Test async rate limiting patterns."""
+        """
+        Verify the bot handles rate-limited API calls by introducing delays between requests.
+        
+        Patches asyncio.sleep and the get_bible_text coroutine, simulates multiple sequential rate-limited requests that await a short delay before fetching a passage, and asserts that the delay (asyncio.sleep) was invoked during the process.
+        """
         BibleBot(config=mock_config, client=mock_client)
 
         # Mock rate-limited API
@@ -240,10 +244,11 @@ class TestAsyncPatterns:
                 # Simulate rate limiting by adding delays
                 async def rate_limited_call():
                     """
-                    Perform a rate-limited retrieval of a Bible passage.
-
-                    Awaits a short delay to simulate rate limiting, then calls `mock_get_bible("John 3:16")`
-                    and returns whatever that coroutine returns (typically the verse text and reference).
+                    Asynchronously perform a simulated rate-limited retrieval of the passage "John 3:16".
+                    
+                    Awaits a short delay to emulate rate limiting, then awaits and returns the result of calling the `mock_get_bible` coroutine with "John 3:16".
+                    Returns:
+                        The value returned by `mock_get_bible("John 3:16")` (typically a tuple or object containing verse text and reference).
                     """
                     await asyncio.sleep(0.1)  # Simulate rate limit
                     return await mock_get_bible("John 3:16")
@@ -262,13 +267,13 @@ class TestAsyncPatterns:
         # Test that tasks can be cancelled gracefully
         async def quick_task():
             """
-            Short asynchronous helper that sleeps briefly and returns "completed".
-
-            This coroutine awaits for a short delay (0.1 seconds) and then returns the string "completed".
-            It is cancellable by the caller; if cancelled, asyncio.CancelledError will propagate to the caller.
-
+            Short cancellable coroutine that sleeps briefly and returns "completed".
+            
+            Awaits asyncio.sleep(0.1) and then returns the literal string "completed".
+            If the task is cancelled while sleeping, asyncio.CancelledError will propagate to the caller.
+            
             Returns:
-                str: The literal string "completed" when the coroutine finishes normally.
+                str: "completed" when the coroutine finishes normally.
             """
             await asyncio.sleep(0.1)  # Longer sleep to ensure cancellation
             return "completed"
@@ -374,10 +379,9 @@ class TestAsyncPatterns:
 
         async def mock_shutdown():
             """
-            Mark the surrounding test's shutdown flag to indicate a simulated graceful shutdown.
-
-            This async helper sets the nonlocal `shutdown_called` variable to True when awaited,
-            allowing tests to verify that shutdown logic ran.
+            Mark the test's shutdown flag to simulate a graceful shutdown.
+            
+            When awaited, sets the nonlocal `shutdown_called` variable to True so tests can assert that shutdown logic ran.
             """
             nonlocal shutdown_called
             shutdown_called = True
@@ -397,10 +401,9 @@ class TestAsyncPatterns:
 
             async def background_task():
                 """
-                Asynchronous background task that waits briefly and then marks completion.
-
-                This coroutine sleeps for approximately 0.1 seconds and sets the enclosing scope's
-                nonlocal flag `task_completed` to True to indicate the background work finished.
+                Run a short asynchronous background task and mark completion.
+                
+                Sleeps for ~0.1 seconds and sets the surrounding scope's nonlocal variable `task_completed` to True to indicate the background work finished.
                 """
                 nonlocal task_completed
                 await asyncio.sleep(0.1)

@@ -10,9 +10,9 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from biblebot.bot import BibleBot
-
 pytestmark = pytest.mark.asyncio
+
+from biblebot.bot import BibleBot
 
 
 class TestReliabilityPatterns:
@@ -31,7 +31,11 @@ class TestReliabilityPatterns:
 
     @pytest.fixture
     def mock_client(self):
-        """Mock Matrix client for reliability tests."""
+        """
+        Create and return a MagicMock-based Matrix client with async methods for testing.
+        
+        Returns a MagicMock configured with AsyncMock attributes: `room_send`, `join`, and `sync`, suitable for use as a mocked Matrix client in async reliability tests.
+        """
         client = MagicMock()
         client.room_send = AsyncMock()
         client.join = AsyncMock()
@@ -151,17 +155,17 @@ class TestReliabilityPatterns:
 
         async def partial_failure_api(*_args, **_kwargs):
             """
-            Simulate a partially degraded API that fails on every other invocation.
-
-            This async test helper increments a shared `call_count` and alternates behavior:
-            - On even calls it raises Exception("Service temporarily unavailable").
-            - On odd calls it returns a (verse_text, verse_ref) tuple, where `verse_ref` embeds the current call count.
-
+            Test helper that simulates a partially degraded API which fails on every even invocation.
+            
+            Increments the shared nonlocal `call_count` and alternates behavior:
+            - On even calls raises Exception("Service temporarily unavailable").
+            - On odd calls returns a tuple (verse_text, verse_ref) where `verse_ref` embeds the current call count (e.g., "John 3:1").
+            
             Returns:
-                tuple[str, str]: (verse_text, verse_reference) for successful calls.
-
+                tuple[str, str]: (verse_text, verse_reference) for successful (odd) calls.
+            
             Raises:
-                Exception: always raised for simulated failed calls (every even invocation).
+                Exception: Raised for simulated failed calls (every even invocation).
             """
             nonlocal call_count
             call_count += 1
@@ -206,9 +210,9 @@ class TestReliabilityPatterns:
 
         async def failing_room_send(*_args, **_kwargs):
             """
-            Simulated async replacement for Matrix client's `room_send` that fails on the first two calls and then succeeds.
-
-            Increments the surrounding `call_count` (nonlocal) each invocation. For the first two invocations it raises Exception("Matrix server error"); on subsequent calls it returns a MagicMock to represent a successful send.
+            Async test helper that simulates Matrix client's `room_send`.
+            
+            Increments the surrounding nonlocal `call_count` each time it's invoked. On the first two calls it raises Exception("Matrix server error") to simulate transient send failures; on subsequent calls it returns a MagicMock to represent a successful send.
             """
             nonlocal call_count
             call_count += 1
@@ -255,14 +259,14 @@ class TestReliabilityPatterns:
 
         async def random_failure_api(*_, **__):
             """
-            Simulate an unreliable external API: returns a verse tuple or deterministically fails.
-
-            This async helper imitates a flaky service that fails every 3rd call for reliable testing.
-            On success it returns a (text, reference) tuple, e.g. ("Random verse", "John 3:16").
-
+            Simulate a deterministic flaky external API that returns a Bible verse or fails.
+            
+            This async test helper returns a (verse_text, verse_reference) tuple on success and raises an Exception on failure.
+            Failures are deterministic: every 3rd invocation raises Exception("Random service error"), otherwise it returns ("Random verse", "John 3:16").
+            
             Returns:
                 tuple[str, str]: (verse_text, verse_reference)
-
+            
             Raises:
                 Exception: when the simulated service fails (every 3rd call).
             """
@@ -295,7 +299,12 @@ class TestReliabilityPatterns:
             assert mock_client.room_send.call_count > 0
 
     async def test_resource_exhaustion_handling(self, mock_config, mock_client):
-        """Test handling of resource exhaustion scenarios."""
+        """
+        Verify the bot gracefully handles upstream resource exhaustion (MemoryError) without crashing.
+        
+        Patches biblebot.bot.get_bible_text to always raise MemoryError and invokes on_room_message with a mocked event and room.
+        The test passes if the handler completes without raising an uncaught exception (i.e., resource-exhaustion is handled or suppressed).
+        """
         bot = BibleBot(config=mock_config, client=mock_client)
 
         # Populate room ID set for testing (normally done in initialize())
@@ -333,7 +342,11 @@ class TestReliabilityPatterns:
             assert True
 
     async def test_cascading_failure_prevention(self, mock_config, mock_client):
-        """Test prevention of cascading failures."""
+        """
+        Test that transient upstream failures do not cause unrecoverable cascading failures.
+        
+        Sets up BibleBot with a patched get_bible_text that raises an "Initial failure" once and then raises "Cascading failure" on subsequent calls. Sends multiple room message events (exceptions suppressed) to exercise how the bot isolates failures across requests and asserts that at least one outgoing room_send was attempted, indicating the bot continued processing despite cascading errors.
+        """
         bot = BibleBot(config=mock_config, client=mock_client)
 
         # Populate room ID set for testing (normally done in initialize())
@@ -393,10 +406,13 @@ class TestReliabilityPatterns:
         # Mock degraded service (slower responses, limited functionality)
         async def degraded_api(*_, **__):
             """
-            Simulate a degraded external API: asynchronously waits a short delay and returns a degraded response.
-
+            Simulate a degraded external API by awaiting a short delay and returning a degraded response.
+            
+            This async helper sleeps for ~0.2 seconds to mimic slower service behavior and then returns
+            a two-tuple (response_text, status_reason), e.g. ("Degraded response", "Service degraded").
+            
             Returns:
-                tuple[str, str]: A two-tuple (response_text, status_reason), e.g. ("Degraded response", "Service degraded").
+                tuple[str, str]: (response_text, status_reason)
             """
             await asyncio.sleep(0.2)  # Slower response
             return ("Degraded response", "Service degraded")
@@ -421,14 +437,14 @@ class TestReliabilityPatterns:
 
     async def test_circuit_breaker_pattern(self, mock_config, mock_client):
         """
-        Verify the bot's behavior when the upstream text service fails consistently, exercising a circuit-breaker-like scenario.
-
-        This async test replaces `get_bible_text` with a coroutine that always raises, then sends multiple room events to the bot to ensure:
-        - the bot attempts each request (no early crash),
-        - failures are handled at the call-site (exceptions are caught by the test),
-        - the Matrix client's send method is invoked or at least not prevented from being called by a single persistent failure.
-
-        No parameters or return value.
+        Verify bot behavior under a circuit-breaker-like condition where the upstream text service always fails.
+        
+        Sends multiple simulated room events while patching `get_bible_text` to always raise, ensuring the bot:
+        - attempts each request (no premature termination of the loop),
+        - tolerates persistent upstream failures without crashing,
+        - still exercises the Matrix client's send path as applicable.
+        
+        This is an async test; it does not return a value.
         """
         bot = BibleBot(config=mock_config, client=mock_client)
 
@@ -441,12 +457,10 @@ class TestReliabilityPatterns:
         # Mock service that fails consistently
         async def consistently_failing_api(*_, **__):
             """
-            Simulate an API that is permanently unavailable by always raising an Exception.
-
-            This asynchronous helper is used in tests to emulate a service that consistently fails.
-            It accepts any positional and keyword arguments (ignored) and immediately raises an Exception
-            with the message "Service consistently down".
-
+            Simulate a permanently unavailable API by always raising an exception.
+            
+            Used in tests to emulate an upstream service that consistently fails. Accepts any arguments which are ignored and immediately raises an Exception with message "Service consistently down".
+            
             Raises:
                 Exception: Always raised with message "Service consistently down".
             """
@@ -499,17 +513,15 @@ class TestReliabilityPatterns:
 
         async def inconsistent_api(*_, **__):
             """
-            Return the next simulated API response from an enclosing response iterator.
-
-            This async helper returns the next value produced by a closure-provided
-            iterator named `response_iter`. If the iterator is exhausted it raises
-            Exception("API failure") to simulate a failing API call.
-
+            Return the next simulated API response from the enclosing `response_iter`.
+            
+            This async helper pulls the next value from a closure-provided iterator named `response_iter`. If the iterator is exhausted it raises Exception("API failure") to simulate an upstream API failure.
+            
             Returns:
-                The next response object from `response_iter`.
-
+                The next response yielded by `response_iter`.
+            
             Raises:
-                Exception: if `response_iter` is exhausted (simulated API failure).
+                Exception: when `response_iter` is exhausted (simulated API failure).
             """
             response = next(response_iter, None)
             if response is None:
@@ -558,12 +570,12 @@ class TestReliabilityPatterns:
         async def recovering_api(*_, **__):
             """
             Simulate an API that fails until a configured recovery window has elapsed.
-
+            
             Raises:
-                Exception: `"Service recovering"` while the current time is less than `recovery_time` seconds after `start_time`.
-
+                Exception: If called before the configured recovery window has elapsed; raises with message "Service recovering".
+            
             Returns:
-                tuple[str, str]: A successful response as (verse_text, verse_ref) after recovery (e.g., ("Recovered verse", "John 3:16")).
+                tuple[str, str]: On recovery, returns a successful response as (verse_text, verse_ref), e.g. ("Recovered verse", "John 3:16").
             """
             if time.monotonic() - start_time < recovery_time:
                 raise Exception("Service recovering")

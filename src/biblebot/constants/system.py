@@ -48,7 +48,18 @@ PATH_ENVIRONMENT_FS = (
 
 
 def expand_percent_h(value: str) -> str:
-    """Expand systemd-style %h placeholders to actual home directory."""
+    """
+    Replace every occurrence of the systemd-style "%h" placeholder with the current user's home directory and return the resulting string.
+    
+    Parameters:
+        value (str): Input string that may contain one or more "%h" placeholders.
+    
+    Returns:
+        str: A new string with all "%h" occurrences replaced by the resolved HOME path.
+    
+    Notes:
+        This performs a plain string replacement and does not process other systemd escape sequences.
+    """
     return value.replace("%h", HOME)
 
 
