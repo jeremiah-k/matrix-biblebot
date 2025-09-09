@@ -160,7 +160,7 @@ class TestArgumentParsing:
         """Test parsing basic arguments."""
         # Test actual argument parsing
         test_args = ["--log-level", "debug"]
-        parser = cli.create_parser()
+        parser, _, _, _ = cli.create_parser()
         args = parser.parse_args(test_args)
 
         assert args.log_level == "debug"
@@ -168,7 +168,7 @@ class TestArgumentParsing:
     def test_parse_config_arg(self):
         """Test parsing config argument."""
         test_args = ["--config", "/custom/path.yaml"]
-        parser = cli.create_parser()
+        parser, _, _, _ = cli.create_parser()
         args = parser.parse_args(test_args)
 
         assert args.config == "/custom/path.yaml"

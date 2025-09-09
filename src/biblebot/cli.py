@@ -443,7 +443,7 @@ Examples:
         CMD_INSTALL, help="Install or update systemd user service"
     )
 
-    return parser
+    return parser, config_parser, auth_parser, service_parser
 
 
 def main():
@@ -478,7 +478,7 @@ def main():
         interactive_main()
         return
 
-    parser = create_parser()
+    parser, config_parser, auth_parser, service_parser = create_parser()
     args = parser.parse_args()
 
     # Set up logging

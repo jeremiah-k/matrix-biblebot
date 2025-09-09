@@ -227,7 +227,9 @@ def mock_submit_coro(monkeypatch):
             future = Future()
             future.set_result(result)
             return future
-        except Exception as e:
+        except (
+            Exception
+        ) as e:  # noqa: BLE001 - test fixture needs broad exception handling
             future = Future()
             future.set_exception(e)
             return future
@@ -291,10 +293,9 @@ def comprehensive_cleanup():
                 with contextlib.suppress(Exception):
                     loop.close()
 
-    except Exception:
+    except Exception:  # noqa: BLE001 - test cleanup needs broad exception handling
         # Suppress cleanup errors to avoid affecting test results
-        with contextlib.suppress(Exception):
-            pass
+        pass
 
     # Ensure the main event loop is reset
     asyncio.set_event_loop(None)

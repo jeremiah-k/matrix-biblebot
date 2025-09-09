@@ -230,16 +230,18 @@ class TestMessageSplitting:
             assert len(message_calls) > 1
 
             # Check that only the last message has the reference and suffix
+            from biblebot.constants.messages import MESSAGE_SUFFIX
+
             for i, call in enumerate(message_calls):
                 content = call[0][2]
                 if i == len(message_calls) - 1:  # Last message
                     assert "John 3:16" in content["body"]
-                    assert "🕊️✝️" in content["body"]
+                    assert MESSAGE_SUFFIX in content["body"]
                     # Last message must respect max_message_length
                     assert len(content["body"]) <= bot.max_message_length
                 else:  # Earlier messages
                     assert "John 3:16" not in content["body"]
-                    assert "🕊️✝️" not in content["body"]
+                    assert MESSAGE_SUFFIX not in content["body"]
                     # Non-final chunks must respect split_message_length
                     assert len(content["body"]) <= bot.split_message_length
 

@@ -29,7 +29,7 @@ TEST_MESSAGE_TIMESTAMP = 1234567890000
 TEST_CONFIG_FILE = "test_config.yaml"
 TEST_ENV_FILE = "test.env"
 TEST_CREDENTIALS_FILE = "test_credentials.json"
-TEST_TEMP_FILE = "/tmp/temp_file"
+TEST_TEMP_FILE = "/tmp/temp_file"  # noqa: S108
 
 # Test error messages
 TEST_ERROR_MESSAGE = "Test error"
