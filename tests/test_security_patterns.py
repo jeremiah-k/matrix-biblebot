@@ -26,7 +26,7 @@ class TestSecurityPatterns:
         }
 
     @pytest.fixture
-    def mock_client(self):
+    def mock_client(self, mock_config):
         """
         Create a mocked Matrix client for security tests.
 
@@ -34,6 +34,7 @@ class TestSecurityPatterns:
         - room_send: AsyncMock used to assert outgoing messages
         - join: AsyncMock used to assert room joins
         - sync: AsyncMock used to simulate client sync behavior
+        - user_id: Set to match the config for proper self-message detection
 
         Returns:
             MagicMock: Mocked client instance with AsyncMock attributes.
@@ -42,6 +43,7 @@ class TestSecurityPatterns:
         client.room_send = AsyncMock()
         client.join = AsyncMock()
         client.sync = AsyncMock()
+        client.user_id = mock_config["user_id"]  # Set user_id to match config
         return client
 
     async def test_input_sanitization(self, mock_config, mock_client):
