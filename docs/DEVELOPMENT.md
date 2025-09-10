@@ -147,6 +147,7 @@ Organized constants for:
    ```
 
 4. **Run linting:**
+   This project uses [Trunk](https://trunk.io) for linting and formatting. After installing Trunk, run:
 
    ```bash
    trunk check --fix --all

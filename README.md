@@ -25,13 +25,21 @@ The bot supports both KJV (default) and ESV translations, works in encrypted roo
    biblebot auth login
    ```
 
-3. **Configure and run**
+3. **Generate and edit config**
 
    ```bash
-   biblebot  # Follow the interactive setup
+   biblebot config generate
    ```
 
-4. **Invite the bot to your Matrix rooms** and start sending Bible references!
+   Then edit `~/.config/matrix-biblebot/config.yaml` to add your room IDs.
+
+4. **Run the bot**
+
+   ```bash
+   biblebot
+   ```
+
+5. **Invite the bot to your Matrix rooms** and start sending Bible references!
 
 ## Features
 
