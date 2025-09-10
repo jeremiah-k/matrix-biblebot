@@ -424,7 +424,7 @@ When reporting issues, include:
 
 ### Where to Get Help
 
-- **GitHub Issues:** [github.com/jeremiah-k/matrix-biblebot/issues](https://github.com/jeremiah-k/matrix-biblebot/issues)
+- **GitHub Issues:** [jeremiah-k/matrix-biblebot/issues](https://github.com/jeremiah-k/matrix-biblebot/issues)
 - **Matrix Room:** Join the support room (if available)
 - **Documentation:** Check other docs in this repository
 

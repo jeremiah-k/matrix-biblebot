@@ -199,8 +199,7 @@ For detailed troubleshooting, see [Troubleshooting Guide](docs/TROUBLESHOOTING.m
 
 ## Documentation
 
-- [Configuration Guide](docs/CONFIGURATION.md) - Detailed setup and options
-- [Configuration Guide](docs/CONFIGURATION.md#end-to-end-encryption-e2ee) - Includes E2EE setup
+- [Configuration Guide](docs/CONFIGURATION.md) - Detailed setup, options, and E2EE setup
 - [Development Guide](docs/DEVELOPMENT.md) - Contributing and development setup
 - [Troubleshooting](docs/TROUBLESHOOTING.md) - Common issues and solutions
 
