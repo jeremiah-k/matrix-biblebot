@@ -270,7 +270,7 @@ pip install 'matrix-biblebot[e2e]'
    - Configure proxy if needed
 
 3. **Increase timeout (if running from source):**
-   - Edit timeout values in constants files
+   - Edit timeout values in `src/biblebot/constants/api.py`
    - Rebuild and reinstall
 
 ## Performance Issues
@@ -417,6 +417,7 @@ When reporting issues, include:
 
    ```bash
    biblebot --log-level debug 2>&1 | head -50
+   # Windows PowerShell: biblebot --log-level debug 2>&1 | Select-Object -First 50
    ```
 
 5. **Steps to reproduce the issue**

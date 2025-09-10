@@ -149,6 +149,8 @@ Control how the bot detects Bible references:
 ```yaml
 bot:
   detect_references_anywhere: false
+
+**Note:** Setting this to `true` may cause unintended triggers in bridged or high-traffic rooms.
 ```
 
 - `false` (default): Only detects references that are the entire message

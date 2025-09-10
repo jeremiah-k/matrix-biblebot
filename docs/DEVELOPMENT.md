@@ -24,6 +24,7 @@ Guide for contributing to Matrix BibleBot development.
 
    ```bash
    pip install -e '.[e2e,test]'
+   # Windows PowerShell: pip install -e ".[e2e,test]"
    ```
 
 4. **Run tests:**
@@ -176,7 +177,7 @@ pytest tests/test_bot.py
 # Run with verbose output
 pytest -v
 
-# Run integration tests (requires Matrix credentials)
+# Run integration tests (requires Matrix credentials; if present)
 pytest tests/test_integration.py
 ```
 

@@ -59,6 +59,7 @@ pipx install matrix-biblebot
 
 # With end-to-end encryption support
 pipx install 'matrix-biblebot[e2e]'
+# Windows PowerShell: pipx install "matrix-biblebot[e2e]"
 ```
 
 ### Alternative: pip
@@ -151,7 +152,7 @@ See the [Configuration Guide](docs/CONFIGURATION.md).
 
 ## Running as a Service
 
-For production use, install as a systemd service:
+For production use on Linux, install as a systemd user service:
 
 ```bash
 biblebot service install
