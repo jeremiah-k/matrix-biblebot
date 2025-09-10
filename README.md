@@ -68,6 +68,7 @@ pipx install 'matrix-biblebot[e2e]'
 pip install matrix-biblebot
 # or with E2EE support
 pip install 'matrix-biblebot[e2e]'
+# Windows PowerShell: pip install "matrix-biblebot[e2e]"
 ```
 
 ### From Source
@@ -199,7 +200,7 @@ For detailed troubleshooting, see [Troubleshooting Guide](docs/TROUBLESHOOTING.m
 ## Documentation
 
 - [Configuration Guide](docs/CONFIGURATION.md) - Detailed setup and options
-- [E2EE Guide](docs/E2EE.md) - End-to-end encryption setup
+- [Configuration Guide](docs/CONFIGURATION.md#end-to-end-encryption-e2ee) - Includes E2EE setup
 - [Development Guide](docs/DEVELOPMENT.md) - Contributing and development setup
 - [Troubleshooting](docs/TROUBLESHOOTING.md) - Common issues and solutions
 

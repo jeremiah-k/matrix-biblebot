@@ -77,22 +77,72 @@ matrix:
 
 ### End-to-End Encryption (E2EE)
 
-Enable E2EE support for encrypted rooms:
+BibleBot supports optional Matrix End-to-End Encryption for encrypted rooms. E2EE is disabled by default.
+
+**Important**: E2EE requires proper authentication using `biblebot auth login` to bootstrap device keys. Manual access tokens are not supported for E2EE sessions.
+
+#### Installation with E2EE Support
+
+```bash
+# Recommended (pipx)
+pipx install 'matrix-biblebot[e2e]'
+
+# Or pip
+pip install 'matrix-biblebot[e2e]'
+```
+
+This installs the cryptographic dependencies needed for E2EE. Prebuilt wheels cover common Linux/macOS setups.
+
+#### Configuration
+
+Enable E2EE in your config file:
 
 ```yaml
 matrix:
+  room_ids:
+    - "!roomid:your-matrix-server.org"
   e2ee:
     enabled: true
-    store_path: null # Optional: custom path for E2EE store
+    # Optional: custom store path (default: ~/.config/matrix-biblebot/e2ee-store)
+    # store_path: /path/to/e2ee-store
 ```
 
-**Requirements:**
+#### Authentication
 
-- Install with E2EE support: `pipx install 'matrix-biblebot[e2e]'`
-- Use `biblebot auth login` (access tokens don't support E2EE)
+Use the built-in authentication flow:
 
-**E2EE Store:**
+```bash
+biblebot auth login
+```
 
+This saves credentials and prepares the encryption store. To remove credentials and store:
+
+```bash
+biblebot auth logout
+```
+
+#### Behavior
+
+- When enabled, BibleBot initializes the store, restores session, and uploads keys if needed
+- Decryption failures automatically trigger key requests
+- Unencrypted rooms continue to work normally alongside encrypted rooms
+- Device verification is not required for automated bots
+
+#### Platform Support
+
+- **Linux/macOS**: Full E2EE support
+- **Windows**: Not supported due to `python-olm` dependency constraints
+
+Windows users can still:
+
+- Use `biblebot auth login` for secure authentication
+- Run the bot in unencrypted rooms
+- Use all other bot features except E2EE
+- Run BibleBot inside WSL 2 or Docker for E2EE support
+
+#### Security Notes
+
+- Protect `~/.config/matrix-biblebot/credentials.json` and the E2EE store directory
 - Default location: `~/.config/matrix-biblebot/e2ee-store`
 - Contains cryptographic keys - keep secure
 - If lost, bot can't decrypt old messages
@@ -149,9 +199,9 @@ Control how the bot detects Bible references:
 ```yaml
 bot:
   detect_references_anywhere: false
+```
 
 **Note:** Setting this to `true` may cause unintended triggers in bridged or high-traffic rooms.
-```
 
 - `false` (default): Only detects references that are the entire message
 - `true`: Detects references anywhere in messages (useful with Matrix bridges)
