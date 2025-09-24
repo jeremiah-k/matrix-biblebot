@@ -21,18 +21,16 @@ class TestSecurityPatterns:
 
         Returns:
             dict: Mock configuration with keys:
-                - homeserver (str): Base URL of the Matrix homeserver (e.g., "https://matrix.org").
-                - user_id (str): Matrix user identifier used by the test client.
-                - access_token (str): Placeholder access token for authenticating the mock client.
-                - device_id (str): Device identifier for the mock client.
-                - matrix_room_ids (list[str]): List of room IDs the mock client is configured to use.
+                - matrix (dict): Matrix-specific settings.
+                - bot (dict): Bot behavior settings.
         """
         return {
-            "homeserver": "https://matrix.org",
-            "user_id": "@test:matrix.org",
-            "access_token": "test_token",
-            "device_id": "TEST_DEVICE",
-            "matrix_room_ids": ["!room:matrix.org"],
+            "matrix": {
+                "homeserver": "https://matrix.org",
+                "user": "@test:matrix.org",
+                "room_ids": ["!room:matrix.org"],
+            },
+            "bot": {},
         }
 
     @pytest.fixture
@@ -53,7 +51,7 @@ class TestSecurityPatterns:
         client.room_send = AsyncMock()
         client.join = AsyncMock()
         client.sync = AsyncMock()
-        client.user_id = mock_config["user_id"]  # Set user_id to match config
+        client.user_id = mock_config["matrix"]["user"]  # Set user_id to match config
         return client
 
     @pytest.mark.asyncio
@@ -63,7 +61,7 @@ class TestSecurityPatterns:
 
         # Populate room ID set for testing (normally done in initialize())
 
-        bot._room_id_set = set(mock_config["matrix_room_ids"])
+        bot._room_id_set = set(mock_config["matrix"]["room_ids"])
         bot.start_time = 1234567880000  # Use milliseconds
         bot.api_keys = {}
 
@@ -84,7 +82,7 @@ class TestSecurityPatterns:
                 event.server_timestamp = 1234567890000  # Use milliseconds
 
                 room = MagicMock()
-                room.room_id = mock_config["matrix_room_ids"][0]  # Use configured room
+                room.room_id = mock_config["matrix"]["room_ids"][0]  # Use configured room
 
                 # Should handle input safely
                 await bot.on_room_message(room, event)
@@ -102,7 +100,7 @@ class TestSecurityPatterns:
 
         # Populate room ID set for testing (normally done in initialize())
 
-        bot._room_id_set = set(mock_config["matrix_room_ids"])
+        bot._room_id_set = set(mock_config["matrix"]["room_ids"])
         bot.start_time = 1234567880000  # Use milliseconds
         bot.api_keys = {}
 
@@ -122,7 +120,7 @@ class TestSecurityPatterns:
                 event.server_timestamp = 1234567890000 + i * 1000  # Use milliseconds
 
                 room = MagicMock()
-                room.room_id = mock_config["matrix_room_ids"][0]  # Use configured room
+                room.room_id = mock_config["matrix"]["room_ids"][0]  # Use configured room
                 await bot.on_room_message(room, event)
 
             # Should have processed requests (basic rate limiting test)
@@ -139,7 +137,7 @@ class TestSecurityPatterns:
 
         # Populate room ID set for testing (normally done in initialize())
 
-        bot._room_id_set = set(sensitive_config["matrix_room_ids"])
+        bot._room_id_set = set(sensitive_config["matrix"]["room_ids"])
 
         # Verify token is stored securely
         assert bot.config["access_token"] == "syt_very_secret_token_12345"  # noqa: S105
@@ -203,26 +201,26 @@ class TestSecurityPatterns:
 
         for homeserver in valid_homeservers:
             config = mock_config.copy()
-            config["homeserver"] = homeserver
+            config["matrix"]["homeserver"] = homeserver
 
             # Should accept valid homeservers
             bot = BibleBot(config=config, client=mock_client)
 
             # Populate room ID set for testing (normally done in initialize())
 
-            bot._room_id_set = set(config["matrix_room_ids"])
-            assert bot.config["homeserver"] == homeserver
+            bot._room_id_set = set(config["matrix"]["room_ids"])
+            assert bot.config["matrix"]["homeserver"] == homeserver
 
         for homeserver in invalid_homeservers:
             config = mock_config.copy()
-            config["homeserver"] = homeserver
+            config["matrix"]["homeserver"] = homeserver
 
             # Should handle invalid homeservers gracefully
             bot = BibleBot(config=config, client=mock_client)
 
             # Populate room ID set for testing (normally done in initialize())
 
-            bot._room_id_set = set(config["matrix_room_ids"])
+            bot._room_id_set = set(config["matrix"]["room_ids"])
             # Bot should still be created but may have validation warnings
 
     @pytest.mark.asyncio
@@ -231,7 +229,7 @@ class TestSecurityPatterns:
         bot = BibleBot(config=mock_config, client=mock_client)
 
         # Populate room ID set for testing (normally done in initialize())
-        bot._room_id_set = set(mock_config["matrix_room_ids"])
+        bot._room_id_set = set(mock_config["matrix"]["room_ids"])
         bot.start_time = 1234567880000  # Use milliseconds
         bot.api_keys = {}
 
@@ -255,7 +253,7 @@ class TestSecurityPatterns:
                 event.server_timestamp = 1234567890000  # Use milliseconds
 
                 room = MagicMock()
-                room.room_id = mock_config["matrix_room_ids"][0]  # Use configured room
+                room.room_id = mock_config["matrix"]["room_ids"][0]  # Use configured room
                 await bot.on_room_message(room, event)
                 assert mock_client.room_send.called
 
@@ -265,11 +263,11 @@ class TestSecurityPatterns:
             # Test that bot ignores its own messages
             event = MagicMock()
             event.body = "John 3:16"
-            event.sender = mock_config["user_id"]  # Bot's own user ID
+            event.sender = mock_config["matrix"]["user"]  # Bot's own user ID
             event.server_timestamp = 1234567890000
 
             room = MagicMock()
-            room.room_id = mock_config["matrix_room_ids"][0]
+            room.room_id = mock_config["matrix"]["room_ids"][0]
             await bot.on_room_message(room, event)
             assert not mock_client.room_send.called
 
@@ -280,7 +278,7 @@ class TestSecurityPatterns:
 
         # Populate room ID set for testing (normally done in initialize())
 
-        bot._room_id_set = set(mock_config["matrix_room_ids"])
+        bot._room_id_set = set(mock_config["matrix"]["room_ids"])
 
         # Test various room IDs
         valid_room_ids = [
@@ -315,7 +313,7 @@ class TestSecurityPatterns:
 
         # Populate room ID set for testing (normally done in initialize())
 
-        bot._room_id_set = set(mock_config["matrix_room_ids"])
+        bot._room_id_set = set(mock_config["matrix"]["room_ids"])
         bot.start_time = 1234567880000  # Use milliseconds
         bot.api_keys = {}
 
@@ -336,7 +334,7 @@ class TestSecurityPatterns:
                 event.server_timestamp = 1234567890000  # Use milliseconds
 
                 room = MagicMock()
-                room.room_id = mock_config["matrix_room_ids"][0]  # Use configured room
+                room.room_id = mock_config["matrix"]["room_ids"][0]  # Use configured room
                 await bot.on_room_message(room, event)
 
                 # Should process the biblical reference part safely
@@ -352,7 +350,7 @@ class TestSecurityPatterns:
 
         # Populate room ID set for testing (normally done in initialize())
 
-        bot._room_id_set = set(mock_config["matrix_room_ids"])
+        bot._room_id_set = set(mock_config["matrix"]["room_ids"])
         bot.start_time = 1234567880000  # Use milliseconds
         bot.api_keys = {}
 
@@ -370,7 +368,7 @@ class TestSecurityPatterns:
             event.server_timestamp = 1234567890000  # Use milliseconds
 
             room = MagicMock()
-            room.room_id = mock_config["matrix_room_ids"][0]  # Use configured room
+            room.room_id = mock_config["matrix"]["room_ids"][0]  # Use configured room
 
             # Bot should handle exception gracefully and not leak sensitive info
             await bot.on_room_message(room, event)
@@ -398,8 +396,8 @@ class TestSecurityPatterns:
         # Test with missing required fields
         incomplete_configs = [
             {},  # Empty config
-            {"homeserver": "https://matrix.org"},  # Missing user_id
-            {"user_id": "@test:matrix.org"},  # Missing homeserver
+            {"matrix": {"homeserver": "https://matrix.org"}},  # Missing user_id
+            {"matrix": {"user": "@test:matrix.org"}},  # Missing homeserver
         ]
 
         for config in incomplete_configs:
@@ -415,7 +413,7 @@ class TestSecurityPatterns:
 
         # Populate room ID set for testing (normally done in initialize())
 
-        bot._room_id_set = set(mock_config["matrix_room_ids"])
+        bot._room_id_set = set(mock_config["matrix"]["room_ids"])
         bot.start_time = 1234567880000  # Converted to milliseconds
 
         # Test with malformed API responses
@@ -439,7 +437,7 @@ class TestSecurityPatterns:
 
                 # Should handle malformed responses gracefully (valid room so path is exercised)
                 room = MagicMock()
-                room.room_id = mock_config["matrix_room_ids"][0]
+                room.room_id = mock_config["matrix"]["room_ids"][0]
                 await bot.on_room_message(room, event)
 
     @pytest.mark.asyncio
@@ -449,7 +447,7 @@ class TestSecurityPatterns:
 
         # Populate room ID set for testing (normally done in initialize())
 
-        bot._room_id_set = set(mock_config["matrix_room_ids"])
+        bot._room_id_set = set(mock_config["matrix"]["room_ids"])
         bot.start_time = 1234567880000  # Converted to milliseconds
 
         # Test with resource-intensive inputs
@@ -471,7 +469,7 @@ class TestSecurityPatterns:
                 event.server_timestamp = 1234567890000  # Converted to milliseconds
 
                 room = MagicMock()
-                room.room_id = mock_config["matrix_room_ids"][0]
+                room.room_id = mock_config["matrix"]["room_ids"][0]
 
                 # Should handle resource-intensive inputs without hanging
                 import time
@@ -496,7 +494,7 @@ class TestSecurityPatterns:
 
         # Populate room ID set for testing (normally done in initialize())
 
-        bot._room_id_set = set(mock_config["matrix_room_ids"])
+        bot._room_id_set = set(mock_config["matrix"]["room_ids"])
         bot.start_time = 1234567880000  # Converted to milliseconds
 
         # Test with admin-like commands
@@ -519,7 +517,7 @@ class TestSecurityPatterns:
                 event.server_timestamp = 1234567890000  # Converted to milliseconds
 
                 room = MagicMock()
-                room.room_id = mock_config["matrix_room_ids"][0]
+                room.room_id = mock_config["matrix"]["room_ids"][0]
 
                 # Reset mock to track calls for this iteration
                 mock_client.room_send.reset_mock()

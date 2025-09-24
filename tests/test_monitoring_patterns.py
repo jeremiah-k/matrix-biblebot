@@ -55,7 +55,7 @@ class TestMonitoringPatterns:
 
         # Populate room ID set for testing (normally done in initialize())
 
-        bot._room_id_set = set(mock_config["matrix_room_ids"])
+        bot._room_id_set = set(mock_config.get("matrix", {}).get("room_ids", []))
         bot.start_time = 1234567880000  # Converted to milliseconds
 
         with patch(

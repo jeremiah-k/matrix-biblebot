@@ -72,6 +72,10 @@ CONFIG_PRESERVE_POETRY_FORMATTING = "preserve_poetry_formatting"
 # Message parsing options
 CONFIG_DETECT_REFERENCES_ANYWHERE = "detect_references_anywhere"
 
+# Bot behavior options
+CONFIG_MESSAGE_SUFFIX = "message_suffix"
+CONFIG_SPLIT_MESSAGES = "split_messages"
+
 # File permissions
 CONFIG_DIR_PERMISSIONS = 0o700
 CREDENTIALS_FILE_PERMISSIONS = 0o600

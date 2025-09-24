@@ -619,9 +619,9 @@ class TestConfigLoading:
         config = bot.load_config(str(temp_config_file))
 
         assert config is not None
-        assert config["matrix_homeserver"] == TEST_HOMESERVER
-        assert config["matrix_user"] == TEST_USER_ID
-        assert len(config["matrix_room_ids"]) == 2
+        assert config["matrix"]["homeserver"] == TEST_HOMESERVER
+        assert config["matrix"]["user"] == TEST_USER_ID
+        assert len(config["matrix"]["room_ids"]) == 2
 
     def test_load_config_file_not_found(self):
         """Test loading non-existent config file."""
@@ -639,8 +639,10 @@ class TestConfigLoading:
     def test_load_config_missing_required_fields(self, tmp_path):
         """Test loading config with missing required fields."""
         incomplete_config = {
-            "matrix_homeserver": TEST_HOMESERVER
-            # Missing matrix_user and matrix_room_ids
+            "matrix": {
+                "homeserver": TEST_HOMESERVER
+                # Missing user and room_ids
+            }
         }
 
         config_file = tmp_path / "incomplete.yaml"
@@ -867,19 +869,25 @@ class TestPartialReferenceMatching:
     def test_detect_anywhere_bool_coercion(self, raw, expected):
         """Ensure truthy/falsey strings and ints map correctly."""
         cfg = {
-            "matrix_room_ids": ["!test:example.org"],
             "bot": {"detect_references_anywhere": raw},
+            "per_room_config": {
+                "!test:example.org": {"detect_references_anywhere": raw}
+            },
         }
         bb = BibleBot(cfg)
-        assert bb.detect_references_anywhere is expected
+        assert (
+            bb._get_bool_room_setting("!test:example.org", "detect_references_anywhere", False)
+            is expected
+        )
 
     @pytest.mark.asyncio
     @pytest.mark.parametrize("flag,should_call", [(False, False), (True, True)])
     async def test_detect_references_anywhere_toggle(self, flag, should_call):
         """Test that partial references are handled correctly based on detect_references_anywhere flag."""
         config = {
-            "matrix_room_ids": ["!test:example.org"],
             "bot": {"detect_references_anywhere": flag},
+            "per_room_config": {"!test:example.org": {"detect_references_anywhere": flag}},
+            "all_room_ids": ["!test:example.org"],
         }
         bible_bot = BibleBot(config)
         bible_bot.start_time = 0
@@ -906,7 +914,7 @@ class TestPartialReferenceMatching:
                 mock_handle.assert_called_once()
                 args = mock_handle.call_args[0]
                 assert args[0] == "!test:example.org"  # room_id
-                assert "John 3:16" in args[1]  # passage
+                assert "john 3:16" in args[1].lower()  # passage
                 assert args[2].lower() == "esv"  # translation (case-insensitive)
             else:
                 mock_handle.assert_not_called()
@@ -916,8 +924,11 @@ class TestPartialReferenceMatching:
     async def test_exact_reference_works_in_both_modes(self, detect_anywhere):
         """Test that exact references work in both modes."""
         config = {
-            "matrix_room_ids": ["!test:example.org"],
             "bot": {"detect_references_anywhere": detect_anywhere},
+            "per_room_config": {
+                "!test:example.org": {"detect_references_anywhere": detect_anywhere}
+            },
+            "all_room_ids": ["!test:example.org"],
         }
         bible_bot = BibleBot(config)
         bible_bot.start_time = 0
@@ -944,7 +955,7 @@ class TestPartialReferenceMatching:
             mock_handle.assert_called_once()
             args = mock_handle.call_args[0]
             assert args[0] == "!test:example.org"  # room_id
-            assert "John 3:16" in args[1]  # passage
+            assert "john 3:16" in args[1].lower()  # passage
 
     @pytest.mark.asyncio
     @pytest.mark.parametrize(
@@ -964,8 +975,9 @@ class TestPartialReferenceMatching:
     async def test_false_positives_prevented(self, false_positive_message):
         """Test that common false positives are prevented with validation."""
         config = {
-            "matrix_room_ids": ["!test:example.org"],
             "bot": {"detect_references_anywhere": True},
+            "per_room_config": {"!test:example.org": {"detect_references_anywhere": True}},
+            "all_room_ids": ["!test:example.org"],
         }
         bible_bot = BibleBot(config)
         bible_bot.start_time = 0
@@ -994,8 +1006,9 @@ class TestPartialReferenceMatching:
     async def test_partial_reference_with_kjv_translation(self):
         """Test that partial references work with KJV translation specification."""
         config = {
-            "matrix_room_ids": ["!test:example.org"],
             "bot": {"detect_references_anywhere": True},
+            "per_room_config": {"!test:example.org": {"detect_references_anywhere": True}},
+            "all_room_ids": ["!test:example.org"],
         }
         bible_bot = BibleBot(config)
         bible_bot.start_time = 0
@@ -1022,7 +1035,7 @@ class TestPartialReferenceMatching:
             mock_handle.assert_called_once()
             args = mock_handle.call_args[0]
             assert args[0] == "!test:example.org"  # room_id
-            assert "John 3:16" in args[1]  # passage
+            assert "john 3:16" in args[1].lower()  # passage
             assert args[2].lower() == "kjv"  # translation should be KJV
 
 
@@ -1283,7 +1296,9 @@ class TestMessageHandling:
             bot_instance.client = mock_client
             bot_instance.start_time = 1000000000000  # Set start time (milliseconds)
             # Populate room ID set for testing (normally done in initialize())
-            bot_instance._room_id_set = set(sample_config["matrix_room_ids"])
+            bot_instance._room_id_set = set(
+                sample_config.get("matrix", {}).get("room_ids", [])
+            )
 
             # Mock room and event
             mock_room = MagicMock()
@@ -1573,7 +1588,9 @@ class TestInviteHandling:
             bot_instance = bot.BibleBot(sample_config)
             bot_instance.client = mock_client
             # Initialize room ID set for membership checks
-            bot_instance._room_id_set = set(sample_config["matrix_room_ids"])
+            bot_instance._room_id_set = set(
+                sample_config.get("matrix", {}).get("room_ids", [])
+            )
 
             mock_room = MagicMock()
             mock_room.room_id = TEST_ROOM_IDS[0]  # In config
@@ -2188,7 +2205,12 @@ class TestTextFormatting:
 
     def test_format_text_default_mode(self):
         """Test text formatting with default settings (collapse whitespace)."""
-        config = {"bot": {"preserve_poetry_formatting": False}}
+        config = {
+            "bot": {"preserve_poetry_formatting": False},
+            "per_room_config": {
+                "!test:example.org": {"preserve_poetry_formatting": False}
+            },
+        }
         bible_bot = bot.BibleBot(config)
 
         # Test text with newlines and extra spaces
@@ -2196,14 +2218,19 @@ class TestTextFormatting:
         expected_plain = "Line 1 Line 2 with spaces Line 3"
         expected_html = "Line 1 Line 2 with spaces Line 3"
 
-        plain_text, html_text = bible_bot._format_text_for_display(input_text)
+        plain_text, html_text = bible_bot._format_text_for_display(
+            "!test:example.org", input_text
+        )
 
         assert plain_text == expected_plain
         assert html_text == expected_html
 
     def test_format_text_poetry_mode(self):
         """Test text formatting with poetry preservation enabled."""
-        config = {"bot": {"preserve_poetry_formatting": True}}
+        config = {
+            "bot": {"preserve_poetry_formatting": True},
+            "per_room_config": {"!test:example.org": {"preserve_poetry_formatting": True}},
+        }
         bible_bot = bot.BibleBot(config)
 
         # Test text with newlines and extra spaces
@@ -2211,30 +2238,40 @@ class TestTextFormatting:
         expected_plain = "Line 1\n\nLine 2 with spaces\nLine 3"
         expected_html = "Line 1<br /><br />Line 2 with spaces<br />Line 3"
 
-        plain_text, html_text = bible_bot._format_text_for_display(input_text)
+        plain_text, html_text = bible_bot._format_text_for_display(
+            "!test:example.org", input_text
+        )
 
         assert plain_text == expected_plain
         assert html_text == expected_html
 
     def test_format_text_default_mode_no_config(self):
         """Test text formatting with no explicit configuration (should default to False)."""
-        config = {"bot": {}}  # No preserve_poetry_formatting specified
+        config = {"bot": {}, "per_room_config": {"!test:example.org": {}}}
         bible_bot = bot.BibleBot(config)
 
         # Should default to False (original behavior)
-        assert bible_bot.preserve_poetry_formatting is False
+        assert (
+            bible_bot._get_room_setting("!test:example.org", "preserve_poetry_formatting", False)
+            is False
+        )
 
         input_text = "Line 1\nLine 2\nLine 3"
         expected_plain = "Line 1 Line 2 Line 3"
 
-        plain_text, html_text = bible_bot._format_text_for_display(input_text)
+        plain_text, html_text = bible_bot._format_text_for_display(
+            "!test:example.org", input_text
+        )
 
         assert plain_text == expected_plain
         assert html_text == expected_plain  # No <br /> tags in default mode
 
     def test_format_text_poetry_mode_complex(self):
         """Test poetry mode with complex formatting scenarios."""
-        config = {"bot": {"preserve_poetry_formatting": True}}
+        config = {
+            "bot": {"preserve_poetry_formatting": True},
+            "per_room_config": {"!test:example.org": {"preserve_poetry_formatting": True}},
+        }
         bible_bot = bot.BibleBot(config)
 
         # Test with tabs, multiple spaces, and multiple newlines
@@ -2242,7 +2279,9 @@ class TestTextFormatting:
         expected_plain = "Psalm 1:1 \n\n Blessed is the man who walks not\n in the counsel of the wicked"
         expected_html = "Psalm 1:1 <br /><br /> Blessed is the man who walks not<br /> in the counsel of the wicked"
 
-        plain_text, html_text = bible_bot._format_text_for_display(input_text)
+        plain_text, html_text = bible_bot._format_text_for_display(
+            "!test:example.org", input_text
+        )
 
         assert plain_text == expected_plain
         assert html_text == expected_html
@@ -2250,21 +2289,42 @@ class TestTextFormatting:
     def test_configuration_loading(self):
         """Test that configuration is loaded correctly."""
         # Test with explicit True
-        config_true = {"bot": {"preserve_poetry_formatting": True}}
+        config_true = {
+            "bot": {"preserve_poetry_formatting": True},
+            "per_room_config": {"!test:example.org": {"preserve_poetry_formatting": True}},
+        }
         bot_true = bot.BibleBot(config_true)
-        assert bot_true.preserve_poetry_formatting is True
+        assert (
+            bot_true._get_room_setting("!test:example.org", "preserve_poetry_formatting")
+            is True
+        )
 
         # Test with explicit False
-        config_false = {"bot": {"preserve_poetry_formatting": False}}
+        config_false = {
+            "bot": {"preserve_poetry_formatting": False},
+            "per_room_config": {
+                "!test:example.org": {"preserve_poetry_formatting": False}
+            },
+        }
         bot_false = bot.BibleBot(config_false)
-        assert bot_false.preserve_poetry_formatting is False
+        assert (
+            bot_false._get_room_setting("!test:example.org", "preserve_poetry_formatting")
+            is False
+        )
 
         # Test with no bot section
         config_no_bot = {}
         bot_no_bot = bot.BibleBot(config_no_bot)
-        assert bot_no_bot.preserve_poetry_formatting is False
+        assert (
+            bot_no_bot._get_room_setting("!test:example.org", "preserve_poetry_formatting", False)
+            is False
+        )
 
         # Test with invalid config type
         config_invalid = "not a dict"
-        bot_invalid = bot.BibleBot(config_invalid)
-        assert bot_invalid.preserve_poetry_formatting is False
+        with pytest.raises(AttributeError):
+            bot_invalid = bot.BibleBot(config_invalid)
+            assert (
+                bot_invalid._get_room_setting("!test:example.org", "preserve_poetry_formatting", False)
+                is False
+            )

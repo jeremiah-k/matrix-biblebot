@@ -58,10 +58,24 @@ WantedBy=default.target
 
 # Test configuration YAML
 TEST_CONFIG_YAML = {
-    "matrix_homeserver": TEST_HOMESERVER,
-    "matrix_user": TEST_USER_ID,
-    "matrix_room_ids": TEST_ROOM_IDS,
-    "matrix": {"e2ee": {"enabled": False}},
+    "matrix": {
+        "homeserver": TEST_HOMESERVER,
+        "user": TEST_USER_ID,
+        "room_ids": TEST_ROOM_IDS,
+        "e2ee": {"enabled": False},
+    },
+    "bot": {
+        "default_translation": "kjv",
+        "message_suffix": " 🕊️✝️",
+        "cache_enabled": True,
+        "preserve_poetry_formatting": False,
+        "max_message_length": 4000,
+        "split_messages": {
+            "enabled": False,
+            "length": 4000
+        },
+        "detect_references_anywhere": False,
+    }
 }
 
 # Test credentials

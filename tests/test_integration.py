@@ -147,6 +147,14 @@ api_keys:
     async def test_bot_initialization_workflow(self, temp_workspace):
         """Test bot initialization with real config files."""
         config_file = temp_workspace / "config.yaml"
+        # Create a valid config file for the test
+        valid_config = {
+            "matrix": {
+                "room_ids": ["!test:example.org"],
+            },
+        }
+        with open(config_file, "w") as f:
+            yaml.dump(valid_config, f)
 
         with patch("biblebot.auth.load_credentials") as mock_load_creds:
             mock_load_creds.return_value = None  # No saved credentials

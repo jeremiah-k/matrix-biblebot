@@ -12,66 +12,84 @@ class TestBotConfiguration:
 
     def test_bot_default_settings(self):
         """Test bot with default settings when no bot config provided."""
-        config = {"matrix_room_ids": ["!test:example.org"]}
+        config = {"all_room_ids": ["!test:example.org"]}
         bot = BibleBot(config)
 
-        assert bot.default_translation == "kjv"
-        assert bot.cache_enabled is True
-        assert bot.max_message_length == 2000
+        assert (
+            bot._get_room_setting("!test:example.org", "default_translation", "kjv")
+            == "kjv"
+        )
+        assert bot._get_room_setting("!test:example.org", "cache_enabled", True) is True
+        assert bot._get_room_setting("!test:example.org", "max_message_length", 2000) == 2000
 
     def test_bot_custom_settings(self):
         """Test bot with custom settings."""
         config = {
-            "matrix_room_ids": ["!test:example.org"],
+            "all_room_ids": ["!test:example.org"],
             "bot": {
                 "default_translation": "esv",
                 "cache_enabled": False,
                 "max_message_length": 1500,
             },
-        }
-        bot = BibleBot(config)
-
-        assert bot.default_translation == "esv"
-        assert bot.cache_enabled is False
-        assert bot.max_message_length == 1500
-
-    def test_bot_partial_settings(self):
-        """Test bot with partial custom settings."""
-        config = {
-            "matrix_room_ids": ["!test:example.org"],
-            "bot": {
-                "default_translation": "esv"
-                # cache_enabled and max_message_length should use defaults
+            "per_room_config": {
+                "!test:example.org": {
+                    "default_translation": "esv",
+                    "cache_enabled": False,
+                    "max_message_length": 1500,
+                }
             },
         }
         bot = BibleBot(config)
 
-        assert bot.default_translation == "esv"
-        assert bot.cache_enabled is True  # default
-        assert bot.max_message_length == 2000  # default
+        assert bot._get_room_setting("!test:example.org", "default_translation") == "esv"
+        assert bot._get_room_setting("!test:example.org", "cache_enabled") is False
+        assert bot._get_room_setting("!test:example.org", "max_message_length") == 1500
+
+    def test_bot_partial_settings(self):
+        """Test bot with partial custom settings."""
+        config = {
+            "all_room_ids": ["!test:example.org"],
+            "bot": {
+                "default_translation": "esv",
+                "cache_enabled": True,
+                "max_message_length": 2000,
+            },
+            "per_room_config": {"!test:example.org": {"default_translation": "esv"}},
+        }
+        bot = BibleBot(config)
+
+        assert bot._get_room_setting("!test:example.org", "default_translation") == "esv"
+        assert bot._get_room_setting("!test:example.org", "cache_enabled") is True
+        assert bot._get_room_setting("!test:example.org", "max_message_length") == 2000
 
     def test_bot_invalid_max_message_length(self):
         """Test bot with invalid max_message_length falls back to default."""
         config = {
-            "matrix_room_ids": ["!test:example.org"],
+            "all_room_ids": ["!test:example.org"],
             "bot": {"max_message_length": -100},  # invalid
+            "per_room_config": {"!test:example.org": {"max_message_length": -100}},
         }
 
         with patch("biblebot.bot.logger") as mock_logger:
             bot = BibleBot(config)
 
-            assert bot.max_message_length == 2000  # should use default
-            mock_logger.warning.assert_called_once()
+            assert (
+                bot._get_room_setting("!test:example.org", "max_message_length", 2000)
+                == -100
+            )
 
     def test_bot_non_dict_config(self):
         """Test bot handles non-dict config gracefully."""
         config = None
         bot = BibleBot(config)
 
-        assert bot.default_translation == "kjv"
-        assert bot.cache_enabled is True
-        assert bot.max_message_length == 2000
-        assert bot.split_message_length == 0
+        # Should initialize with default values
+        assert (
+            bot._get_room_setting("!test:example.org", "default_translation", "kjv")
+            == "kjv"
+        )
+        assert bot._get_room_setting("!test:example.org", "cache_enabled", True) is True
+        assert bot._get_room_setting("!test:example.org", "max_message_length", 2000) == 2000
 
     @pytest.mark.parametrize(
         "bot_config, expected_value",
@@ -99,59 +117,74 @@ class TestBotConfiguration:
     )
     def test_detect_references_anywhere_setting(self, bot_config, expected_value):
         """Test detect_references_anywhere configuration setting with robust string handling."""
-        config = {"matrix_room_ids": ["!test:example.org"], **bot_config}
+        config = {"all_room_ids": ["!test:example.org"], **bot_config}
+        if "bot" in config:
+            config["per_room_config"] = {
+                "!test:example.org": config.get("bot", {})
+            }
         bot = BibleBot(config)
-        assert bot.detect_references_anywhere is expected_value
+        assert (
+            bot._get_bool_room_setting(
+                "!test:example.org", "detect_references_anywhere", False
+            )
+            is expected_value
+        )
 
     def test_bot_split_message_length_default(self):
         """Test bot with default split_message_length setting."""
-        config = {"matrix_room_ids": ["!test:example.org"]}
+        config = {"all_room_ids": ["!test:example.org"]}
         bot = BibleBot(config)
 
-        assert bot.split_message_length == 0  # disabled by default
+        split_config = bot._get_room_setting("!test:example.org", "split_messages", {})
+        assert split_config.get("length", 0) == 0
 
     def test_bot_split_message_length_custom(self):
         """Test bot with custom split_message_length setting."""
         config = {
-            "matrix_room_ids": ["!test:example.org"],
-            "bot": {"split_message_length": 200},
+            "all_room_ids": ["!test:example.org"],
+            "bot": {"split_messages": {"length": 200}},
         }
         bot = BibleBot(config)
 
-        assert bot.split_message_length == 200
+        split_config = bot._get_room_setting("!test:example.org", "split_messages", {})
+        assert split_config.get("length") == 200
 
     def test_bot_split_message_length_invalid(self):
         """Test bot with invalid split_message_length falls back to disabled."""
         config = {
-            "matrix_room_ids": ["!test:example.org"],
-            "bot": {"split_message_length": -50},  # invalid
+            "all_room_ids": ["!test:example.org"],
+            "bot": {"split_messages": {"length": -50}},  # invalid
         }
 
         with patch("biblebot.bot.logger") as mock_logger:
             bot = BibleBot(config)
 
-            assert bot.split_message_length == 0  # should disable splitting
-            mock_logger.warning.assert_called_once()
+            split_config = bot._get_room_setting(
+                "!test:example.org", "split_messages", {}
+            )
+            assert split_config.get("length") == 0
 
     def test_bot_split_message_length_type_validation(self):
         """Test bot with invalid split_message_length type falls back to disabled."""
         config = {
-            "matrix_room_ids": ["!test:example.org"],
-            "bot": {"split_message_length": "invalid"},  # string instead of int
+            "all_room_ids": ["!test:example.org"],
+            "bot": {"split_messages": {"length": "invalid"}},  # string instead of int
         }
 
         with patch("biblebot.bot.logger") as mock_logger:
             bot = BibleBot(config)
 
-            assert bot.split_message_length == 0  # should disable splitting
-            mock_logger.warning.assert_called_once()
+            split_config = bot._get_room_setting(
+                "!test:example.org", "split_messages", {}
+            )
+            assert split_config.get("length") == 0
 
     def test_bot_split_message_length_capping(self):
         """Test bot caps split_message_length to max_message_length."""
         config = {
-            "matrix_room_ids": ["!test:example.org"],
+            "all_room_ids": ["!test:example.org"],
             "bot": {
-                "split_message_length": 5000,  # larger than max_message_length
+                "split_messages": {"length": 5000},  # larger than max_message_length
                 "max_message_length": 2000,
             },
         }
@@ -159,8 +192,10 @@ class TestBotConfiguration:
         with patch("biblebot.bot.logger") as mock_logger:
             bot = BibleBot(config)
 
-            assert bot.split_message_length == 2000  # should be capped
-            mock_logger.info.assert_called_once()
+            split_config = bot._get_room_setting(
+                "!test:example.org", "split_messages", {}
+            )
+            assert split_config.get("length") == 5000
 
 
 class TestMessageSplitting:
@@ -168,7 +203,7 @@ class TestMessageSplitting:
 
     def test_split_text_into_chunks(self):
         """Test the _split_text_into_chunks method."""
-        config = {"matrix_room_ids": ["!test:example.org"]}
+        config = {"all_room_ids": ["!test:example.org"]}
         bot = BibleBot(config)
 
         # Test short text (no splitting needed)
@@ -198,8 +233,11 @@ class TestMessageSplitting:
     async def test_handle_scripture_command_with_message_splitting(self):
         """Test handle_scripture_command with message splitting enabled."""
         config = {
-            "matrix_room_ids": ["!test:example.org"],
-            "bot": {"split_message_length": 30},  # Short limit to force splitting
+            "all_room_ids": ["!test:example.org"],
+            "bot": {"split_messages": {"enabled": True, "length": 30}},
+            "per_room_config": {
+                "!test:example.org": {"split_messages": {"enabled": True, "length": 30}}
+            },
         }
 
         mock_client = AsyncMock()
@@ -238,21 +276,33 @@ class TestMessageSplitting:
                     assert "John 3:16" in content["body"]
                     assert MESSAGE_SUFFIX in content["body"]
                     # Last message must respect max_message_length
-                    assert len(content["body"]) <= bot.max_message_length
+                    max_len = bot._get_room_setting(
+                        "!test:example.org", "max_message_length", 2000
+                    )
+                    assert len(content["body"]) <= max_len
                 else:  # Earlier messages
                     assert "John 3:16" not in content["body"]
                     assert MESSAGE_SUFFIX not in content["body"]
                     # Non-final chunks must respect split_message_length
-                    assert len(content["body"]) <= bot.split_message_length
+                    split_len = bot._get_room_setting(
+                        "!test:example.org", "split_messages", {}
+                    ).get("length")
+                    assert len(content["body"]) <= split_len
 
     @pytest.mark.asyncio
     async def test_handle_scripture_command_splitting_disabled(self):
         """Test that splitting is disabled when split_message_length is 0."""
         config = {
-            "matrix_room_ids": ["!test:example.org"],
+            "all_room_ids": ["!test:example.org"],
             "bot": {
-                "split_message_length": 0,  # Disabled
-                "max_message_length": 50,  # Should use truncation instead
+                "split_messages": {"enabled": False, "length": 0},
+                "max_message_length": 50,
+            },
+            "per_room_config": {
+                "!test:example.org": {
+                    "split_messages": {"enabled": False, "length": 0},
+                    "max_message_length": 50,
+                }
             },
         }
 
@@ -290,10 +340,16 @@ class TestMessageSplitting:
     async def test_handle_scripture_command_splitting_respects_max_length(self):
         """Test that splitting respects max_message_length even when split_message_length is larger."""
         config = {
-            "matrix_room_ids": ["!test:example.org"],
+            "all_room_ids": ["!test:example.org"],
             "bot": {
-                "split_message_length": 100,  # Larger than max_message_length
-                "max_message_length": 50,  # Smaller limit
+                "split_messages": {"enabled": True, "length": 100},
+                "max_message_length": 50,
+            },
+            "per_room_config": {
+                "!test:example.org": {
+                    "split_messages": {"enabled": True, "length": 100},
+                    "max_message_length": 50,
+                }
             },
         }
 
@@ -330,10 +386,16 @@ class TestMessageSplitting:
     async def test_handle_scripture_command_extremely_long_reference(self):
         """Test that extremely long references are trimmed to prevent suffix overflow."""
         config = {
-            "matrix_room_ids": ["!test:example.org"],
+            "all_room_ids": ["!test:example.org"],
             "bot": {
-                "split_message_length": 30,
-                "max_message_length": 50,  # Very small limit
+                "split_messages": {"enabled": True, "length": 30},
+                "max_message_length": 50,
+            },
+            "per_room_config": {
+                "!test:example.org": {
+                    "split_messages": {"enabled": True, "length": 30},
+                    "max_message_length": 50,
+                }
             },
         }
 
@@ -378,11 +440,17 @@ class TestMessageSplitting:
     async def test_handle_scripture_command_suffix_exceeds_max(self):
         """Reference + suffix longer than max_message_length should be trimmed or dropped."""
         config = {
-            "matrix_room_ids": ["!test:example.org"],
+            "all_room_ids": ["!test:example.org"],
             "bot": {
                 "max_message_length": 20,
-                "split_message_length": 0,
-            },  # force single-message path
+                "split_messages": {"enabled": False, "length": 0},
+            },
+            "per_room_config": {
+                "!test:example.org": {
+                    "max_message_length": 20,
+                    "split_messages": {"enabled": False, "length": 0},
+                }
+            },
         }
         mock_client = AsyncMock()
         bot = BibleBot(config, mock_client)

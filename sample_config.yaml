@@ -7,52 +7,81 @@ matrix:
   # homeserver: https://matrix.example.org
   # user: "@bot:example.org"
 
-  # List of Matrix room IDs or aliases where the bot should respond
-  # Get room IDs from Element: Room Settings > Advanced > Internal room ID
-  # Both internal IDs ("!...") and room aliases ("#...") are supported.
-  # Aliases are resolved to room IDs on startup; the bot stores canonical IDs thereafter.
+  # List of Matrix room IDs or aliases where the bot should respond.
+  # This section is for simple configurations. For per-room settings, see `room_groups`.
   room_ids:
     - "!your_room_id:your_homeserver_domain"
-    - "!your_other_room_id:your_homeserver_domain"
-    # - "#your_room_alias:your_homeserver_domain"  # aliases are also supported
 
   # End-to-end encryption settings (optional)
-  # Only enable if you understand the implications and have proper key management
-  # e2ee:
-  #   # Requires: pip install matrix-nio[e2e]
-  #   # Manual access tokens do NOT support E2EE
-  #   # Requires: `biblebot auth login` (credentials.json); legacy MATRIX_ACCESS_TOKEN cannot be used with E2EE
-  #   enabled: false
-  #   # Optional: override store path (default: ~/.config/matrix-biblebot/e2ee-store)
-  #   # Ensure this directory is private (0700) to protect keys.
-  #   store_path: null
-# Bot behavior configuration (optional - defaults shown)
-# bot:
-#   # Default Bible translation to use when none is specified
-#   default_translation: kjv # Options: "kjv", "esv" (ESV requires api_keys.esv)
-#
-#   # Enable or disable caching of Bible passages
-#   cache_enabled: true
-#
-#   # Preserve poetry formatting (newlines kept; HTML uses <br />)
-#   preserve_poetry_formatting: false
-#
-#   # Maximum length for bot messages (characters)
-#   # Messages longer than this will be truncated with "..."
-#   max_message_length: 2000
-#
-#   # Split long messages into multiple messages of specified length
-#   # Set to 0 or null to disable message splitting (default behavior)
-#   # When enabled, messages longer than this will be split into multiple messages.
-#   # Note: This value is capped to max_message_length. The final chunk reserves
-#   # space for the reference and suffix, so its text portion may be shorter.
-#   split_message_length: 0 # Disabled by default
-#
-#   # Detect scripture references anywhere in messages (default: false)
-#   # When false: only responds to messages that are ONLY scripture references ("John 3:16")
-#   # When true: detects references anywhere in messages ("Have you read John 3:16 ESV?")
-#   # Useful for integration with matrix bridges and relay bots
-#   detect_references_anywhere: false
+  e2ee:
+    # Requires: pip install matrix-nio[e2e]
+    # Requires: `biblebot auth login` (credentials.json); legacy MATRIX_ACCESS_TOKEN cannot be used with E2EE
+    enabled: false
+    # Optional: override store path (default: ~/.config/matrix-biblebot/e2ee-store)
+    store_path: null
+
+# Per-room behavior configuration using groups (optional)
+# This allows overriding global `bot` settings for specific rooms.
+room_groups:
+  # Group for standard rooms with default behavior
+  standard_rooms:
+    # A list of room IDs or aliases belonging to this group
+    rooms:
+      - "!another_room:your_homeserver_domain"
+      - "#a_room_alias:your_homeserver_domain"
+    # Settings for this group override global `bot` settings.
+    # If a setting is not specified here, the global default is used.
+    # All settings from the `bot` section are supported here.
+    settings:
+      # Example: Use ESV by default in these rooms
+      default_translation: esv
+      # Example: Disable the suffix in these rooms
+      message_suffix: "" # No suffix
+
+  # Group for bridged rooms (e.g., MMRelay) that need special handling
+  bridged_rooms:
+    rooms:
+      - "!mmrelay_room:your_homeserver_domain"
+    settings:
+      # Detect references anywhere in a message (required for most bridges)
+      detect_references_anywhere: true
+      # Split long messages to accommodate smaller packet sizes (e.g., for Meshtastic)
+      split_messages:
+        enabled: true
+        length: 200 # Short length suitable for low-bandwidth networks
+      # Use a shorter, more compact suffix for these rooms
+      message_suffix: " (BBL)"
+
+# Global bot behavior configuration (defaults for all rooms unless overridden in `room_groups`)
+bot:
+  # Default Bible translation to use when none is specified
+  default_translation: kjv # Options: "kjv", "esv" (ESV requires api_keys.esv)
+
+  # Suffix to append to every message (e.g., for branding or to indicate the source)
+  # Can be overridden per room group. Set to "" to disable globally.
+  message_suffix: " 🕊️✝️"
+
+  # Enable or disable caching of Bible passages
+  cache_enabled: true
+
+  # Preserve poetry formatting (newlines kept; HTML uses <br />)
+  preserve_poetry_formatting: false
+
+  # Maximum length for bot messages (characters)
+  # Messages longer than this will be truncated with "..."
+  max_message_length: 4000
+
+  # Split long messages into multiple smaller messages.
+  # This can be a simple length (integer) or a mapping with `enabled` and `length`.
+  # This is the global default; it can be overridden in `room_groups`.
+  split_messages:
+    enabled: false # Disabled by default
+    length: 4000   # Default split length if enabled
+
+  # Detect scripture references anywhere in messages (default: false)
+  # When false: only responds to messages that are ONLY scripture references ("John 3:16")
+  # When true: detects references anywhere in messages ("Have you read John 3:16 ESV?")
+  detect_references_anywhere: false
 
 # API Keys for Bible translations (optional)
 # These can also be set via environment variables (e.g., ESV_API_KEY).

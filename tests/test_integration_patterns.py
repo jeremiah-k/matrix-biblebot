@@ -245,6 +245,9 @@ class TestIntegrationPatterns:
             # Should have attempted all requests
             assert call_count == 5
 
+            # Bot should have recovered and sent a successful response
+            assert mock_client.room_send.call_count >= 1
+
     async def test_authentication_integration(self, mock_config, mock_client):
         """Test authentication workflow integration."""
         # Test credential loading and bot initialization

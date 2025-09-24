@@ -106,7 +106,16 @@ class TestEdgeCases:
         bot.api_keys = {}
 
         # Enable partial matching to allow scripture references within long text
-        bot.detect_references_anywhere = True
+        mock_config["per_room_config"] = {
+            "!room:matrix.org": {"detect_references_anywhere": True}
+        }
+        bot = BibleBot(config=mock_config, client=mock_client)
+
+        # Populate room ID set for testing (normally done in initialize())
+
+        bot._room_id_set = set(mock_config["matrix_room_ids"])
+        bot.start_time = 1234567880000  # Use milliseconds
+        bot.api_keys = {}
 
         with patch(
             "biblebot.bot.get_bible_text", new_callable=AsyncMock

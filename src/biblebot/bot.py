@@ -171,25 +171,82 @@ def validate_and_normalize_book_name(book_str: str) -> str | None:
     return _ALL_NAMES_TO_CANONICAL.get(clean_str)
 
 
+def _parse_room_groups(config: dict) -> tuple[dict, list[str]]:
+    """
+    Parse `room_groups` and global `bot` settings to create a per-room config map.
+
+    This function processes the `room_groups` section of the configuration,
+    merging group-specific settings with the global `bot` defaults. It returns
+    a dictionary mapping each room ID to its final, consolidated configuration,
+    along with a flat list of all unique room IDs found.
+
+    Args:
+        config: The raw configuration dictionary loaded from YAML.
+
+    Returns:
+        A tuple containing:
+        - A dictionary mapping each room ID to its specific settings.
+        - A list of all unique room IDs declared in the configuration.
+    """
+    global_settings = config.get("bot", {})
+    per_room_config = {}
+    all_room_ids = []
+
+    # Process room_groups
+    room_groups = config.get("room_groups", {})
+    if isinstance(room_groups, dict):
+        for group_name, group_config in room_groups.items():
+            if not isinstance(group_config, dict):
+                logger.warning(f"Skipping invalid room group '{group_name}': not a dictionary.")
+                continue
+
+            group_rooms = group_config.get("rooms", [])
+            group_settings = group_config.get("settings", {})
+
+            if not isinstance(group_rooms, list):
+                logger.warning(f"Skipping room group '{group_name}': 'rooms' is not a list.")
+                continue
+
+            # Merge global settings with group-specific settings
+            final_settings = {**global_settings, **group_settings}
+
+            for room_id in group_rooms:
+                if room_id in per_room_config:
+                    logger.warning(
+                        f"Room '{room_id}' is defined in multiple groups. "
+                        f"Using settings from the last processed group: '{group_name}'."
+                    )
+                per_room_config[room_id] = final_settings
+                all_room_ids.append(room_id)
+
+    # Add rooms from the legacy `matrix.room_ids` list
+    legacy_room_ids = config.get("matrix", {}).get("room_ids", [])
+    if isinstance(legacy_room_ids, list):
+        for room_id in legacy_room_ids:
+            if room_id not in per_room_config:
+                per_room_config[room_id] = global_settings
+                all_room_ids.append(room_id)
+
+    return per_room_config, list(dict.fromkeys(all_room_ids))
+
+
 # Load config
 def load_config(config_file, log_loading=True):
     """
     Load and validate the bot configuration from a YAML file.
 
-    This reads YAML from config_file, supports a legacy flat format by migrating
-    matrix_* keys into a nested `matrix` section, and ensures a list of room IDs
-    is present. On success returns the parsed configuration with a top-level
-    `CONFIG_MATRIX_ROOM_IDS` key populated for backward compatibility.
+    This function reads a YAML configuration file, handles both legacy and modern
+    structures (including `room_groups`), and ensures that all necessary
+    configuration details are present. It processes `room_groups` to create a
+    per-room settings map and collects all room IDs for the bot to join.
 
-    Parameters:
+    Args:
         config_file (str): Path to the YAML configuration file.
         log_loading (bool): Whether to log the "Loaded configuration" message.
-                           Set to False to suppress duplicate logging.
 
     Returns:
-        dict | None: Parsed configuration dictionary on success; None if the file
-        cannot be read, contains invalid YAML, or fails validation (missing or
-        non-list room IDs).
+        dict | None: The parsed and processed configuration dictionary, or None if
+        the file is invalid or missing required sections.
     """
     try:
         with open(config_file, "r", encoding=FILE_ENCODING_UTF8) as f:
@@ -198,44 +255,36 @@ def load_config(config_file, log_loading=True):
                 logger.error(f"Config root must be a mapping (dict) in {config_file}")
                 return None
 
-            # Handle both old flat structure and new nested structure
-            # Convert old flat structure to new nested structure for backward compatibility
+            # Handle legacy flat structure for backward compatibility
             if "matrix_room_ids" in config and "matrix" not in config:
                 logger.info(
                     "Converting legacy flat config structure to nested structure"
                 )
-                matrix_config = {}
-
-                # Copy matrix-related keys under matrix section (keep originals for compatibility)
-                if CONFIG_MATRIX_HOMESERVER in config:
-                    matrix_config["homeserver"] = config[CONFIG_MATRIX_HOMESERVER]
-                if CONFIG_MATRIX_USER in config:
-                    matrix_config["user"] = config[CONFIG_MATRIX_USER]
-                if CONFIG_MATRIX_ROOM_IDS in config:
-                    matrix_config["room_ids"] = config[CONFIG_MATRIX_ROOM_IDS]
-
+                matrix_config = {
+                    "homeserver": config.get("matrix_homeserver"),
+                    "user": config.get("matrix_user"),
+                    "room_ids": config.get("matrix_room_ids"),
+                }
                 config["matrix"] = matrix_config
 
-            # Basic validation - check for room_ids in either location
-            room_ids = None
-            if CONFIG_KEY_MATRIX in config and isinstance(
-                config[CONFIG_KEY_MATRIX], dict
-            ):
-                room_ids = config[CONFIG_KEY_MATRIX].get("room_ids")
-            if not room_ids and CONFIG_MATRIX_ROOM_IDS in config:
-                room_ids = config[CONFIG_MATRIX_ROOM_IDS]
+            # Parse room groups and get all room IDs
+            per_room_config, all_room_ids = _parse_room_groups(config)
 
-            if not room_ids:
+            if not all_room_ids:
                 logger.error(
-                    f"Missing required configuration: room_ids in {config_file}"
+                    f"Missing required configuration: No rooms found in 'room_ids' or 'room_groups' in {config_file}"
                 )
                 return None
-            if not isinstance(room_ids, list):
-                logger.error("'room_ids' must be a list in config")
-                return None
 
-            # Ensure matrix_room_ids is available at top level for backward compatibility
-            config[CONFIG_MATRIX_ROOM_IDS] = room_ids
+            # Store the processed per-room settings and all room IDs in the config
+            config["per_room_config"] = per_room_config
+            config["all_room_ids"] = all_room_ids
+
+            # For backward compatibility, ensure `matrix.room_ids` contains all rooms
+            if "matrix" not in config:
+                config["matrix"] = {}
+            config["matrix"]["room_ids"] = all_room_ids
+            config[CONFIG_MATRIX_ROOM_IDS] = all_room_ids
 
             if log_loading:
                 logger.info(f"Loaded configuration from {config_file}")
@@ -579,80 +628,74 @@ class BibleBot:
         """
         Initialize the BibleBot with configuration and an optional Matrix client.
 
-        Read bot-specific settings from config["bot"], apply defaults, and coerce/validate numeric and boolean options to safe runtime values.
+        This constructor stores the configuration, sets up the Matrix client,
+        and prepares the bot for operation by parsing global and per-room settings.
 
-        Recognized settings (all under config["bot"]):
-        - default_translation (str): translation to use when none is specified. Default: DEFAULT_TRANSLATION.
-        - cache_enabled (bool): enable in-memory passage caching. Default: True.
-        - max_message_length (int): maximum length of outgoing messages. Non-positive values are reset to 2000. Default: 2000.
-        - split_message_length (int): threshold for splitting long messages into multiple parts. Non-integer or negative values disable splitting (0). Values larger than max_message_length are capped to max_message_length. Default: 0 (disabled).
-        - preserve_poetry_formatting (bool): preserve original line breaks for poetry-style passages. Default: False.
-        - CONFIG_DETECT_REFERENCES_ANYWHERE (str/bool-like): truthy values ("true", "yes", "1", "on") enable detecting references anywhere in a message; otherwise only full-match patterns are used. Default: False.
-
-        Parameters:
-            config (dict): Loaded configuration mapping used to populate bot settings.
-
-        Notes:
-        - The optional client parameter is an injected Matrix AsyncClient (runtime service) and is intentionally not documented above.
-        - The initializer enforces type coercion and caps to prevent generating oversized message chunks.
+        Args:
+            config (dict): The loaded and processed configuration dictionary.
+            client (nio.AsyncClient, optional): An instance of the Matrix client.
         """
         self.config = config
-        self.client = client  # Injected AsyncClient instance
-        self.api_keys = {}  # Will be set in main()
+        self.client = client
+        self.api_keys = {}
         self._room_id_set: set[str] = set()
-        self.http_session = None  # set in start(), closed in close()
+        self.http_session = None
 
-        # Bot configuration settings with defaults
-        bot_settings = config.get("bot", {}) if isinstance(config, dict) else {}
-        self.default_translation = bot_settings.get(
-            "default_translation", DEFAULT_TRANSLATION
-        )
-        self.cache_enabled = bot_settings.get("cache_enabled", True)
-        self.max_message_length = bot_settings.get("max_message_length", 2000)
-        self.preserve_poetry_formatting = bot_settings.get(
-            CONFIG_PRESERVE_POETRY_FORMATTING, False
-        )
-        # Type-validate and coerce detect_references_anywhere
-        raw_detect_anywhere = bot_settings.get(CONFIG_DETECT_REFERENCES_ANYWHERE, False)
-        self.detect_references_anywhere = str(raw_detect_anywhere).lower().strip() in {
-            "true",
-            "yes",
-            "1",
-            "on",
-        }
-        # Type-validate and coerce split_message_length
-        raw_split_len = bot_settings.get("split_message_length", 0)
-        try:
-            self.split_message_length = int(raw_split_len)
-        except (TypeError, ValueError):
+        # Processed per-room configurations, mapping room_id to its settings.
+        self.per_room_config = config.get("per_room_config", {}) if config else {}
+        # Global fallback settings from the 'bot' section of the config.
+        self.global_settings = config.get("bot", {}) if config else {}
+
+        # Validate global settings
+        if self.global_settings.get("max_message_length", 0) <= 0:
             logger.warning(
-                f"Invalid split_message_length type: {raw_split_len!r}, disabling message splitting"
+                "Invalid global max_message_length. Using default 2000."
             )
-            self.split_message_length = 0
+            self.global_settings["max_message_length"] = 2000
+        split_messages = self.global_settings.get("split_messages", {})
+        if not isinstance(split_messages, dict):
+            self.global_settings["split_messages"] = {"enabled": False, "length": 0}
+        else:
+            try:
+                if int(self.global_settings.get("split_messages", {}).get("length", 0) or 0) < 0:
+                    logger.warning(
+                        "Invalid global split_messages length. Disabling splitting."
+                    )
+                    self.global_settings["split_messages"]["enabled"] = False
+                    self.global_settings["split_messages"]["length"] = 0
+            except (ValueError, TypeError):
+                logger.warning(
+                    "Invalid global split_messages length. Disabling splitting."
+                )
+                self.global_settings["split_messages"]["enabled"] = False
+                self.global_settings["split_messages"]["length"] = 0
 
-        # Validate settings
-        if self.max_message_length <= 0:
-            logger.warning(
-                f"Invalid max_message_length: {self.max_message_length}, using default 2000"
-            )
-            self.max_message_length = 2000
+    def _get_room_setting(self, room_id: str, key: str, default=None):
+        """
+        Get a specific setting for a room, falling back to global settings.
 
-        if self.split_message_length < 0:
-            logger.warning(
-                f"Invalid split_message_length: {self.split_message_length}, disabling message splitting"
-            )
-            self.split_message_length = 0
+        This helper method retrieves a configuration value for a given room ID.
+        It first checks for a room-specific setting and, if not found, falls
+        back to the global configuration.
 
-        # Cap to max_message_length to avoid generating oversize chunks
-        if (
-            self.split_message_length
-            and self.split_message_length > self.max_message_length
-        ):
-            logger.info(
-                f"split_message_length {self.split_message_length} exceeds max_message_length "
-                f"{self.max_message_length}; capping to max."
-            )
-            self.split_message_length = self.max_message_length
+        Args:
+            room_id (str): The ID of the room to get the setting for.
+            key (str): The configuration key to retrieve.
+            default: The value to return if the key is not found in either
+                     room-specific or global settings.
+
+        Returns:
+            The configured value for the room, or the default value.
+        """
+        room_settings = self.per_room_config.get(room_id, {})
+        return room_settings.get(key, self.global_settings.get(key, default))
+
+    def _get_bool_room_setting(self, room_id: str, key: str, default: bool) -> bool:
+        """
+        Get a boolean setting for a room, with coercion for string values.
+        """
+        raw_value = self._get_room_setting(room_id, key, default)
+        return str(raw_value).lower().strip() in {"true", "yes", "1", "on"}
 
     def __repr__(self):
         """
@@ -1019,7 +1062,10 @@ class BibleBot:
             and event.server_timestamp > self.start_time
         ):
             # Choose patterns and matcher function based on configuration
-            if self.detect_references_anywhere:
+            detect_anywhere = self._get_bool_room_setting(
+                room.room_id, "detect_references_anywhere", False
+            )
+            if detect_anywhere:
                 search_patterns = PARTIAL_REFERENCE_PATTERNS
                 _match_name = "search"
             else:
@@ -1027,7 +1073,10 @@ class BibleBot:
                 _match_name = "fullmatch"
 
             passage = None
-            translation = self.default_translation  # Default translation
+            default_translation = self._get_room_setting(
+                room.room_id, "default_translation", DEFAULT_TRANSLATION
+            )
+            translation = default_translation
             # Iterate through regex patterns to find scripture references
             # Uses either fullmatch() for exact matching or search() for partial matching
             # depending on the detect_references_anywhere configuration setting
@@ -1051,7 +1100,7 @@ class BibleBot:
                     # Get optional translation group safely
                     trans_group = match.groupdict().get("translation")
                     translation = (
-                        trans_group.lower() if trans_group else self.default_translation
+                        trans_group.lower() if trans_group else default_translation
                     )
                     logger.info(
                         f"Detected Bible reference: {passage} ({translation}) in room {room.room_id}"
@@ -1063,7 +1112,9 @@ class BibleBot:
                     room.room_id, passage, translation, event
                 )
 
-    def _format_text_for_display(self, text: str) -> tuple[str, str]:
+    def _format_text_for_display(
+        self, room_id: str, text: str
+    ) -> tuple[str, str]:
         """
         Return a plain-text and an HTML-escaped representation of a passage suitable for sending.
 
@@ -1072,7 +1123,10 @@ class BibleBot:
         Returns:
             tuple[str, str]: (plain_text, html_text) where html_text is HTML-escaped and safe for inclusion in an HTML-formatted message.
         """
-        if self.preserve_poetry_formatting:
+        preserve_poetry = self._get_room_setting(
+            room_id, "preserve_poetry_formatting", False
+        )
+        if preserve_poetry:
             # Poetry mode: preserve newlines, clean excess whitespace
             # This formatting preserves the structure of biblical poetry and verse formatting
             # while cleaning up inconsistent spacing from API responses
@@ -1115,7 +1169,9 @@ class BibleBot:
             break_on_hyphens=True,
         )
 
-    def _trim_reference_for_suffix(self, reference, reserve_fallback_space=False):
+    def _trim_reference_for_suffix(
+        self, room_id: str, reference, reserve_fallback_space=False
+    ):
         """
         Return a reference string that will fit alongside the message suffix within the bot's max_message_length.
 
@@ -1134,6 +1190,10 @@ class BibleBot:
         if not reference:
             return None
 
+        max_length = self._get_room_setting(room_id, "max_message_length", 2000)
+        message_suffix = self._get_room_setting(
+            room_id, "message_suffix", MESSAGE_SUFFIX
+        )
         # Calculate budget for reference (reserve space for " - ", MESSAGE_SUFFIX, and text)
         if reserve_fallback_space:
             # Reserve space for fallback text in single-message path. This is conservative,
@@ -1149,8 +1209,8 @@ class BibleBot:
             reserved_text_len = 1
 
         budget = (
-            self.max_message_length
-            - len(MESSAGE_SUFFIX)
+            max_length
+            - len(message_suffix)
             - REFERENCE_SEPARATOR_LEN
             - reserved_text_len
         )
@@ -1183,18 +1243,23 @@ class BibleBot:
         Raises:
             nio.exceptions.MatrixRequestError: If sending fails for non-retriable reasons or retries are exhausted.
         """
+        message_suffix = self._get_room_setting(
+            room_id, "message_suffix", MESSAGE_SUFFIX
+        )
         for i, text_part in enumerate(text_parts):
             # Format the text part
-            formatted_text, html_text = self._format_text_for_display(text_part)
+            formatted_text, html_text = self._format_text_for_display(
+                room_id, text_part
+            )
 
             # Only add reference and suffix to the last message
             if i == len(text_parts) - 1:
                 if reference:
-                    plain_body = f"{formatted_text} - {reference}{MESSAGE_SUFFIX}"
-                    formatted_body = f"{html_text} - {html.escape(reference)}{html.escape(MESSAGE_SUFFIX)}"
+                    plain_body = f"{formatted_text} - {reference}{message_suffix}"
+                    formatted_body = f"{html_text} - {html.escape(reference)}{html.escape(message_suffix)}"
                 else:
-                    plain_body = f"{formatted_text}{MESSAGE_SUFFIX}"
-                    formatted_body = f"{html_text}{html.escape(MESSAGE_SUFFIX)}"
+                    plain_body = f"{formatted_text}{message_suffix}"
+                    formatted_body = f"{html_text}{html.escape(message_suffix)}"
             else:
                 plain_body = formatted_text
                 formatted_body = html_text
@@ -1254,20 +1319,34 @@ class BibleBot:
         """
         # Use configured default translation if none specified
         if translation is None:
-            translation = self.default_translation
-
+            translation = self._get_room_setting(
+                room_id, "default_translation", DEFAULT_TRANSLATION
+            )
+        cache_enabled = self._get_room_setting(room_id, "cache_enabled", True)
+        max_message_length = self._get_room_setting(
+            room_id, "max_message_length", 2000
+        )
+        split_config = self._get_room_setting(room_id, "split_messages", {})
+        split_enabled = split_config.get("enabled", False)
+        split_length = int(split_config.get("length", 0) or 0)
+        message_suffix = self._get_room_setting(
+            room_id, "message_suffix", MESSAGE_SUFFIX
+        )
         logger.info(f"Fetching scripture passage: {passage} ({translation.upper()})")
 
         try:
-            text, reference = await get_bible_text(
+            result = await get_bible_text(
                 passage,
                 translation,
                 self.api_keys,
-                cache_enabled=self.cache_enabled,
-                default_translation=self.default_translation,
+                cache_enabled=cache_enabled,
+                default_translation=translation,
                 session=self.http_session,
             )
+            if result is None:
+                raise PassageNotFound(f"Passage '{passage}' not found.")
 
+            text, reference = result
             # Defer formatting to _send_message_parts; keep only a trim here
             text = text.strip()
 
@@ -1280,27 +1359,23 @@ class BibleBot:
             await self.send_reaction(room_id, event.event_id, REACTION_OK)
 
             # Check if message splitting is enabled and needed
-            if (
-                self.split_message_length
-                and self.split_message_length > 0
-                and len(text) > self.split_message_length
-            ):
+            if split_enabled and split_length > 0 and len(text) > split_length:
                 # Trim reference if needed for splitting context
                 trimmed_reference = self._trim_reference_for_suffix(
-                    reference, reserve_fallback_space=False
+                    room_id, reference, reserve_fallback_space=False
                 )
                 plain_suffix = (
-                    f" - {trimmed_reference}{MESSAGE_SUFFIX}"
+                    f" - {trimmed_reference}{message_suffix}"
                     if trimmed_reference
-                    else MESSAGE_SUFFIX
+                    else message_suffix
                 )
                 reserved_last = len(plain_suffix)
-                chunk_limit = min(self.split_message_length, self.max_message_length)
+                chunk_limit = min(split_length, max_message_length)
                 last_chunk_limit = max(
                     1,
                     min(
-                        self.split_message_length,
-                        self.max_message_length - reserved_last,
+                        split_length,
+                        max_message_length - reserved_last,
                     ),
                 )
 
@@ -1331,18 +1406,18 @@ class BibleBot:
             # Single-message logic (truncation)
             # This path is taken if splitting is disabled, not needed, or impractical.
             trimmed_reference = self._trim_reference_for_suffix(
-                reference, reserve_fallback_space=True
+                room_id, reference, reserve_fallback_space=True
             )
             plain_suffix = (
-                f" - {trimmed_reference}{MESSAGE_SUFFIX}"
+                f" - {trimmed_reference}{message_suffix}"
                 if trimmed_reference
-                else MESSAGE_SUFFIX
+                else message_suffix
             )
             message_text = text
 
-            if len(f"{text}{plain_suffix}") > self.max_message_length:
+            if len(f"{text}{plain_suffix}") > max_message_length:
                 suffix_len = len(plain_suffix) + len(TRUNCATION_INDICATOR)
-                max_text_len = self.max_message_length - suffix_len
+                max_text_len = max_message_length - suffix_len
                 if max_text_len > 0:
                     message_text = text[:max_text_len] + TRUNCATION_INDICATOR
                     logger.debug(
@@ -1374,7 +1449,7 @@ class BibleBot:
             # Log full traceback but send generic message to user
             logger.exception(
                 f"Unexpected exception during passage lookup for {passage} "
-                f"(translation={translation}, cache_enabled={self.cache_enabled})"
+                f"(translation={translation}, cache_enabled={cache_enabled})"
             )
             await self._send_error_message(room_id, ERROR_PASSAGE_NOT_FOUND)
 
