@@ -13,13 +13,14 @@ Example community-plugins config:
 community-plugins:
   biblebot:
     active: true
-    repository: https://github.com/your-username/BibleBot.git
-    branch: main
+    repository: https://github.com/jeremiah-k/matrix-biblebot.git
+    branch: feat/mmrelay-plugin
     config:
       api_keys:
         esv: "YOUR_ESV_API_KEY"
       default_translation: "kjv"
       detect_references_anywhere: true
+      max_message_length: 200
 
 This file is designed to be at the root of the BibleBot project repository
 to be compatible with the mmrelay community plugin system.
