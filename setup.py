@@ -68,6 +68,7 @@ setup(
     },
     packages=find_packages(where="src"),
     package_dir={"": "src"},
+    py_modules=["plugin"],
     include_package_data=True,
     package_data={"biblebot.tools": ["*.yaml", "*.service"]},
     entry_points={"console_scripts": ["biblebot = biblebot.cli:main"]},
