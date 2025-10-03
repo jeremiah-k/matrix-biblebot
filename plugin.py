@@ -20,7 +20,8 @@ community-plugins:
         esv: "YOUR_ESV_API_KEY"
       default_translation: "kjv"
       detect_references_anywhere: true
-      max_message_length: 200
+      max_message_length: 1000
+      split_message_length: 200
 
 This file is designed to be at the root of the BibleBot project repository
 to be compatible with the mmrelay community plugin system.
