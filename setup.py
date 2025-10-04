@@ -33,14 +33,13 @@ setup(
     long_description=long_description,
     long_description_content_type="text/markdown",
     license="MIT",
-    license_files=["LICENSE", "LICENSE.txt"],
+    license_files=["LICENSE"],
     url="https://github.com/jeremiah-k/matrix-biblebot",
     project_urls={
         "Bug Tracker": "https://github.com/jeremiah-k/matrix-biblebot/issues"
     },
     classifiers=[
         "Programming Language :: Python :: 3",
-        "License :: OSI Approved :: MIT License",
         "Operating System :: OS Independent",
         "Development Status :: 4 - Beta",
         "Topic :: Communications",
