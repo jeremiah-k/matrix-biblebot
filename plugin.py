@@ -13,15 +13,13 @@ Example community-plugins config:
 community-plugins:
   biblebot:
     active: true
-    repository: https://github.com/jeremiah-k/matrix-biblebot.git
-    branch: feat/mmrelay-plugin
+    repository: https://github.com/your-username/BibleBot.git
+    branch: main
     config:
       api_keys:
         esv: "YOUR_ESV_API_KEY"
       default_translation: "kjv"
       detect_references_anywhere: true
-      max_message_length: 1000
-      split_message_length: 200
 
 This file is designed to be at the root of the BibleBot project repository
 to be compatible with the mmrelay community plugin system.
@@ -29,8 +27,16 @@ to be compatible with the mmrelay community plugin system.
 
 import asyncio
 import logging
+import os
+import sys
 
 import aiohttp
+
+# Add the src directory to the Python path to allow for absolute imports
+# when the plugin is loaded by mmrelay. This is necessary because mmrelay
+# does not know about the src layout.
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "src")))
+
 
 try:
     from mmrelay.plugins.base_plugin import BasePlugin
