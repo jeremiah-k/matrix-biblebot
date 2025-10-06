@@ -79,6 +79,40 @@ cd matrix-biblebot
 pip install '.[e2e]'  # Includes E2EE support
 ```
 
+### Meshtastic Matrix Relay Plugin
+
+BibleBot ships with a community plugin that meshes with
+[meshtastic-matrix-relay](https://github.com/jeremiah-k/meshtastic-matrix-relay).
+Install the standalone bot with the `mmrelay` extra when you run mmrelay and the
+plugin will be ready to load:
+
+```bash
+pip install 'matrix-biblebot[mmrelay]'
+# or from source
+pip install '.[mmrelay]'
+```
+
+In your `config.yaml` for mmrelay add a community plugin entry similar to:
+
+```yaml
+community-plugins:
+  biblebot:
+    active: true
+    repository: https://github.com/jeremiah-k/matrix-biblebot.git
+    branch: main
+    config:
+      default_translation: kjv
+      detect_references_anywhere: true
+      api_keys:
+        esv: "YOUR_ESV_API_KEY"
+```
+
+When mmrelay syncs plugins it installs the bundled
+`requirements.txt`, which simply points at the packaged project via the
+`mmrelay` extra. The plugin then imports the installed `biblebot` package
+instead of relying on repo-relative paths, keeping the standalone distribution
+and community plugin perfectly aligned.
+
 ## Usage
 
 ### Supported Reference Formats
