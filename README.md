@@ -102,7 +102,7 @@ The bot understands various Bible reference formats:
 
 The bot recognizes many abbreviations: `gen` (Genesis), `exo` (Exodus), `matt` (Matthew), `jn` (John), `1co` (1 Corinthians), `rev` (Revelation), and many more. See [full list](docs/CONFIGURATION.md#book-abbreviations).
 
-### Trigger Mode
+### Reference Detection
 
 The bot responds only when a message is **entirely** a scripture reference.
 
