@@ -257,10 +257,10 @@ def test_save_credentials(
     mock_temp_file.return_value = mock_temp
 
     # Mock os.fsync and os.stat to avoid filesystem issues
-    with patch("biblebot.auth.os.fsync") as mock_fsync, patch(
-        "biblebot.auth.os.stat"
-    ) as mock_stat:
-
+    with (
+        patch("biblebot.auth.os.fsync") as mock_fsync,
+        patch("biblebot.auth.os.stat") as mock_stat,
+    ):
         # Mock os.stat to simulate same filesystem (so os.replace is used)
         mock_stat_result = MagicMock()
         mock_stat_result.st_dev = 12345  # Same device ID for both temp and dest
@@ -344,7 +344,7 @@ def test_bible_verse_parsing():
 
 def test_bible_book_normalization():
     """Test Bible book name validation and normalization."""
-    from biblebot.bot import validate_and_normalize_book_name
+    from biblebot.validation import validate_and_normalize_book_name
 
     valid_test_cases = [
         ("gen", "Genesis"),

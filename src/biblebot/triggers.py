@@ -46,14 +46,15 @@ _MENTION_LINK_RE = re.compile(
 )
 
 
+from biblebot.validation import validate_and_normalize_book_name
+
+
 def _match_reference(
     text: str,
     patterns: Sequence[re.Pattern],
     method: str,
     default_translation: str,
 ) -> tuple[str, str] | None:
-    from biblebot.bot import validate_and_normalize_book_name
-
     for pattern in patterns:
         match = getattr(pattern, method)(text)
         if not match:

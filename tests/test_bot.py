@@ -7,7 +7,8 @@ import pytest
 import yaml
 
 from biblebot import bot
-from biblebot.bot import BibleBot, validate_and_normalize_book_name
+from biblebot.bot import BibleBot
+from biblebot.validation import validate_and_normalize_book_name
 from tests.test_constants import (
     TEST_ACCESS_TOKEN,
     TEST_BIBLE_REFERENCE,
@@ -896,6 +897,7 @@ class TestPartialReferenceMatching:
             event.body = "Have you read John 3:16 ESV?"  # Reference embedded in text
             event.sender = "@user:example.org"
             event.server_timestamp = 1000
+            event.formatted_body = None
 
             room = MagicMock()
             room.room_id = "!test:example.org"
@@ -934,6 +936,7 @@ class TestPartialReferenceMatching:
             event.body = "John 3:16"  # Exact reference
             event.sender = "@user:example.org"
             event.server_timestamp = 1000
+            event.formatted_body = None
 
             room = MagicMock()
             room.room_id = "!test:example.org"
@@ -981,6 +984,7 @@ class TestPartialReferenceMatching:
             event.body = false_positive_message
             event.sender = "@user:example.org"
             event.server_timestamp = 1000
+            event.formatted_body = None
 
             room = MagicMock()
             room.room_id = "!test:example.org"
@@ -1012,6 +1016,7 @@ class TestPartialReferenceMatching:
             event.body = "Have you read John 3:16 KJV?"  # Reference with KJV
             event.sender = "@user:example.org"
             event.server_timestamp = 1000
+            event.formatted_body = None
 
             room = MagicMock()
             room.room_id = "!test:example.org"

@@ -25,7 +25,6 @@ import textwrap
 import time
 from collections import OrderedDict
 from time import monotonic
-from types import MappingProxyType
 from urllib.parse import quote
 
 import aiohttp
@@ -59,12 +58,10 @@ from biblebot.constants.api import (
 )
 from biblebot.constants.app import (
     BIBLEBOT_HTTP_USER_AGENT,
-    CHAR_DOT,
     FILE_ENCODING_UTF8,
     LOGGER_NAME,
 )
 from biblebot.constants.bible import (
-    BOOK_ABBREVIATIONS,
     DEFAULT_COMMAND_PREFIX,
     DEFAULT_TRANSLATION,
     REFERENCE_PATTERNS,
@@ -120,18 +117,10 @@ from biblebot.update_check import (
     perform_startup_update_check,
     print_startup_banner,
 )
+from biblebot.validation import validate_and_normalize_book_name
 
 # Configure logging
 logger = logging.getLogger(LOGGER_NAME)
-
-
-# Create a comprehensive, frozen lookup in one go
-_ALL_NAMES_TO_CANONICAL = MappingProxyType(
-    {
-        **BOOK_ABBREVIATIONS,
-        **{name.lower(): name for name in set(BOOK_ABBREVIATIONS.values())},
-    }
-)
 
 
 # Custom exceptions for Bible text retrieval
@@ -147,34 +136,6 @@ class APIKeyMissing(Exception):
 # These can be patched in tests to control cache behavior
 _PASSAGE_CACHE_MAX = CACHE_MAX_SIZE
 _PASSAGE_CACHE_TTL_SECS = CACHE_TTL_SECONDS
-
-
-def _clean_book_name(book_str: str) -> str:
-    """
-    Normalize a Bible book name string for canonical lookup.
-
-    Lowercases the input, removes dot characters (CHAR_DOT), trims leading/trailing whitespace, and collapses consecutive internal whitespace into single spaces. The result is suitable for matching against the canonical book-name map.
-
-    Returns:
-        str: The cleaned, space-separated, lower-case book name.
-    """
-    # Ensure book_str is not None or empty before processing
-    if not book_str or not book_str.strip():
-        return ""
-    return " ".join(book_str.lower().replace(CHAR_DOT, "").strip().split())
-
-
-def validate_and_normalize_book_name(book_str: str) -> str | None:
-    """
-    Return the canonical full Bible book name for a user-supplied book string, or None if it is not recognized.
-
-    This accepts common variants (abbreviations, punctuation, mixed case, and extra whitespace) and normalizes them before lookup. If the input corresponds to a known book it returns the canonical full name (e.g., "1 timothy"), otherwise returns None.
-    """
-    # Ensure book_str is not None or empty before processing
-    if not book_str or not book_str.strip():
-        return None
-    clean_str = _clean_book_name(book_str)
-    return _ALL_NAMES_TO_CANONICAL.get(clean_str)
 
 
 # Load config
