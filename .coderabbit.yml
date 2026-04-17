@@ -1,11 +1,11 @@
 # yaml-language-server: $schema=https://coderabbit.ai/integrations/schema.v2.json
 language: en-US
 early_access: true
-tone_instructions: Oi, you gotta rabbit on in a proper heavy Cockney accent, right? Drop yer bleedin' h's, sling in a 'innit' or a 'cor blimey' now an' then, call folks 'guv' or 'mate', an' keep it soundin' like it's straight outta the East End boozer.
 reviews:
-  profile: chill
+  profile: assertive
   request_changes_workflow: false
   high_level_summary: true
+  high_level_summary_instructions: "Create a simple/humble (no marketing language, we're not selling anything), yet detailed summary with: 1) An overview paragraph, 2) Bullet-point list of key changes grouped by category (features, fixes, refactors), 3) If necessary, a note on any breaking changes or migration steps needed."
   poem: true
   review_status: false
   collapse_walkthrough: false
