@@ -5,6 +5,7 @@ detect_trigger(), which takes message content and bot configuration and returns
 a TriggerMatch when a valid reference is found, or None otherwise.
 """
 
+import html
 import re
 from collections.abc import Sequence
 from dataclasses import dataclass
@@ -105,14 +106,16 @@ def _extract_mention_body(
             if m.group("mxid") == bot_mxid:
                 link_text = m.group(0)
                 plain = re.sub(r"<[^>]+>", "", link_text).strip()
+                plain = html.unescape(plain)
                 if plain:
-                    anchored = re.compile(rf"(^|\s)({re.escape(plain)})(\s|$)")
+                    anchored = re.compile(
+                        rf"(?<!\w)({re.escape(plain)})(?=\W|$)(?!:\S)"
+                    )
                     am = anchored.search(body)
                     if am:
-                        remainder = (body[: am.start(2)] + body[am.end(2) :]).strip()
+                        remainder = (body[: am.start(1)] + body[am.end(1) :]).strip()
                         if remainder:
                             return remainder
-                break
 
     localpart = bot_mxid.lstrip("@").split(":")[0]
     candidates = [bot_mxid, f"@{localpart}"]
