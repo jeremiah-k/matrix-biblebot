@@ -44,8 +44,6 @@ bot:
   max_message_length: 2000
   preserve_poetry_formatting: false
   split_message_length: 0
-  # trigger_mode, command_prefix, and detect_references_anywhere are
-  # deprecated and ignored. The bot always uses direct-only behavior.
 
 api_keys:
   esv: null
@@ -209,16 +207,6 @@ The bot responds only when the entire message is a scripture reference. No comma
 - `!bible John 3:16` — prefix command
 - `@bot Psalm 23` — mention
 - `I like John 3:16` — embedded in text
-
-#### Deprecated Configuration
-
-The following config keys are still accepted for backward compatibility but are ignored:
-
-- `trigger_mode` — always behaves as `direct_only`
-- `command_prefix` — no longer used
-- `detect_references_anywhere` — no longer used
-
-If non-default values are set for these keys, a deprecation warning is logged at startup.
 
 ### Caching
 

@@ -46,12 +46,6 @@ matrix:
 #   # Note: This value is capped to max_message_length. The final chunk reserves
 #   # space for the reference and suffix, so its text portion may be shorter.
 #   split_message_length: 0 # Disabled by default
-#
-#   # DEPRECATED: The following options are accepted but ignored.
-#   # The bot always responds only to messages that are scripture references.
-#   # trigger_mode: direct_only
-#   # command_prefix: "!bible"
-#   # detect_references_anywhere: false
 
 # API Keys for Bible translations (optional)
 # These can also be set via environment variables (e.g., ESV_API_KEY).

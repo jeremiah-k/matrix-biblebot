@@ -1,7 +1,7 @@
-"""Trigger policy module for BibleBot.
+"""Trigger detection for BibleBot.
 
-Encapsulates scripture reference detection logic. The bot responds only when
-the entire message is a valid scripture reference (direct-only mode).
+Detects scripture references using strict whole-message matching.
+The bot responds only when the entire message is a valid reference.
 """
 
 import re
@@ -9,15 +9,8 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 from enum import Enum
 
-from biblebot.constants.bible import (
-    REFERENCE_PATTERNS,
-    TRIGGER_MODE_DIRECT_ONLY,
-)
+from biblebot.constants.bible import REFERENCE_PATTERNS
 from biblebot.validation import validate_and_normalize_book_name
-
-
-class TriggerMode(str, Enum):
-    DIRECT_ONLY = TRIGGER_MODE_DIRECT_ONLY
 
 
 class TriggerSource(str, Enum):
@@ -55,22 +48,13 @@ def _match_reference(
     return None
 
 
-def _try_direct_match(body: str, default_translation: str) -> tuple[str, str] | None:
-    return _match_reference(body, REFERENCE_PATTERNS, "fullmatch", default_translation)
-
-
-def detect_trigger(
-    body: str,
-    formatted_body: str | None,
-    trigger_mode: TriggerMode,
-    command_prefix: str | None,
-    bot_mxid: str | None,
-    default_translation: str,
-) -> TriggerMatch | None:
+def detect_trigger(body: str, default_translation: str) -> TriggerMatch | None:
     if not body or not body.strip():
         return None
 
-    result = _try_direct_match(body, default_translation)
+    result = _match_reference(
+        body, REFERENCE_PATTERNS, "fullmatch", default_translation
+    )
     if result:
         return TriggerMatch(
             passage=result[0], translation=result[1], source=TriggerSource.DIRECT

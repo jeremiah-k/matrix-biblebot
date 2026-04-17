@@ -844,43 +844,8 @@ class TestAPIRequests:
             assert result is None
 
 
-class TestPartialReferenceMatching:
-    """Test partial reference matching functionality."""
-
-    def test_detect_anywhere_bool_coercion(self):
-        """Ensure detect_references_anywhere is always False."""
-        cfg = {
-            "matrix_room_ids": ["!test:example.org"],
-        }
-        bb = BibleBot(cfg)
-        assert bb.detect_references_anywhere is False
-
-    @pytest.mark.asyncio
-    async def test_embedded_references_always_ignored(self):
-        """Test that embedded references are always ignored in direct-only mode."""
-        config = {
-            "matrix_room_ids": ["!test:example.org"],
-        }
-        bible_bot = BibleBot(config)
-        bible_bot.start_time = 0
-        bible_bot._room_id_set = {"!test:example.org"}
-        bible_bot.client = MagicMock()
-        bible_bot.client.user_id = "@bot:example.org"
-
-        with patch.object(
-            bible_bot, "handle_scripture_command", new_callable=AsyncMock
-        ) as mock_handle:
-            event = MagicMock()
-            event.body = "Have you read John 3:16 ESV?"
-            event.sender = "@user:example.org"
-            event.server_timestamp = 1000
-            event.formatted_body = None
-
-            room = MagicMock()
-            room.room_id = "!test:example.org"
-
-            await bible_bot.on_room_message(room, event)
-            mock_handle.assert_not_called()
+class TestReferenceMatching:
+    """Test reference matching functionality."""
 
     @pytest.mark.asyncio
     async def test_exact_reference_works_in_both_modes(self):

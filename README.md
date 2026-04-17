@@ -104,7 +104,7 @@ The bot recognizes many abbreviations: `gen` (Genesis), `exo` (Exodus), `matt` (
 
 ### Trigger Mode
 
-The bot responds only to messages that are **entirely** a scripture reference. No commands, mentions, or embedded detection.
+The bot responds only when a message is **entirely** a scripture reference.
 
 | Should trigger   | Example           |
 | ---------------- | ----------------- |
@@ -118,8 +118,6 @@ The bot responds only to messages that are **entirely** a scripture reference. N
 | Prefix command     | `!bible John 3:16` |
 | Mention            | `@bot Psalm 23`    |
 | Embedded in text   | `I like John 3:16` |
-
-The `trigger_mode`, `command_prefix`, and `detect_references_anywhere` config keys are still accepted but deprecated and ignored. The bot always uses direct-only behavior.
 
 ### Bot Response
 

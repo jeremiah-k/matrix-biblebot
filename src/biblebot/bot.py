@@ -104,7 +104,7 @@ from biblebot.constants.messages import (
     WARN_MATRIX_ACCESS_TOKEN_NOT_SET,
 )
 from biblebot.log_utils import configure_component_loggers, configure_logging
-from biblebot.triggers import TriggerMode, detect_trigger
+from biblebot.triggers import detect_trigger
 from biblebot.update_check import (
     perform_startup_update_check,
     print_startup_banner,
@@ -569,10 +569,6 @@ class BibleBot:
         self.preserve_poetry_formatting = bot_settings.get(
             CONFIG_PRESERVE_POETRY_FORMATTING, False
         )
-        self.trigger_mode = TriggerMode.DIRECT_ONLY
-        self.detect_references_anywhere = False
-        self.command_prefix = None
-
         # Type-validate and coerce split_message_length
         raw_split_len = bot_settings.get("split_message_length", 0)
         try:
@@ -963,13 +959,8 @@ class BibleBot:
             and event.sender != self.client.user_id
             and event.server_timestamp > self.start_time
         ):
-            formatted_body = getattr(event, "formatted_body", None)
             match = detect_trigger(
                 body=event.body,
-                formatted_body=formatted_body,
-                trigger_mode=self.trigger_mode,
-                command_prefix=self.command_prefix,
-                bot_mxid=self.client.user_id,
                 default_translation=self.default_translation,
             )
 

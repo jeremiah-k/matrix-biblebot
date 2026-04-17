@@ -9,7 +9,6 @@ __all__ = [
     "SUPPORTED_TRANSLATIONS",
     "TRANSLATION_ESV",
     "TRANSLATION_KJV",
-    "TRIGGER_MODE_DIRECT_ONLY",
 ]
 
 # Bible translation constants
@@ -34,8 +33,6 @@ REFERENCE_PATTERNS = [
         re.IGNORECASE,
     ),
 ]
-
-TRIGGER_MODE_DIRECT_ONLY = "direct_only"
 
 # Bible book abbreviations mapping
 BOOK_ABBREVIATIONS = {

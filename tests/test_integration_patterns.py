@@ -457,8 +457,8 @@ class TestIntegrationPatterns:
     async def test_api_integration_chain_partial_mode_disabled(
         self, mock_config, mock_client
     ):
-        """Test that embedded references are ignored with trigger_mode default 'direct_only'."""
-        # Use default config (trigger_mode defaults to "direct_only")
+        """Test that embedded references are ignored in direct-only mode."""
+        # The bot always uses direct-only matching
         bot = BibleBot(config=mock_config, client=mock_client)
 
         # Populate room ID set for testing
