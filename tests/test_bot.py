@@ -603,12 +603,10 @@ def temp_env_file(tmp_path):
         pathlib.Path: Path to the created `.env` file.
     """
     env_file = tmp_path / ".env"
-    env_file.write_text(
-        f"""
+    env_file.write_text(f"""
 MATRIX_ACCESS_TOKEN={TEST_ACCESS_TOKEN}
 ESV_API_KEY=test_esv_key
-"""
-    )
+""")
     return env_file
 
 

@@ -60,8 +60,7 @@ class TestEndToEndWorkflow:
             sample_config = temp_workspace / "sample_config.yaml"
 
             # Create sample config file with API keys section
-            sample_config.write_text(
-                """
+            sample_config.write_text("""
 matrix_homeserver: "https://example.matrix.org"
 matrix_user: "@bot:example.org"
 matrix_room_ids:
@@ -70,8 +69,7 @@ e2ee:
   enabled: false
 api_keys:
   esv: null
-"""
-            )
+""")
 
             mock_config.return_value = sample_config
 

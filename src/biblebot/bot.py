@@ -64,7 +64,6 @@ from biblebot.constants.app import (
 from biblebot.constants.bible import (
     DEFAULT_COMMAND_PREFIX,
     DEFAULT_TRANSLATION,
-    REFERENCE_PATTERNS,
     TRANSLATION_ESV,
     TRANSLATION_KJV,
     TRIGGER_MODE_ANYWHERE,

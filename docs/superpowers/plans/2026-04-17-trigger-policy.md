@@ -764,39 +764,41 @@ In the "Supported Reference Formats" section, add a note about trigger modes:
 
 After the existing table, add a brief paragraph:
 
-````
+````markdown
 ### Trigger Modes
 
 The bot supports three trigger modes that control how aggressively it responds:
 
-| Mode | Behavior |
-|------|----------|
-| `direct_only` (default) | Only responds when the entire message is a scripture reference |
-| `smart` | Also responds to mentions (`@Bot Psalm 23`) and prefix commands (`!bible John 3:16`) |
-| `anywhere` | Detects references embedded in any message (useful with Matrix bridges) |
+| Mode                    | Behavior                                                                             |
+| ----------------------- | ------------------------------------------------------------------------------------ |
+| `direct_only` (default) | Only responds when the entire message is a scripture reference                       |
+| `smart`                 | Also responds to mentions (`@Bot Psalm 23`) and prefix commands (`!bible John 3:16`) |
+| `anywhere`              | Detects references embedded in any message (useful with Matrix bridges)              |
 
 Configure in `config.yaml`:
+
 ```yaml
 bot:
   trigger_mode: smart
   command_prefix: "!bible"
+```
 ````
 
-````
-
+`````markdown
 ### docs/CONFIGURATION.md changes
 
 Replace the "### Reference Detection" section (lines 195-208) with:
 
-```markdown
+````markdown
 ### Reference Detection (Trigger Mode)
 
 Control how the bot detects Bible references:
 
 ```yaml
 bot:
-  trigger_mode: direct_only  # Options: direct_only, smart, anywhere
-  command_prefix: "!bible"   # Prefix for commands (only in smart mode)
+  trigger_mode: direct_only # Options: direct_only, smart, anywhere
+  command_prefix: "!bible" # Prefix for commands (only in smart mode)
+```
 ````
 
 #### Trigger Modes
@@ -841,8 +843,7 @@ The `detect_references_anywhere` option is deprecated. The bot will automaticall
 | `true`    | `anywhere`       |
 
 A deprecation warning is logged when `detect_references_anywhere` is used. Update your config to use `trigger_mode` instead.
-
-```
+`````
 
 - [ ] **Step 1:** Update `sample_config.yaml` with new trigger_mode and command_prefix options.
 - [ ] **Step 2:** Update `README.md` with trigger modes section.
@@ -874,4 +875,3 @@ A deprecation warning is logged when `detect_references_anywhere` is used. Updat
 2. **Placeholder scan:** No TBD/TODO/fill-in-details found.
 
 3. **Type consistency:** TriggerMode enum values match string constants. TriggerMatch fields consistent across all usage. detect_trigger signature matches bot.py call site.
-```

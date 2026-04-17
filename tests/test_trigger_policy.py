@@ -425,7 +425,7 @@ class TestLegacyMigration:
             "matrix_room_ids": ["!test:example.org"],
             "bot": {"detect_references_anywhere": False},
         }
-        with patch("biblebot.bot.logger") as mock_logger:
+        with patch("biblebot.bot.logger"):
             bot = BibleBot(cfg)
             assert bot.trigger_mode == TriggerMode.DIRECT_ONLY
             assert bot.detect_references_anywhere is False
