@@ -49,7 +49,7 @@ setup(
     install_requires=[
         "matrix-nio>=0.25.2,<0.26",
         "PyYAML~=6.0",
-        "python-dotenv~=1.1.0",
+        "python-dotenv>=1.1,<1.3",
         "aiohttp>=3.11.0",
         "rich>=13.7,<15.0",
         "packaging>=24,<26",
