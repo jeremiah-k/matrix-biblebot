@@ -66,9 +66,8 @@ from biblebot.constants.bible import (
     DEFAULT_TRANSLATION,
     TRANSLATION_ESV,
     TRANSLATION_KJV,
-    TRIGGER_MODE_ANYWHERE,
     TRIGGER_MODE_DIRECT_ONLY,
-    TRIGGER_MODE_SMART,
+    VALID_TRIGGER_MODES,
 )
 from biblebot.constants.config import (
     CONFIG_COMMAND_PREFIX,
@@ -585,11 +584,7 @@ class BibleBot:
 
         if raw_trigger_mode is not None:
             mode_str = str(raw_trigger_mode).lower().strip()
-            if mode_str in (
-                TRIGGER_MODE_DIRECT_ONLY,
-                TRIGGER_MODE_SMART,
-                TRIGGER_MODE_ANYWHERE,
-            ):
+            if mode_str in VALID_TRIGGER_MODES:
                 self.trigger_mode = TriggerMode(mode_str)
             else:
                 logger.warning(
