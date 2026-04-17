@@ -943,8 +943,9 @@ class BibleBot:
         - are not sent by the bot itself, and
         - were sent after the bot's recorded start time.
 
-        Delegates to detect_trigger() from the triggers module for direct-only
-        scripture reference matching.
+        The bot responds only when a message is a scripture reference.
+        Delegates to detect_trigger() from the triggers module for strict
+        whole-message scripture reference matching.
 
         Parameters are typed (MatrixRoom, RoomMessageText) and represent the source room and the received event.
         This handles both unencrypted messages and successfully decrypted messages from encrypted rooms.

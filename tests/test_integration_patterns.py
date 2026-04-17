@@ -409,8 +409,8 @@ class TestIntegrationPatterns:
             # Verify response was sent
             assert mock_client.room_send.call_count == 2  # Reaction + message
 
-    async def test_api_integration_chain_partial_mode(self, mock_config, mock_client):
-        """Test API integration with direct reference."""
+    async def test_api_integration_chain_psalm_23(self, mock_config, mock_client):
+        """Test API integration with a whole-message chapter reference."""
         config = mock_config
         bot = BibleBot(config=config, client=mock_client)
 
@@ -425,12 +425,12 @@ class TestIntegrationPatterns:
             "biblebot.bot.get_bible_text", new_callable=AsyncMock
         ) as mock_get_bible:
             mock_get_bible.return_value = (
-                "For God so loved the world that he gave his one and only Son",
-                "John 3:16",
+                "The Lord is my shepherd; I shall not want.",
+                "Psalms 23",
             )
 
             event = MagicMock()
-            event.body = "John 3:16"
+            event.body = "Psalm 23"
             event.sender = "@user:matrix.org"
             event.server_timestamp = 1234567890000
             event.formatted_body = None
@@ -443,7 +443,7 @@ class TestIntegrationPatterns:
             # Verify Bible text was fetched with correct parameters
             mock_get_bible.assert_called_once()
             call_args = mock_get_bible.call_args
-            assert "John 3:16" in call_args[0][0]  # passage argument
+            assert "Psalms 23" in call_args[0][0]  # passage argument
 
             # Verify response was sent
             assert mock_client.room_send.call_count == 2  # Reaction + message
@@ -452,13 +452,12 @@ class TestIntegrationPatterns:
             assert reaction_call.args[1] == "m.reaction"
             msg = mock_client.room_send.call_args_list[1]
             assert msg.args[1] == "m.room.message"
-            assert "John 3:16" in msg.args[2]["body"]
+            assert "Psalms 23" in msg.args[2]["body"]
 
     async def test_api_integration_chain_embedded_reference_ignored(
         self, mock_config, mock_client
     ):
-        """Test that embedded references are ignored in direct-only mode."""
-        # The bot always uses direct-only matching
+        """Test that natural-language messages containing references are ignored."""
         bot = BibleBot(config=mock_config, client=mock_client)
 
         # Populate room ID set for testing
@@ -487,13 +486,40 @@ class TestIntegrationPatterns:
 
             await bot.on_room_message(room, event)
 
-            # Verify Bible text was NOT fetched (embedded references ignored in direct_only mode)
+            # The bot responds only when a message is a scripture reference.
             mock_get_bible.assert_not_called()
             # Verify no response was sent
             assert mock_client.room_send.call_count == 0
             assert not any(
                 c.args[1] == "m.reaction" for c in mock_client.room_send.call_args_list
             )
+
+    async def test_api_integration_chain_long_sentence_with_reference_ignored(
+        self, mock_config, mock_client
+    ):
+        """Test that longer sentences containing references are ignored."""
+        bot = BibleBot(config=mock_config, client=mock_client)
+
+        # Populate room ID set for testing
+        bot._room_id_set = set(mock_config["matrix_room_ids"])
+        bot.start_time = 1234567880000
+        bot.api_keys = {}
+
+        with patch(
+            "biblebot.bot.get_bible_text", new_callable=AsyncMock
+        ) as mock_get_bible:
+            event = MagicMock()
+            event.body = "I was reading John 3:16 this morning and it encouraged me."
+            event.sender = "@user:matrix.org"
+            event.server_timestamp = 1234567890000
+
+            room = MagicMock()
+            room.room_id = "!room1:matrix.org"
+
+            await bot.on_room_message(room, event)
+
+            mock_get_bible.assert_not_called()
+            assert mock_client.room_send.call_count == 0
 
     async def test_configuration_integration(self, mock_config, mock_client):
         """

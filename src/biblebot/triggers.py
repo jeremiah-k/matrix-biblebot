@@ -1,7 +1,7 @@
 """Trigger detection for BibleBot.
 
 Detects scripture references using strict whole-message matching.
-The bot responds only when the entire message is a valid reference.
+The bot responds only when a message is a scripture reference.
 """
 
 import re

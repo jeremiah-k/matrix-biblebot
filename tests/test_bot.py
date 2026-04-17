@@ -848,7 +848,7 @@ class TestReferenceMatching:
     """Test reference matching functionality."""
 
     @pytest.mark.asyncio
-    async def test_exact_reference_works_in_both_modes(self):
+    async def test_exact_reference_works(self):
         """Test that exact references work."""
         config = {
             "matrix_room_ids": ["!test:example.org"],
@@ -875,7 +875,7 @@ class TestReferenceMatching:
 
             await bible_bot.on_room_message(room, event)
 
-            # Should trigger scripture handling in both modes
+            # Should trigger scripture handling
             mock_handle.assert_called_once()
             args = mock_handle.call_args[0]
             assert args[0] == "!test:example.org"  # room_id
