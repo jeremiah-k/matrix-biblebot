@@ -21,22 +21,22 @@ classifiers = [
   "Topic :: Communications",
 ]
 dependencies = [
-  "matrix-nio>=0.25.2,<0.26",
-  "PyYAML~=6.0",
-  "python-dotenv>=1.1,<1.3",
-  "aiohttp>=3.11.0",
-  "rich>=13.7,<15.0",
-  "packaging>=24,<27",
+  "matrix-nio==0.25.2",
+  "PyYAML==6.0.3",
+  "python-dotenv==1.2.2",
+  "aiohttp==3.13.5",
+  "rich==15.0.0",
+  "packaging==26.1",
 ]
 
 [project.optional-dependencies]
-e2e = ["matrix-nio[e2e]>=0.25.2,<0.26"]
+e2e = ["matrix-nio[e2e]==0.25.2"]
 test = [
-  "pytest>=8.0.0",
-  "pytest-asyncio>=0.21.0",
-  "pytest-cov>=4.0",
-  "pytest-aiohttp>=1.0",
-  "coverage>=7.6",
+  "pytest==9.0.3",
+  "pytest-asyncio==1.3.0",
+  "pytest-cov==7.1.0",
+  "pytest-aiohttp==1.1.0",
+  "coverage==7.13.5",
 ]
 
 [project.urls]
