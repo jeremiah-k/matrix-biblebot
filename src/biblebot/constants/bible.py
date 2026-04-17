@@ -41,7 +41,7 @@ REFERENCE_PATTERNS = [
     ),
 ]
 
-# Partial matching patterns (for detect_references_anywhere mode)
+# Partial matching patterns for embedded reference detection (used by trigger_mode "anywhere")
 # More restrictive patterns to reduce false positives
 _PARTIAL_BOOK_PATTERN_STR = (
     r"(?:[1-3]\s+[A-Za-z]+(?:\s+[A-Za-z]+)?|[A-Za-z]+(?:\s+of\s+[A-Za-z]+)?)"

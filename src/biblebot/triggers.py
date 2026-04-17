@@ -133,6 +133,41 @@ def _extract_mention_body(
     return None
 
 
+def _try_direct_prefix_mention(
+    body: str,
+    formatted_body: str | None,
+    command_prefix: str | None,
+    bot_mxid: str | None,
+    default_translation: str,
+) -> TriggerMatch | None:
+    result = _try_direct_match(body, default_translation)
+    if result:
+        return TriggerMatch(
+            passage=result[0], translation=result[1], source=TriggerSource.DIRECT
+        )
+
+    if command_prefix:
+        result = _try_prefix_match(body, command_prefix, default_translation)
+        if result:
+            return TriggerMatch(
+                passage=result[0],
+                translation=result[1],
+                source=TriggerSource.PREFIX,
+            )
+
+    mention_body = _extract_mention_body(body, formatted_body, bot_mxid)
+    if mention_body:
+        result = _try_direct_match(mention_body, default_translation)
+        if result:
+            return TriggerMatch(
+                passage=result[0],
+                translation=result[1],
+                source=TriggerSource.MENTION,
+            )
+
+    return None
+
+
 def detect_trigger(
     body: str,
     formatted_body: str | None,
@@ -152,66 +187,17 @@ def detect_trigger(
             )
         return None
 
-    if trigger_mode == TriggerMode.SMART:
-        result = _try_direct_match(body, default_translation)
-        if result:
-            return TriggerMatch(
-                passage=result[0], translation=result[1], source=TriggerSource.DIRECT
-            )
-
-        if command_prefix:
-            result = _try_prefix_match(body, command_prefix, default_translation)
-            if result:
-                return TriggerMatch(
-                    passage=result[0],
-                    translation=result[1],
-                    source=TriggerSource.PREFIX,
-                )
-
-        mention_body = _extract_mention_body(body, formatted_body, bot_mxid)
-        if mention_body:
-            result = _try_direct_match(mention_body, default_translation)
-            if result:
-                return TriggerMatch(
-                    passage=result[0],
-                    translation=result[1],
-                    source=TriggerSource.MENTION,
-                )
-
-        return None
+    match = _try_direct_prefix_mention(
+        body, formatted_body, command_prefix, bot_mxid, default_translation
+    )
+    if match:
+        return match
 
     if trigger_mode == TriggerMode.ANYWHERE:
-        result = _try_direct_match(body, default_translation)
-        if result:
-            return TriggerMatch(
-                passage=result[0], translation=result[1], source=TriggerSource.DIRECT
-            )
-
-        if command_prefix:
-            result = _try_prefix_match(body, command_prefix, default_translation)
-            if result:
-                return TriggerMatch(
-                    passage=result[0],
-                    translation=result[1],
-                    source=TriggerSource.PREFIX,
-                )
-
-        mention_body = _extract_mention_body(body, formatted_body, bot_mxid)
-        if mention_body:
-            result = _try_direct_match(mention_body, default_translation)
-            if result:
-                return TriggerMatch(
-                    passage=result[0],
-                    translation=result[1],
-                    source=TriggerSource.MENTION,
-                )
-
         result = _try_embedded_match(body, default_translation)
         if result:
             return TriggerMatch(
                 passage=result[0], translation=result[1], source=TriggerSource.ANYWHERE
             )
-
-        return None
 
     return None
