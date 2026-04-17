@@ -1,8 +1,13 @@
 name: Tests and Coverage
 
 on:
+  push:
+    branches: [main, develop, "**-review"]
   pull_request:
-    branches: [main, develop]
+    branches:
+      - main
+      - develop
+      - "**-review"
   workflow_dispatch:
   release:
     types: [published]
@@ -34,7 +39,7 @@ jobs:
         uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5
         with:
           path: ~/.cache/pip
-          key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements*.txt', 'setup.py', 'setup.cfg') }}
+          key: ${{ runner.os }}-pip-${{ hashFiles('**/pyproject.toml') }}
           restore-keys: |
             ${{ runner.os }}-pip-
 
@@ -58,13 +63,14 @@ jobs:
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           slug: jeremiah-k/matrix-biblebot
-          flags: tests
+          flags: unittests
           name: python-${{ matrix.python-version }}
           fail_ci_if_error: false
           verbose: true
 
       - name: Upload test results to Codecov
-        if: ${{ !cancelled() && (matrix.python-version == '3.11') }}
-        uses: codecov/test-results-action@0fa95f0e1eeaafde2c782583b36b28ad0d8c77d3 # v1
+        if: ${{ !cancelled() }}
+        uses: codecov/codecov-action@57e3a136b779b570ffcdbf80b3bdc90e7fab3de2 # v6
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
+          report_type: test_results

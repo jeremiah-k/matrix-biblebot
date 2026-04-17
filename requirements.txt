@@ -1,7 +1,0 @@
-matrix-nio~=0.25.2
-PyYAML~=6.0
-python-dotenv~=1.2.1
-aiohttp>=3.11.0
-rich~=14.1
-packaging~=26.0
-# asyncio is part of the standard library in Python 3.8+, no need to include it
