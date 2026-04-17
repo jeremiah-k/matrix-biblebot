@@ -657,7 +657,14 @@ class BibleBot:
         self.detect_references_anywhere = self.trigger_mode == TriggerMode.ANYWHERE
 
         raw_prefix = bot_settings.get(CONFIG_COMMAND_PREFIX, DEFAULT_COMMAND_PREFIX)
-        self.command_prefix = raw_prefix if raw_prefix else None
+        if raw_prefix is None or raw_prefix == "":
+            self.command_prefix = None
+        else:
+            if not isinstance(raw_prefix, str):
+                logger.warning(
+                    f"command_prefix was {type(raw_prefix).__name__} ({raw_prefix!r}), coercing to str"
+                )
+            self.command_prefix = str(raw_prefix)
         # Type-validate and coerce split_message_length
         raw_split_len = bot_settings.get("split_message_length", 0)
         try:

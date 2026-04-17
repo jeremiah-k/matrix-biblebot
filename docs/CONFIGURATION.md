@@ -220,7 +220,7 @@ bot:
 
 It does **not** scan ambient messages for embedded references, making it safe for active chat rooms.
 
-**`anywhere`**: The bot detects references embedded in any message. Embedded matching requires a chapter:verse reference (e.g., "John 3:16") and will not match chapter-only references (e.g., "Psalm 23" embedded in text). This prevents false positives like "1 Thessalonians 4 16 ..." being matched as chapter 4.
+**`anywhere`**: Includes all `smart` mode features, plus the bot detects references embedded in any message. Embedded matching requires a chapter:verse reference (e.g., "John 3:16") and will not match chapter-only references (e.g., "Psalm 23" embedded in text). This prevents false positives like "1 Thessalonians 4 16 ..." being matched as chapter 4.
 
 #### Command Prefix
 
@@ -231,7 +231,7 @@ bot:
   command_prefix: "!bible" # or "!verse", null to disable
 ```
 
-- Only used when `trigger_mode` is `smart`
+- Used when `trigger_mode` is `smart` or `anywhere`
 - Set to `null` or empty string to disable prefix commands
 - Treated as a literal string, not a regex
 

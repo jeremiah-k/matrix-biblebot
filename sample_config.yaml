@@ -56,7 +56,7 @@ matrix:
 #
 #   # Command prefix for scripture lookups (default: "!bible")
 #   # Set to null or empty string to disable prefix commands.
-#   # Only effective when trigger_mode is "smart".
+#   # Effective when trigger_mode is "smart" or "anywhere".
 #   command_prefix: "!bible"
 #
 #   # DEPRECATED: Use trigger_mode instead.

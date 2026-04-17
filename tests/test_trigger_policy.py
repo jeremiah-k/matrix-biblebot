@@ -232,6 +232,22 @@ class TestSmartMode:
         )
         assert result is None
 
+    def test_mention_short_sigil_without_formatted_body(self):
+        body = "@bot Psalm 23"
+        result = detect_trigger(
+            body, None, TriggerMode.SMART, "!bible", "@bot:example.org", "kjv"
+        )
+        assert result is not None
+        assert result.passage == "Psalms 23"
+        assert result.source == TriggerSource.MENTION
+
+    def test_bare_localpart_does_not_trigger(self):
+        body = "bot John 3:16"
+        result = detect_trigger(
+            body, None, TriggerMode.SMART, "!bible", "@bot:example.org", "kjv"
+        )
+        assert result is None
+
     def test_mention_invalid_reference(self):
         body = "@bot:example.org what's up?"
         result = detect_trigger(
@@ -314,6 +330,56 @@ class TestAnywhereMode:
         )
         assert result is not None
         assert "Psalms 23:1" in result.passage
+
+    def test_prefix_command_triggers(self):
+        result = detect_trigger(
+            "!bible John 3:16",
+            None,
+            TriggerMode.ANYWHERE,
+            "!bible",
+            "@bot:x",
+            "kjv",
+        )
+        assert result is not None
+        assert result.passage == "John 3:16"
+        assert result.source == TriggerSource.PREFIX
+
+    def test_mention_triggers(self):
+        result = detect_trigger(
+            "@bot Psalm 23",
+            None,
+            TriggerMode.ANYWHERE,
+            "!bible",
+            "@bot:example.org",
+            "kjv",
+        )
+        assert result is not None
+        assert result.passage == "Psalms 23"
+        assert result.source == TriggerSource.MENTION
+
+    def test_embedded_chapter_only_in_ambient_text_rejected(self):
+        result = detect_trigger(
+            "I really like Psalm 23 it is a great chapter",
+            None,
+            TriggerMode.ANYWHERE,
+            "!bible",
+            "@bot:x",
+            "kjv",
+        )
+        assert result is None
+
+    def test_bare_localpart_does_not_trigger_as_mention(self):
+        result = detect_trigger(
+            "bot John 3:16",
+            None,
+            TriggerMode.ANYWHERE,
+            "!bible",
+            "@bot:example.org",
+            "kjv",
+        )
+        assert result is not None
+        assert result.source == TriggerSource.ANYWHERE
+        assert result.passage == "John 3:16"
 
 
 class TestPrefixCustomization:
@@ -452,6 +518,34 @@ class TestBotIntegration:
             m.assert_not_called()
 
     @pytest.mark.asyncio
+    async def test_anywhere_prefix_triggers(self):
+        bot = _make_bot(TriggerMode.ANYWHERE)
+        with patch.object(bot, "handle_scripture_command", new_callable=AsyncMock) as m:
+            await bot.on_room_message(_make_room(), _make_event("!bible John 3:16"))
+            m.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_anywhere_mention_triggers(self):
+        bot = _make_bot(TriggerMode.ANYWHERE)
+        fb = '<a href="https://matrix.to/#/@bot:example.org">@bot</a> Psalm 23'
+        with patch.object(bot, "handle_scripture_command", new_callable=AsyncMock) as m:
+            await bot.on_room_message(
+                _make_room(), _make_event("@bot Psalm 23", formatted_body=fb)
+            )
+            m.assert_called_once()
+            assert "Psalms 23" in m.call_args[0][1]
+
+    @pytest.mark.asyncio
+    async def test_anywhere_embedded_chapter_only_ambient_rejected(self):
+        bot = _make_bot(TriggerMode.ANYWHERE)
+        with patch.object(bot, "handle_scripture_command", new_callable=AsyncMock) as m:
+            await bot.on_room_message(
+                _make_room(),
+                _make_event("I really like Psalm 23 it is a great chapter"),
+            )
+            m.assert_not_called()
+
+    @pytest.mark.asyncio
     async def test_devotional_text_rejected_in_smart(self):
         bot = _make_bot(TriggerMode.SMART)
         with patch.object(bot, "handle_scripture_command", new_callable=AsyncMock) as m:
@@ -489,3 +583,15 @@ class TestBotIntegration:
         }
         bot = BibleBot(cfg)
         assert bot.command_prefix is None
+
+    @pytest.mark.asyncio
+    async def test_bot_numeric_command_prefix_coerced(self):
+        cfg = {
+            "matrix_room_ids": ["!test:example.org"],
+            "bot": {"command_prefix": 123},
+        }
+        with patch("biblebot.bot.logger") as mock_logger:
+            bot = BibleBot(cfg)
+            assert bot.command_prefix == "123"
+            mock_logger.warning.assert_called_once()
+            assert "command_prefix" in mock_logger.warning.call_args[0][0].lower()

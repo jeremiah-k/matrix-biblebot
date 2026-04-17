@@ -6,9 +6,9 @@ a TriggerMatch when a valid reference is found, or None otherwise.
 """
 
 import re
+from collections.abc import Sequence
 from dataclasses import dataclass
 from enum import Enum
-from typing import Sequence
 
 from biblebot.constants.bible import (
     DEFAULT_COMMAND_PREFIX,
@@ -114,15 +114,22 @@ def _extract_mention_body(
                 return None
 
     localpart = bot_mxid.lstrip("@").split(":")[0]
-    for candidate in (
-        bot_mxid,
-        f"@{localpart}" if not bot_mxid.startswith("@") else localpart,
-    ):
-        if body.startswith(candidate):
-            remainder = body[len(candidate) :].strip()
-            if remainder:
-                return remainder
+    candidates = [bot_mxid, f"@{localpart}"]
+
+    _BOUNDARY_RE = re.compile(r"^[\s\W]|$")
+
+    for candidate in candidates:
+        if not body.startswith(candidate):
+            continue
+        after = body[len(candidate) :]
+        if not after:
             return None
+        if not _BOUNDARY_RE.match(after):
+            continue
+        remainder = after.strip()
+        if remainder:
+            return remainder
+        return None
 
     return None
 
@@ -180,6 +187,25 @@ def detect_trigger(
             return TriggerMatch(
                 passage=result[0], translation=result[1], source=TriggerSource.DIRECT
             )
+
+        if command_prefix:
+            result = _try_prefix_match(body, command_prefix, default_translation)
+            if result:
+                return TriggerMatch(
+                    passage=result[0],
+                    translation=result[1],
+                    source=TriggerSource.PREFIX,
+                )
+
+        mention_body = _extract_mention_body(body, formatted_body, bot_mxid)
+        if mention_body:
+            result = _try_direct_match(mention_body, default_translation)
+            if result:
+                return TriggerMatch(
+                    passage=result[0],
+                    translation=result[1],
+                    source=TriggerSource.MENTION,
+                )
 
         result = _try_embedded_match(body, default_translation)
         if result:

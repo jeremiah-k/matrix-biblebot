@@ -106,11 +106,11 @@ The bot recognizes many abbreviations: `gen` (Genesis), `exo` (Exodus), `matt` (
 
 The bot supports three trigger modes that control how aggressively it responds to messages:
 
-| Mode                    | Behavior                                                                             |
-| ----------------------- | ------------------------------------------------------------------------------------ |
-| `direct_only` (default) | Only responds when the entire message is a scripture reference                       |
-| `smart`                 | Also responds to mentions (`@Bot Psalm 23`) and prefix commands (`!bible John 3:16`) |
-| `anywhere`              | Detects references embedded in any message (useful with Matrix bridges)              |
+| Mode                    | Behavior                                                                                  |
+| ----------------------- | ----------------------------------------------------------------------------------------- |
+| `direct_only` (default) | Only responds when the entire message is a scripture reference                            |
+| `smart`                 | Also responds to mentions (`@Bot Psalm 23`) and prefix commands (`!bible John 3:16`)      |
+| `anywhere`              | All `smart` features plus detects references embedded in any message (chapter:verse only) |
 
 Configure in `config.yaml`:
 
