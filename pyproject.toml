@@ -59,4 +59,4 @@ version = { attr = "biblebot.__version__" }
 where = ["src"]
 
 [tool.setuptools.package-data]
-"biblebot.tools" = ["*.yaml", "*.service"]
+"biblebot.tools" = ["*.yaml", "*.service", "*.env"]
