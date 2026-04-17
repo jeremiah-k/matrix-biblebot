@@ -8,6 +8,7 @@ from unittest.mock import AsyncMock, patch
 import pytest
 
 from biblebot import bot
+from biblebot.validation import validate_and_normalize_book_name
 
 
 class TestCachePerformance:
@@ -112,7 +113,7 @@ class TestBookNormalizationPerformance:
         Measure performance of book-name normalization on a list of common Bible books.
 
         Runs 200 iterations over a predefined list of common book names, calling
-        bot.validate_and_normalize_book_name for each entry and asserting each result
+        validate_and_normalize_book_name for each entry and asserting each result
         is a string. Records total elapsed time and, unless the CI_SLOW_RUNNER
         environment variable is set, enforces a total-time budget (< 4.0 s) and an
         average-per-call budget (< 6 ms).
@@ -138,7 +139,7 @@ class TestBookNormalizationPerformance:
         start_time = time.perf_counter()
         for _ in range(200):
             for book in common_books:
-                result = bot.validate_and_normalize_book_name(book)
+                result = validate_and_normalize_book_name(book)
                 assert isinstance(result, str)
         normalization_time = time.perf_counter() - start_time
 
@@ -187,7 +188,7 @@ class TestBookNormalizationPerformance:
         start_time = time.perf_counter()
         for _ in range(200):
             for abbrev in abbreviations:
-                result = bot.validate_and_normalize_book_name(abbrev)
+                result = validate_and_normalize_book_name(abbrev)
                 assert isinstance(result, str)
         abbrev_time = time.perf_counter() - start_time
 
@@ -223,7 +224,7 @@ class TestBookNormalizationPerformance:
         start_time = time.perf_counter()
         for _ in range(200):
             for book in mixed_case_books:
-                result = bot.validate_and_normalize_book_name(book)
+                result = validate_and_normalize_book_name(book)
                 assert isinstance(result, str)
         mixed_case_time = time.perf_counter() - start_time
 
@@ -398,14 +399,14 @@ class TestMemoryPerformance:
         """
         Run repeated book-name normalizations to detect memory-growth issues.
 
-        Performs 10,000 calls to bot.validate_and_normalize_book_name cycling through 100 distinct inputs.
+        Performs 10,000 calls to validate_and_normalize_book_name cycling through 100 distinct inputs.
         Each result is asserted to be either a string (normalized name) or None (invalid input).
         The test passes implicitly if it completes without excessive memory consumption or crashes.
         """
         # Test many normalizations
         for i in range(10000):
             book_name = f"TestBook{i % 100}"
-            result = bot.validate_and_normalize_book_name(book_name)
+            result = validate_and_normalize_book_name(book_name)
             # Note: invalid book names return None, so we check for str or None
             assert result is None or isinstance(result, str)
 
@@ -457,7 +458,7 @@ class TestStressPerformance:
         """
         Stress-test concurrent normalization of Bible book names using multiple threads.
 
-        Spawns several worker threads that repeatedly call bot.validate_and_normalize_book_name on a fixed set of book-name variants and record each result in the shared `results` list; any exceptions are collected in the shared `errors` list. After joining all threads the test asserts there were no errors, that some results were produced, and that the total run completed within the expected time budget (5.0 seconds).
+        Spawns several worker threads that repeatedly call validate_and_normalize_book_name on a fixed set of book-name variants and record each result in the shared `results` list; any exceptions are collected in the shared `errors` list. After joining all threads the test asserts there were no errors, that some results were produced, and that the total run completed within the expected time budget (5.0 seconds).
         """
         import threading
 
@@ -468,7 +469,7 @@ class TestStressPerformance:
             """
             Worker that performs 100 iterations of book-name normalization and records outcomes.
 
-            Repeatedly calls bot.validate_and_normalize_book_name on a fixed set of book-name variants and appends each result to the outer-scope list `results`. Any exception encountered is caught and appended to the outer-scope list `errors`. Designed to be used as a threaded worker in concurrency/stress tests.
+            Repeatedly calls validate_and_normalize_book_name on a fixed set of book-name variants and appends each result to the outer-scope list `results`. Any exception encountered is caught and appended to the outer-scope list `errors`. Designed to be used as a threaded worker in concurrency/stress tests.
             """
             try:
                 for _i in range(100):
@@ -481,7 +482,7 @@ class TestStressPerformance:
                         "MATTHEW",
                     ]
                     for book in book_names:
-                        result = bot.validate_and_normalize_book_name(book)
+                        result = validate_and_normalize_book_name(book)
                         results.append(result)
             except Exception as e:  # noqa: BLE001
                 errors.append(e)

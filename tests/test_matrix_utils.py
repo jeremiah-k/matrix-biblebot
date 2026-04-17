@@ -326,7 +326,7 @@ def test_bible_verse_parsing():
     """Test Bible verse reference parsing using existing patterns."""
     # Test with existing REFERENCE_PATTERNS
 
-    from biblebot.bot import REFERENCE_PATTERNS
+    from biblebot.constants.bible import REFERENCE_PATTERNS
 
     test_cases = [
         ("John 3:16", True),
