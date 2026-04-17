@@ -117,7 +117,6 @@ from biblebot.update_check import (
     perform_startup_update_check,
     print_startup_banner,
 )
-from biblebot.validation import validate_and_normalize_book_name
 
 # Configure logging
 logger = logging.getLogger(LOGGER_NAME)

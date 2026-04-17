@@ -459,8 +459,8 @@ class TestIntegrationPatterns:
     async def test_api_integration_chain_partial_mode_disabled(
         self, mock_config, mock_client
     ):
-        """Test that partial references are ignored when detect_references_anywhere is disabled (default)."""
-        # Use default config (detect_references_anywhere defaults to False)
+        """Test that embedded references are ignored with trigger_mode default 'direct_only'."""
+        # Use default config (trigger_mode defaults to "direct_only")
         bot = BibleBot(config=mock_config, client=mock_client)
 
         # Populate room ID set for testing
@@ -489,7 +489,7 @@ class TestIntegrationPatterns:
 
             await bot.on_room_message(room, event)
 
-            # Verify Bible text was NOT fetched (partial references ignored in default mode)
+            # Verify Bible text was NOT fetched (embedded references ignored in direct_only mode)
             mock_get_bible.assert_not_called()
             # Verify no response was sent
             assert mock_client.room_send.call_count == 0

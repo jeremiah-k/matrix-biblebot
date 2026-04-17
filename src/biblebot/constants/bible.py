@@ -73,12 +73,7 @@ VALID_TRIGGER_MODES = (
     TRIGGER_MODE_ANYWHERE,
 )
 
-EMBEDDED_REFERENCE_PATTERNS = [
-    re.compile(
-        rf"\b(?P<book>{_PARTIAL_BOOK_PATTERN_STR})\s+(?P<ref>\d+:\d+(?:\s*[-\u2011-\u2015]\s*\d+)?)\s*(?P<translation>{_TX})?\b",
-        re.IGNORECASE,
-    ),
-]
+EMBEDDED_REFERENCE_PATTERNS = [PARTIAL_REFERENCE_PATTERNS[0]]
 
 # Bible book abbreviations mapping
 BOOK_ABBREVIATIONS = {

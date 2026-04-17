@@ -5,15 +5,9 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 from biblebot.bot import BibleBot
-from biblebot.constants.bible import DEFAULT_TRANSLATION
 from biblebot.triggers import (
-    TriggerMatch,
     TriggerMode,
     TriggerSource,
-    _extract_mention_body,
-    _try_direct_match,
-    _try_embedded_match,
-    _try_prefix_match,
     detect_trigger,
 )
 
@@ -235,6 +229,16 @@ class TestSmartMode:
             body, None, TriggerMode.SMART, "!bible", "@bot:example.org", "kjv"
         )
         assert result is None
+
+    def test_formatted_mention_fallback_to_mxid(self):
+        fb = '<a href="https://matrix.to/#/@bot:example.org">@bot</a> Psalm 23'
+        body = "@bot:example.org Psalm 23"
+        result = detect_trigger(
+            body, fb, TriggerMode.SMART, "!bible", "@bot:example.org", "kjv"
+        )
+        assert result is not None
+        assert result.source == TriggerSource.MENTION
+        assert result.passage == "Psalms 23"
 
     def test_mention_invalid_reference(self):
         body = "@bot:example.org what's up?"
@@ -542,20 +546,17 @@ class TestBotIntegration:
             )
             m.assert_not_called()
 
-    @pytest.mark.asyncio
-    async def test_bot_default_trigger_mode_is_direct_only(self):
+    def test_bot_default_trigger_mode_is_direct_only(self):
         cfg = {"matrix_room_ids": ["!test:example.org"]}
         bot = BibleBot(cfg)
         assert bot.trigger_mode == TriggerMode.DIRECT_ONLY
 
-    @pytest.mark.asyncio
-    async def test_bot_default_command_prefix(self):
+    def test_bot_default_command_prefix(self):
         cfg = {"matrix_room_ids": ["!test:example.org"]}
         bot = BibleBot(cfg)
         assert bot.command_prefix == "!bible"
 
-    @pytest.mark.asyncio
-    async def test_bot_null_command_prefix(self):
+    def test_bot_null_command_prefix(self):
         cfg = {
             "matrix_room_ids": ["!test:example.org"],
             "bot": {"command_prefix": None},
@@ -563,8 +564,7 @@ class TestBotIntegration:
         bot = BibleBot(cfg)
         assert bot.command_prefix is None
 
-    @pytest.mark.asyncio
-    async def test_bot_empty_command_prefix(self):
+    def test_bot_empty_command_prefix(self):
         cfg = {
             "matrix_room_ids": ["!test:example.org"],
             "bot": {"command_prefix": ""},
@@ -572,8 +572,7 @@ class TestBotIntegration:
         bot = BibleBot(cfg)
         assert bot.command_prefix is None
 
-    @pytest.mark.asyncio
-    async def test_bot_numeric_command_prefix_coerced(self):
+    def test_bot_numeric_command_prefix_coerced(self):
         cfg = {
             "matrix_room_ids": ["!test:example.org"],
             "bot": {"command_prefix": 123},

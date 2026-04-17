@@ -44,7 +44,7 @@ _MENTION_LINK_RE = re.compile(
     r'<a\s+href="https?://matrix\.to/#/(?P<mxid>@[^"]+)"[^>]*>.*?</a>'
 )
 
-_MENTION_BOUNDARY_RE = re.compile(r"^[\s\W]|$")
+_MENTION_BOUNDARY_RE = re.compile(r"^\W")
 
 
 def _match_reference(
@@ -105,12 +105,14 @@ def _extract_mention_body(
             if m.group("mxid") == bot_mxid:
                 link_text = m.group(0)
                 plain = re.sub(r"<[^>]+>", "", link_text).strip()
-                if plain and plain in body:
-                    idx = body.index(plain)
-                    remainder = (body[:idx] + body[idx + len(plain) :]).strip()
-                    if remainder:
-                        return remainder
-                return None
+                if plain:
+                    anchored = re.compile(rf"(^|\s)({re.escape(plain)})(\s|$)")
+                    am = anchored.search(body)
+                    if am:
+                        remainder = (body[: am.start(2)] + body[am.end(2) :]).strip()
+                        if remainder:
+                            return remainder
+                break
 
     localpart = bot_mxid.lstrip("@").split(":")[0]
     candidates = [bot_mxid, f"@{localpart}"]
