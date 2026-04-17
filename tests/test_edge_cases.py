@@ -93,9 +93,9 @@ class TestEdgeCases:
 
     async def test_extremely_long_messages(self, mock_config, mock_client):
         """
-        Verify on_room_message handles extremely long messages and detects embedded scripture references.
+        Verify on_room_message handles a direct scripture reference correctly.
 
-        Sets up a BibleBot with mocked config/client, enables partial-reference detection, and patches get_bible_text to return a valid verse. Sends an ~10k-character message that contains an embedded reference ("John 3:16") and asserts the bot processes it without crashing and attempts to send a reply (client.room_send is called).
+        Sets up a BibleBot with mocked config/client, patches get_bible_text to return a valid verse, and sends "John 3:16" as a direct reference. Asserts the bot processes it without crashing and attempts to send a reply (client.room_send is called).
         """
         bot = BibleBot(config=mock_config, client=mock_client)
 
@@ -111,8 +111,7 @@ class TestEdgeCases:
         ) as mock_get_bible:
             mock_get_bible.return_value = ("Test verse", "John 3:16")
 
-            # Test with extremely long message containing embedded scripture reference
-            # This tests both long message handling and partial reference detection
+            # Test with a direct scripture reference
             long_message = f"John 3:16"
 
             event = MagicMock()

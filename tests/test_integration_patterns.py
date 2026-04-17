@@ -454,7 +454,7 @@ class TestIntegrationPatterns:
             assert msg.args[1] == "m.room.message"
             assert "John 3:16" in msg.args[2]["body"]
 
-    async def test_api_integration_chain_partial_mode_disabled(
+    async def test_api_integration_chain_embedded_reference_ignored(
         self, mock_config, mock_client
     ):
         """Test that embedded references are ignored in direct-only mode."""

@@ -84,6 +84,13 @@ class TestDirectOnlyMode:
         assert result is not None
         assert result.translation == "esv"
 
+    def test_translation_uppercase_with_chapter_verse(self):
+        result = detect_trigger("Romans 8:28 ESV", "kjv")
+        assert result is not None
+        assert result.passage == "Romans 8:28"
+        assert result.translation == "esv"
+        assert result.source == TriggerSource.DIRECT
+
     def test_verse_range(self):
         result = detect_trigger("1 Cor 15:1-4", "kjv")
         assert result is not None
