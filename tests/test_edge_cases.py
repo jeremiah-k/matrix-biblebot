@@ -10,7 +10,6 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 from biblebot.bot import BibleBot
-from biblebot.triggers import TriggerMode
 
 
 class TestEdgeCases:
@@ -107,8 +106,6 @@ class TestEdgeCases:
         bot.api_keys = {}
         mock_client.user_id = "@bot:matrix.org"
 
-        bot.trigger_mode = TriggerMode.ANYWHERE
-
         with patch(
             "biblebot.bot.get_bible_text", new_callable=AsyncMock
         ) as mock_get_bible:
@@ -116,8 +113,7 @@ class TestEdgeCases:
 
             # Test with extremely long message containing embedded scripture reference
             # This tests both long message handling and partial reference detection
-            long_text = "A" * 10000  # Create extremely long text for stress testing
-            long_message = f"Here is some very long text: {long_text} and here's a scripture reference: John 3:16 ESV"
+            long_message = f"John 3:16"
 
             event = MagicMock()
             event.body = long_message

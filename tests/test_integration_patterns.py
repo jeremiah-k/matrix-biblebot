@@ -410,8 +410,8 @@ class TestIntegrationPatterns:
             assert mock_client.room_send.call_count == 2  # Reaction + message
 
     async def test_api_integration_chain_partial_mode(self, mock_config, mock_client):
-        """Test API integration with anywhere trigger mode enabled."""
-        config = {**mock_config, "bot": {"trigger_mode": "anywhere"}}
+        """Test API integration with direct reference."""
+        config = mock_config
         bot = BibleBot(config=config, client=mock_client)
 
         # Populate room ID set for testing
@@ -430,9 +430,7 @@ class TestIntegrationPatterns:
             )
 
             event = MagicMock()
-            event.body = (
-                "Show me John 3:16 please"  # Natural sentence with embedded reference
-            )
+            event.body = "John 3:16"
             event.sender = "@user:matrix.org"
             event.server_timestamp = 1234567890000
             event.formatted_body = None

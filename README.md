@@ -1,6 +1,6 @@
 # Matrix BibleBot
 
-A Matrix bot that fetches Bible verses and shares them in chat rooms. Simply mention a Bible reference like "John 3:16" and the bot will respond with the verse text.
+A Matrix bot that fetches Bible verses and shares them in chat rooms. Simply send a Bible reference like "John 3:16" as a message and the bot will respond with the verse text.
 
 ## What it does
 
@@ -47,7 +47,7 @@ The bot supports both KJV (default) and ESV translations, works in encrypted roo
 - 🔒 **End-to-End Encryption**: Works in encrypted Matrix rooms
 - ✂️ **Smart Message Splitting**: Long passages split intelligently
 - 🚀 **Production Ready**: Rate limiting, error handling, systemd service
-- 🎯 **Flexible References**: Supports abbreviations and various formats
+- 🎯 **Direct-Only Triggers**: Responds only when the entire message is a scripture reference
 
 ## Installation
 
@@ -102,23 +102,24 @@ The bot understands various Bible reference formats:
 
 The bot recognizes many abbreviations: `gen` (Genesis), `exo` (Exodus), `matt` (Matthew), `jn` (John), `1co` (1 Corinthians), `rev` (Revelation), and many more. See [full list](docs/CONFIGURATION.md#book-abbreviations).
 
-### Trigger Modes
+### Trigger Mode
 
-The bot supports three trigger modes that control how aggressively it responds to messages:
+The bot responds only to messages that are **entirely** a scripture reference. No commands, mentions, or embedded detection.
 
-| Mode                    | Behavior                                                                                  |
-| ----------------------- | ----------------------------------------------------------------------------------------- |
-| `direct_only` (default) | Only responds when the entire message is a scripture reference                            |
-| `smart`                 | Also responds to mentions (`@Bot Psalm 23`) and prefix commands (`!bible John 3:16`)      |
-| `anywhere`              | All `smart` features plus detects references embedded in any message (chapter:verse only) |
+| Should trigger   | Example           |
+| ---------------- | ----------------- |
+| Single verse     | `John 3:16`       |
+| Verse range      | `1 Cor 15:1-4`    |
+| Whole chapter    | `Psalm 23`        |
+| With translation | `Romans 8:28 ESV` |
 
-Configure in `config.yaml`:
+| Should NOT trigger | Example            |
+| ------------------ | ------------------ |
+| Prefix command     | `!bible John 3:16` |
+| Mention            | `@bot Psalm 23`    |
+| Embedded in text   | `I like John 3:16` |
 
-```yaml
-bot:
-  trigger_mode: smart
-  command_prefix: "!bible"
-```
+The `trigger_mode`, `command_prefix`, and `detect_references_anywhere` config keys are still accepted but deprecated and ignored. The bot always uses direct-only behavior.
 
 ### Bot Response
 

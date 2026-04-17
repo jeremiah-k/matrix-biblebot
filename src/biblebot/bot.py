@@ -62,23 +62,17 @@ from biblebot.constants.app import (
     LOGGER_NAME,
 )
 from biblebot.constants.bible import (
-    DEFAULT_COMMAND_PREFIX,
     DEFAULT_TRANSLATION,
     TRANSLATION_ESV,
     TRANSLATION_KJV,
-    TRIGGER_MODE_DIRECT_ONLY,
-    VALID_TRIGGER_MODES,
 )
 from biblebot.constants.config import (
-    CONFIG_COMMAND_PREFIX,
-    CONFIG_DETECT_REFERENCES_ANYWHERE,
     CONFIG_KEY_MATRIX,
     CONFIG_MATRIX_E2EE,
     CONFIG_MATRIX_HOMESERVER,
     CONFIG_MATRIX_ROOM_IDS,
     CONFIG_MATRIX_USER,
     CONFIG_PRESERVE_POETRY_FORMATTING,
-    CONFIG_TRIGGER_MODE,
     DEFAULT_CONFIG_FILENAME,
     DEFAULT_ENV_FILENAME,
     ENV_ESV_API_KEY,
@@ -551,9 +545,6 @@ class BibleBot:
         - max_message_length (int): maximum length of outgoing messages. Non-positive values are reset to 2000. Default: 2000.
         - split_message_length (int): threshold for splitting long messages into multiple parts. Non-integer or negative values disable splitting (0). Values larger than max_message_length are capped to max_message_length. Default: 0 (disabled).
         - preserve_poetry_formatting (bool): preserve original line breaks for poetry-style passages. Default: False.
-        - trigger_mode (str): how aggressively the bot detects references. One of "direct_only", "smart", "anywhere". Default: "direct_only".
-        - command_prefix (str): literal prefix for scripture commands in smart mode. Default: "!bible". Set to null/empty to disable.
-        - detect_references_anywhere (str/bool-like): DEPRECATED. Maps true->anywhere, false->direct_only.
 
         Parameters:
             config (dict): Loaded configuration mapping used to populate bot settings.
@@ -578,47 +569,10 @@ class BibleBot:
         self.preserve_poetry_formatting = bot_settings.get(
             CONFIG_PRESERVE_POETRY_FORMATTING, False
         )
-        # Resolve trigger mode: new trigger_mode takes precedence, else legacy detect_references_anywhere
-        raw_trigger_mode = bot_settings.get(CONFIG_TRIGGER_MODE, None)
-        raw_detect_anywhere = bot_settings.get(CONFIG_DETECT_REFERENCES_ANYWHERE, None)
+        self.trigger_mode = TriggerMode.DIRECT_ONLY
+        self.detect_references_anywhere = False
+        self.command_prefix = None
 
-        if raw_trigger_mode is not None:
-            mode_str = str(raw_trigger_mode).lower().strip()
-            if mode_str in VALID_TRIGGER_MODES:
-                self.trigger_mode = TriggerMode(mode_str)
-            else:
-                logger.warning(
-                    f"Invalid trigger_mode '{raw_trigger_mode}', falling back to '{TRIGGER_MODE_DIRECT_ONLY}'"
-                )
-                self.trigger_mode = TriggerMode.DIRECT_ONLY
-        elif raw_detect_anywhere is not None:
-            anywhere = str(raw_detect_anywhere).lower().strip() in {
-                "true",
-                "yes",
-                "1",
-                "on",
-            }
-            self.trigger_mode = (
-                TriggerMode.ANYWHERE if anywhere else TriggerMode.DIRECT_ONLY
-            )
-            logger.warning(
-                "detect_references_anywhere is deprecated; use trigger_mode instead. "
-                f"Mapped {raw_detect_anywhere!r} to trigger_mode={self.trigger_mode.value}"
-            )
-        else:
-            self.trigger_mode = TriggerMode.DIRECT_ONLY
-
-        self.detect_references_anywhere = self.trigger_mode == TriggerMode.ANYWHERE
-
-        raw_prefix = bot_settings.get(CONFIG_COMMAND_PREFIX, DEFAULT_COMMAND_PREFIX)
-        if raw_prefix is None or raw_prefix == "":
-            self.command_prefix = None
-        else:
-            if not isinstance(raw_prefix, str):
-                logger.warning(
-                    f"command_prefix was {type(raw_prefix).__name__} ({raw_prefix!r}), coercing to str"
-                )
-            self.command_prefix = str(raw_prefix)
         # Type-validate and coerce split_message_length
         raw_split_len = bot_settings.get("split_message_length", 0)
         try:
@@ -993,8 +947,8 @@ class BibleBot:
         - are not sent by the bot itself, and
         - were sent after the bot's recorded start time.
 
-        Delegates to detect_trigger() from the triggers module which handles
-        trigger_mode, prefix, mention, and reference pattern matching.
+        Delegates to detect_trigger() from the triggers module for direct-only
+        scripture reference matching.
 
         Parameters are typed (MatrixRoom, RoomMessageText) and represent the source room and the received event.
         This handles both unencrypted messages and successfully decrypted messages from encrypted rooms.

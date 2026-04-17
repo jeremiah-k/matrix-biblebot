@@ -44,8 +44,8 @@ bot:
   max_message_length: 2000
   preserve_poetry_formatting: false
   split_message_length: 0
-  trigger_mode: direct_only
-  command_prefix: "!bible"
+  # trigger_mode, command_prefix, and detect_references_anywhere are
+  # deprecated and ignored. The bot always uses direct-only behavior.
 
 api_keys:
   esv: null
@@ -193,58 +193,32 @@ When enabled:
 - Cleans up excess whitespace
 - Converts to HTML `<br />` tags in formatted messages
 
-### Reference Detection (Trigger Mode)
+### Reference Detection
 
-Control how the bot detects Bible references:
+The bot responds only when the entire message is a scripture reference. No commands, mentions, or embedded detection.
 
-```yaml
-bot:
-  trigger_mode: direct_only # Options: direct_only, smart, anywhere
-  command_prefix: "!bible" # Prefix for commands (used in smart and anywhere modes)
-```
+**Should trigger:**
 
-#### Trigger Modes
+- `John 3:16` — single verse
+- `1 Cor 15:1-4` — verse range
+- `Psalm 23` — whole chapter
+- `Romans 8:28 ESV` — with translation
 
-| Mode          | Whole-message reference | Mention (`@Bot`) | Prefix (`!bible`) |     Embedded in text     |
-| ------------- | :---------------------: | :--------------: | :---------------: | :----------------------: |
-| `direct_only` |           Yes           |        No        |        No         |            No            |
-| `smart`       |           Yes           |       Yes        |        Yes        |            No            |
-| `anywhere`    |           Yes           |       Yes        |        Yes        | Yes (chapter:verse only) |
+**Should NOT trigger:**
 
-**`direct_only`** (default): The bot only responds when the entire message is a scripture reference. For example, sending "John 3:16" triggers a response, but "show me John 3:16" does not.
+- `!bible John 3:16` — prefix command
+- `@bot Psalm 23` — mention
+- `I like John 3:16` — embedded in text
 
-**`smart`**: In addition to whole-message references, the bot responds when:
+#### Deprecated Configuration
 
-- Mentioned: `@BotName Psalm 23`
-- Prefixed: `!bible John 3:16`
+The following config keys are still accepted for backward compatibility but are ignored:
 
-It does **not** scan ambient messages for embedded references, making it safe for active chat rooms.
+- `trigger_mode` — always behaves as `direct_only`
+- `command_prefix` — no longer used
+- `detect_references_anywhere` — no longer used
 
-**`anywhere`**: Includes all `smart` mode features, plus the bot detects references embedded in any message. Embedded matching requires a chapter:verse reference (e.g., "John 3:16") and will not match chapter-only references (e.g., "Psalm 23" embedded in text). This prevents false positives like "1 Thessalonians 4 16 ..." being matched as chapter 4.
-
-#### Command Prefix
-
-Configure the prefix for scripture commands (default: `!bible`):
-
-```yaml
-bot:
-  command_prefix: "!bible" # or "!verse", null to disable
-```
-
-- Used when `trigger_mode` is `smart` or `anywhere`
-- Set to `null` or empty string to disable prefix commands
-- Treated as a literal string, not a regex
-
-#### Migration from detect_references_anywhere
-
-The `detect_references_anywhere` option is deprecated. The bot will automatically map:
-
-| Old value | New trigger_mode |
-| --------- | ---------------- |
-| `false`   | `direct_only`    |
-| `true`    | `anywhere`       |
-
-A deprecation warning is logged when `detect_references_anywhere` is used. Update your config to use `trigger_mode` instead.
+If non-default values are set for these keys, a deprecation warning is logged at startup.
 
 ### Caching
 
