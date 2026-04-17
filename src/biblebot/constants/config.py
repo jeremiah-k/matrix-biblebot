@@ -3,6 +3,7 @@
 from biblebot.constants.system import _CONFIG_HOME
 
 __all__ = [
+    "CONFIG_COMMAND_PREFIX",
     "CONFIG_DETECT_REFERENCES_ANYWHERE",
     "CONFIG_DIR",
     "CONFIG_DIR_PERMISSIONS",
@@ -15,6 +16,7 @@ __all__ = [
     "CONFIG_MATRIX_SUBKEY_USER",
     "CONFIG_MATRIX_USER",
     "CONFIG_PRESERVE_POETRY_FORMATTING",
+    "CONFIG_TRIGGER_MODE",
     "CRED_KEY_ACCESS_TOKEN",
     "CRED_KEY_DEVICE_ID",
     "CRED_KEY_HOMESERVER",
@@ -71,6 +73,8 @@ CONFIG_PRESERVE_POETRY_FORMATTING = "preserve_poetry_formatting"
 
 # Message parsing options
 CONFIG_DETECT_REFERENCES_ANYWHERE = "detect_references_anywhere"
+CONFIG_TRIGGER_MODE = "trigger_mode"
+CONFIG_COMMAND_PREFIX = "command_prefix"
 
 # File permissions
 CONFIG_DIR_PERMISSIONS = 0o700

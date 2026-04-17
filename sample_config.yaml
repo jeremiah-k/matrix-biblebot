@@ -48,11 +48,19 @@ matrix:
 #   # space for the reference and suffix, so its text portion may be shorter.
 #   split_message_length: 0 # Disabled by default
 #
-#   # Detect scripture references anywhere in messages (default: false)
-#   # When false: only responds to messages that are ONLY scripture references ("John 3:16")
-#   # When true: detects references anywhere in messages ("Have you read John 3:16 ESV?")
-#   # Useful for integration with matrix bridges and relay bots
-#   detect_references_anywhere: false
+#   # How the bot detects scripture references (default: direct_only)
+#   # - direct_only: Only respond when the whole message is a reference ("John 3:16")
+#   # - smart: Also respond to @mentions and prefix commands (!bible John 3:16)
+#   # - anywhere: Detect references embedded in any message (useful for bridges)
+#   trigger_mode: direct_only
+#
+#   # Command prefix for scripture lookups (default: "!bible")
+#   # Set to null or empty string to disable prefix commands.
+#   # Only effective when trigger_mode is "smart".
+#   command_prefix: "!bible"
+#
+#   # DEPRECATED: Use trigger_mode instead.
+#   # detect_references_anywhere: false
 
 # API Keys for Bible translations (optional)
 # These can also be set via environment variables (e.g., ESV_API_KEY).

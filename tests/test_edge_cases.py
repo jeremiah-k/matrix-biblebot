@@ -10,6 +10,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 from biblebot.bot import BibleBot
+from biblebot.triggers import TriggerMode
 
 
 class TestEdgeCases:
@@ -107,6 +108,7 @@ class TestEdgeCases:
 
         # Enable partial matching to allow scripture references within long text
         bot.detect_references_anywhere = True
+        bot.trigger_mode = TriggerMode.ANYWHERE
 
         with patch(
             "biblebot.bot.get_bible_text", new_callable=AsyncMock

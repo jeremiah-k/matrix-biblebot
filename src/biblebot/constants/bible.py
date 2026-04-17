@@ -4,12 +4,18 @@ import re
 
 __all__ = [
     "BOOK_ABBREVIATIONS",
+    "DEFAULT_COMMAND_PREFIX",
     "DEFAULT_TRANSLATION",
+    "EMBEDDED_REFERENCE_PATTERNS",
     "PARTIAL_REFERENCE_PATTERNS",
     "REFERENCE_PATTERNS",
     "SUPPORTED_TRANSLATIONS",
+    "TRIGGER_MODE_ANYWHERE",
+    "TRIGGER_MODE_DIRECT_ONLY",
+    "TRIGGER_MODE_SMART",
     "TRANSLATION_ESV",
     "TRANSLATION_KJV",
+    "VALID_TRIGGER_MODES",
 ]
 
 # Bible translation constants
@@ -51,6 +57,25 @@ PARTIAL_REFERENCE_PATTERNS = [
     # Matches specific Bible book patterns to reduce false positives
     re.compile(
         rf"\b(?P<book>{_PARTIAL_BOOK_PATTERN_STR})\s+(?P<ref>\d+)\s*(?P<translation>{_TX})?\b",
+        re.IGNORECASE,
+    ),
+]
+
+DEFAULT_COMMAND_PREFIX = "!bible"
+
+TRIGGER_MODE_DIRECT_ONLY = "direct_only"
+TRIGGER_MODE_SMART = "smart"
+TRIGGER_MODE_ANYWHERE = "anywhere"
+
+VALID_TRIGGER_MODES = (
+    TRIGGER_MODE_DIRECT_ONLY,
+    TRIGGER_MODE_SMART,
+    TRIGGER_MODE_ANYWHERE,
+)
+
+EMBEDDED_REFERENCE_PATTERNS = [
+    re.compile(
+        rf"\b(?P<book>{_PARTIAL_BOOK_PATTERN_STR})\s+(?P<ref>\d+:\d+(?:\s*[-\u2011-\u2015]\s*\d+)?)\s*(?P<translation>{_TX})?\b",
         re.IGNORECASE,
     ),
 ]

@@ -102,6 +102,24 @@ The bot understands various Bible reference formats:
 
 The bot recognizes many abbreviations: `gen` (Genesis), `exo` (Exodus), `matt` (Matthew), `jn` (John), `1co` (1 Corinthians), `rev` (Revelation), and many more. See [full list](docs/CONFIGURATION.md#book-abbreviations).
 
+### Trigger Modes
+
+The bot supports three trigger modes that control how aggressively it responds to messages:
+
+| Mode                    | Behavior                                                                             |
+| ----------------------- | ------------------------------------------------------------------------------------ |
+| `direct_only` (default) | Only responds when the entire message is a scripture reference                       |
+| `smart`                 | Also responds to mentions (`@Bot Psalm 23`) and prefix commands (`!bible John 3:16`) |
+| `anywhere`              | Detects references embedded in any message (useful with Matrix bridges)              |
+
+Configure in `config.yaml`:
+
+```yaml
+bot:
+  trigger_mode: smart
+  command_prefix: "!bible"
+```
+
 ### Bot Response
 
 When you send a Bible reference, the bot will:
