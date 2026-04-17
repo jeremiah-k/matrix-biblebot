@@ -8,12 +8,11 @@ dynamic = ["version"]
 description = "A simple Matrix bot that fetches Bible verses"
 readme = "README.md"
 license = "MIT"
-license-files = ["LICENSE", "LICENSE.txt"]
-requires-python = ">=3.9"
+license-files = ["LICENSE*"]
+requires-python = ">=3.10"
 authors = [{ name = "Jeremiah K", email = "jeremiahk@gmx.com" }]
 classifiers = [
   "Programming Language :: Python :: 3",
-  "Programming Language :: Python :: 3.9",
   "Programming Language :: Python :: 3.10",
   "Programming Language :: Python :: 3.11",
   "Programming Language :: Python :: 3.12",
@@ -59,4 +58,4 @@ version = { attr = "biblebot.__version__" }
 where = ["src"]
 
 [tool.setuptools.package-data]
-"biblebot.tools" = ["*.yaml", "*.service", "*.env"]
+"biblebot.tools" = ["*.yaml", "*.service"]
