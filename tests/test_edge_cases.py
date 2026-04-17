@@ -107,8 +107,6 @@ class TestEdgeCases:
         bot.api_keys = {}
         mock_client.user_id = "@bot:matrix.org"
 
-        # Enable partial matching to allow scripture references within long text
-        bot.detect_references_anywhere = True
         bot.trigger_mode = TriggerMode.ANYWHERE
 
         with patch(

@@ -200,7 +200,7 @@ Control how the bot detects Bible references:
 ```yaml
 bot:
   trigger_mode: direct_only # Options: direct_only, smart, anywhere
-  command_prefix: "!bible" # Prefix for commands (only in smart mode)
+  command_prefix: "!bible" # Prefix for commands (used in smart and anywhere modes)
 ```
 
 #### Trigger Modes

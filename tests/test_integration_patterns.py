@@ -410,8 +410,8 @@ class TestIntegrationPatterns:
             assert mock_client.room_send.call_count == 2  # Reaction + message
 
     async def test_api_integration_chain_partial_mode(self, mock_config, mock_client):
-        """Test API integration with detect_references_anywhere enabled."""
-        config = {**mock_config, "bot": {"detect_references_anywhere": True}}
+        """Test API integration with anywhere trigger mode enabled."""
+        config = {**mock_config, "bot": {"trigger_mode": "anywhere"}}
         bot = BibleBot(config=config, client=mock_client)
 
         # Populate room ID set for testing

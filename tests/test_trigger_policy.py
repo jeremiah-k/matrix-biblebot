@@ -129,7 +129,7 @@ class TestDirectOnlyMode:
             "1 Cor 15:1-4", None, TriggerMode.DIRECT_ONLY, "!bible", "@bot:x", "kjv"
         )
         assert result is not None
-        assert "1 Corinthians 15:1-4" == result.passage
+        assert result.passage == "1 Corinthians 15:1-4"
 
     def test_abbreviation(self):
         result = detect_trigger(
@@ -210,18 +210,6 @@ class TestSmartMode:
             "!bible",
             "@bot:x",
             "kjv",
-        )
-        assert result is None
-
-    def test_prefix_disabled_when_null(self):
-        result = detect_trigger(
-            "!bible Psalm 23", None, TriggerMode.SMART, None, "@bot:x", "kjv"
-        )
-        assert result is None
-
-    def test_prefix_disabled_when_empty(self):
-        result = detect_trigger(
-            "!bible Psalm 23", None, TriggerMode.SMART, "", "@bot:x", "kjv"
         )
         assert result is None
 

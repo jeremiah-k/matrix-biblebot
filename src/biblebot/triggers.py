@@ -11,14 +11,13 @@ from dataclasses import dataclass
 from enum import Enum
 
 from biblebot.constants.bible import (
-    DEFAULT_COMMAND_PREFIX,
-    DEFAULT_TRANSLATION,
     EMBEDDED_REFERENCE_PATTERNS,
     REFERENCE_PATTERNS,
     TRIGGER_MODE_ANYWHERE,
     TRIGGER_MODE_DIRECT_ONLY,
     TRIGGER_MODE_SMART,
 )
+from biblebot.validation import validate_and_normalize_book_name
 
 
 class TriggerMode(str, Enum):
@@ -45,8 +44,7 @@ _MENTION_LINK_RE = re.compile(
     r'<a\s+href="https?://matrix\.to/#/(?P<mxid>@[^"]+)"[^>]*>.*?</a>'
 )
 
-
-from biblebot.validation import validate_and_normalize_book_name
+_MENTION_BOUNDARY_RE = re.compile(r"^[\s\W]|$")
 
 
 def _match_reference(
@@ -117,15 +115,13 @@ def _extract_mention_body(
     localpart = bot_mxid.lstrip("@").split(":")[0]
     candidates = [bot_mxid, f"@{localpart}"]
 
-    _BOUNDARY_RE = re.compile(r"^[\s\W]|$")
-
     for candidate in candidates:
         if not body.startswith(candidate):
             continue
         after = body[len(candidate) :]
         if not after:
             return None
-        if not _BOUNDARY_RE.match(after):
+        if not _MENTION_BOUNDARY_RE.match(after):
             continue
         remainder = after.strip()
         if remainder:

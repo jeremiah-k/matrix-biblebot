@@ -101,11 +101,10 @@ a TriggerMatch when a valid reference is found, or None otherwise.
 """
 
 import re
+from collections.abc import Sequence
 from dataclasses import dataclass
 from enum import Enum
-from typing import Sequence
 
-from biblebot.bot import validate_and_normalize_book_name
 from biblebot.constants.bible import (
     DEFAULT_COMMAND_PREFIX,
     DEFAULT_TRANSLATION,
@@ -115,6 +114,7 @@ from biblebot.constants.bible import (
     TRIGGER_MODE_DIRECT_ONLY,
     TRIGGER_MODE_SMART,
 )
+from biblebot.validation import validate_and_normalize_book_name
 
 
 class TriggerMode(str, Enum):
@@ -140,6 +140,8 @@ class TriggerMatch:
 _MENTION_LINK_RE = re.compile(
     r'<a\s+href="https?://matrix\.to/#/(?P<mxid>@[^"]+)"[^>]*>.*?</a>'
 )
+
+_MENTION_BOUNDARY_RE = re.compile(r"^[\s\W]|$")
 
 
 def _match_reference(
@@ -204,18 +206,28 @@ def _extract_mention_body(
             if m.group("mxid") == bot_mxid:
                 link_text = m.group(0)
                 plain = re.sub(r"<[^>]+>", "", link_text).strip()
-                stripped = body.replace(plain, "", 1).strip()
-                if stripped:
-                    return stripped
+                if plain and plain in body:
+                    idx = body.index(plain)
+                    remainder = (body[:idx] + body[idx + len(plain) :]).strip()
+                    if remainder:
+                        return remainder
                 return None
 
     localpart = bot_mxid.lstrip("@").split(":")[0]
-    for candidate in (bot_mxid, f"@{localpart}" if not bot_mxid.startswith("@") else localpart):
-        if body.startswith(candidate):
-            remainder = body[len(candidate):].strip()
-            if remainder:
-                return remainder
+    candidates = [bot_mxid, f"@{localpart}"]
+
+    for candidate in candidates:
+        if not body.startswith(candidate):
+            continue
+        after = body[len(candidate) :]
+        if not after:
             return None
+        if not _MENTION_BOUNDARY_RE.match(after):
+            continue
+        remainder = after.strip()
+        if remainder:
+            return remainder
+        return None
 
     return None
 
@@ -259,6 +271,17 @@ def detect_trigger(
         result = _try_direct_match(body, default_translation)
         if result:
             return TriggerMatch(passage=result[0], translation=result[1], source=TriggerSource.DIRECT)
+
+        if command_prefix:
+            result = _try_prefix_match(body, command_prefix, default_translation)
+            if result:
+                return TriggerMatch(passage=result[0], translation=result[1], source=TriggerSource.PREFIX)
+
+        mention_body = _extract_mention_body(body, formatted_body, bot_mxid)
+        if mention_body:
+            result = _try_direct_match(mention_body, default_translation)
+            if result:
+                return TriggerMatch(passage=result[0], translation=result[1], source=TriggerSource.MENTION)
 
         result = _try_embedded_match(body, default_translation)
         if result:
