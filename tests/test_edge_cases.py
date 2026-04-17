@@ -105,6 +105,7 @@ class TestEdgeCases:
         bot._room_id_set = set(mock_config["matrix_room_ids"])
         bot.start_time = 1234567880000  # Use milliseconds
         bot.api_keys = {}
+        mock_client.user_id = "@bot:matrix.org"
 
         # Enable partial matching to allow scripture references within long text
         bot.detect_references_anywhere = True
@@ -124,6 +125,7 @@ class TestEdgeCases:
             event.body = long_message
             event.sender = "@user:matrix.org"
             event.server_timestamp = 1234567890000  # Use milliseconds
+            event.formatted_body = None
 
             room = MagicMock()
             room.room_id = "!room:matrix.org"

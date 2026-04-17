@@ -135,7 +135,7 @@ class TestIntegrationPatterns:
 
             for i, room_id in enumerate(rooms):
                 event = MagicMock()
-                event.body = f"John 3:{i+16}"
+                event.body = f"John 3:{i + 16}"
                 event.sender = f"@user{i}:matrix.org"
                 event.server_timestamp = 1234567890000 + i * 1000  # Use milliseconds
 
@@ -174,7 +174,7 @@ class TestIntegrationPatterns:
 
             for i, user in enumerate(users):
                 event = MagicMock()
-                event.body = f"John 3:{i+16}"
+                event.body = f"John 3:{i + 16}"
                 event.sender = user
                 event.server_timestamp = 1234567890000  # Converted to milliseconds + i
 
@@ -232,7 +232,7 @@ class TestIntegrationPatterns:
             # Send multiple requests during failure period
             for i in range(5):
                 event = MagicMock()
-                event.body = f"John 3:{i+16}"
+                event.body = f"John 3:{i + 16}"
                 event.sender = f"@user{i}:matrix.org"
                 event.server_timestamp = 1234567890000 + i * 1000  # Use milliseconds
 
@@ -418,6 +418,7 @@ class TestIntegrationPatterns:
         bot._room_id_set = set(config["matrix_room_ids"])
         bot.start_time = 1234567880000
         bot.api_keys = {}
+        mock_client.user_id = "@bot:matrix.org"
 
         # Mock the Bible text retrieval function
         with patch(
@@ -434,6 +435,7 @@ class TestIntegrationPatterns:
             )
             event.sender = "@user:matrix.org"
             event.server_timestamp = 1234567890000
+            event.formatted_body = None
 
             room = MagicMock()
             room.room_id = "!room1:matrix.org"
@@ -589,7 +591,7 @@ class TestIntegrationPatterns:
             tasks = []
             for i in range(50):
                 event = MagicMock()
-                event.body = f"John 3:{i+1}"
+                event.body = f"John 3:{i + 1}"
                 event.sender = f"@user{i % 10}:matrix.org"  # 10 different users
                 event.server_timestamp = 1234567890000 + i * 1000  # Use milliseconds
 
