@@ -14,7 +14,7 @@ from biblebot.triggers import (
 def _make_bot(
     default_translation="kjv",
     bot_mxid="@bot:example.org",
-):
+) -> BibleBot:
     cfg = {
         "matrix_room_ids": ["!test:example.org"],
         "bot": {
@@ -29,7 +29,9 @@ def _make_bot(
     return bot
 
 
-def _make_event(body, sender="@user:example.org", formatted_body=None, timestamp=1000):
+def _make_event(
+    body, sender="@user:example.org", formatted_body=None, timestamp=1000
+) -> MagicMock:
     event = MagicMock()
     event.body = body
     event.sender = sender
@@ -39,7 +41,7 @@ def _make_event(body, sender="@user:example.org", formatted_body=None, timestamp
     return event
 
 
-def _make_room(room_id="!test:example.org"):
+def _make_room(room_id="!test:example.org") -> MagicMock:
     room = MagicMock()
     room.room_id = room_id
     room.encrypted = False

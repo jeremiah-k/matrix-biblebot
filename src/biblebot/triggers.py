@@ -27,11 +27,10 @@ class TriggerMatch:
 def _match_reference(
     text: str,
     patterns: Sequence[re.Pattern],
-    method: str,
     default_translation: str,
 ) -> tuple[str, str] | None:
     for pattern in patterns:
-        match = getattr(pattern, method)(text)
+        match = pattern.fullmatch(text)
         if not match:
             continue
         raw_book = match.group("book").strip()
@@ -52,9 +51,7 @@ def detect_trigger(body: str, default_translation: str) -> TriggerMatch | None:
     if not body or not body.strip():
         return None
 
-    result = _match_reference(
-        body, REFERENCE_PATTERNS, "fullmatch", default_translation
-    )
+    result = _match_reference(body, REFERENCE_PATTERNS, default_translation)
     if result:
         return TriggerMatch(
             passage=result[0], translation=result[1], source=TriggerSource.DIRECT

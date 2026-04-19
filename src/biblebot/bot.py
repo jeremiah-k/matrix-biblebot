@@ -967,8 +967,11 @@ class BibleBot:
 
             if match:
                 logger.info(
-                    f"Detected Bible reference ({match.source.value}): {match.passage} "
-                    f"({match.translation}) in room {room.room_id}"
+                    "Detected Bible reference (%s): %s (%s) in room %s",
+                    match.source.value,
+                    match.passage,
+                    match.translation,
+                    room.room_id,
                 )
                 await self.handle_scripture_command(
                     room.room_id, match.passage, match.translation, event

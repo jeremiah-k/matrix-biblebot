@@ -91,7 +91,7 @@ class TestEdgeCases:
             await bot.on_room_message(room, event)
             # Should not crash or send responses for empty messages
 
-    async def test_extremely_long_messages(self, mock_config, mock_client):
+    async def test_direct_scripture_reference(self, mock_config, mock_client):
         """
         Verify on_room_message handles a direct scripture reference correctly.
 
@@ -111,11 +111,10 @@ class TestEdgeCases:
         ) as mock_get_bible:
             mock_get_bible.return_value = ("Test verse", "John 3:16")
 
-            # Test with a direct scripture reference
-            long_message = f"John 3:16"
+            direct_message = "John 3:16"
 
             event = MagicMock()
-            event.body = long_message
+            event.body = direct_message
             event.sender = "@user:matrix.org"
             event.server_timestamp = 1234567890000  # Use milliseconds
             event.formatted_body = None
@@ -123,7 +122,7 @@ class TestEdgeCases:
             room = MagicMock()
             room.room_id = "!room:matrix.org"
 
-            # Should handle long messages without crashing
+            # Should handle a direct scripture reference without crashing
             await bot.on_room_message(room, event)
             assert mock_client.room_send.called
 
