@@ -43,16 +43,14 @@ def mock_sample_files(tmp_path):
     """
     sample_config = tmp_path / "sample_config.yaml"
 
-    sample_config.write_text(
-        """
+    sample_config.write_text("""
 matrix_homeserver: "https://matrix.org"
 matrix_user: "@bot:matrix.org"
 matrix_room_ids:
   - "!room:matrix.org"
 api_keys:
   esv: null
-"""
-    )
+""")
 
     return sample_config, None
 

@@ -13,12 +13,10 @@ def test_load_config_validation_missing_keys(tmp_path: Path):
 
 def test_load_config_ok_and_normalization(tmp_path: Path):
     cfg = tmp_path / "config.yaml"
-    cfg.write_text(
-        """
+    cfg.write_text("""
 matrix_room_ids:
   - "!abc:example.org"
-        """.strip()
-    )
+        """.strip())
     conf = botmod.load_config(str(cfg))
     assert conf is not None
     assert conf["matrix_room_ids"] == ["!abc:example.org"]

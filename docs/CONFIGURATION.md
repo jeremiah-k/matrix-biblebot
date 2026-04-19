@@ -44,7 +44,6 @@ bot:
   max_message_length: 2000
   preserve_poetry_formatting: false
   split_message_length: 0
-  detect_references_anywhere: false
 
 api_keys:
   esv: null
@@ -194,17 +193,20 @@ When enabled:
 
 ### Reference Detection
 
-Control how the bot detects Bible references:
+The bot responds only when the entire message is a scripture reference. No commands, mentions, or embedded detection.
 
-```yaml
-bot:
-  detect_references_anywhere: false
-```
+**Should trigger:**
 
-**Note:** Setting this to `true` may cause unintended triggers in bridged or high-traffic rooms.
+- `John 3:16` — single verse
+- `1 Cor 15:1-4` — verse range
+- `Psalm 23` — whole chapter
+- `Romans 8:28 ESV` — with translation
 
-- `false` (default): Only detects references that are the entire message
-- `true`: Detects references anywhere in messages (useful with Matrix bridges)
+**Should NOT trigger:**
+
+- `!bible John 3:16` — prefix command
+- `@bot Psalm 23` — mention
+- `I like John 3:16` — embedded in text
 
 ### Caching
 

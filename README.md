@@ -1,6 +1,6 @@
 # Matrix BibleBot
 
-A Matrix bot that fetches Bible verses and shares them in chat rooms. Simply mention a Bible reference like "John 3:16" and the bot will respond with the verse text.
+A Matrix bot that fetches Bible verses and shares them in chat rooms. Simply send a Bible reference like "John 3:16" as a message and the bot will respond with the verse text.
 
 ## What it does
 
@@ -47,7 +47,7 @@ The bot supports both KJV (default) and ESV translations, works in encrypted roo
 - 🔒 **End-to-End Encryption**: Works in encrypted Matrix rooms
 - ✂️ **Smart Message Splitting**: Long passages split intelligently
 - 🚀 **Production Ready**: Rate limiting, error handling, systemd service
-- 🎯 **Flexible References**: Supports abbreviations and various formats
+- 🎯 **Direct-Only Triggers**: Responds only when the entire message is a scripture reference
 
 ## Installation
 
@@ -101,6 +101,23 @@ The bot understands various Bible reference formats:
 ### Book Abbreviations
 
 The bot recognizes many abbreviations: `gen` (Genesis), `exo` (Exodus), `matt` (Matthew), `jn` (John), `1co` (1 Corinthians), `rev` (Revelation), and many more. See [full list](docs/CONFIGURATION.md#book-abbreviations).
+
+### Reference Detection
+
+The bot responds only when a message is **entirely** a scripture reference.
+
+| Should trigger   | Example           |
+| ---------------- | ----------------- |
+| Single verse     | `John 3:16`       |
+| Verse range      | `1 Cor 15:1-4`    |
+| Whole chapter    | `Psalm 23`        |
+| With translation | `Romans 8:28 ESV` |
+
+| Should NOT trigger | Example            |
+| ------------------ | ------------------ |
+| Prefix command     | `!bible John 3:16` |
+| Mention            | `@bot Psalm 23`    |
+| Embedded in text   | `I like John 3:16` |
 
 ### Bot Response
 

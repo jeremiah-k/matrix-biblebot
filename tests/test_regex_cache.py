@@ -2,6 +2,7 @@ import pytest
 
 from biblebot import bot as botmod
 from biblebot.cli import run_async
+from biblebot.validation import validate_and_normalize_book_name
 
 
 def test_reference_patterns_basic():
@@ -64,7 +65,7 @@ def test_validate_and_normalize_book_name_valid(abbreviation, full_name):
 
     The test passes the given abbreviation (which may include extra whitespace, punctuation, numeric prefixes like "1", and varying case) to validate_and_normalize_book_name and verifies the returned canonical book name equals full_name.
     """
-    assert botmod.validate_and_normalize_book_name(abbreviation) == full_name
+    assert validate_and_normalize_book_name(abbreviation) == full_name
 
 
 @pytest.mark.parametrize(
@@ -83,7 +84,7 @@ def test_validate_and_normalize_book_name_invalid(invalid_book):
 
     The test passes invalid book names to validate_and_normalize_book_name and verifies that None is returned.
     """
-    assert botmod.validate_and_normalize_book_name(invalid_book) is None
+    assert validate_and_normalize_book_name(invalid_book) is None
 
 
 def test_passage_cache(monkeypatch):

@@ -91,11 +91,11 @@ class TestEdgeCases:
             await bot.on_room_message(room, event)
             # Should not crash or send responses for empty messages
 
-    async def test_extremely_long_messages(self, mock_config, mock_client):
+    async def test_direct_scripture_reference(self, mock_config, mock_client):
         """
-        Verify on_room_message handles extremely long messages and detects embedded scripture references.
+        Verify on_room_message handles a direct scripture reference correctly.
 
-        Sets up a BibleBot with mocked config/client, enables partial-reference detection, and patches get_bible_text to return a valid verse. Sends an ~10k-character message that contains an embedded reference ("John 3:16") and asserts the bot processes it without crashing and attempts to send a reply (client.room_send is called).
+        Sets up a BibleBot with mocked config/client, patches get_bible_text to return a valid verse, and sends "John 3:16" as a direct reference. Asserts the bot processes it without crashing and attempts to send a reply (client.room_send is called).
         """
         bot = BibleBot(config=mock_config, client=mock_client)
 
@@ -104,29 +104,25 @@ class TestEdgeCases:
         bot._room_id_set = set(mock_config["matrix_room_ids"])
         bot.start_time = 1234567880000  # Use milliseconds
         bot.api_keys = {}
-
-        # Enable partial matching to allow scripture references within long text
-        bot.detect_references_anywhere = True
+        mock_client.user_id = "@bot:matrix.org"
 
         with patch(
             "biblebot.bot.get_bible_text", new_callable=AsyncMock
         ) as mock_get_bible:
             mock_get_bible.return_value = ("Test verse", "John 3:16")
 
-            # Test with extremely long message containing embedded scripture reference
-            # This tests both long message handling and partial reference detection
-            long_text = "A" * 10000  # Create extremely long text for stress testing
-            long_message = f"Here is some very long text: {long_text} and here's a scripture reference: John 3:16 ESV"
+            direct_message = "John 3:16"
 
             event = MagicMock()
-            event.body = long_message
+            event.body = direct_message
             event.sender = "@user:matrix.org"
             event.server_timestamp = 1234567890000  # Use milliseconds
+            event.formatted_body = None
 
             room = MagicMock()
             room.room_id = "!room:matrix.org"
 
-            # Should handle long messages without crashing
+            # Should handle a direct scripture reference without crashing
             await bot.on_room_message(room, event)
             assert mock_client.room_send.called
 

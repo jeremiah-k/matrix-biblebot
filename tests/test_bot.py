@@ -7,7 +7,8 @@ import pytest
 import yaml
 
 from biblebot import bot
-from biblebot.bot import BibleBot, validate_and_normalize_book_name
+from biblebot.bot import BibleBot
+from biblebot.validation import validate_and_normalize_book_name
 from tests.test_constants import (
     TEST_ACCESS_TOKEN,
     TEST_BIBLE_REFERENCE,
@@ -602,12 +603,10 @@ def temp_env_file(tmp_path):
         pathlib.Path: Path to the created `.env` file.
     """
     env_file = tmp_path / ".env"
-    env_file.write_text(
-        f"""
+    env_file.write_text(f"""
 MATRIX_ACCESS_TOKEN={TEST_ACCESS_TOKEN}
 ESV_API_KEY=test_esv_key
-"""
-    )
+""")
     return env_file
 
 
@@ -845,79 +844,14 @@ class TestAPIRequests:
             assert result is None
 
 
-class TestPartialReferenceMatching:
-    """Test partial reference matching functionality."""
-
-    @pytest.mark.parametrize(
-        "raw,expected",
-        [
-            ("true", True),
-            ("True", True),
-            ("yes", True),
-            ("on", True),
-            ("1", True),
-            (1, True),
-            ("false", False),
-            ("off", False),
-            ("0", False),
-            (0, False),
-            (None, False),
-        ],
-    )
-    def test_detect_anywhere_bool_coercion(self, raw, expected):
-        """Ensure truthy/falsey strings and ints map correctly."""
-        cfg = {
-            "matrix_room_ids": ["!test:example.org"],
-            "bot": {"detect_references_anywhere": raw},
-        }
-        bb = BibleBot(cfg)
-        assert bb.detect_references_anywhere is expected
+class TestReferenceMatching:
+    """Test reference matching functionality."""
 
     @pytest.mark.asyncio
-    @pytest.mark.parametrize("flag,should_call", [(False, False), (True, True)])
-    async def test_detect_references_anywhere_toggle(self, flag, should_call):
-        """Test that partial references are handled correctly based on detect_references_anywhere flag."""
+    async def test_exact_reference_works(self):
+        """Test that exact references work."""
         config = {
             "matrix_room_ids": ["!test:example.org"],
-            "bot": {"detect_references_anywhere": flag},
-        }
-        bible_bot = BibleBot(config)
-        bible_bot.start_time = 0
-        bible_bot._room_id_set = {"!test:example.org"}
-        bible_bot.client = MagicMock()
-        bible_bot.client.user_id = "@bot:example.org"
-
-        # Mock the scripture handling
-        with patch.object(
-            bible_bot, "handle_scripture_command", new_callable=AsyncMock
-        ) as mock_handle:
-            # Create a mock event with partial reference
-            event = MagicMock()
-            event.body = "Have you read John 3:16 ESV?"  # Reference embedded in text
-            event.sender = "@user:example.org"
-            event.server_timestamp = 1000
-
-            room = MagicMock()
-            room.room_id = "!test:example.org"
-
-            await bible_bot.on_room_message(room, event)
-
-            if should_call:
-                mock_handle.assert_called_once()
-                args = mock_handle.call_args[0]
-                assert args[0] == "!test:example.org"  # room_id
-                assert "John 3:16" in args[1]  # passage
-                assert args[2].lower() == "esv"  # translation (case-insensitive)
-            else:
-                mock_handle.assert_not_called()
-
-    @pytest.mark.asyncio
-    @pytest.mark.parametrize("detect_anywhere", [False, True])
-    async def test_exact_reference_works_in_both_modes(self, detect_anywhere):
-        """Test that exact references work in both modes."""
-        config = {
-            "matrix_room_ids": ["!test:example.org"],
-            "bot": {"detect_references_anywhere": detect_anywhere},
         }
         bible_bot = BibleBot(config)
         bible_bot.start_time = 0
@@ -934,13 +868,14 @@ class TestPartialReferenceMatching:
             event.body = "John 3:16"  # Exact reference
             event.sender = "@user:example.org"
             event.server_timestamp = 1000
+            event.formatted_body = None
 
             room = MagicMock()
             room.room_id = "!test:example.org"
 
             await bible_bot.on_room_message(room, event)
 
-            # Should trigger scripture handling in both modes
+            # Should trigger scripture handling
             mock_handle.assert_called_once()
             args = mock_handle.call_args[0]
             assert args[0] == "!test:example.org"  # room_id
@@ -965,7 +900,7 @@ class TestPartialReferenceMatching:
         """Test that common false positives are prevented with validation."""
         config = {
             "matrix_room_ids": ["!test:example.org"],
-            "bot": {"detect_references_anywhere": True},
+            "bot": {},
         }
         bible_bot = BibleBot(config)
         bible_bot.start_time = 0
@@ -981,6 +916,7 @@ class TestPartialReferenceMatching:
             event.body = false_positive_message
             event.sender = "@user:example.org"
             event.server_timestamp = 1000
+            event.formatted_body = None
 
             room = MagicMock()
             room.room_id = "!test:example.org"
@@ -991,11 +927,11 @@ class TestPartialReferenceMatching:
             mock_handle.assert_not_called()
 
     @pytest.mark.asyncio
-    async def test_partial_reference_with_kjv_translation(self):
-        """Test that partial references work with KJV translation specification."""
+    async def test_exact_reference_with_kjv_translation(self):
+        """Test that exact references work with KJV translation specification."""
         config = {
             "matrix_room_ids": ["!test:example.org"],
-            "bot": {"detect_references_anywhere": True},
+            "bot": {},
         }
         bible_bot = BibleBot(config)
         bible_bot.start_time = 0
@@ -1007,11 +943,12 @@ class TestPartialReferenceMatching:
         with patch.object(
             bible_bot, "handle_scripture_command", new_callable=AsyncMock
         ) as mock_handle:
-            # Create a mock event with partial reference and KJV translation
+            # Create a mock event with exact reference and KJV translation
             event = MagicMock()
-            event.body = "Have you read John 3:16 KJV?"  # Reference with KJV
+            event.body = "John 3:16 kjv"
             event.sender = "@user:example.org"
             event.server_timestamp = 1000
+            event.formatted_body = None
 
             room = MagicMock()
             room.room_id = "!test:example.org"

@@ -135,7 +135,7 @@ class TestIntegrationPatterns:
 
             for i, room_id in enumerate(rooms):
                 event = MagicMock()
-                event.body = f"John 3:{i+16}"
+                event.body = f"John 3:{i + 16}"
                 event.sender = f"@user{i}:matrix.org"
                 event.server_timestamp = 1234567890000 + i * 1000  # Use milliseconds
 
@@ -174,7 +174,7 @@ class TestIntegrationPatterns:
 
             for i, user in enumerate(users):
                 event = MagicMock()
-                event.body = f"John 3:{i+16}"
+                event.body = f"John 3:{i + 16}"
                 event.sender = user
                 event.server_timestamp = 1234567890000  # Converted to milliseconds + i
 
@@ -232,7 +232,7 @@ class TestIntegrationPatterns:
             # Send multiple requests during failure period
             for i in range(5):
                 event = MagicMock()
-                event.body = f"John 3:{i+16}"
+                event.body = f"John 3:{i + 16}"
                 event.sender = f"@user{i}:matrix.org"
                 event.server_timestamp = 1234567890000 + i * 1000  # Use milliseconds
 
@@ -409,31 +409,31 @@ class TestIntegrationPatterns:
             # Verify response was sent
             assert mock_client.room_send.call_count == 2  # Reaction + message
 
-    async def test_api_integration_chain_partial_mode(self, mock_config, mock_client):
-        """Test API integration with detect_references_anywhere enabled."""
-        config = {**mock_config, "bot": {"detect_references_anywhere": True}}
+    async def test_api_integration_chain_psalm_23(self, mock_config, mock_client):
+        """Test API integration with a whole-message chapter reference."""
+        config = mock_config
         bot = BibleBot(config=config, client=mock_client)
 
         # Populate room ID set for testing
         bot._room_id_set = set(config["matrix_room_ids"])
         bot.start_time = 1234567880000
         bot.api_keys = {}
+        mock_client.user_id = "@bot:matrix.org"
 
         # Mock the Bible text retrieval function
         with patch(
             "biblebot.bot.get_bible_text", new_callable=AsyncMock
         ) as mock_get_bible:
             mock_get_bible.return_value = (
-                "For God so loved the world that he gave his one and only Son",
-                "John 3:16",
+                "The Lord is my shepherd; I shall not want.",
+                "Psalms 23",
             )
 
             event = MagicMock()
-            event.body = (
-                "Show me John 3:16 please"  # Natural sentence with embedded reference
-            )
+            event.body = "Psalm 23"
             event.sender = "@user:matrix.org"
             event.server_timestamp = 1234567890000
+            event.formatted_body = None
 
             room = MagicMock()
             room.room_id = "!room1:matrix.org"
@@ -443,7 +443,7 @@ class TestIntegrationPatterns:
             # Verify Bible text was fetched with correct parameters
             mock_get_bible.assert_called_once()
             call_args = mock_get_bible.call_args
-            assert "John 3:16" in call_args[0][0]  # passage argument
+            assert "Psalms 23" in call_args[0][0]  # passage argument
 
             # Verify response was sent
             assert mock_client.room_send.call_count == 2  # Reaction + message
@@ -452,13 +452,12 @@ class TestIntegrationPatterns:
             assert reaction_call.args[1] == "m.reaction"
             msg = mock_client.room_send.call_args_list[1]
             assert msg.args[1] == "m.room.message"
-            assert "John 3:16" in msg.args[2]["body"]
+            assert "Psalms 23" in msg.args[2]["body"]
 
-    async def test_api_integration_chain_partial_mode_disabled(
+    async def test_api_integration_chain_embedded_reference_ignored(
         self, mock_config, mock_client
     ):
-        """Test that partial references are ignored when detect_references_anywhere is disabled (default)."""
-        # Use default config (detect_references_anywhere defaults to False)
+        """Test that natural-language messages containing references are ignored."""
         bot = BibleBot(config=mock_config, client=mock_client)
 
         # Populate room ID set for testing
@@ -487,13 +486,40 @@ class TestIntegrationPatterns:
 
             await bot.on_room_message(room, event)
 
-            # Verify Bible text was NOT fetched (partial references ignored in default mode)
+            # The bot responds only when a message is a scripture reference.
             mock_get_bible.assert_not_called()
             # Verify no response was sent
             assert mock_client.room_send.call_count == 0
             assert not any(
                 c.args[1] == "m.reaction" for c in mock_client.room_send.call_args_list
             )
+
+    async def test_api_integration_chain_long_sentence_with_reference_ignored(
+        self, mock_config, mock_client
+    ):
+        """Test that longer sentences containing references are ignored."""
+        bot = BibleBot(config=mock_config, client=mock_client)
+
+        # Populate room ID set for testing
+        bot._room_id_set = set(mock_config["matrix_room_ids"])
+        bot.start_time = 1234567880000
+        bot.api_keys = {}
+
+        with patch(
+            "biblebot.bot.get_bible_text", new_callable=AsyncMock
+        ) as mock_get_bible:
+            event = MagicMock()
+            event.body = "I was reading John 3:16 this morning and it encouraged me."
+            event.sender = "@user:matrix.org"
+            event.server_timestamp = 1234567890000
+
+            room = MagicMock()
+            room.room_id = "!room1:matrix.org"
+
+            await bot.on_room_message(room, event)
+
+            mock_get_bible.assert_not_called()
+            assert mock_client.room_send.call_count == 0
 
     async def test_configuration_integration(self, mock_config, mock_client):
         """
@@ -589,7 +615,7 @@ class TestIntegrationPatterns:
             tasks = []
             for i in range(50):
                 event = MagicMock()
-                event.body = f"John 3:{i+1}"
+                event.body = f"John 3:{i + 1}"
                 event.sender = f"@user{i % 10}:matrix.org"  # 10 different users
                 event.server_timestamp = 1234567890000 + i * 1000  # Use milliseconds
 

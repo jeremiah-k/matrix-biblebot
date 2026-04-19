@@ -3,7 +3,6 @@
 from biblebot.constants.system import _CONFIG_HOME
 
 __all__ = [
-    "CONFIG_DETECT_REFERENCES_ANYWHERE",
     "CONFIG_DIR",
     "CONFIG_DIR_PERMISSIONS",
     "CONFIG_KEY_MATRIX",
@@ -68,9 +67,6 @@ CONFIG_MATRIX_ROOM_IDS = "matrix_room_ids"  # DEPRECATED: use CONFIG_KEY_MATRIX 
 
 # Text formatting options
 CONFIG_PRESERVE_POETRY_FORMATTING = "preserve_poetry_formatting"
-
-# Message parsing options
-CONFIG_DETECT_REFERENCES_ANYWHERE = "detect_references_anywhere"
 
 # File permissions
 CONFIG_DIR_PERMISSIONS = 0o700

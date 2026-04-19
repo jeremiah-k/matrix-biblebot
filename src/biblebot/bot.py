@@ -25,7 +25,6 @@ import textwrap
 import time
 from collections import OrderedDict
 from time import monotonic
-from types import MappingProxyType
 from urllib.parse import quote
 
 import aiohttp
@@ -59,20 +58,15 @@ from biblebot.constants.api import (
 )
 from biblebot.constants.app import (
     BIBLEBOT_HTTP_USER_AGENT,
-    CHAR_DOT,
     FILE_ENCODING_UTF8,
     LOGGER_NAME,
 )
 from biblebot.constants.bible import (
-    BOOK_ABBREVIATIONS,
     DEFAULT_TRANSLATION,
-    PARTIAL_REFERENCE_PATTERNS,
-    REFERENCE_PATTERNS,
     TRANSLATION_ESV,
     TRANSLATION_KJV,
 )
 from biblebot.constants.config import (
-    CONFIG_DETECT_REFERENCES_ANYWHERE,
     CONFIG_KEY_MATRIX,
     CONFIG_MATRIX_E2EE,
     CONFIG_MATRIX_HOMESERVER,
@@ -110,6 +104,7 @@ from biblebot.constants.messages import (
     WARN_MATRIX_ACCESS_TOKEN_NOT_SET,
 )
 from biblebot.log_utils import configure_component_loggers, configure_logging
+from biblebot.triggers import detect_trigger
 from biblebot.update_check import (
     perform_startup_update_check,
     print_startup_banner,
@@ -117,15 +112,6 @@ from biblebot.update_check import (
 
 # Configure logging
 logger = logging.getLogger(LOGGER_NAME)
-
-
-# Create a comprehensive, frozen lookup in one go
-_ALL_NAMES_TO_CANONICAL = MappingProxyType(
-    {
-        **BOOK_ABBREVIATIONS,
-        **{name.lower(): name for name in set(BOOK_ABBREVIATIONS.values())},
-    }
-)
 
 
 # Custom exceptions for Bible text retrieval
@@ -141,34 +127,6 @@ class APIKeyMissing(Exception):
 # These can be patched in tests to control cache behavior
 _PASSAGE_CACHE_MAX = CACHE_MAX_SIZE
 _PASSAGE_CACHE_TTL_SECS = CACHE_TTL_SECONDS
-
-
-def _clean_book_name(book_str: str) -> str:
-    """
-    Normalize a Bible book name string for canonical lookup.
-
-    Lowercases the input, removes dot characters (CHAR_DOT), trims leading/trailing whitespace, and collapses consecutive internal whitespace into single spaces. The result is suitable for matching against the canonical book-name map.
-
-    Returns:
-        str: The cleaned, space-separated, lower-case book name.
-    """
-    # Ensure book_str is not None or empty before processing
-    if not book_str or not book_str.strip():
-        return ""
-    return " ".join(book_str.lower().replace(CHAR_DOT, "").strip().split())
-
-
-def validate_and_normalize_book_name(book_str: str) -> str | None:
-    """
-    Return the canonical full Bible book name for a user-supplied book string, or None if it is not recognized.
-
-    This accepts common variants (abbreviations, punctuation, mixed case, and extra whitespace) and normalizes them before lookup. If the input corresponds to a known book it returns the canonical full name (e.g., "1 timothy"), otherwise returns None.
-    """
-    # Ensure book_str is not None or empty before processing
-    if not book_str or not book_str.strip():
-        return None
-    clean_str = _clean_book_name(book_str)
-    return _ALL_NAMES_TO_CANONICAL.get(clean_str)
 
 
 # Load config
@@ -587,7 +545,6 @@ class BibleBot:
         - max_message_length (int): maximum length of outgoing messages. Non-positive values are reset to 2000. Default: 2000.
         - split_message_length (int): threshold for splitting long messages into multiple parts. Non-integer or negative values disable splitting (0). Values larger than max_message_length are capped to max_message_length. Default: 0 (disabled).
         - preserve_poetry_formatting (bool): preserve original line breaks for poetry-style passages. Default: False.
-        - CONFIG_DETECT_REFERENCES_ANYWHERE (str/bool-like): truthy values ("true", "yes", "1", "on") enable detecting references anywhere in a message; otherwise only full-match patterns are used. Default: False.
 
         Parameters:
             config (dict): Loaded configuration mapping used to populate bot settings.
@@ -612,14 +569,6 @@ class BibleBot:
         self.preserve_poetry_formatting = bot_settings.get(
             CONFIG_PRESERVE_POETRY_FORMATTING, False
         )
-        # Type-validate and coerce detect_references_anywhere
-        raw_detect_anywhere = bot_settings.get(CONFIG_DETECT_REFERENCES_ANYWHERE, False)
-        self.detect_references_anywhere = str(raw_detect_anywhere).lower().strip() in {
-            "true",
-            "yes",
-            "1",
-            "on",
-        }
         # Type-validate and coerce split_message_length
         raw_split_len = bot_settings.get("split_message_length", 0)
         try:
@@ -994,20 +943,13 @@ class BibleBot:
         - are not sent by the bot itself, and
         - were sent after the bot's recorded start time.
 
-        Scans the message text with REFERENCE_PATTERNS (exact match) or PARTIAL_REFERENCE_PATTERNS
-        (anywhere in message) based on detect_references_anywhere setting. When a match is found it:
-        - validates and normalizes the book name with validate_and_normalize_book_name(),
-        - constructs a passage string "<Book> <Reference>",
-        - determines the requested translation (falls back to DEFAULT_TRANSLATION),
-        - logs the detected reference, and
-        - invokes handle_scripture_command(room_id, passage, translation, event) to produce a reply.
+        The bot responds only when a message is a scripture reference.
+        Delegates to detect_trigger() from the triggers module for strict
+        whole-message scripture reference matching.
 
         Parameters are typed (MatrixRoom, RoomMessageText) and represent the source room and the received event.
         This handles both unencrypted messages and successfully decrypted messages from encrypted rooms.
         """
-        # Log message reception for debugging encrypted room issues
-        # This helps diagnose E2EE problems by showing whether the room is encrypted
-        # and whether the message was successfully decrypted (for encrypted rooms)
         logger.debug(
             f"Received RoomMessageText in room {room.room_id} from {event.sender}: "
             f"encrypted={room.encrypted}, decrypted={getattr(event, 'decrypted', False)}"
@@ -1018,49 +960,21 @@ class BibleBot:
             and event.sender != self.client.user_id
             and event.server_timestamp > self.start_time
         ):
-            # Choose patterns and matcher function based on configuration
-            if self.detect_references_anywhere:
-                search_patterns = PARTIAL_REFERENCE_PATTERNS
-                _match_name = "search"
-            else:
-                search_patterns = REFERENCE_PATTERNS
-                _match_name = "fullmatch"
+            match = detect_trigger(
+                body=event.body,
+                default_translation=self.default_translation,
+            )
 
-            passage = None
-            translation = self.default_translation  # Default translation
-            # Iterate through regex patterns to find scripture references
-            # Uses either fullmatch() for exact matching or search() for partial matching
-            # depending on the detect_references_anywhere configuration setting
-            for pattern in search_patterns:
-                match = getattr(pattern, _match_name)(event.body)
-                if match:
-                    raw_book_name = match.group("book").strip()
-
-                    # Ensure raw_book_name is not None or empty before processing
-                    if not raw_book_name:
-                        continue  # Skip if book name is empty
-
-                    # Validate and normalize the book name in one optimized step
-                    book_name = validate_and_normalize_book_name(raw_book_name)
-                    if not book_name:
-                        continue  # Skip if not a valid Bible book
-
-                    verse_reference = match.group("ref").strip()
-                    passage = f"{book_name} {verse_reference}"
-
-                    # Get optional translation group safely
-                    trans_group = match.groupdict().get("translation")
-                    translation = (
-                        trans_group.lower() if trans_group else self.default_translation
-                    )
-                    logger.info(
-                        f"Detected Bible reference: {passage} ({translation}) in room {room.room_id}"
-                    )
-                    break
-
-            if passage:
+            if match:
+                logger.info(
+                    "Detected Bible reference (%s): %s (%s) in room %s",
+                    match.source.value,
+                    match.passage,
+                    match.translation,
+                    room.room_id,
+                )
                 await self.handle_scripture_command(
-                    room.room_id, passage, translation, event
+                    room.room_id, match.passage, match.translation, event
                 )
 
     def _format_text_for_display(self, text: str) -> tuple[str, str]:
