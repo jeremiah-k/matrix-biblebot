@@ -29,7 +29,11 @@ __all__ = [
 
 def _legacy_config_dir() -> Path:
     """Return the legacy per-user config directory."""
-    config_home = Path(os.environ.get("XDG_CONFIG_HOME") or Path.home() / ".config")
+    xdg_config_home = os.environ.get("XDG_CONFIG_HOME")
+    if xdg_config_home:
+        config_home = Path(xdg_config_home).expanduser()
+    else:
+        config_home = Path.home() / ".config"
     return config_home / APP_CONFIG_DIRNAME
 
 

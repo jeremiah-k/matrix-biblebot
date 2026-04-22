@@ -24,8 +24,10 @@ Guide for contributing to Matrix BibleBot development.
 
    ```bash
    pip install -e '.[e2e,test]'
-   # Windows PowerShell (no native E2EE): pip install -e ".[test]"
+   # Windows PowerShell (E2EE deps may fail): pip install -e ".[test]"
    ```
+
+   On native Windows, use the non-E2EE install; use WSL2 or Docker when you need E2EE support.
 
 4. **Run tests:**
    ```bash

@@ -4,10 +4,11 @@ services:
     container_name: matrix-biblebot
     restart: unless-stopped
     stop_grace_period: 15s
-    # If you run plain `docker compose`, set UID/GID via `.env` or exported env vars.
+    # If you run plain `docker compose`, set UID/GID via `.env` or inline env vars.
     user: "${UID:-1000}:${GID:-1000}"
     environment:
       - BIBLEBOT_HOME=/data
       - TZ=${TZ:-UTC}
     volumes:
+      # Ensure this host directory exists and is writable by the configured UID/GID.
       - ${BIBLEBOT_HOST_HOME:-$HOME/.config/matrix-biblebot}:/data

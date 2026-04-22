@@ -24,6 +24,18 @@ def test_default_paths_use_legacy_config_home():
             )
 
 
+def test_xdg_config_home_expands_user():
+    """XDG_CONFIG_HOME should support ~/... via expanduser()."""
+    with patch.dict(
+        "os.environ",
+        {"XDG_CONFIG_HOME": "~/.config-alt", "HOME": "/home/testuser"},
+        clear=True,
+    ):
+        assert paths.get_home_dir() == Path(
+            "/home/testuser/.config-alt/matrix-biblebot"
+        )
+
+
 def test_biblebot_home_overrides_all_runtime_paths(tmp_path):
     """BIBLEBOT_HOME should unify config/credentials/store paths."""
     with patch.dict("os.environ", {paths.ENV_BIBLEBOT_HOME: str(tmp_path)}, clear=True):
