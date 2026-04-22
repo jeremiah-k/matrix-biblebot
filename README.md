@@ -69,7 +69,7 @@ pipx install 'matrix-biblebot[e2e]'
 pip install matrix-biblebot
 # or with E2EE support
 pip install 'matrix-biblebot[e2e]'
-# Windows PowerShell: pipx install "matrix-biblebot[e2e]"
+# Windows PowerShell: pip install "matrix-biblebot[e2e]"
 ```
 
 ### Docker
@@ -223,7 +223,7 @@ make setup
 make edit
 
 # Authenticate with Matrix (one-time)
-docker compose run --rm biblebot biblebot auth login
+env UID="$(id -u)" GID="$(id -g)" docker compose run --rm biblebot biblebot auth login
 
 # Start the bot
 make run

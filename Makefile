@@ -2,6 +2,7 @@
 
 DOCKER_COMPOSE := $(shell docker compose version > /dev/null 2>&1 && echo "docker compose" || echo "docker-compose")
 IMAGE_NAME := ghcr.io/jeremiah-k/matrix-biblebot
+LOCAL_IMAGE_NAME := matrix-biblebot:local
 CONTAINER_NAME := matrix-biblebot
 
 BIBLEBOT_HOST_HOME ?= $(HOME)/.config/matrix-biblebot
@@ -13,7 +14,7 @@ SAMPLE_COMPOSE_FILE := sample-docker-compose.yaml
 SAMPLE_COMPOSE_SOURCE_FILE := sample-docker-compose.source.yaml
 
 COMPOSE_ARGS := -f $(COMPOSE_FILE) $(if $(wildcard $(COMPOSE_SOURCE_FILE)),-f $(COMPOSE_SOURCE_FILE))
-DOCKER_COMPOSE_RUN := BIBLEBOT_HOST_HOME=$(BIBLEBOT_HOST_HOME) UID=$(shell id -u) GID=$(shell id -g) $(DOCKER_COMPOSE) $(COMPOSE_ARGS)
+DOCKER_COMPOSE_RUN := env BIBLEBOT_HOST_HOME="$(BIBLEBOT_HOST_HOME)" UID="$(shell id -u)" GID="$(shell id -g)" $(DOCKER_COMPOSE) $(COMPOSE_ARGS)
 
 .PHONY: help build build-nocache rebuild run stop logs shell clean config edit setup setup-prebuilt use-prebuilt use-source update-compose
 
@@ -24,7 +25,7 @@ help:
 	@echo ""
 	@echo "  make setup          Initialize runtime dir + prebuilt compose setup"
 	@echo "  make setup-prebuilt Same as setup (explicit prebuilt mode)"
-	@echo "  make build          Build Docker image (source mode only)"
+	@echo "  make build          Build Docker image"
 	@echo "  make build-nocache  Build Docker image without cache"
 	@echo "  make rebuild        Stop, rebuild (no cache), and restart"
 	@echo "  make run            Start container in detached mode"
@@ -84,7 +85,7 @@ setup: setup-prebuilt
 
 setup-prebuilt: config use-prebuilt
 	@echo "Prebuilt mode ready. Set room IDs in $(RUNTIME_CONFIG_FILE), then run:"
-	@echo "  docker compose run --rm biblebot biblebot auth login"
+	@echo "  env UID=\"$(shell id -u)\" GID=\"$(shell id -g)\" docker compose run --rm biblebot biblebot auth login"
 	@echo "  make run"
 
 use-prebuilt:
@@ -113,20 +114,22 @@ update-compose:
 	@echo "Compose files refreshed from sample templates."
 
 build:
-	@if [ ! -f "$(COMPOSE_FILE)" ]; then \
-		echo "Missing $(COMPOSE_FILE). Run 'make setup' first."; \
-		exit 1; \
+	@if [ -f "$(COMPOSE_FILE)" ]; then \
+		echo "Building $(IMAGE_NAME) with compose..."; \
+		$(DOCKER_COMPOSE_RUN) build; \
+	else \
+		echo "$(COMPOSE_FILE) not found; building Dockerfile directly as $(LOCAL_IMAGE_NAME)..."; \
+		docker build -t "$(LOCAL_IMAGE_NAME)" .; \
 	fi
-	@echo "Building $(IMAGE_NAME)..."
-	@$(DOCKER_COMPOSE_RUN) build
 
 build-nocache:
-	@if [ ! -f "$(COMPOSE_FILE)" ]; then \
-		echo "Missing $(COMPOSE_FILE). Run 'make setup' first."; \
-		exit 1; \
+	@if [ -f "$(COMPOSE_FILE)" ]; then \
+		echo "Building $(IMAGE_NAME) without cache using compose..."; \
+		$(DOCKER_COMPOSE_RUN) build --no-cache; \
+	else \
+		echo "$(COMPOSE_FILE) not found; building Dockerfile directly (no cache) as $(LOCAL_IMAGE_NAME)..."; \
+		docker build --no-cache -t "$(LOCAL_IMAGE_NAME)" .; \
 	fi
-	@echo "Building $(IMAGE_NAME) without cache..."
-	@$(DOCKER_COMPOSE_RUN) build --no-cache
 
 rebuild: stop build-nocache run
 

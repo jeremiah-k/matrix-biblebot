@@ -11,9 +11,8 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
-from biblebot.constants.app import APP_NAME
-
 ENV_BIBLEBOT_HOME = "BIBLEBOT_HOME"
+APP_CONFIG_DIRNAME = "matrix-biblebot"
 _DEFAULT_CONFIG_FILENAME = "config.yaml"
 _CREDENTIALS_FILENAME = "credentials.json"
 _E2EE_STORE_DIRNAME = "e2ee-store"
@@ -31,7 +30,7 @@ __all__ = [
 def _legacy_config_dir() -> Path:
     """Return the legacy per-user config directory."""
     config_home = Path(os.environ.get("XDG_CONFIG_HOME") or Path.home() / ".config")
-    return config_home / APP_NAME
+    return config_home / APP_CONFIG_DIRNAME
 
 
 def get_home_dir() -> Path:

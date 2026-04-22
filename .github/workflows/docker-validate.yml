@@ -43,7 +43,7 @@ jobs:
           BUILD_DATE=$(date -u +'%Y-%m-%dT%H:%M:%SZ')
           echo "BUILD_DATE=$BUILD_DATE" >> "$GITHUB_ENV"
 
-          GIT_SHA=$(git rev-parse --short HEAD)
+          GIT_SHA=$(git rev-parse HEAD)
           echo "GIT_SHA=$GIT_SHA" >> "$GITHUB_ENV"
 
       - name: Set up Docker Buildx
@@ -52,7 +52,20 @@ jobs:
           driver-opts: |
             network=host
 
-      - name: Build Docker image
+      - name: Build Docker image (multi-platform validation)
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          platforms: linux/amd64,linux/arm64
+          push: false
+          build-args: |
+            BUILD_DATE=${{ env.BUILD_DATE }}
+            VCS_REF=${{ env.GIT_SHA }}
+            VERSION=${{ env.VERSION }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Build Docker image (amd64 for smoke tests)
         uses: docker/build-push-action@v6
         with:
           context: .
