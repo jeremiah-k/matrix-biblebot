@@ -252,6 +252,14 @@ make use-prebuilt
 make use-source
 ```
 
+If you run `docker compose` directly (without `make`), set `UID` and `GID` first so mounted files are owned by your host user. You can export them in your shell, or define them in a local `.env` file alongside `BIBLEBOT_HOST_HOME`.
+
+```bash
+export UID="$(id -u)"
+export GID="$(id -g)"
+docker compose up -d
+```
+
 By default, the sample compose file mounts `${BIBLEBOT_HOST_HOME:-$HOME/.config/matrix-biblebot}` on the host to `/data` in the container, so config and credentials persist across restarts. Prebuilt images are published at `ghcr.io/jeremiah-k/matrix-biblebot`.
 
 ## CLI Commands

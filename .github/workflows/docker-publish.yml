@@ -25,6 +25,8 @@ jobs:
       - name: Extract version and build info
         id: get_version
         shell: bash
+        env:
+          REF_NAME: ${{ github.ref_name }}
         run: |
           set -euo pipefail
 
@@ -40,18 +42,27 @@ jobs:
           GIT_SHA=$(git rev-parse --short HEAD)
           echo "git_sha=$GIT_SHA" >> "$GITHUB_OUTPUT"
 
-          if [ "${{ github.event_name }}" == "release" ]; then
+          if [ "${GITHUB_EVENT_NAME}" = "release" ]; then
             echo "docker_tag=$VERSION" >> "$GITHUB_OUTPUT"
             echo "should_tag_latest=true" >> "$GITHUB_OUTPUT"
           else
-            BRANCH_NAME=$(echo "${{ github.ref_name }}" \
+            BRANCH_NAME=$(printf '%s' "$REF_NAME" \
               | tr '[:upper:]' '[:lower:]' \
               | sed 's/[^a-z0-9._-]/-/g' \
               | sed 's/--*/-/g' \
               | sed 's/^-//' \
-              | sed 's/-$$//')
+              | sed 's/-$//')
             if [ -z "$BRANCH_NAME" ]; then
               BRANCH_NAME="manual"
+            fi
+            MAX_BRANCH_LEN=$((128 - ${#VERSION} - 5 - 1 - ${#GIT_SHA}))
+            if [ "$MAX_BRANCH_LEN" -lt 1 ]; then
+              MAX_BRANCH_LEN=1
+            fi
+            BRANCH_NAME=$(printf '%s' "$BRANCH_NAME" | cut -c1-"$MAX_BRANCH_LEN")
+            BRANCH_NAME=$(printf '%s' "$BRANCH_NAME" | sed 's/-$//')
+            if [ -z "$BRANCH_NAME" ]; then
+              BRANCH_NAME="m"
             fi
             DEV_TAG="${VERSION}-dev-${BRANCH_NAME}-${GIT_SHA}"
             echo "docker_tag=$DEV_TAG" >> "$GITHUB_OUTPUT"

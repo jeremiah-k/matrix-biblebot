@@ -7,14 +7,15 @@ CONTAINER_NAME := matrix-biblebot
 
 BIBLEBOT_HOST_HOME ?= $(HOME)/.config/matrix-biblebot
 RUNTIME_CONFIG_FILE := $(BIBLEBOT_HOST_HOME)/config.yaml
+SAMPLE_CONFIG_FILE := src/biblebot/tools/sample_config.yaml
 
 COMPOSE_FILE := docker-compose.yaml
 COMPOSE_SOURCE_FILE := docker-compose.source.yaml
 SAMPLE_COMPOSE_FILE := sample-docker-compose.yaml
 SAMPLE_COMPOSE_SOURCE_FILE := sample-docker-compose.source.yaml
 
-COMPOSE_ARGS := -f $(COMPOSE_FILE) $(if $(wildcard $(COMPOSE_SOURCE_FILE)),-f $(COMPOSE_SOURCE_FILE))
-DOCKER_COMPOSE_RUN := env BIBLEBOT_HOST_HOME="$(BIBLEBOT_HOST_HOME)" UID="$(shell id -u)" GID="$(shell id -g)" $(DOCKER_COMPOSE) $(COMPOSE_ARGS)
+COMPOSE_ARGS = -f $(COMPOSE_FILE) $(if $(wildcard $(COMPOSE_SOURCE_FILE)),-f $(COMPOSE_SOURCE_FILE))
+DOCKER_COMPOSE_RUN = env BIBLEBOT_HOST_HOME="$(BIBLEBOT_HOST_HOME)" UID="$(shell id -u)" GID="$(shell id -g)" $(DOCKER_COMPOSE) $(COMPOSE_ARGS)
 
 .PHONY: help build build-nocache rebuild run stop logs shell clean config edit setup setup-prebuilt use-prebuilt use-source update-compose
 
@@ -46,7 +47,7 @@ config:
 	@mkdir -p "$(BIBLEBOT_HOST_HOME)"
 	@if [ ! -f "$(RUNTIME_CONFIG_FILE)" ]; then \
 		echo "Copying sample config to $(RUNTIME_CONFIG_FILE)"; \
-		cp sample_config.yaml "$(RUNTIME_CONFIG_FILE)"; \
+		cp "$(SAMPLE_CONFIG_FILE)" "$(RUNTIME_CONFIG_FILE)"; \
 	else \
 		echo "Config already exists at $(RUNTIME_CONFIG_FILE)"; \
 	fi
@@ -84,8 +85,9 @@ edit:
 setup: setup-prebuilt
 
 setup-prebuilt: config use-prebuilt
-	@echo "Prebuilt mode ready. Set room IDs in $(RUNTIME_CONFIG_FILE), then run:"
-	@echo "  env UID=\"$(shell id -u)\" GID=\"$(shell id -g)\" docker compose run --rm biblebot biblebot auth login"
+	@echo "Prebuilt mode ready. Runtime host path: $(BIBLEBOT_HOST_HOME)"
+	@echo "Set room IDs in $(RUNTIME_CONFIG_FILE), then run:"
+	@echo "  $(DOCKER_COMPOSE_RUN) run --rm biblebot biblebot auth login"
 	@echo "  make run"
 
 use-prebuilt:

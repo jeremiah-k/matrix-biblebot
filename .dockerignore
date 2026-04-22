@@ -25,7 +25,7 @@ Dockerfile
 docker-compose.yaml
 .dockerignore
 config.yaml
-sample_config.yaml
+/sample_config.yaml
 data
 .trunk
 .github
