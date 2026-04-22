@@ -26,7 +26,7 @@ WORKDIR /app
 
 COPY --from=builder /install /usr/local
 
-RUN mkdir -p /app /data && chown -R biblebot:biblebot /app /data
+RUN mkdir -p /data && chown -R biblebot:biblebot /app /data
 
 ARG BUILD_DATE
 ARG VCS_REF
