@@ -68,8 +68,24 @@ pipx install 'matrix-biblebot[e2e]'
 pip install matrix-biblebot
 # or with E2EE support
 pip install 'matrix-biblebot[e2e]'
-# Windows PowerShell: pip install "matrix-biblebot[e2e]"
+# Windows PowerShell: pipx install "matrix-biblebot[e2e]"
 ```
+
+### Docker
+
+A Docker image is available on GHCR with multi-platform support (amd64/arm64).
+
+```bash
+# Pull the image
+docker pull ghcr.io/jeremiah-k/matrix-biblebot:latest
+
+# Or build from source
+git clone https://github.com/jeremiah-k/matrix-biblebot.git
+cd matrix-biblebot
+make build
+```
+
+See [Running with Docker](#running-with-docker) for full setup instructions.
 
 ### From Source
 
@@ -183,6 +199,36 @@ systemctl --user start biblebot.service     # Start
 systemctl --user stop biblebot.service      # Stop
 systemctl --user status biblebot.service    # Check status
 ```
+
+### Running with Docker
+
+For containerized deployment, use the provided Docker setup:
+
+```bash
+# Set up config and docker-compose.yaml
+make config
+
+# Edit the config to add your room IDs
+make edit
+
+# Authenticate with Matrix (one-time)
+docker compose run --rm biblebot biblebot auth login
+
+# Start the bot
+make run
+```
+
+Common commands:
+
+```bash
+make build          # Build the image
+make logs           # Follow logs
+make shell          # Open a shell in the container
+make stop           # Stop the container
+make clean          # Remove containers and networks
+```
+
+The sample `docker-compose.yaml` mounts `~/.config/matrix-biblebot` from the host, so config and credentials persist across restarts. Prebuilt images are available at `ghcr.io/jeremiah-k/matrix-biblebot`.
 
 ## CLI Commands
 

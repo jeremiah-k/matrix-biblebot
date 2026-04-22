@@ -1,0 +1,13 @@
+services:
+  biblebot:
+    build: .
+    image: ghcr.io/jeremiah-k/matrix-biblebot:latest
+    container_name: matrix-biblebot
+    restart: unless-stopped
+    stop_grace_period: 15s
+    user: "${UID:-1000}:${GID:-1000}"
+    environment:
+      - BIBLEBOT_HOME=/data
+      - TZ=UTC
+    volumes:
+      - ${BIBLEBOT_HOST_HOME:-$HOME}/.config/matrix-biblebot:/data
