@@ -8,6 +8,9 @@ on:
       - .github/workflows/docker-validate.yml
       - .github/workflows/docker-publish.yml
       - Dockerfile
+      - Makefile
+      - sample-docker-compose.yaml
+      - sample-docker-compose.source.yaml
       - src/**
       - pyproject.toml
 
@@ -66,3 +69,12 @@ jobs:
 
       - name: Smoke test — verify image runs
         run: docker run --rm matrix-biblebot:validate biblebot --version
+
+      - name: Smoke test — verify BIBLEBOT_HOME path override
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker run --rm \
+            -e BIBLEBOT_HOME=/tmp/biblebot-home \
+            matrix-biblebot:validate \
+            /bin/sh -c 'biblebot config generate >/dev/null && test -f /tmp/biblebot-home/config.yaml'

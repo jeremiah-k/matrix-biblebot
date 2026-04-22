@@ -16,7 +16,7 @@ matrix:
   # Manual access tokens do NOT support E2EE
   # e2ee:
   #   enabled: false # Set to true to enable E2EE support
-  #   store_path: null # Optional: custom path for E2EE store (defaults to ~/.config/matrix-biblebot/e2ee-store)
+  #   store_path: null # Optional: custom path for E2EE store (defaults to $BIBLEBOT_HOME/e2ee-store or ~/.config/matrix-biblebot/e2ee-store)
 # Bot Behavior Settings (optional - defaults shown)
 # bot:
 #   default_translation: kjv # Default Bible translation (esv, kjv)

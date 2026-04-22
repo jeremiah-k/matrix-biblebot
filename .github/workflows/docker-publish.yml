@@ -42,12 +42,19 @@ jobs:
 
           if [ "${{ github.event_name }}" == "release" ]; then
             echo "docker_tag=$VERSION" >> "$GITHUB_OUTPUT"
-            echo "is_release=true" >> "$GITHUB_OUTPUT"
             echo "should_tag_latest=true" >> "$GITHUB_OUTPUT"
           else
-            BRANCH_NAME=$(echo "${{ github.ref_name }}" | sed 's/[^a-zA-Z0-9._-]/-/g')
-            echo "docker_tag=dev" >> "$GITHUB_OUTPUT"
-            echo "is_release=false" >> "$GITHUB_OUTPUT"
+            BRANCH_NAME=$(echo "${{ github.ref_name }}" \
+              | tr '[:upper:]' '[:lower:]' \
+              | sed 's/[^a-z0-9._-]/-/g' \
+              | sed 's/--*/-/g' \
+              | sed 's/^-//' \
+              | sed 's/-$$//')
+            if [ -z "$BRANCH_NAME" ]; then
+              BRANCH_NAME="manual"
+            fi
+            DEV_TAG="${VERSION}-dev-${BRANCH_NAME}-${GIT_SHA}"
+            echo "docker_tag=$DEV_TAG" >> "$GITHUB_OUTPUT"
             echo "should_tag_latest=false" >> "$GITHUB_OUTPUT"
           fi
 

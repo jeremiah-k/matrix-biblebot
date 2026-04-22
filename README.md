@@ -31,7 +31,8 @@ The bot supports both KJV (default) and ESV translations, works in encrypted roo
    biblebot config generate
    ```
 
-   Then edit `~/.config/matrix-biblebot/config.yaml` to add your room IDs.
+   Then edit `~/.config/matrix-biblebot/config.yaml` to add your room IDs
+   (or `$BIBLEBOT_HOME/config.yaml` if `BIBLEBOT_HOME` is set).
 
 4. **Run the bot**
 
@@ -82,6 +83,7 @@ docker pull ghcr.io/jeremiah-k/matrix-biblebot:latest
 # Or build from source
 git clone https://github.com/jeremiah-k/matrix-biblebot.git
 cd matrix-biblebot
+make use-source
 make build
 ```
 
@@ -158,7 +160,8 @@ When you send a Bible reference, the bot will:
    biblebot config generate
    ```
 
-3. **Edit the config file** at `~/.config/matrix-biblebot/config.yaml`:
+3. **Edit the config file** at `~/.config/matrix-biblebot/config.yaml`
+   (or `$BIBLEBOT_HOME/config.yaml` if `BIBLEBOT_HOME` is set):
 
    ```yaml
    matrix:
@@ -202,11 +205,19 @@ systemctl --user status biblebot.service    # Check status
 
 ### Running with Docker
 
-For containerized deployment, use the provided Docker setup:
+Docker runtime uses `BIBLEBOT_HOME=/data` in the container, so runtime files live at:
+
+- `/data/config.yaml`
+- `/data/credentials.json`
+- `/data/e2ee-store`
+
+Use `BIBLEBOT_HOST_HOME` on the host side to choose where `/data` is mounted.
+
+#### Prebuilt image flow (default)
 
 ```bash
-# Set up config and docker-compose.yaml
-make config
+# Initialize runtime directory + prebuilt compose mode
+make setup
 
 # Edit the config to add your room IDs
 make edit
@@ -218,17 +229,28 @@ docker compose run --rm biblebot biblebot auth login
 make run
 ```
 
-Common commands:
+#### Build from source instead of prebuilt image
 
 ```bash
-make build          # Build the image
-make logs           # Follow logs
-make shell          # Open a shell in the container
-make stop           # Stop the container
-make clean          # Remove containers and networks
+make use-source     # Enable docker-compose.source.yaml override
+make build          # Build local image
+make run
 ```
 
-The sample `docker-compose.yaml` mounts `~/.config/matrix-biblebot` from the host, so config and credentials persist across restarts. Prebuilt images are available at `ghcr.io/jeremiah-k/matrix-biblebot`.
+Common Docker targets:
+
+```bash
+make build
+make build-nocache
+make logs
+make shell
+make stop
+make clean
+make use-prebuilt
+make use-source
+```
+
+By default, the sample compose file mounts `${BIBLEBOT_HOST_HOME:-$HOME/.config/matrix-biblebot}` on the host to `/data` in the container, so config and credentials persist across restarts. Prebuilt images are published at `ghcr.io/jeremiah-k/matrix-biblebot`.
 
 ## CLI Commands
 

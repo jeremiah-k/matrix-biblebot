@@ -1,6 +1,11 @@
 """Constants related to configuration files and keys."""
 
-from biblebot.constants.system import _CONFIG_HOME
+from biblebot.paths import (
+    ENV_BIBLEBOT_HOME,
+    get_config_dir,
+    get_credentials_path,
+    get_e2ee_store_dir,
+)
 
 __all__ = [
     "CONFIG_DIR",
@@ -29,6 +34,7 @@ __all__ = [
     "E2EE_KEY_READY",
     "E2EE_KEY_STORE_EXISTS",
     "E2EE_STORE_DIR",
+    "ENV_BIBLEBOT_HOME",
     "ENV_ESV_API_KEY",
     "ENV_MATRIX_ACCESS_TOKEN",
     "ENV_USER",
@@ -37,9 +43,9 @@ __all__ = [
 ]
 
 # Configuration paths
-CONFIG_DIR = _CONFIG_HOME / "matrix-biblebot"
-CREDENTIALS_FILE = CONFIG_DIR / "credentials.json"
-E2EE_STORE_DIR = CONFIG_DIR / "e2ee-store"
+CONFIG_DIR = get_config_dir()
+CREDENTIALS_FILE = get_credentials_path()
+E2EE_STORE_DIR = get_e2ee_store_dir()
 DEFAULT_CONFIG_FILENAME = "config.yaml"
 DEFAULT_ENV_FILENAME = (
     ".env"  # DEPRECATED: no longer generated; kept for env-loading fallback only

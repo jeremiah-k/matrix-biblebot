@@ -132,6 +132,7 @@ biblebot auth login
 
 2. **Check file location:**
    - Default: `~/.config/matrix-biblebot/config.yaml`
+   - If `BIBLEBOT_HOME` is set: `$BIBLEBOT_HOME/config.yaml`
    - Specify custom path: `biblebot --config /path/to/config.yaml`
 
 3. **Check file permissions:**

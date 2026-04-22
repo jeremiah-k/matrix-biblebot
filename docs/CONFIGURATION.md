@@ -17,6 +17,7 @@ This guide covers all configuration options for Matrix BibleBot.
    ```
 
 3. **Edit configuration file** at `~/.config/matrix-biblebot/config.yaml`
+   (or `$BIBLEBOT_HOME/config.yaml` when `BIBLEBOT_HOME` is set)
 
 4. **Validate configuration**
    ```bash
@@ -102,7 +103,7 @@ matrix:
     - "!roomid:your-matrix-server.org"
   e2ee:
     enabled: true
-    # Optional: custom store path (default: ~/.config/matrix-biblebot/e2ee-store)
+    # Optional: custom store path (default: $BIBLEBOT_HOME/e2ee-store or ~/.config/matrix-biblebot/e2ee-store)
     # store_path: /path/to/e2ee-store
 ```
 
@@ -141,8 +142,8 @@ Windows users can still:
 
 #### Security Notes
 
-- Protect `~/.config/matrix-biblebot/credentials.json` and the E2EE store directory
-- Default location: `~/.config/matrix-biblebot/e2ee-store`
+- Protect your runtime `credentials.json` and E2EE store directory
+- Default location: `~/.config/matrix-biblebot/e2ee-store` (or `$BIBLEBOT_HOME/e2ee-store` when set)
 - Contains cryptographic keys - keep secure
 - If lost, bot can't decrypt old messages
 
@@ -242,9 +243,14 @@ Environment variables take precedence over config file values.
 
 ### Default Paths
 
-- **Configuration:** `~/.config/matrix-biblebot/config.yaml`
-- **Credentials:** `~/.config/matrix-biblebot/credentials.json`
-- **E2EE Store:** `~/.config/matrix-biblebot/e2ee-store/`
+- If `BIBLEBOT_HOME` is set:
+  - **Configuration:** `$BIBLEBOT_HOME/config.yaml`
+  - **Credentials:** `$BIBLEBOT_HOME/credentials.json`
+  - **E2EE Store:** `$BIBLEBOT_HOME/e2ee-store/`
+- If `BIBLEBOT_HOME` is not set (default):
+  - **Configuration:** `~/.config/matrix-biblebot/config.yaml`
+  - **Credentials:** `~/.config/matrix-biblebot/credentials.json`
+  - **E2EE Store:** `~/.config/matrix-biblebot/e2ee-store/`
 
 ### Custom Configuration Path
 
@@ -342,6 +348,7 @@ The bot recognizes many book abbreviations:
 Environment variables override config file values:
 
 - `ESV_API_KEY` - ESV API key
+- `BIBLEBOT_HOME` - Runtime home directory override (used for config, credentials, and E2EE store)
 - `MATRIX_ACCESS_TOKEN` - Legacy access token (deprecated)
 - `MATRIX_HOMESERVER` - Legacy homeserver URL (deprecated)
 - `MATRIX_USER_ID` - Legacy user ID (deprecated)
