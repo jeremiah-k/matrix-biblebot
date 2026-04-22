@@ -60,7 +60,7 @@ pipx install matrix-biblebot
 
 # With end-to-end encryption support
 pipx install 'matrix-biblebot[e2e]'
-# Windows PowerShell: pipx install "matrix-biblebot[e2e]"
+# Windows PowerShell (no native E2EE): pipx install matrix-biblebot
 ```
 
 ### Alternative: pip
@@ -69,8 +69,10 @@ pipx install 'matrix-biblebot[e2e]'
 pip install matrix-biblebot
 # or with E2EE support
 pip install 'matrix-biblebot[e2e]'
-# Windows PowerShell: pip install "matrix-biblebot[e2e]"
+# Windows PowerShell (no native E2EE): pip install matrix-biblebot
 ```
+
+Native Windows installs do not currently support E2EE (`python-olm`/`matrix-nio[e2e]` constraints). Use WSL2 or Docker if you need encrypted-room support on Windows.
 
 ### Docker
 
@@ -278,7 +280,7 @@ biblebot --log-level debug  # Debug mode
 
 - **"No credentials found"** → Run `biblebot auth login` first
 - **Bot doesn't respond** → Check room IDs in config, ensure bot is invited
-- **E2EE issues** → Install with `[e2e]` extra, verify device in Matrix client
+- **E2EE issues** → Install with `[e2e]` extra on Linux/macOS, verify device in Matrix client
 
 For detailed troubleshooting, see [Troubleshooting Guide](docs/TROUBLESHOOTING.md).
 

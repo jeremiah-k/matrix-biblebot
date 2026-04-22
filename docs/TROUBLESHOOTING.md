@@ -149,6 +149,7 @@ biblebot auth login
 **Solution:**
 
 ```bash
+# Linux/macOS
 pipx install 'matrix-biblebot[e2e]'
 # or
 pip install 'matrix-biblebot[e2e]'

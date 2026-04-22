@@ -15,7 +15,6 @@ import subprocess
 import sys
 from pathlib import Path
 
-from biblebot import paths as biblebot_paths
 from biblebot.constants.app import (
     APP_NAME,
     DIR_SHARE,
@@ -29,6 +28,7 @@ from biblebot.constants.config import ENV_USER, ENV_USERNAME
 from biblebot.constants.messages import WARNING_EXECUTABLE_NOT_FOUND
 from biblebot.constants.system import (
     DEFAULT_CONFIG_PATH,
+    DEFAULT_CONFIG_PATH_FS,
     LOCAL_SHARE_DIR,
     PIPX_VENV_PATH,
     SYSTEMCTL_ARG_IS_ENABLED,
@@ -321,7 +321,7 @@ def create_service_file():
     service_dir.mkdir(parents=True, exist_ok=True)
 
     # Create config directory if it doesn't exist
-    config_dir = biblebot_paths.get_config_dir()
+    config_dir = Path(DEFAULT_CONFIG_PATH_FS).parent
     config_dir.mkdir(parents=True, exist_ok=True)
 
     # Get the template service content

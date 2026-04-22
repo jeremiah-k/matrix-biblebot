@@ -92,6 +92,7 @@ pip install 'matrix-biblebot[e2e]'
 ```
 
 This installs the cryptographic dependencies needed for E2EE. Prebuilt wheels cover common Linux/macOS setups.
+Native Windows installs should omit `[e2e]`; use WSL2 or Docker for E2EE on Windows.
 
 #### Configuration
 

@@ -30,6 +30,11 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Set up QEMU for arm64 runtime validation
+        uses: docker/setup-qemu-action@v4
+        with:
+          platforms: arm64
+
       - name: Extract version and build info
         id: get_version
         shell: bash
@@ -80,8 +85,26 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
+      - name: Build Docker image (arm64 for runtime smoke test)
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          platforms: linux/arm64
+          push: false
+          load: true
+          tags: matrix-biblebot:validate-arm64
+          build-args: |
+            BUILD_DATE=${{ env.BUILD_DATE }}
+            VCS_REF=${{ env.GIT_SHA }}
+            VERSION=${{ env.VERSION }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
       - name: Smoke test — verify image runs
         run: docker run --rm matrix-biblebot:validate biblebot --version
+
+      - name: Smoke test — verify arm64 image runs under QEMU
+        run: docker run --rm --platform linux/arm64 matrix-biblebot:validate-arm64 biblebot --version
 
       - name: Smoke test — verify BIBLEBOT_HOME path override
         shell: bash
