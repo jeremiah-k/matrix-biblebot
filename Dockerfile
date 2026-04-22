@@ -1,6 +1,7 @@
 # Build stage
 FROM python:3.12-slim-bookworm AS builder
 
+# hadolint ignore=DL3008
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     git \
@@ -8,6 +9,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 WORKDIR /app
 
+# hadolint ignore=DL3013
 RUN pip install --no-cache-dir --upgrade pip setuptools wheel
 
 COPY pyproject.toml MANIFEST.in setup.cfg README.md LICENSE ./
@@ -44,5 +46,8 @@ ENV PYTHONUNBUFFERED=1
 ENV BIBLEBOT_HOME=/data
 
 USER biblebot
+
+HEALTHCHECK --interval=30s --timeout=10s --start-period=20s --retries=3 \
+    CMD biblebot --version || exit 1
 
 CMD ["biblebot"]
