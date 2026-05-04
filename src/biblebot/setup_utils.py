@@ -251,6 +251,14 @@ def _get_service_config_dir(config_dir: Path) -> str:
     return f"%h/.config/{biblebot_paths.APP_CONFIG_DIRNAME}"
 
 
+def _quote_systemd_value(value: str) -> str:
+    """Quote a systemd unit value when whitespace or escaping-sensitive chars are present."""
+    if not any(char in value for char in (" ", "\t", '"', "\\")):
+        return value
+    escaped = value.replace("\\", "\\\\").replace('"', '\\"')
+    return f'"{escaped}"'
+
+
 def is_service_enabled():
     """
     Return True if the user systemd service is enabled to start at boot.
@@ -350,11 +358,13 @@ def create_service_file():
 
     def _q(arg: str) -> str:
         """
-        Return the input as a string, wrapping it in double quotes if it contains a space or tab.
+        Return the input as a systemd-safe string, quoting it when needed.
 
-        This is a small utility to produce a shell-friendly representation: if `arg` contains a space or a tab character it is returned enclosed in double quotes; otherwise the original value is returned as a string.
+        This is a small utility to produce a systemd-friendly representation:
+        values containing whitespace, quotes, or backslashes are returned enclosed
+        in double quotes with escaping; otherwise the original value is returned.
         """
-        return f'"{arg}"' if (" " in arg or "\t" in arg) else str(arg)
+        return _quote_systemd_value(str(arg))
 
     exec_start_line = "ExecStart=" + " ".join(
         _q(p)
@@ -379,7 +389,7 @@ def create_service_file():
         )
     service_content, n = re.subn(
         r"^WorkingDirectory=.*$",
-        f"WorkingDirectory={service_config_dir}",
+        f"WorkingDirectory={_quote_systemd_value(service_config_dir)}",
         service_content,
         count=1,
         flags=re.MULTILINE,
@@ -387,7 +397,7 @@ def create_service_file():
     if n == 0:
         service_content = re.sub(
             r"(?m)^\[Service\]\s*$",
-            f"[Service]\nWorkingDirectory={service_config_dir}",
+            f"[Service]\nWorkingDirectory={_quote_systemd_value(service_config_dir)}",
             service_content,
         )
     if not service_content.endswith("\n"):

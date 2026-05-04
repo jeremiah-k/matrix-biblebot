@@ -17,7 +17,7 @@ SAMPLE_COMPOSE_SOURCE_FILE := sample-docker-compose.source.yaml
 COMPOSE_ARGS = -f $(COMPOSE_FILE) $(if $(wildcard $(COMPOSE_SOURCE_FILE)),-f $(COMPOSE_SOURCE_FILE))
 DOCKER_COMPOSE_RUN = env BIBLEBOT_HOST_HOME="$(BIBLEBOT_HOST_HOME)" UID="$(shell id -u)" GID="$(shell id -g)" $(DOCKER_COMPOSE) $(COMPOSE_ARGS)
 
-.PHONY: help build build-nocache rebuild run stop logs shell clean config edit setup setup-prebuilt use-prebuilt use-source update-compose
+.PHONY: help build build-nocache rebuild pull run stop logs shell clean config config-check auth-login auth-status edit setup setup-prebuilt use-prebuilt use-source update-compose
 
 help:
 	@echo ""
@@ -26,15 +26,19 @@ help:
 	@echo ""
 	@echo "  make setup          Initialize runtime dir + prebuilt compose setup"
 	@echo "  make setup-prebuilt Same as setup (explicit prebuilt mode)"
-	@echo "  make build          Build Docker image"
-	@echo "  make build-nocache  Build Docker image without cache"
-	@echo "  make rebuild        Stop, rebuild (no cache), and restart"
+	@echo "  make pull           Pull prebuilt Docker image"
+	@echo "  make build          Build Docker image from source mode"
+	@echo "  make build-nocache  Build Docker image from source mode without cache"
+	@echo "  make rebuild        Stop, rebuild source image (no cache), and restart"
 	@echo "  make run            Start container in detached mode"
 	@echo "  make stop           Stop container"
 	@echo "  make logs           Follow container logs"
 	@echo "  make shell          Open a shell inside the running container"
 	@echo "  make clean          Remove containers and networks"
 	@echo "  make config         Scaffold runtime directory and sample config"
+	@echo "  make config-check   Validate runtime config inside the container"
+	@echo "  make auth-login     Login to Matrix and save credentials under runtime dir"
+	@echo "  make auth-status    Show saved auth status inside the container"
 	@echo "  make edit           Edit runtime config file"
 	@echo "  make use-prebuilt   Use prebuilt GHCR image"
 	@echo "  make use-source     Enable local source builds via compose override"
@@ -87,7 +91,7 @@ setup: setup-prebuilt
 setup-prebuilt: config use-prebuilt
 	@echo "Prebuilt mode ready. Runtime host path: $(BIBLEBOT_HOST_HOME)"
 	@echo "Set room IDs in $(RUNTIME_CONFIG_FILE), then run:"
-	@echo "  $(DOCKER_COMPOSE_RUN) run --rm biblebot biblebot auth login"
+	@echo "  make auth-login"
 	@echo "  make run"
 
 use-prebuilt:
@@ -115,23 +119,31 @@ update-compose:
 	fi
 	@echo "Compose files refreshed from sample templates."
 
-build:
-	@if [ -f "$(COMPOSE_FILE)" ]; then \
-		echo "Building $(IMAGE_NAME) with compose..."; \
-		$(DOCKER_COMPOSE_RUN) build; \
-	else \
-		echo "$(COMPOSE_FILE) not found; building Dockerfile directly as $(LOCAL_IMAGE_NAME)..."; \
-		docker build -t "$(LOCAL_IMAGE_NAME)" .; \
+pull:
+	@if [ ! -f "$(COMPOSE_FILE)" ]; then \
+		echo "Missing $(COMPOSE_FILE). Run 'make setup' first."; \
+		exit 1; \
 	fi
+	@echo "Pulling prebuilt image..."
+	@$(DOCKER_COMPOSE_RUN) pull
+
+build:
+	@if [ ! -f "$(COMPOSE_SOURCE_FILE)" ]; then \
+		echo "Source build mode is not enabled."; \
+		echo "Run 'make use-source' before 'make build', or run 'make pull' for prebuilt mode."; \
+		exit 1; \
+	fi
+	@echo "Building $(IMAGE_NAME) with compose source override..."
+	@$(DOCKER_COMPOSE_RUN) build
 
 build-nocache:
-	@if [ -f "$(COMPOSE_FILE)" ]; then \
-		echo "Building $(IMAGE_NAME) without cache using compose..."; \
-		$(DOCKER_COMPOSE_RUN) build --no-cache; \
-	else \
-		echo "$(COMPOSE_FILE) not found; building Dockerfile directly (no cache) as $(LOCAL_IMAGE_NAME)..."; \
-		docker build --no-cache -t "$(LOCAL_IMAGE_NAME)" .; \
+	@if [ ! -f "$(COMPOSE_SOURCE_FILE)" ]; then \
+		echo "Source build mode is not enabled."; \
+		echo "Run 'make use-source' before 'make build-nocache', or run 'make pull' for prebuilt mode."; \
+		exit 1; \
 	fi
+	@echo "Building $(IMAGE_NAME) without cache using compose source override..."
+	@$(DOCKER_COMPOSE_RUN) build --no-cache
 
 rebuild: stop build-nocache run
 
@@ -158,9 +170,33 @@ logs:
 	fi
 	@$(DOCKER_COMPOSE_RUN) logs -f
 
+config-check:
+	@if [ ! -f "$(COMPOSE_FILE)" ]; then \
+		echo "Missing $(COMPOSE_FILE). Run 'make setup' first."; \
+		exit 1; \
+	fi
+	@$(DOCKER_COMPOSE_RUN) run --rm biblebot biblebot config check
+
+auth-login:
+	@if [ ! -f "$(COMPOSE_FILE)" ]; then \
+		echo "Missing $(COMPOSE_FILE). Run 'make setup' first."; \
+		exit 1; \
+	fi
+	@$(DOCKER_COMPOSE_RUN) run --rm biblebot biblebot auth login
+
+auth-status:
+	@if [ ! -f "$(COMPOSE_FILE)" ]; then \
+		echo "Missing $(COMPOSE_FILE). Run 'make setup' first."; \
+		exit 1; \
+	fi
+	@$(DOCKER_COMPOSE_RUN) run --rm biblebot biblebot auth status
+
 shell:
-	@echo "Opening shell in $(CONTAINER_NAME)..."
-	@docker exec -it $(CONTAINER_NAME) /bin/bash || docker exec -it $(CONTAINER_NAME) /bin/sh
+	@if [ ! -f "$(COMPOSE_FILE)" ]; then \
+		echo "Missing $(COMPOSE_FILE). Run 'make setup' first."; \
+		exit 1; \
+	fi
+	@$(DOCKER_COMPOSE_RUN) exec biblebot /bin/bash || $(DOCKER_COMPOSE_RUN) exec biblebot /bin/sh
 
 clean:
 	@if [ ! -f "$(COMPOSE_FILE)" ]; then \

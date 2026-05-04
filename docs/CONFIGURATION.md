@@ -248,10 +248,11 @@ Environment variables take precedence over config file values.
   - **Configuration:** `$BIBLEBOT_HOME/config.yaml`
   - **Credentials:** `$BIBLEBOT_HOME/credentials.json`
   - **E2EE Store:** `$BIBLEBOT_HOME/e2ee-store`
-- If `BIBLEBOT_HOME` is not set (default):
-  - **Configuration:** `~/.config/matrix-biblebot/config.yaml`
-  - **Credentials:** `~/.config/matrix-biblebot/credentials.json`
-  - **E2EE Store:** `~/.config/matrix-biblebot/e2ee-store`
+- If `BIBLEBOT_HOME` is not set:
+  - Base directory: `$XDG_CONFIG_HOME/matrix-biblebot` when `XDG_CONFIG_HOME` is set, otherwise `~/.config/matrix-biblebot`
+  - **Configuration:** `$XDG_CONFIG_HOME/matrix-biblebot/config.yaml` or `~/.config/matrix-biblebot/config.yaml`
+  - **Credentials:** `$XDG_CONFIG_HOME/matrix-biblebot/credentials.json` or `~/.config/matrix-biblebot/credentials.json`
+  - **E2EE Store:** `$XDG_CONFIG_HOME/matrix-biblebot/e2ee-store` or `~/.config/matrix-biblebot/e2ee-store`
 
 ### Custom Configuration Path
 

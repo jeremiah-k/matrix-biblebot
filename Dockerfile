@@ -4,6 +4,7 @@ FROM python:3.12-slim-bookworm AS builder
 # hadolint ignore=DL3008
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
+    libolm-dev \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
@@ -19,6 +20,11 @@ RUN python -m pip install --no-cache-dir --timeout=300 --retries=3 \
 
 # Runtime stage
 FROM python:3.12-slim-bookworm
+
+# hadolint ignore=DL3008
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libolm3 \
+    && rm -rf /var/lib/apt/lists/*
 
 RUN groupadd --gid 1000 biblebot && \
     useradd --uid 1000 --gid biblebot --shell /bin/bash --create-home biblebot

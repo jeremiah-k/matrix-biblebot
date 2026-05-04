@@ -11,5 +11,5 @@ services:
       - TZ=${TZ:-UTC}
     volumes:
       # Ensure this host directory exists and is writable by the configured UID/GID.
-      # For CI, systemd, or other non-interactive runs, set BIBLEBOT_HOST_HOME to an absolute path.
-      - ${BIBLEBOT_HOST_HOME:-$HOME/.config/matrix-biblebot}:/data
+      # Set BIBLEBOT_HOST_HOME to an absolute path in .env or the environment.
+      - ${BIBLEBOT_HOST_HOME:?Set BIBLEBOT_HOST_HOME to an absolute host path}:/data

@@ -224,26 +224,53 @@ make setup
 # Edit the config to add your room IDs
 make edit
 
+# Validate the config
+make config-check
+
 # Authenticate with Matrix (one-time)
-env UID="$(id -u)" GID="$(id -g)" docker compose run --rm biblebot biblebot auth login
+make auth-login
+
+# Optional: check saved authentication state
+make auth-status
 
 # Start the bot
 make run
 ```
 
+Docker images install the E2EE dependencies by default, so they are the recommended path for users who need E2EE on platforms where native dependency installation is difficult.
+
 #### Build from source instead of prebuilt image
 
 ```bash
-make use-source     # Enable docker-compose.source.yaml override
-make build          # Build local image
+# Initialize runtime directory + prebuilt compose files
+make setup
+
+# Enable docker-compose.source.yaml override
+make use-source
+
+# Build the local image
+make build
+
+# Edit and validate config
+make edit
+make config-check
+
+# Authenticate with Matrix (one-time)
+make auth-login
+
+# Start the bot
 make run
 ```
 
 Common Docker targets:
 
 ```bash
+make pull
 make build
 make build-nocache
+make config-check
+make auth-login
+make auth-status
 make logs
 make shell
 make stop
@@ -258,7 +285,7 @@ If you run `docker compose` directly (without `make`), provide `UID` and `GID` s
 env UID="$(id -u)" GID="$(id -g)" docker compose up -d
 ```
 
-For repeated use, create a local `.env` file once:
+For repeated use, create a local `.env` file once. Direct `docker compose` users should set `BIBLEBOT_HOST_HOME` explicitly so config, credentials, and the E2EE store always use the same host runtime directory.
 
 Ensure the host directory exists and is writable by the UID/GID used for the container:
 
@@ -274,7 +301,17 @@ printf 'UID=%s\nGID=%s\nBIBLEBOT_HOST_HOME=%s\n' \
 docker compose up -d
 ```
 
-By default, the sample compose file mounts `${BIBLEBOT_HOST_HOME:-$HOME/.config/matrix-biblebot}` on the host to `/data` in the container, so config and credentials persist across restarts. Prebuilt images are published at `ghcr.io/jeremiah-k/matrix-biblebot`.
+Useful direct compose operations:
+
+```bash
+docker compose run --rm biblebot biblebot config generate
+docker compose run --rm biblebot biblebot config check
+docker compose run --rm biblebot biblebot auth login
+docker compose run --rm biblebot biblebot auth status
+docker compose up -d
+```
+
+The sample compose file requires `BIBLEBOT_HOST_HOME` to be set to an absolute host path and mounts it to `/data` in the container, so config and credentials persist across restarts without relying on Compose-specific nested environment expansion. Prebuilt images are published at `ghcr.io/jeremiah-k/matrix-biblebot`.
 
 ## CLI Commands
 

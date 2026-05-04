@@ -1,11 +1,8 @@
 """Constants related to configuration files and keys."""
 
-from biblebot.paths import (
-    ENV_BIBLEBOT_HOME,
-    get_config_dir,
-    get_credentials_path,
-    get_e2ee_store_dir,
-)
+from biblebot import paths as biblebot_paths
+
+ENV_BIBLEBOT_HOME = biblebot_paths.ENV_BIBLEBOT_HOME
 
 __all__ = [
     "CONFIG_DIR",
@@ -42,14 +39,22 @@ __all__ = [
     "SAMPLE_CONFIG_FILENAME",
 ]
 
-# Configuration paths
-CONFIG_DIR = get_config_dir()
-CREDENTIALS_FILE = get_credentials_path()
-E2EE_STORE_DIR = get_e2ee_store_dir()
 DEFAULT_CONFIG_FILENAME = "config.yaml"
 DEFAULT_ENV_FILENAME = (
     ".env"  # DEPRECATED: no longer generated; kept for env-loading fallback only
 )
+
+
+def __getattr__(name: str):
+    """Resolve environment-dependent path constants lazily for compatibility."""
+    if name == "CONFIG_DIR":
+        return biblebot_paths.get_config_dir()
+    if name == "CREDENTIALS_FILE":
+        return biblebot_paths.get_credentials_path()
+    if name == "E2EE_STORE_DIR":
+        return biblebot_paths.get_e2ee_store_dir()
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+
 
 # Environment variable names
 ENV_MATRIX_ACCESS_TOKEN = "MATRIX_ACCESS_TOKEN"  # nosec B105  # noqa: S105
