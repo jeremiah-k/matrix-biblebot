@@ -212,17 +212,21 @@ def get_config_dir() -> Path:
 
 def credentials_path() -> Path:
     """
-    Return the path to the credentials file, ensuring the configuration directory exists.
+    Return the path to the credentials file, ensuring the parent directory exists.
 
-    The function ensures the application's configuration directory is created (and its
-    permissions attempted to be set) before returning the resolved Path to the
-    credentials JSON file used to persist Matrix credentials.
+    When CREDENTIALS_FILE is overridden to a path outside the standard config
+    directory, the parent directory is created so that save_credentials() can
+    safely write a temp file under it. The standard config dir is always
+    prepared via get_config_dir().
 
     Returns:
         pathlib.Path: Path to the credentials file (e.g. ~/.config/matrix-biblebot/credentials.json).
     """
+    path = _resolved_credentials_file()
     get_config_dir()
-    return _resolved_credentials_file()
+    if path.parent != _resolved_config_dir():
+        path.parent.mkdir(parents=True, exist_ok=True)
+    return path
 
 
 def save_credentials(creds: Credentials) -> None:

@@ -15,6 +15,7 @@ import subprocess
 import sys
 from pathlib import Path
 
+from biblebot import paths as biblebot_paths
 from biblebot.constants.app import (
     APP_NAME,
     DIR_SHARE,
@@ -27,8 +28,6 @@ from biblebot.constants.app import (
 from biblebot.constants.config import ENV_USER, ENV_USERNAME
 from biblebot.constants.messages import WARNING_EXECUTABLE_NOT_FOUND
 from biblebot.constants.system import (
-    DEFAULT_CONFIG_PATH,
-    DEFAULT_CONFIG_PATH_FS,
     LOCAL_SHARE_DIR,
     PIPX_VENV_PATH,
     SYSTEMCTL_ARG_IS_ENABLED,
@@ -321,7 +320,7 @@ def create_service_file():
     service_dir.mkdir(parents=True, exist_ok=True)
 
     # Create config directory if it doesn't exist
-    config_dir = Path(DEFAULT_CONFIG_PATH_FS).parent
+    config_dir = biblebot_paths.get_config_dir()
     config_dir.mkdir(parents=True, exist_ok=True)
 
     # Get the template service content
@@ -350,7 +349,7 @@ def create_service_file():
         return f'"{arg}"' if (" " in arg or "\t" in arg) else str(arg)
 
     exec_start_line = "ExecStart=" + " ".join(
-        _q(p) for p in (*exec_parts, "--config", str(DEFAULT_CONFIG_PATH))
+        _q(p) for p in (*exec_parts, "--config", str(biblebot_paths.get_config_path()))
     )
     service_content, n = re.subn(
         r"^ExecStart=.*$",
@@ -365,6 +364,13 @@ def create_service_file():
             f"[Service]\n{exec_start_line}",
             service_template,
         )
+    service_content, _ = re.subn(
+        r"^WorkingDirectory=.*$",
+        f"WorkingDirectory={str(config_dir)}",
+        service_content,
+        count=1,
+        flags=re.MULTILINE,
+    )
     if not service_content.endswith("\n"):
         service_content += "\n"
 

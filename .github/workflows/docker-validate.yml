@@ -3,8 +3,9 @@ name: Docker Build Validation
 on:
   workflow_dispatch:
   pull_request:
-    branches: [main, develop]
+    branches: [main, develop, "**-review"]
     paths:
+      - .dockerignore
       - .github/workflows/docker-validate.yml
       - .github/workflows/docker-publish.yml
       - Dockerfile
