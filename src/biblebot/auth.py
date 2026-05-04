@@ -1,7 +1,8 @@
 """Authentication helpers for BibleBot.
 
 Provides interactive login to obtain and persist Matrix credentials in
-`~/.config/matrix-biblebot/credentials.json` and helpers to load them.
+`$BIBLEBOT_HOME/credentials.json` (or `~/.config/matrix-biblebot/credentials.json`
+when BIBLEBOT_HOME is unset) and helpers to load them.
 Prefers restoring sessions from saved credentials; falls back to legacy
 token-based auth via environment variables for backward compatibility.
 """
@@ -32,6 +33,7 @@ from nio import (
     DiscoveryInfoResponse,
 )
 
+from biblebot import paths as biblebot_paths
 from biblebot.constants.api import (
     DISCOVERY_ATTR_HOMESERVER_URL,
     URL_PREFIX_HTTP,
@@ -43,13 +45,11 @@ from biblebot.constants.app import (
     PLATFORM_WINDOWS,
 )
 from biblebot.constants.config import (
-    CONFIG_DIR,
     CONFIG_DIR_PERMISSIONS,
     CRED_KEY_ACCESS_TOKEN,
     CRED_KEY_DEVICE_ID,
     CRED_KEY_HOMESERVER,
     CRED_KEY_USER_ID,
-    CREDENTIALS_FILE,
     CREDENTIALS_FILE_PERMISSIONS,
     E2EE_KEY_AVAILABLE,
     E2EE_KEY_DEPENDENCIES_INSTALLED,
@@ -57,7 +57,6 @@ from biblebot.constants.config import (
     E2EE_KEY_PLATFORM_SUPPORTED,
     E2EE_KEY_READY,
     E2EE_KEY_STORE_EXISTS,
-    E2EE_STORE_DIR,
 )
 from biblebot.constants.matrix import LOGIN_TIMEOUT_SEC, MATRIX_DEVICE_NAME
 from biblebot.constants.messages import (
@@ -83,6 +82,39 @@ except ImportError:
 # This follows the pattern used by other successful matrix-nio implementations.
 
 logger = logging.getLogger(LOGGER_NAME)
+
+_CREDENTIALS_FILENAME = "credentials.json"
+_E2EE_STORE_DIRNAME = "e2ee-store"
+
+# Compatibility patch points for tests and advanced overrides.
+CONFIG_DIR = None
+CREDENTIALS_FILE = None
+E2EE_STORE_DIR = None
+
+
+def _resolved_config_dir() -> Path:
+    """Return the effective runtime config directory."""
+    if CONFIG_DIR is not None:
+        return CONFIG_DIR
+    return biblebot_paths.get_config_dir()
+
+
+def _resolved_credentials_file() -> Path:
+    """Return the effective runtime credentials file path."""
+    if CREDENTIALS_FILE is not None:
+        return CREDENTIALS_FILE
+    if CONFIG_DIR is not None:
+        return CONFIG_DIR / _CREDENTIALS_FILENAME
+    return biblebot_paths.get_credentials_path()
+
+
+def _resolved_e2ee_store_dir() -> Path:
+    """Return the effective runtime E2EE store directory path."""
+    if E2EE_STORE_DIR is not None:
+        return E2EE_STORE_DIR
+    if CONFIG_DIR is not None:
+        return CONFIG_DIR / _E2EE_STORE_DIRNAME
+    return biblebot_paths.get_e2ee_store_dir()
 
 
 def _create_ssl_context():
@@ -166,30 +198,35 @@ def get_config_dir() -> Path:
     Returns:
         Path: The path to the configuration directory (CONFIG_DIR).
     """
-    CONFIG_DIR.mkdir(parents=True, exist_ok=True)
+    config_dir = _resolved_config_dir()
+    config_dir.mkdir(parents=True, exist_ok=True)
     try:
-        os.chmod(CONFIG_DIR, CONFIG_DIR_PERMISSIONS)
+        os.chmod(config_dir, CONFIG_DIR_PERMISSIONS)
     except OSError:
         logger.debug(
             f"Could not set config dir perms to {oct(CONFIG_DIR_PERMISSIONS)}",
             exc_info=True,
         )
-    return CONFIG_DIR
+    return config_dir
 
 
 def credentials_path() -> Path:
     """
-    Return the path to the credentials file, ensuring the configuration directory exists.
+    Return the path to the credentials file, ensuring the parent directory exists.
 
-    The function ensures the application's configuration directory is created (and its
-    permissions attempted to be set) before returning the resolved Path to the
-    credentials JSON file used to persist Matrix credentials.
+    When CREDENTIALS_FILE is overridden to a path outside the standard config
+    directory, the parent directory is created so that save_credentials() can
+    safely write a temp file under it. The standard config dir is always
+    prepared via get_config_dir().
 
     Returns:
         pathlib.Path: Path to the credentials file (e.g. ~/.config/matrix-biblebot/credentials.json).
     """
+    path = _resolved_credentials_file()
     get_config_dir()
-    return CREDENTIALS_FILE
+    if path.parent != _resolved_config_dir():
+        path.parent.mkdir(parents=True, exist_ok=True)
+    return path
 
 
 def save_credentials(creds: Credentials) -> None:
@@ -295,12 +332,13 @@ def get_store_dir() -> Path:
     Returns:
         Path: Path to the E2EE store directory (guaranteed to exist after this call).
     """
-    E2EE_STORE_DIR.mkdir(parents=True, exist_ok=True)
+    store_dir = _resolved_e2ee_store_dir()
+    store_dir.mkdir(parents=True, exist_ok=True)
     try:
-        os.chmod(E2EE_STORE_DIR, 0o700)
+        os.chmod(store_dir, 0o700)
     except OSError:
         logger.debug("Could not set E2EE store perms to 0o700", exc_info=True)
-    return E2EE_STORE_DIR
+    return store_dir
 
 
 def check_e2ee_status() -> dict:
@@ -350,7 +388,7 @@ def check_e2ee_status() -> dict:
         return status
 
     # Check store directory without creating it
-    store_dir = E2EE_STORE_DIR
+    store_dir = _resolved_e2ee_store_dir()
     status[E2EE_KEY_STORE_EXISTS] = store_dir.exists()
 
     creds = load_credentials()
@@ -740,7 +778,7 @@ async def interactive_logout() -> bool:
         logger.warning("Failed to remove credentials.json", exc_info=True)
 
     # Remove E2EE store dir
-    store = E2EE_STORE_DIR
+    store = _resolved_e2ee_store_dir()
     if store.exists():
         try:
             shutil.rmtree(store)

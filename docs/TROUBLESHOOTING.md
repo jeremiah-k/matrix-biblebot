@@ -131,12 +131,13 @@ biblebot auth login
    ```
 
 2. **Check file location:**
-   - Default: `~/.config/matrix-biblebot/config.yaml`
+   - If `BIBLEBOT_HOME` is set: `$BIBLEBOT_HOME/config.yaml`
+   - Otherwise: `${XDG_CONFIG_HOME:-$HOME/.config}/matrix-biblebot/config.yaml`
    - Specify custom path: `biblebot --config /path/to/config.yaml`
 
 3. **Check file permissions:**
    ```bash
-   ls -la ~/.config/matrix-biblebot/
+   ls -la "${BIBLEBOT_HOME:-${XDG_CONFIG_HOME:-$HOME/.config}/matrix-biblebot}/"
    ```
 
 ## End-to-End Encryption Issues
@@ -148,6 +149,7 @@ biblebot auth login
 **Solution:**
 
 ```bash
+# Linux/macOS
 pipx install 'matrix-biblebot[e2e]'
 # or
 pip install 'matrix-biblebot[e2e]'

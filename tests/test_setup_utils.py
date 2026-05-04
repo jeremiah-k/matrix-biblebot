@@ -72,6 +72,54 @@ class TestServiceInstallation:
             assert "ExecStart=" in content
             assert "%h/.config/matrix-biblebot/config.yaml" in content
 
+    @patch("biblebot.setup_utils.get_executable_path")
+    @patch("biblebot.setup_utils.get_template_service_content")
+    def test_create_service_file_adds_missing_working_directory(
+        self, mock_get_template, mock_get_exec, tmp_path
+    ):
+        """Test service file creation injects WorkingDirectory when missing."""
+        mock_get_exec.return_value = "/usr/bin/biblebot"
+        mock_get_template.return_value = (
+            "[Unit]\nDescription=Test\n\n[Service]\nExecStart="
+        )
+
+        with patch(
+            "biblebot.setup_utils.get_user_service_path"
+        ) as mock_get_service_path:
+            service_path = tmp_path / "biblebot.service"
+            mock_get_service_path.return_value = service_path
+
+            result = setup_utils.create_service_file()
+
+            assert result is True
+            content = service_path.read_text()
+            assert "[Service]" in content
+            service_section = content.split("[Service]")[1].split("[")[0]
+            assert "WorkingDirectory=%h/.config/matrix-biblebot" in service_section
+
+    @patch("biblebot.setup_utils.get_executable_path")
+    @patch("biblebot.setup_utils.get_template_service_content")
+    def test_create_service_file_quotes_biblebot_home_with_spaces(
+        self, mock_get_template, mock_get_exec, tmp_path
+    ):
+        """Test systemd paths are quoted when BIBLEBOT_HOME contains spaces."""
+        mock_get_exec.return_value = "/usr/bin/biblebot"
+        mock_get_template.return_value = "[Service]\nExecStart=\nWorkingDirectory="
+        biblebot_home = tmp_path / "BibleBot Home"
+
+        with patch.dict("os.environ", {"BIBLEBOT_HOME": str(biblebot_home)}), patch(
+            "biblebot.setup_utils.get_user_service_path"
+        ) as mock_get_service_path:
+            service_path = tmp_path / "biblebot.service"
+            mock_get_service_path.return_value = service_path
+
+            result = setup_utils.create_service_file()
+
+            assert result is True
+            content = service_path.read_text()
+            assert f'--config "{biblebot_home}/config.yaml"' in content
+            assert f'WorkingDirectory="{biblebot_home}"' in content
+
     @patch("biblebot.setup_utils.get_executable_path", return_value=None)
     def test_create_service_file_no_executable(self, _mock_get_exec):
         """Test service file creation when executable is not found."""

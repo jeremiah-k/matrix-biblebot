@@ -15,6 +15,7 @@ import subprocess
 import sys
 from pathlib import Path
 
+from biblebot import paths as biblebot_paths
 from biblebot.constants.app import (
     APP_NAME,
     DIR_SHARE,
@@ -24,10 +25,9 @@ from biblebot.constants.app import (
     SERVICE_DESCRIPTION,
     SERVICE_NAME,
 )
-from biblebot.constants.config import CONFIG_DIR, ENV_USER, ENV_USERNAME
+from biblebot.constants.config import DEFAULT_CONFIG_FILENAME, ENV_USER, ENV_USERNAME
 from biblebot.constants.messages import WARNING_EXECUTABLE_NOT_FOUND
 from biblebot.constants.system import (
-    DEFAULT_CONFIG_PATH,
     LOCAL_SHARE_DIR,
     PIPX_VENV_PATH,
     SYSTEMCTL_ARG_IS_ENABLED,
@@ -244,6 +244,24 @@ WantedBy=default.target
 """
 
 
+def _get_service_config_dir(config_dir: Path) -> str:
+    """Return the config dir path to write into a systemd unit."""
+    if os.environ.get(biblebot_paths.ENV_BIBLEBOT_HOME):
+        return str(config_dir)
+    return f"%h/.config/{biblebot_paths.APP_CONFIG_DIRNAME}"
+
+
+def _quote_systemd_value(value: str) -> str:
+    """Quote a systemd unit value when escaping-sensitive chars are present.
+
+    ``%`` is intentionally left alone so systemd specifiers like ``%h`` keep working.
+    """
+    if not any(char in value for char in (" ", "\t", '"', "\\", "$")):
+        return value
+    escaped = value.replace("\\", "\\\\").replace('"', '\\"').replace("$", "$$")
+    return f'"{escaped}"'
+
+
 def is_service_enabled():
     """
     Return True if the user systemd service is enabled to start at boot.
@@ -297,8 +315,8 @@ def create_service_file():
     Create or update the user-level systemd service unit for BibleBot.
 
     Determines an appropriate ExecStart command (preferring an installed `biblebot` executable on PATH,
-    falling back to `sys.executable -m biblebot`), injects that command with the `--config DEFAULT_CONFIG_PATH`
-    argument into a service template, and writes the resulting unit to the user systemd service path.
+    falling back to `sys.executable -m biblebot`), injects that command with the resolved config path,
+    updates the service working directory, and writes the resulting unit to the user systemd service path.
 
     Side effects:
     - Ensures the user systemd service directory and the application config directory exist.
@@ -320,8 +338,9 @@ def create_service_file():
     service_dir.mkdir(parents=True, exist_ok=True)
 
     # Create config directory if it doesn't exist
-    config_dir = CONFIG_DIR
+    config_dir = biblebot_paths.get_config_dir()
     config_dir.mkdir(parents=True, exist_ok=True)
+    service_config_dir = _get_service_config_dir(config_dir)
 
     # Get the template service content
     service_template = get_template_service_content()
@@ -342,14 +361,21 @@ def create_service_file():
 
     def _q(arg: str) -> str:
         """
-        Return the input as a string, wrapping it in double quotes if it contains a space or tab.
+        Return the input as a systemd-safe string, quoting it when needed.
 
-        This is a small utility to produce a shell-friendly representation: if `arg` contains a space or a tab character it is returned enclosed in double quotes; otherwise the original value is returned as a string.
+        This is a small utility to produce a systemd-friendly representation:
+        values containing whitespace, quotes, or backslashes are returned enclosed
+        in double quotes with escaping; otherwise the original value is returned.
         """
-        return f'"{arg}"' if (" " in arg or "\t" in arg) else str(arg)
+        return _quote_systemd_value(str(arg))
 
     exec_start_line = "ExecStart=" + " ".join(
-        _q(p) for p in (*exec_parts, "--config", str(DEFAULT_CONFIG_PATH))
+        _q(p)
+        for p in (
+            *exec_parts,
+            "--config",
+            f"{service_config_dir}/{DEFAULT_CONFIG_FILENAME}",
+        )
     )
     service_content, n = re.subn(
         r"^ExecStart=.*$",
@@ -363,6 +389,19 @@ def create_service_file():
             r"(?m)^\[Service\]\s*$",
             f"[Service]\n{exec_start_line}",
             service_template,
+        )
+    service_content, n = re.subn(
+        r"^WorkingDirectory=.*$",
+        f"WorkingDirectory={_quote_systemd_value(service_config_dir)}",
+        service_content,
+        count=1,
+        flags=re.MULTILINE,
+    )
+    if n == 0:
+        service_content = re.sub(
+            r"(?m)^\[Service\]\s*$",
+            f"[Service]\nWorkingDirectory={_quote_systemd_value(service_config_dir)}",
+            service_content,
         )
     if not service_content.endswith("\n"):
         service_content += "\n"

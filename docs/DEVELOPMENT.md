@@ -24,8 +24,10 @@ Guide for contributing to Matrix BibleBot development.
 
    ```bash
    pip install -e '.[e2e,test]'
-   # Windows PowerShell: pip install -e ".[e2e,test]"
+   # Windows PowerShell (E2EE deps may fail): pip install -e ".[test]"
    ```
+
+   On native Windows, use the non-E2EE install; use WSL2 or Docker when you need E2EE support.
 
 4. **Run tests:**
    ```bash
@@ -124,10 +126,20 @@ Organized constants for:
    ```
 
 4. **Create development environment:**
+
    ```bash
    python -m venv venv
    source venv/bin/activate
    pip install -e '.[e2e,test]'
+   ```
+
+   On Windows PowerShell, E2EE dependencies may fail to install. Use the test
+   extras only if you do not need local E2EE support:
+
+   ```powershell
+   python -m venv venv
+   .\venv\Scripts\Activate.ps1
+   pip install -e ".[test]"
    ```
 
 ### Making Changes

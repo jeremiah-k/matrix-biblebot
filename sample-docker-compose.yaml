@@ -1,0 +1,15 @@
+services:
+  biblebot:
+    image: ghcr.io/jeremiah-k/matrix-biblebot:latest
+    container_name: matrix-biblebot
+    restart: unless-stopped
+    stop_grace_period: 15s
+    # If you run plain `docker compose`, set UID/GID via `.env` or inline env vars.
+    user: "${UID:-1000}:${GID:-1000}"
+    environment:
+      - BIBLEBOT_HOME=/data
+      - TZ=${TZ:-UTC}
+    volumes:
+      # Ensure this host directory exists and is writable by the configured UID/GID.
+      # Set BIBLEBOT_HOST_HOME to an absolute path in .env or the environment.
+      - ${BIBLEBOT_HOST_HOME:?Set BIBLEBOT_HOST_HOME to an absolute host path}:/data

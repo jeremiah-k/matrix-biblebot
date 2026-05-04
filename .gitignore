@@ -12,6 +12,8 @@ ENV/
 # Configuration files with sensitive data
 config.yaml
 .env
+docker-compose.yaml
+docker-compose.source.yaml
 
 # Python artifacts
 __pycache__/

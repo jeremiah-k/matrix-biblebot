@@ -31,7 +31,8 @@ The bot supports both KJV (default) and ESV translations, works in encrypted roo
    biblebot config generate
    ```
 
-   Then edit `~/.config/matrix-biblebot/config.yaml` to add your room IDs.
+   Then edit `~/.config/matrix-biblebot/config.yaml` to add your room IDs
+   (or `$BIBLEBOT_HOME/config.yaml` if `BIBLEBOT_HOME` is set).
 
 4. **Run the bot**
 
@@ -59,7 +60,7 @@ pipx install matrix-biblebot
 
 # With end-to-end encryption support
 pipx install 'matrix-biblebot[e2e]'
-# Windows PowerShell: pipx install "matrix-biblebot[e2e]"
+# Windows PowerShell (no native E2EE): pipx install matrix-biblebot
 ```
 
 ### Alternative: pip
@@ -68,8 +69,27 @@ pipx install 'matrix-biblebot[e2e]'
 pip install matrix-biblebot
 # or with E2EE support
 pip install 'matrix-biblebot[e2e]'
-# Windows PowerShell: pip install "matrix-biblebot[e2e]"
+# Windows PowerShell (no native E2EE): pip install matrix-biblebot
 ```
+
+Native Windows installs do not currently support E2EE (`python-olm`/`matrix-nio[e2e]` constraints). Use WSL2 or Docker if you need encrypted-room support on Windows.
+
+### Docker
+
+A Docker image is available on GHCR with multi-platform support (amd64/arm64).
+
+```bash
+# Pull the image
+docker pull ghcr.io/jeremiah-k/matrix-biblebot:latest
+
+# Or build from source
+git clone https://github.com/jeremiah-k/matrix-biblebot.git
+cd matrix-biblebot
+make use-source
+make build
+```
+
+See [Running with Docker](#running-with-docker) for full setup instructions.
 
 ### From Source
 
@@ -142,7 +162,8 @@ When you send a Bible reference, the bot will:
    biblebot config generate
    ```
 
-3. **Edit the config file** at `~/.config/matrix-biblebot/config.yaml`:
+3. **Edit the config file** at `~/.config/matrix-biblebot/config.yaml`
+   (or `$BIBLEBOT_HOME/config.yaml` if `BIBLEBOT_HOME` is set):
 
    ```yaml
    matrix:
@@ -184,6 +205,114 @@ systemctl --user stop biblebot.service      # Stop
 systemctl --user status biblebot.service    # Check status
 ```
 
+### Running with Docker
+
+Docker runtime uses `BIBLEBOT_HOME=/data` in the container, so runtime files live at:
+
+- `/data/config.yaml`
+- `/data/credentials.json`
+- `/data/e2ee-store`
+
+Use `BIBLEBOT_HOST_HOME` on the host side to choose where `/data` is mounted.
+
+#### Prebuilt image flow (default)
+
+```bash
+# Initialize runtime directory + prebuilt compose mode
+make setup
+
+# Edit the config to add your room IDs
+make edit
+
+# Validate the config
+make config-check
+
+# Authenticate with Matrix (one-time)
+make auth-login
+
+# Optional: check saved authentication state
+make auth-status
+
+# Start the bot
+make run
+```
+
+Docker images install the E2EE dependencies by default, so they are the recommended path for users who need E2EE on platforms where native dependency installation is difficult.
+
+#### Build from source instead of prebuilt image
+
+```bash
+# Initialize runtime directory and default compose files
+make setup
+
+# Enable docker-compose.source.yaml override
+make use-source
+
+# Build the local image
+make build
+
+# Edit and validate config
+make edit
+make config-check
+
+# Authenticate with Matrix (one-time)
+make auth-login
+
+# Start the bot
+make run
+```
+
+Common Docker targets:
+
+```bash
+make pull
+make build
+make build-nocache
+make config-check
+make auth-login
+make auth-status
+make logs
+make shell
+make stop
+make clean
+make use-prebuilt
+make use-source
+```
+
+If you run `docker compose` directly (without `make`), provide `UID` and `GID` so mounted files are owned by your host user.
+
+```bash
+env UID="$(id -u)" GID="$(id -g)" docker compose up -d
+```
+
+For repeated use, create a local `.env` file once. Direct `docker compose` users should set `BIBLEBOT_HOST_HOME` explicitly so config, credentials, and the E2EE store always use the same host runtime directory.
+
+Ensure the host directory exists and is writable by the UID/GID used for the container:
+
+```bash
+mkdir -p ~/.config/matrix-biblebot
+```
+
+Then create the `.env` file and start the container:
+
+```bash
+printf 'UID=%s\nGID=%s\nBIBLEBOT_HOST_HOME=%s\n' \
+  "$(id -u)" "$(id -g)" "$HOME/.config/matrix-biblebot" > .env
+docker compose up -d
+```
+
+Useful direct compose operations:
+
+```bash
+docker compose run --rm biblebot biblebot config generate
+docker compose run --rm biblebot biblebot config check
+docker compose run --rm biblebot biblebot auth login
+docker compose run --rm biblebot biblebot auth status
+docker compose up -d
+```
+
+The sample compose file requires `BIBLEBOT_HOST_HOME` to be set to an absolute host path and mounts it to `/data` in the container. This ensures config, credentials, and the E2EE store persist across restarts without relying on Compose-specific nested environment expansion. Prebuilt images are published at `ghcr.io/jeremiah-k/matrix-biblebot`.
+
 ## CLI Commands
 
 ```bash
@@ -210,7 +339,7 @@ biblebot --log-level debug  # Debug mode
 
 - **"No credentials found"** → Run `biblebot auth login` first
 - **Bot doesn't respond** → Check room IDs in config, ensure bot is invited
-- **E2EE issues** → Install with `[e2e]` extra, verify device in Matrix client
+- **E2EE issues** → Install with `[e2e]` extra on Linux/macOS, verify device in Matrix client
 
 For detailed troubleshooting, see [Troubleshooting Guide](docs/TROUBLESHOOTING.md).
 
