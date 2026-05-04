@@ -246,9 +246,7 @@ WantedBy=default.target
 
 def _get_service_config_dir(config_dir: Path) -> str:
     """Return the config dir path to write into a systemd unit."""
-    if os.environ.get(biblebot_paths.ENV_BIBLEBOT_HOME) or os.environ.get(
-        "XDG_CONFIG_HOME"
-    ):
+    if os.environ.get(biblebot_paths.ENV_BIBLEBOT_HOME):
         return str(config_dir)
     return f"%h/.config/{biblebot_paths.APP_CONFIG_DIRNAME}"
 
