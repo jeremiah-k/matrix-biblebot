@@ -260,6 +260,14 @@ env UID="$(id -u)" GID="$(id -g)" docker compose up -d
 
 For repeated use, create a local `.env` file once:
 
+Ensure the host directory exists and is writable by the UID/GID used for the container:
+
+```bash
+mkdir -p ~/.config/matrix-biblebot
+```
+
+Then create the `.env` file and start the container:
+
 ```bash
 printf 'UID=%s\nGID=%s\nBIBLEBOT_HOST_HOME=%s\n' \
   "$(id -u)" "$(id -g)" "$HOME/.config/matrix-biblebot" > .env
@@ -267,12 +275,6 @@ docker compose up -d
 ```
 
 By default, the sample compose file mounts `${BIBLEBOT_HOST_HOME:-$HOME/.config/matrix-biblebot}` on the host to `/data` in the container, so config and credentials persist across restarts. Prebuilt images are published at `ghcr.io/jeremiah-k/matrix-biblebot`.
-
-Ensure the host directory exists and is writable by the UID/GID used for the container:
-
-```bash
-mkdir -p ~/.config/matrix-biblebot
-```
 
 ## CLI Commands
 

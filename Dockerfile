@@ -47,6 +47,6 @@ ENV BIBLEBOT_HOME=/data
 USER biblebot
 
 HEALTHCHECK --interval=30s --timeout=10s --start-period=20s --retries=3 \
-    CMD biblebot --version || exit 1
+    CMD ["biblebot", "--version"]
 
 CMD ["biblebot"]

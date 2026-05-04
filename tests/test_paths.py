@@ -34,6 +34,15 @@ def test_xdg_config_home_expands_user():
         assert paths.get_home_dir() == Path(
             "/home/testuser/.config-alt/matrix-biblebot"
         )
+        assert paths.get_config_path() == Path(
+            "/home/testuser/.config-alt/matrix-biblebot/config.yaml"
+        )
+        assert paths.get_credentials_path() == Path(
+            "/home/testuser/.config-alt/matrix-biblebot/credentials.json"
+        )
+        assert paths.get_e2ee_store_dir() == Path(
+            "/home/testuser/.config-alt/matrix-biblebot/e2ee-store"
+        )
 
 
 def test_biblebot_home_overrides_all_runtime_paths(tmp_path):

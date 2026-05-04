@@ -25,7 +25,7 @@ from biblebot.constants.app import (
     SERVICE_DESCRIPTION,
     SERVICE_NAME,
 )
-from biblebot.constants.config import ENV_USER, ENV_USERNAME
+from biblebot.constants.config import DEFAULT_CONFIG_FILENAME, ENV_USER, ENV_USERNAME
 from biblebot.constants.messages import WARNING_EXECUTABLE_NOT_FOUND
 from biblebot.constants.system import (
     LOCAL_SHARE_DIR,
@@ -304,8 +304,8 @@ def create_service_file():
     Create or update the user-level systemd service unit for BibleBot.
 
     Determines an appropriate ExecStart command (preferring an installed `biblebot` executable on PATH,
-    falling back to `sys.executable -m biblebot`), injects that command with the `--config DEFAULT_CONFIG_PATH`
-    argument into a service template, and writes the resulting unit to the user systemd service path.
+    falling back to `sys.executable -m biblebot`), injects that command with the resolved config path,
+    updates the service working directory, and writes the resulting unit to the user systemd service path.
 
     Side effects:
     - Ensures the user systemd service directory and the application config directory exist.
@@ -357,7 +357,12 @@ def create_service_file():
         return f'"{arg}"' if (" " in arg or "\t" in arg) else str(arg)
 
     exec_start_line = "ExecStart=" + " ".join(
-        _q(p) for p in (*exec_parts, "--config", f"{service_config_dir}/config.yaml")
+        _q(p)
+        for p in (
+            *exec_parts,
+            "--config",
+            f"{service_config_dir}/{DEFAULT_CONFIG_FILENAME}",
+        )
     )
     service_content, n = re.subn(
         r"^ExecStart=.*$",
@@ -372,13 +377,19 @@ def create_service_file():
             f"[Service]\n{exec_start_line}",
             service_template,
         )
-    service_content, _ = re.subn(
+    service_content, n = re.subn(
         r"^WorkingDirectory=.*$",
         f"WorkingDirectory={service_config_dir}",
         service_content,
         count=1,
         flags=re.MULTILINE,
     )
+    if n == 0:
+        service_content = re.sub(
+            r"(?m)^\[Service\]\s*$",
+            f"[Service]\nWorkingDirectory={service_config_dir}",
+            service_content,
+        )
     if not service_content.endswith("\n"):
         service_content += "\n"
 
