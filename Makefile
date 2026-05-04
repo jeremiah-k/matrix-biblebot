@@ -196,6 +196,10 @@ shell:
 		echo "Missing $(COMPOSE_FILE). Run 'make setup' first."; \
 		exit 1; \
 	fi
+	@if ! $(DOCKER_COMPOSE_RUN) ps --status running | grep -q biblebot; then \
+		echo "Container is not running. Run 'make run' first."; \
+		exit 1; \
+	fi
 	@$(DOCKER_COMPOSE_RUN) exec biblebot /bin/bash || $(DOCKER_COMPOSE_RUN) exec biblebot /bin/sh
 
 clean:

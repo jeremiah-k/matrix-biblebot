@@ -93,7 +93,9 @@ class TestServiceInstallation:
 
             assert result is True
             content = service_path.read_text()
-            assert "WorkingDirectory=%h/.config/matrix-biblebot" in content
+            assert "[Service]" in content
+            service_section = content.split("[Service]")[1].split("[")[0]
+            assert "WorkingDirectory=%h/.config/matrix-biblebot" in service_section
 
     @patch("biblebot.setup_utils.get_executable_path")
     @patch("biblebot.setup_utils.get_template_service_content")
@@ -105,9 +107,9 @@ class TestServiceInstallation:
         mock_get_template.return_value = "[Service]\nExecStart=\nWorkingDirectory="
         biblebot_home = tmp_path / "BibleBot Home"
 
-        with patch.dict(
-            "os.environ", {"BIBLEBOT_HOME": str(biblebot_home)}, clear=True
-        ), patch("biblebot.setup_utils.get_user_service_path") as mock_get_service_path:
+        with patch.dict("os.environ", {"BIBLEBOT_HOME": str(biblebot_home)}), patch(
+            "biblebot.setup_utils.get_user_service_path"
+        ) as mock_get_service_path:
             service_path = tmp_path / "biblebot.service"
             mock_get_service_path.return_value = service_path
 

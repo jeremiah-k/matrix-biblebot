@@ -104,7 +104,8 @@ matrix:
     - "!roomid:your-matrix-server.org"
   e2ee:
     enabled: true
-    # Optional: custom store path (default: $BIBLEBOT_HOME/e2ee-store or ~/.config/matrix-biblebot/e2ee-store)
+    # Optional: custom store path (default: $BIBLEBOT_HOME/e2ee-store,
+    # $XDG_CONFIG_HOME/matrix-biblebot/e2ee-store, or ~/.config/matrix-biblebot/e2ee-store)
     # store_path: /path/to/e2ee-store
 ```
 
@@ -144,7 +145,7 @@ Windows users can still:
 #### Security Notes
 
 - Protect your runtime `credentials.json` and E2EE store directory
-- Default location: `~/.config/matrix-biblebot/e2ee-store` (or `$BIBLEBOT_HOME/e2ee-store` when set)
+- Default location: `$BIBLEBOT_HOME/e2ee-store` when `BIBLEBOT_HOME` is set, `$XDG_CONFIG_HOME/matrix-biblebot/e2ee-store` when `XDG_CONFIG_HOME` is set, or `~/.config/matrix-biblebot/e2ee-store` otherwise
 - Contains cryptographic keys - keep secure
 - If lost, bot can't decrypt old messages
 

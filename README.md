@@ -242,7 +242,7 @@ Docker images install the E2EE dependencies by default, so they are the recommen
 #### Build from source instead of prebuilt image
 
 ```bash
-# Initialize runtime directory + prebuilt compose files
+# Initialize runtime directory and default compose files
 make setup
 
 # Enable docker-compose.source.yaml override
@@ -311,7 +311,7 @@ docker compose run --rm biblebot biblebot auth status
 docker compose up -d
 ```
 
-The sample compose file requires `BIBLEBOT_HOST_HOME` to be set to an absolute host path and mounts it to `/data` in the container, so config and credentials persist across restarts without relying on Compose-specific nested environment expansion. Prebuilt images are published at `ghcr.io/jeremiah-k/matrix-biblebot`.
+The sample compose file requires `BIBLEBOT_HOST_HOME` to be set to an absolute host path and mounts it to `/data` in the container. This ensures config, credentials, and the E2EE store persist across restarts without relying on Compose-specific nested environment expansion. Prebuilt images are published at `ghcr.io/jeremiah-k/matrix-biblebot`.
 
 ## CLI Commands
 

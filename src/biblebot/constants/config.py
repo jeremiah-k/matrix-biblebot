@@ -1,5 +1,7 @@
 """Constants related to configuration files and keys."""
 
+from typing import Any
+
 from biblebot import paths as biblebot_paths
 
 ENV_BIBLEBOT_HOME = biblebot_paths.ENV_BIBLEBOT_HOME
@@ -45,7 +47,7 @@ DEFAULT_ENV_FILENAME = (
 )
 
 
-def __getattr__(name: str):
+def __getattr__(name: str) -> Any:
     """Resolve environment-dependent path constants lazily for compatibility."""
     if name == "CONFIG_DIR":
         return biblebot_paths.get_config_dir()

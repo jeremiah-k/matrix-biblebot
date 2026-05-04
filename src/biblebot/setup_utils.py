@@ -252,10 +252,13 @@ def _get_service_config_dir(config_dir: Path) -> str:
 
 
 def _quote_systemd_value(value: str) -> str:
-    """Quote a systemd unit value when whitespace or escaping-sensitive chars are present."""
-    if not any(char in value for char in (" ", "\t", '"', "\\")):
+    """Quote a systemd unit value when escaping-sensitive chars are present.
+
+    ``%`` is intentionally left alone so systemd specifiers like ``%h`` keep working.
+    """
+    if not any(char in value for char in (" ", "\t", '"', "\\", "$")):
         return value
-    escaped = value.replace("\\", "\\\\").replace('"', '\\"')
+    escaped = value.replace("\\", "\\\\").replace('"', '\\"').replace("$", "$$")
     return f'"{escaped}"'
 
 
