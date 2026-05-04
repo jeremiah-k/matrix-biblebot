@@ -244,6 +244,15 @@ WantedBy=default.target
 """
 
 
+def _get_service_config_dir(config_dir: Path) -> str:
+    """Return the config dir path to write into a systemd unit."""
+    if os.environ.get(biblebot_paths.ENV_BIBLEBOT_HOME) or os.environ.get(
+        "XDG_CONFIG_HOME"
+    ):
+        return str(config_dir)
+    return f"%h/.config/{biblebot_paths.APP_CONFIG_DIRNAME}"
+
+
 def is_service_enabled():
     """
     Return True if the user systemd service is enabled to start at boot.
@@ -322,6 +331,7 @@ def create_service_file():
     # Create config directory if it doesn't exist
     config_dir = biblebot_paths.get_config_dir()
     config_dir.mkdir(parents=True, exist_ok=True)
+    service_config_dir = _get_service_config_dir(config_dir)
 
     # Get the template service content
     service_template = get_template_service_content()
@@ -349,7 +359,7 @@ def create_service_file():
         return f'"{arg}"' if (" " in arg or "\t" in arg) else str(arg)
 
     exec_start_line = "ExecStart=" + " ".join(
-        _q(p) for p in (*exec_parts, "--config", str(biblebot_paths.get_config_path()))
+        _q(p) for p in (*exec_parts, "--config", f"{service_config_dir}/config.yaml")
     )
     service_content, n = re.subn(
         r"^ExecStart=.*$",
@@ -366,7 +376,7 @@ def create_service_file():
         )
     service_content, _ = re.subn(
         r"^WorkingDirectory=.*$",
-        f"WorkingDirectory={str(config_dir)}",
+        f"WorkingDirectory={service_config_dir}",
         service_content,
         count=1,
         flags=re.MULTILINE,
