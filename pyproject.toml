@@ -24,7 +24,7 @@ dependencies = [
   "matrix-nio==0.25.2",
   "PyYAML==6.0.3",
   "python-dotenv==1.2.2",
-  "aiohttp==3.13.5",
+  "aiohttp==3.14.0",
   "rich==15.0.0",
   "packaging==26.2",
 ]
