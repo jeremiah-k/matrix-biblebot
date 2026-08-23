@@ -433,14 +433,18 @@ Examples:
 
     # Config subcommands
     config_parser = subparsers.add_parser(CMD_CONFIG, help="Configuration management")
-    config_subparsers = config_parser.add_subparsers(dest="config_action")
+    config_subparsers = config_parser.add_subparsers(
+        dest="config_action", required=True, metavar="ACTION"
+    )
 
     config_subparsers.add_parser(CMD_GENERATE, help="Generate sample config file")
     config_subparsers.add_parser(CMD_CHECK, help="Validate configuration file")
 
     # Auth subcommands
     auth_parser = subparsers.add_parser(CMD_AUTH, help="Authentication management")
-    auth_subparsers = auth_parser.add_subparsers(dest="auth_action")
+    auth_subparsers = auth_parser.add_subparsers(
+        dest="auth_action", required=True, metavar="ACTION"
+    )
 
     # Login subcommand with optional arguments
     login_parser = auth_subparsers.add_parser(
@@ -475,7 +479,9 @@ Examples:
 
     # Service subcommands
     service_parser = subparsers.add_parser(CMD_SERVICE, help="Service management")
-    service_subparsers = service_parser.add_subparsers(dest="service_action")
+    service_subparsers = service_parser.add_subparsers(
+        dest="service_action", required=True, metavar="ACTION"
+    )
 
     service_subparsers.add_parser(
         CMD_INSTALL, help="Install or update systemd user service"

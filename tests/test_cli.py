@@ -196,6 +196,16 @@ class TestArgumentParsing:
 
         assert args.config == "/custom/path.yaml"
 
+    @pytest.mark.parametrize("command", ["config", "auth", "service"])
+    def test_grouped_commands_require_an_action(self, command):
+        """Reject incomplete grouped commands instead of silently doing nothing."""
+        parser, _, _, _ = cli.create_parser()
+
+        with pytest.raises(SystemExit) as exc_info:
+            parser.parse_args([command])
+
+        assert exc_info.value.code == 2
+
 
 class TestModernCommands:
     """Test modern grouped command handling."""
@@ -605,29 +615,16 @@ class TestCLIMainFunction:
         cli.main()
         mock_install.assert_called_once()
 
-    @patch("sys.argv", ["biblebot", "config"])
-    @patch("argparse.ArgumentParser.print_help")
-    def test_config_no_action(self, mock_print_help):
-        """Test config command with no action."""
-        with pytest.raises(SystemExit):
-            cli.main()
-        mock_print_help.assert_called()
+    @pytest.mark.parametrize("command", ["config", "auth", "service"])
+    def test_grouped_command_without_action_exits(self, command, monkeypatch, capsys):
+        """Incomplete grouped commands report the missing action and exit."""
+        monkeypatch.setattr("sys.argv", ["biblebot", command])
 
-    @patch("sys.argv", ["biblebot", "auth"])
-    @patch("argparse.ArgumentParser.print_help")
-    def test_auth_no_action(self, mock_print_help):
-        """Test auth command with no action."""
-        with pytest.raises(SystemExit):
+        with pytest.raises(SystemExit) as exc_info:
             cli.main()
-        mock_print_help.assert_called()
 
-    @patch("sys.argv", ["biblebot", "service"])
-    @patch("argparse.ArgumentParser.print_help")
-    def test_service_no_action(self, mock_print_help):
-        """Test service command with no action."""
-        with pytest.raises(SystemExit):
-            cli.main()
-        mock_print_help.assert_called()
+        assert exc_info.value.code == 2
+        assert "the following arguments are required: ACTION" in capsys.readouterr().err
 
     @patch("sys.argv", ["biblebot", "config", "check"])
     @patch("biblebot.bot.load_config")
