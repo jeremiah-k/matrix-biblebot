@@ -22,6 +22,7 @@ import os
 import time
 from collections import OrderedDict
 from time import monotonic
+from typing import Any, Mapping
 from urllib.parse import quote
 
 import aiohttp
@@ -308,7 +309,7 @@ async def make_api_request(
 
 
 # Get Bible text
-_passage_cache: "OrderedDict[tuple[str, str], tuple[float, tuple[str, str]]]" = (
+_passage_cache: "OrderedDict[tuple[str, str], tuple[float, tuple[str, str | None]]]" = (
     OrderedDict()
 )
 
@@ -345,7 +346,10 @@ def _cache_get(passage: str, translation: str, cache_enabled: bool = True):
 
 
 def _cache_set(
-    passage: str, translation: str, value: tuple[str, str], cache_enabled: bool = True
+    passage: str,
+    translation: str,
+    value: tuple[str, str | None],
+    cache_enabled: bool = True,
 ):
     """
     Store a fetched passage in the module-level in-memory LRU TTL cache.
@@ -366,13 +370,13 @@ def _cache_set(
 
 
 async def get_bible_text(
-    passage,
-    translation=None,
-    api_keys=None,
-    cache_enabled=True,
-    default_translation=DEFAULT_TRANSLATION,
-    session=None,
-):
+    passage: str,
+    translation: str | None = None,
+    api_keys: Mapping[str, str] | None = None,
+    cache_enabled: bool = True,
+    default_translation: str = DEFAULT_TRANSLATION,
+    session: Any | None = None,
+) -> tuple[str, str | None]:
     # Use provided translation or fall back to configurable default
     """
     Retrieve a Bible passage and its canonical reference, optionally using a specified translation and an in-memory LRU/TTL cache.
@@ -417,7 +421,11 @@ async def get_bible_text(
     return result
 
 
-async def get_esv_text(passage, api_key, session=None):
+async def get_esv_text(
+    passage: str,
+    api_key: str | None,
+    session: Any | None = None,
+) -> tuple[str, str | None]:
     """
     Fetch a passage from the ESV API and return its text and canonical reference.
 
@@ -463,7 +471,10 @@ async def get_esv_text(passage, api_key, session=None):
     return (passages[0].strip(), reference)
 
 
-async def get_kjv_text(passage, session=None):
+async def get_kjv_text(
+    passage: str,
+    session: Any | None = None,
+) -> tuple[str, str | None]:
     # Preserve ':' in chapter:verse while encoding spaces and punctuation
     """
     Fetch the King James Version (KJV) text for a given Bible passage.
