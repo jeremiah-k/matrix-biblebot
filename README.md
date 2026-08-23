@@ -168,6 +168,22 @@ For detailed configuration options including:
 
 See the [Configuration Guide](docs/CONFIGURATION.md).
 
+### Docker
+
+The published image runs as a non-root user on amd64 and arm64 and keeps
+configuration, credentials, and E2EE state under `/data`.
+
+```bash
+make setup
+# Edit ~/.config/matrix-biblebot/config.yaml, then:
+make auth-login
+make run
+```
+
+Use `make use-source && make build` to build locally instead of pulling the
+published image. See the [Docker guide](docs/DOCKER.md) for Compose, custom
+runtime paths, and direct Docker commands.
+
 ## Running as a Service
 
 For production use on Linux, install as a systemd user service:
@@ -236,6 +252,7 @@ For detailed troubleshooting, see [Troubleshooting Guide](docs/TROUBLESHOOTING.m
 ## Documentation
 
 - [Configuration Guide](docs/CONFIGURATION.md) - Detailed setup, options, and E2EE setup
+- [Docker Guide](docs/DOCKER.md) - Prebuilt and source container deployment
 - [Development Guide](docs/DEVELOPMENT.md) - Contributing and development setup
 - [Troubleshooting](docs/TROUBLESHOOTING.md) - Common issues and solutions
 

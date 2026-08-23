@@ -1,0 +1,80 @@
+name: Docker Build Validation
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches: [main]
+    paths:
+      - .dockerignore
+      - .github/workflows/docker-validate.yml
+      - Dockerfile
+      - Makefile
+      - sample-docker-compose.yaml
+      - sample-docker-compose.source.yaml
+      - src/**
+      - pyproject.toml
+
+concurrency:
+  group: docker-validate-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  docker-validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@96fe6ef7f33517b61c61be40b68a1882f3264fb8  # v4
+        with:
+          platforms: arm64
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@37fe631027851001ddb9b187196cc803df7f5f0e  # v4
+
+      - name: Build amd64 image
+        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a  # v7
+        with:
+          context: .
+          platforms: linux/amd64
+          load: true
+          tags: matrix-biblebot:validate
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Build arm64 image
+        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a  # v7
+        with:
+          context: .
+          platforms: linux/arm64
+          load: true
+          tags: matrix-biblebot:validate-arm64
+          cache-from: type=gha
+
+      - name: Verify amd64 runtime
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker run --rm matrix-biblebot:validate biblebot --version
+          docker run --rm matrix-biblebot:validate python -c \
+            'import nio, vodozemac; from nio.crypto import ENCRYPTION_ENABLED; assert ENCRYPTION_ENABLED'
+          test "$(docker run --rm matrix-biblebot:validate id -u)" = "1000"
+
+          runtime_home="$(mktemp -d)"
+          docker run --rm \
+            --user "$(id -u):$(id -g)" \
+            -e BIBLEBOT_HOME=/data \
+            -v "$runtime_home:/data" \
+            matrix-biblebot:validate \
+            biblebot config generate
+          test -f "$runtime_home/config.yaml"
+          test "$(stat -c %u "$runtime_home/config.yaml")" = "$(id -u)"
+
+      - name: Verify arm64 runtime under QEMU
+        run: docker run --rm --platform linux/arm64 matrix-biblebot:validate-arm64 biblebot --version
