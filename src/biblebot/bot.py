@@ -168,7 +168,10 @@ def load_config(config_file, log_loading=True):
 
 
 # Load environment variables
-def load_environment(config: dict, config_path: str):
+def load_environment(
+    config: Mapping[str, Any] | None,
+    config_path: str | os.PathLike[str],
+) -> tuple[str | None, dict[str, str | None]]:
     """
     Load Matrix access token and translation API keys from configuration and environment.
 
@@ -184,7 +187,7 @@ def load_environment(config: dict, config_path: str):
             - api_keys (dict): mapping of translation identifiers to API keys. Always contains the `TRANSLATION_ESV` key (value may be None).
     """
     # Initialize with expected keys set to None
-    api_keys = {TRANSLATION_ESV: None}
+    api_keys: dict[str, str | None] = {TRANSLATION_ESV: None}
 
     # Get API keys from config file first (new method)
     if config and "api_keys" in config:
@@ -239,8 +242,12 @@ logging.getLogger(LOGGER_NIO).setLevel(logging.WARNING)
 
 # Handles headers & parameters for API requests
 async def make_api_request(
-    url, headers=None, params=None, session=None, timeout=API_REQUEST_TIMEOUT_SEC
-):
+    url: str,
+    headers: Mapping[str, str] | None = None,
+    params: Mapping[str, Any] | None = None,
+    session: aiohttp.ClientSession | None = None,
+    timeout: aiohttp.ClientTimeout | float | int = API_REQUEST_TIMEOUT_SEC,
+) -> Any:
     """
     Perform an HTTP GET for `url` and return the decoded JSON object on success, or None on failure.
 
@@ -507,7 +514,11 @@ async def get_kjv_text(
 
 
 class BibleBot:
-    def __init__(self, config, client=None):
+    def __init__(
+        self,
+        config: Any,
+        client: AsyncClient | None = None,
+    ) -> None:
         """
         Initialize the BibleBot with configuration and an optional Matrix client.
 
@@ -528,10 +539,10 @@ class BibleBot:
         - The initializer enforces type coercion and caps to prevent generating oversized message chunks.
         """
         self.config = config
-        self.client = client  # Injected AsyncClient instance
-        self.api_keys = {}  # Will be set in main()
+        self.client: AsyncClient | None = client  # Injected AsyncClient instance
+        self.api_keys: Any = {}  # Will be set in main()
         self._room_id_set: set[str] = set()
-        self.http_session = None  # set in start(), closed in close()
+        self.http_session: aiohttp.ClientSession | None = None  # set in start(), closed in close()
 
         # Bot configuration settings with defaults
         bot_settings = config.get("bot", {}) if isinstance(config, dict) else {}
