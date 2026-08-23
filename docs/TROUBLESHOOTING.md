@@ -177,15 +177,15 @@ pip install 'matrix-biblebot[e2e]'
    biblebot auth login   # Re-login and re-verify
    ```
 
-### "E2EE not supported on Windows"
+### E2EE dependency errors
 
-**Problem:** E2EE fails on Windows systems.
+**Problem:** E2EE dependencies are unavailable or the wrong nio provider is installed.
 
 **Explanation:**
 
-- E2EE requires `python-olm` library
-- `python-olm` has limited Windows support
-- This is a known limitation
+- E2EE requires the `mindroom-nio[e2e]` extra and its `vodozemac` provider
+- `matrix-nio` and `mindroom-nio` both install `nio` and must not be co-installed
+- Recreate the environment if an in-place provider change left both installed
 
 **Workarounds:**
 
@@ -197,13 +197,9 @@ pip install 'matrix-biblebot[e2e]'
        enabled: false
    ```
 
-2. **Use WSL (Windows Subsystem for Linux):**
-   - Install bot in WSL environment
-   - Full E2EE support available
-
-3. **Use Docker:**
-   - Run bot in Linux container
-   - Mount config directory for persistence
+2. **Recreate the environment with the E2EE extra:**
+   - Remove the old virtual environment or pipx installation
+   - Install `matrix-biblebot[e2e]` into a clean environment
 
 ## API and Network Issues
 

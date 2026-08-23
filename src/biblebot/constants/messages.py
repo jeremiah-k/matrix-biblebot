@@ -82,7 +82,7 @@ ERROR_INVALID_YAML = "Invalid YAML in config file"
 ERROR_LOGIN_FAILED = "Login failed"
 ERROR_NO_CREDENTIALS = "No credentials found"
 ERROR_E2EE_NOT_SUPPORTED = (
-    "E2EE is not supported on Windows due to python-olm limitations"
+    "E2EE dependencies are unavailable; install matrix-biblebot[e2e]"
 )
 ERROR_E2EE_DEPS_MISSING = "E2EE dependencies not installed"
 

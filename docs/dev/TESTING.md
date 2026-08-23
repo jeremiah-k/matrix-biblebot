@@ -394,4 +394,4 @@ python -m pytest tests/ -v -W error
 - [pytest documentation](https://docs.pytest.org/)
 - [unittest.mock documentation](https://docs.python.org/3/library/unittest.mock.html)
 - [AsyncMock best practices](https://docs.python.org/3/library/unittest.mock.html#unittest.mock.AsyncMock)
-- [Matrix Python SDK (nio) documentation](https://matrix-nio.readthedocs.io/)
+- [MindRoom nio documentation](https://github.com/mindroom-ai/mindroom-nio)

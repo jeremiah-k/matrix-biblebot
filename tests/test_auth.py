@@ -165,14 +165,14 @@ class TestE2EEStatus:
 
     @patch("platform.system")
     def test_check_e2ee_status_windows(self, mock_system, temp_config_dir):
-        """Test E2EE status on Windows (not supported)."""
+        """Test E2EE status on Windows with vodozemac wheels."""
         mock_system.return_value = "Windows"
 
         status = auth.check_e2ee_status()
 
-        assert status["available"] is False
-        assert status["platform_supported"] is False
-        assert "Windows" in status["error"]
+        assert status["available"] is True
+        assert status["platform_supported"] is True
+        assert status["error"] is None
 
     @patch("platform.system")
     @patch("importlib.util.find_spec")
@@ -828,14 +828,14 @@ class TestE2EEStatusFunctions:
     @patch("biblebot.auth.E2EE_STORE_DIR")
     @patch("platform.system")
     def test_check_e2ee_status_windows_unavailable(self, mock_system, mock_store_dir):
-        """Test E2EE status check on Windows (unsupported)."""
+        """Test E2EE dependency availability on Windows."""
         mock_system.return_value = "Windows"
         mock_store_dir.exists.return_value = False
 
         status = auth.check_e2ee_status()
 
-        assert status["platform_supported"] is False
-        assert status["available"] is False
+        assert status["platform_supported"] is True
+        assert status["available"] is True
 
     @patch("biblebot.auth.E2EE_STORE_DIR")
     @patch("platform.system")

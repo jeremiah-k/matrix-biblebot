@@ -44,11 +44,12 @@ class TestE2EEStatus:
 
     @patch("platform.system", return_value="Windows")
     def test_check_e2ee_status_windows_unsupported(self, _mock_system):
-        """Test E2EE status on unsupported Windows platform."""
+        """Test E2EE status on Windows with vodozemac wheels."""
         status = check_e2ee_status()
 
-        assert status["platform_supported"] is False
-        assert "Windows" in status["error"]
+        assert status["platform_supported"] is True
+        assert status["available"] is True
+        assert status["error"] is None
 
     @patch("platform.system", return_value="Linux")
     def test_check_e2ee_status_missing_deps(self, _mock_system):

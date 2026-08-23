@@ -195,6 +195,7 @@ biblebot config check       # Validate config
 biblebot auth login         # Login to Matrix
 biblebot auth logout        # Clear credentials
 biblebot auth status        # Show auth status
+biblebot auth cross-sign    # Refresh an existing bot cross-signing identity
 
 # Service management
 biblebot service install    # Install systemd service
@@ -203,6 +204,24 @@ biblebot service install    # Install systemd service
 biblebot                    # Start the bot
 biblebot --log-level debug  # Debug mode
 ```
+
+### Bot self-cross-signing
+
+Cross-signing is never run during login or bot startup. Back up
+`~/.config/matrix-biblebot/e2ee-store` before using the explicit command. An
+existing BibleBot-managed identity can be refreshed with
+`biblebot auth cross-sign`; the Matrix password is prompted for and never saved.
+
+The first run has no local `_cross_signing.json` sidecar and is refused by
+default. Only after confirming the account has no Element-managed cross-signing
+identity, run `biblebot auth cross-sign --bootstrap`. MindRoom nio cannot import
+or reconcile an existing server-side identity, so bootstrapping can replace it.
+Corrupt, unexpected, or multiple sidecars are refused rather than rotated.
+
+The provider upgrade migrates the encrypted store schema from version 2 to 10
+when first opened. Back up the complete store first. Recreate existing
+environments rather than upgrading in place: `matrix-nio` and `mindroom-nio`
+both own the `nio` import package and must not be co-installed.
 
 ## Troubleshooting
 
