@@ -1453,7 +1453,7 @@ async def main(config_path=DEFAULT_CONFIG_FILENAME, config=None):
     if e2ee_enabled:
         try:
             # Handle decryption failures for encrypted messages
-            # Note: Successfully decrypted messages are automatically converted to RoomMessageText by matrix-nio
+            # Successfully decrypted messages are converted to RoomMessageText by nio.
             client.add_event_callback(bot.on_decryption_failure, MegolmEvent)
         except AttributeError:
             logger.debug(

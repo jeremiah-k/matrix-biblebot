@@ -11,7 +11,13 @@ from typing import Awaitable, Optional, TypeVar
 
 from biblebot import __version__
 from biblebot import paths as biblebot_paths
-from biblebot.auth import interactive_login, interactive_logout, load_credentials
+from biblebot.auth import (
+    CrossSigningRefused,
+    ensure_bot_cross_signing,
+    interactive_login,
+    interactive_logout,
+    load_credentials,
+)
 from biblebot.bot import main as bot_main
 from biblebot.constants.app import LOGGER_NAME
 from biblebot.constants.config import DEFAULT_CONFIG_FILENAME, E2EE_KEY_AVAILABLE
@@ -458,6 +464,14 @@ Examples:
         CMD_LOGOUT, help="Logout and remove credentials and E2EE store"
     )
     auth_subparsers.add_parser(CMD_STATUS, help="Show authentication and E2EE status")
+    cross_sign_parser = auth_subparsers.add_parser(
+        "cross-sign", help="Explicitly self-sign the saved bot device"
+    )
+    cross_sign_parser.add_argument(
+        "--bootstrap",
+        action="store_true",
+        help="Create a new local identity; may replace an existing server-side identity",
+    )
 
     # Service subcommands
     service_parser = subparsers.add_parser(CMD_SERVICE, help="Service management")
@@ -625,6 +639,19 @@ def main():
             # Show E2EE status
             print_e2ee_status()
             return
+        elif args.auth_action == "cross-sign":
+            try:
+                result = run_async(
+                    ensure_bot_cross_signing(bootstrap=bool(args.bootstrap))
+                )
+                print(f"Cross-signing ready: {result}")
+                sys.exit(0)
+            except CrossSigningRefused as exc:
+                print(f"Cross-signing refused: {exc}")
+                sys.exit(1)
+            except Exception as exc:  # noqa: BLE001 - convert provider errors to CLI failure
+                logger.error("Cross-signing failed: %s", exc)
+                sys.exit(1)
         else:
             auth_parser.print_help()
             sys.exit(2)

@@ -14,7 +14,6 @@ import importlib.util
 import json
 import logging
 import os
-import platform
 import shutil
 import ssl
 import tempfile
@@ -31,6 +30,7 @@ from nio import (
     DiscoveryInfoError,
     DiscoveryInfoResponse,
 )
+from nio.crypto.cross_signing import cross_signing_sidecar_path
 
 from biblebot import paths as biblebot_paths
 from biblebot.constants.api import (
@@ -41,7 +41,6 @@ from biblebot.constants.api import (
 from biblebot.constants.app import (
     FILE_ENCODING_UTF8,
     LOGGER_NAME,
-    PLATFORM_WINDOWS,
 )
 from biblebot.constants.config import (
     CONFIG_DIR_PERMISSIONS,
@@ -60,7 +59,6 @@ from biblebot.constants.config import (
 from biblebot.constants.matrix import LOGIN_TIMEOUT_SEC, MATRIX_DEVICE_NAME
 from biblebot.constants.messages import (
     ERROR_E2EE_DEPS_MISSING,
-    ERROR_E2EE_NOT_SUPPORTED,
     MSG_E2EE_DEPS_NOT_FOUND,
     MSG_SERVER_DISCOVERY_FAILED,
     PROMPT_HOMESERVER,
@@ -76,11 +74,15 @@ try:
 except ImportError:
     certifi = None
 
-# Note: We do not suppress matrix-nio warnings. Instead, we handle errors properly
+# Note: We do not suppress nio warnings. Instead, we handle errors properly
 # by checking response types explicitly and providing appropriate error handling.
-# This follows the pattern used by other successful matrix-nio implementations.
+# This follows the response-handling pattern used by nio clients.
 
 logger = logging.getLogger(LOGGER_NAME)
+
+class CrossSigningRefused(RuntimeError):
+    """Raised when proceeding could silently rotate the account identity."""
+
 
 # Compatibility patch points retained for existing callers and tests.
 CONFIG_DIR: Path | None = None
@@ -349,9 +351,9 @@ def check_e2ee_status() -> dict:
     Returns:
         dict: A mapping keyed by E2EE status constants with the following entries:
             - E2EE_KEY_AVAILABLE (bool): True if the current platform is supported and required Python dependencies are installed.
-            - E2EE_KEY_DEPENDENCIES_INSTALLED (bool): True if required libraries (e.g., olm and nio) are importable.
+            - E2EE_KEY_DEPENDENCIES_INSTALLED (bool): True if vodozemac and nio are importable.
             - E2EE_KEY_STORE_EXISTS (bool): True if the configured E2EE store directory already exists on disk.
-            - E2EE_KEY_PLATFORM_SUPPORTED (bool): False if the platform is unsupported (Windows).
+            - E2EE_KEY_PLATFORM_SUPPORTED (bool): True for supported Python platforms.
             - E2EE_KEY_ERROR (Optional[str]): Human-readable error message when a check fails; otherwise None.
             - E2EE_KEY_READY (bool): True when E2EE is available, persisted credentials exist, and the store directory exists (ready for encrypted sessions).
 
@@ -368,17 +370,11 @@ def check_e2ee_status() -> dict:
         E2EE_KEY_READY: False,
     }
 
-    # Check platform support
-    if platform.system() == PLATFORM_WINDOWS:
-        status[E2EE_KEY_PLATFORM_SUPPORTED] = False
-        status[E2EE_KEY_ERROR] = ERROR_E2EE_NOT_SUPPORTED
-        return status
-
     # Check dependencies
     try:
-        olm_spec = importlib.util.find_spec("olm")
+        vodozemac_spec = importlib.util.find_spec("vodozemac")
         nio_spec = importlib.util.find_spec("nio")
-        if olm_spec is not None and nio_spec is not None:
+        if vodozemac_spec is not None and nio_spec is not None:
             status[E2EE_KEY_DEPENDENCIES_INSTALLED] = True
         else:
             raise ImportError(MSG_E2EE_DEPS_NOT_FOUND)
@@ -401,6 +397,51 @@ def check_e2ee_status() -> dict:
     )
 
     return status
+
+
+async def ensure_bot_cross_signing(*, bootstrap: bool = False):
+    """Explicitly self-sign the saved bot device using store-backed credentials."""
+    creds = load_credentials()
+    if not creds or not creds.device_id:
+        raise CrossSigningRefused(
+            "saved credentials with a device ID are required; run 'biblebot auth login'"
+        )
+
+    store_dir = _resolved_e2ee_store_dir()
+    if not store_dir.is_dir():
+        raise CrossSigningRefused(
+            "the local E2EE store is absent; refusing cross-signing"
+        )
+
+    expected_sidecar = cross_signing_sidecar_path(str(store_dir), creds.user_id)
+    sidecars = list(store_dir.glob("*_cross_signing.json"))
+    if len(sidecars) > 1 or (sidecars and expected_sidecar not in sidecars):
+        raise CrossSigningRefused(
+            "cross-signing sidecar state is ambiguous; refusing identity rotation"
+        )
+    if not expected_sidecar.exists() and not bootstrap:
+        raise CrossSigningRefused(
+            "no local cross-signing sidecar exists; re-run with --bootstrap only "
+            "after confirming the account has no Element-managed identity"
+        )
+
+    client = AsyncClient(
+        creds.homeserver,
+        creds.user_id,
+        device_id=creds.device_id,
+        store_path=str(store_dir),
+        config=AsyncClientConfig(store_sync_tokens=True, encryption_enabled=True),
+    )
+    try:
+        client.restore_login(
+            user_id=creds.user_id,
+            device_id=creds.device_id,
+            access_token=creds.access_token,
+        )
+        password = getpass.getpass("Matrix password (not stored): ")
+        return await client.ensure_cross_signing(password=password)
+    finally:
+        await client.close()
 
 
 def print_e2ee_status():

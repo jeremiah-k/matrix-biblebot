@@ -130,14 +130,9 @@ biblebot auth logout
 #### Platform Support
 
 - **Linux/macOS**: Full E2EE support
-- **Windows**: Not supported due to `python-olm` dependency constraints
+- **Windows**: Supported by the `vodozemac` wheels used by `mindroom-nio`
 
-Windows users can still:
-
-- Use `biblebot auth login` for secure authentication
-- Run the bot in unencrypted rooms
-- Use all other bot features except E2EE
-- Run BibleBot inside WSL 2 or Docker for E2EE support
+Windows, Linux, and macOS use the same `biblebot auth login` and E2EE flow.
 
 #### Security Notes
 

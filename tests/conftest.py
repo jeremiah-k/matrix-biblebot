@@ -133,16 +133,17 @@ sys.modules["nio.events.misc"] = MagicMock()
 sys.modules["nio.store"] = MagicMock()
 sys.modules["nio.store.database"] = MagicMock()
 sys.modules["nio.crypto"] = MagicMock()
+nio_cross_signing_mock = MagicMock()
+nio_cross_signing_mock.cross_signing_sidecar_path.side_effect = (
+    lambda store_path, user_id: Path(store_path) / f"{user_id}_cross_signing.json"
+)
+sys.modules["nio.crypto.cross_signing"] = nio_cross_signing_mock
 sys.modules["nio.exceptions"] = nio_exceptions_mock
 
-# Mock olm (E2EE crypto library)
-olm_mock = MagicMock()
-olm_mock.__spec__ = MagicMock()  # Required for importlib.util.find_spec
-sys.modules["olm"] = olm_mock
-sys.modules["olm.account"] = MagicMock()
-sys.modules["olm.session"] = MagicMock()
-sys.modules["olm.inbound_group_session"] = MagicMock()
-sys.modules["olm.outbound_group_session"] = MagicMock()
+# Mock vodozemac (E2EE crypto provider)
+vodozemac_mock = MagicMock()
+vodozemac_mock.__spec__ = MagicMock()  # Required for importlib.util.find_spec
+sys.modules["vodozemac"] = vodozemac_mock
 
 # Mock other E2EE related dependencies
 sys.modules["peewee"] = MagicMock()
