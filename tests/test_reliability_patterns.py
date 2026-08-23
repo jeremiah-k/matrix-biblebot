@@ -546,65 +546,40 @@ class TestReliabilityPatterns:
             # Should have handled some responses consistently
             assert mock_client.room_send.call_count >= 1
 
-    async def test_recovery_time_measurement(self, mock_config, mock_client):
-        """
-        Measure that the bot recovers from a transient external-service failure within an expected time window.
-
-        This asynchronous test simulates an API that raises errors until a short recovery delay has elapsed, then returns a valid response.
-        It sends several messages to the bot spaced over the recovery window, allowing transient exceptions to occur, and verifies that
-        the sequence of requests completes within a reasonable total duration (asserting recovery happened) and that the bot attempted to send
-        responses to the Matrix client during the run.
-        """
+    async def test_service_recovers_after_transient_failures(
+        self, mock_config, mock_client
+    ):
+        """Test that a passage is returned after transient API failures."""
         bot = BibleBot(config=mock_config, client=mock_client)
-
-        # Populate room ID set for testing (normally done in initialize())
-
         bot._room_id_set = set(mock_config["matrix_room_ids"])
-        bot.start_time = 1234567880000  # Use milliseconds
+        bot.start_time = 1234567880000
         bot.api_keys = {}
 
-        # Mock service that recovers after a delay
-        recovery_time = 0.2  # Shorter recovery time
-        start_time = time.monotonic()
+        mock_get_bible = AsyncMock(
+            side_effect=[
+                Exception("Service recovering"),
+                Exception("Service recovering"),
+                ("Recovered verse", "John 3:18"),
+            ]
+        )
 
-        async def recovering_api(*_, **__):
-            """
-            Simulate an API that fails until a configured recovery window has elapsed.
-
-            Raises:
-                Exception: If called before the configured recovery window has elapsed; raises with message "Service recovering".
-
-            Returns:
-                tuple[str, str]: On recovery, returns a successful response as (verse_text, verse_ref), e.g. ("Recovered verse", "John 3:16").
-            """
-            if time.monotonic() - start_time < recovery_time:
-                raise Exception("Service recovering")
-            return ("Recovered verse", "John 3:16")
-
-        with patch("biblebot.bot.get_bible_text", side_effect=recovering_api):
-            # Send requests during recovery period
-            recovery_start = time.monotonic()
+        with patch("biblebot.bot.get_bible_text", new=mock_get_bible):
+            room = MagicMock()
+            room.room_id = mock_config["matrix_room_ids"][0]
 
             for i in range(3):
                 event = MagicMock()
-                event.body = f"John 3:{i+16}"
+                event.body = f"John 3:{i + 16}"
                 event.sender = "@user:matrix.org"
-                event.server_timestamp = 1234567890000 + i * 1000  # Use milliseconds
+                event.server_timestamp = 1234567890000 + i * 1000
+                await bot.on_room_message(room, event)
 
-                room = MagicMock()
-                room.room_id = mock_config["matrix_room_ids"][0]  # Use configured room
-
-                # The real bot doesn't have try/catch, so exceptions will propagate
-                with suppress(Exception):
-                    await bot.on_room_message(room, event)
-                await asyncio.sleep(0.1)  # Shorter spacing between requests
-
-            recovery_end = time.monotonic()
-
-            # Should complete within a reasonable window:
-            # n*spacing + recovery_time + CI headroom
-            num_requests, spacing, headroom = 3, 0.1, 1.0
-            expected_upper = num_requests * spacing + recovery_time + headroom
-            assert recovery_end - recovery_start < expected_upper
-            # Test passes if recovery time is measured correctly
-            assert mock_client.room_send.call_count >= 1
+        assert mock_get_bible.await_count == 3
+        message_contents = [
+            call.args[2]
+            for call in mock_client.room_send.await_args_list
+            if call.args[1] == "m.room.message"
+        ]
+        final_content = message_contents[-1]
+        assert "Recovered verse" in final_content["body"]
+        assert "John 3:18" in final_content["body"]
