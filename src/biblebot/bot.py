@@ -19,7 +19,6 @@ import html
 import json
 import logging
 import os
-import random
 import time
 from collections import OrderedDict
 from time import monotonic
@@ -71,8 +70,7 @@ from biblebot.constants.config import (
     ENV_MATRIX_ACCESS_TOKEN,
 )
 from biblebot.constants.logging import LOGGER_NIO
-from biblebot.constants.matrix import (
-    DEFAULT_RETRY_AFTER_MS,
+from biblebot.constants.matrix import (,
     MAX_RATE_LIMIT_RETRIES,
     MIN_PRACTICAL_CHUNK_SIZE,
     SYNC_TIMEOUT_MS,
@@ -97,6 +95,11 @@ from biblebot.formatting import (
     format_text_for_display,
     split_text_into_chunks,
     trim_reference_for_suffix,
+)
+from biblebot.messaging import (
+    compose_final_chunk_bodies,
+    compute_retry_delay_seconds,
+    should_retry_rate_limit,
 )
 from biblebot.log_utils import configure_component_loggers, configure_logging
 from biblebot.rooms import (
@@ -972,12 +975,9 @@ class BibleBot:
 
             # Only add reference and suffix to the last message
             if i == len(text_parts) - 1:
-                if reference:
-                    plain_body = f"{formatted_text} - {reference}{MESSAGE_SUFFIX}"
-                    formatted_body = f"{html_text} - {html.escape(reference)}{html.escape(MESSAGE_SUFFIX)}"
-                else:
-                    plain_body = f"{formatted_text}{MESSAGE_SUFFIX}"
-                    formatted_body = f"{html_text}{html.escape(MESSAGE_SUFFIX)}"
+                plain_body, formatted_body = compose_final_chunk_bodies(
+                    formatted_text, html_text, reference=reference
+                )
             else:
                 plain_body = formatted_text
                 formatted_body = html_text
@@ -1001,20 +1001,8 @@ class BibleBot:
                     )
                     break  # Success
                 except nio.exceptions.MatrixRequestError as e:
-                    # Enhanced handling for rate limiting with bounded retries
-                    if retries > 0 and getattr(e, "status", None) == 429:
-                        retry_ms = int(
-                            getattr(e, "retry_after_ms", DEFAULT_RETRY_AFTER_MS)
-                        )
-                        base_delay = (
-                            retry_ms
-                            / 1000.0
-                            * (2 ** (MAX_RATE_LIMIT_RETRIES - retries))
-                        )  # Exponential backoff
-                        # Add ±20% jitter to avoid thundering herd
-                        delay = base_delay * random.uniform(  # noqa: S311
-                            0.8, 1.2
-                        )  # nosec B311 - not cryptographic
+                    if should_retry_rate_limit(retries, e):
+                        delay = compute_retry_delay_seconds(retries, e)
                         logger.warning(
                             f"Rate limited; backing off for {delay:.1f}s (attempt {MAX_RATE_LIMIT_RETRIES + 1 - retries}/{MAX_RATE_LIMIT_RETRIES})"
                         )
