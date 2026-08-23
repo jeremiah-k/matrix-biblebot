@@ -102,6 +102,7 @@ from biblebot.messaging import (
     compute_retry_delay_seconds,
     should_retry_rate_limit,
 )
+from biblebot.protocols import BotClient
 from biblebot.log_utils import configure_component_loggers, configure_logging
 from biblebot.rooms import (
     is_alias,
@@ -517,7 +518,7 @@ class BibleBot:
     def __init__(
         self,
         config: Any,
-        client: AsyncClient | None = None,
+        client: BotClient | None = None,
     ) -> None:
         """
         Initialize the BibleBot with configuration and an optional Matrix client.
@@ -535,11 +536,11 @@ class BibleBot:
             config (dict): Loaded configuration mapping used to populate bot settings.
 
         Notes:
-        - The optional client parameter is an injected Matrix AsyncClient (runtime service) and is intentionally not documented above.
+        - The optional client parameter is an injected BotClient implementation (for example ``nio.AsyncClient`` in production or a ``MagicMock`` in tests) and is intentionally not documented above.
         - The initializer enforces type coercion and caps to prevent generating oversized message chunks.
         """
         self.config = config
-        self.client: AsyncClient | None = client  # Injected AsyncClient instance
+        self.client: BotClient | None = client  # Injected client (AsyncClient or test double)
         self.api_keys: Any = {}  # Will be set in main()
         self._room_id_set: set[str] = set()
         self.http_session: aiohttp.ClientSession | None = None  # set in start(), closed in close()
@@ -592,7 +593,7 @@ class BibleBot:
         """
         Return a concise, developer-oriented representation of the BibleBot.
 
-        The string includes the list of keys present in the bot's `config` (empty list if `config` is not a dict) and a boolean `client_set` indicating whether an AsyncClient was provided.
+        The string includes the list of keys present in the bot's `config` (empty list if `config` is not a dict) and a boolean `client_set` indicating whether a BotClient implementation was provided.
 
         Returns:
             str: A representation like "BibleBot(config_keys=['a','b'], client_set=True)".
