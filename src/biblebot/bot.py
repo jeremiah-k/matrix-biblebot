@@ -29,7 +29,6 @@ from urllib.parse import quote
 
 import aiohttp
 import nio.exceptions
-import yaml
 from dotenv import load_dotenv
 from nio import (
     AsyncClient,
@@ -56,11 +55,8 @@ from biblebot.constants.api import (
     ESV_API_URL,
     KJV_API_URL_TEMPLATE,
 )
-from biblebot.constants.app import (
-    BIBLEBOT_HTTP_USER_AGENT,
-    FILE_ENCODING_UTF8,
-    LOGGER_NAME,
-)
+from biblebot.config import load_config_file
+from biblebot.constants.app import BIBLEBOT_HTTP_USER_AGENT, LOGGER_NAME
 from biblebot.constants.bible import (
     DEFAULT_TRANSLATION,
     TRANSLATION_ESV,
@@ -69,9 +65,7 @@ from biblebot.constants.bible import (
 from biblebot.constants.config import (
     CONFIG_KEY_MATRIX,
     CONFIG_MATRIX_E2EE,
-    CONFIG_MATRIX_HOMESERVER,
     CONFIG_MATRIX_ROOM_IDS,
-    CONFIG_MATRIX_USER,
     CONFIG_PRESERVE_POETRY_FORMATTING,
     DEFAULT_CONFIG_FILENAME,
     DEFAULT_ENV_FILENAME,
@@ -149,58 +143,17 @@ def load_config(config_file, log_loading=True):
         cannot be read, contains invalid YAML, or fails validation (missing or
         non-list room IDs).
     """
-    try:
-        with open(config_file, "r", encoding=FILE_ENCODING_UTF8) as f:
-            config = yaml.safe_load(f) or {}
-            if not isinstance(config, dict):
-                logger.error(f"Config root must be a mapping (dict) in {config_file}")
-                return None
-
-            # Handle both old flat structure and new nested structure
-            # Convert old flat structure to new nested structure for backward compatibility
-            if "matrix_room_ids" in config and "matrix" not in config:
-                logger.info(
-                    "Converting legacy flat config structure to nested structure"
-                )
-                matrix_config = {}
-
-                # Copy matrix-related keys under matrix section (keep originals for compatibility)
-                if CONFIG_MATRIX_HOMESERVER in config:
-                    matrix_config["homeserver"] = config[CONFIG_MATRIX_HOMESERVER]
-                if CONFIG_MATRIX_USER in config:
-                    matrix_config["user"] = config[CONFIG_MATRIX_USER]
-                if CONFIG_MATRIX_ROOM_IDS in config:
-                    matrix_config["room_ids"] = config[CONFIG_MATRIX_ROOM_IDS]
-
-                config["matrix"] = matrix_config
-
-            # Basic validation - check for room_ids in either location
-            room_ids = None
-            if CONFIG_KEY_MATRIX in config and isinstance(
-                config[CONFIG_KEY_MATRIX], dict
-            ):
-                room_ids = config[CONFIG_KEY_MATRIX].get("room_ids")
-            if not room_ids and CONFIG_MATRIX_ROOM_IDS in config:
-                room_ids = config[CONFIG_MATRIX_ROOM_IDS]
-
-            if not room_ids:
-                logger.error(
-                    f"Missing required configuration: room_ids in {config_file}"
-                )
-                return None
-            if not isinstance(room_ids, list):
-                logger.error("'room_ids' must be a list in config")
-                return None
-
-            # Ensure matrix_room_ids is available at top level for backward compatibility
-            config[CONFIG_MATRIX_ROOM_IDS] = room_ids
-
-            if log_loading:
-                logger.info(f"Loaded configuration from {config_file}")
-            return config
-    except (OSError, yaml.YAMLError):
-        logger.exception(f"Error loading config from {config_file}")
+    result = load_config_file(config_file)
+    if not result.ok:
+        for diagnostic in result.diagnostics:
+            logger.error(diagnostic.message)
         return None
+
+    if result.converted_legacy:
+        logger.info("Converting legacy flat config structure to nested structure")
+    if log_loading:
+        logger.info(f"Loaded configuration from {config_file}")
+    return result.config
 
 
 # Load environment variables
