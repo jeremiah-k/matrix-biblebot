@@ -1,0 +1,5 @@
+services:
+  biblebot:
+    build:
+      context: .
+    image: matrix-biblebot:local

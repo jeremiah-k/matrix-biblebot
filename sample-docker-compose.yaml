@@ -1,0 +1,16 @@
+services:
+  biblebot:
+    image: ghcr.io/jeremiah-k/matrix-biblebot:latest
+    container_name: matrix-biblebot
+    restart: unless-stopped
+    init: true
+    stop_grace_period: 30s
+    user: "${UID:-1000}:${GID:-1000}"
+    environment:
+      BIBLEBOT_HOME: /data
+      TZ: "${TZ:-UTC}"
+    volumes:
+      # Set BIBLEBOT_HOST_HOME to an absolute, writable host path.
+      - "${BIBLEBOT_HOST_HOME:?Set BIBLEBOT_HOST_HOME to an absolute host path}:/data"
+    security_opt:
+      - no-new-privileges:true
