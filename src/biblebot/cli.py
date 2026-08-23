@@ -596,29 +596,42 @@ def main():
                     missing_params.append("--password")
 
                 print(
-                    "❌ Error: All authentication parameters are required when using command-line options."
+                    "❌ Error: All authentication parameters are required when using command-line options.",
+                    file=sys.stderr,
                 )
-                print(f"   Missing: {', '.join(missing_params)}")
-                print()
-                print("💡 Options:")
-                print("   • For secure interactive authentication: biblebot auth login")
-                print("   • For automated authentication: provide all three parameters")
-                print()
+                print(f"   Missing: {', '.join(missing_params)}", file=sys.stderr)
+                print(file=sys.stderr)
+                print("💡 Options:", file=sys.stderr)
                 print(
-                    "⚠️  Security Note: Command-line passwords may be visible in process lists and shell history."
+                    "   • For secure interactive authentication: biblebot auth login",
+                    file=sys.stderr,
                 )
-                print("   Interactive mode is recommended for manual use.")
+                print(
+                    "   • For automated authentication: provide all three parameters",
+                    file=sys.stderr,
+                )
+                print(file=sys.stderr)
+                print(
+                    "⚠️  Security Note: Command-line passwords may be visible in process lists and shell history.",
+                    file=sys.stderr,
+                )
+                print(
+                    "   Interactive mode is recommended for manual use.",
+                    file=sys.stderr,
+                )
                 sys.exit(1)
             elif len(provided_params) == 3:
                 # All parameters provided - validate required non-empty fields
                 if not homeserver or not homeserver.strip():
                     print(
-                        "❌ Error: --homeserver must be non-empty for non-interactive login."
+                        "❌ Error: --homeserver must be non-empty for non-interactive login.",
+                        file=sys.stderr,
                     )
                     sys.exit(1)
                 if not username or not username.strip():
                     print(
-                        "❌ Error: --username must be non-empty for non-interactive login."
+                        "❌ Error: --username must be non-empty for non-interactive login.",
+                        file=sys.stderr,
                     )
                     sys.exit(1)
                 # Password may be empty (some flows may prompt)

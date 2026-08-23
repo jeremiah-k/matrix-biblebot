@@ -206,6 +206,72 @@ class TestArgumentParsing:
 
         assert exc_info.value.code == 2
 
+    def test_partial_authentication_options_use_stderr(self, monkeypatch, capsys):
+        """Invalid automation input should not be mixed with normal command output."""
+        password = "sentinel-password-value"  # noqa: S105
+        monkeypatch.setattr(
+            "sys.argv",
+            [
+                "biblebot",
+                "auth",
+                "login",
+                "--username",
+                "@bot:example.org",
+                "--password",
+                password,
+            ],
+        )
+
+        with pytest.raises(SystemExit) as exc_info:
+            cli.main()
+
+        captured = capsys.readouterr()
+        assert exc_info.value.code == 1
+        assert captured.out == ""
+        assert "Missing: --homeserver" in captured.err
+        assert password not in captured.err
+
+    @pytest.mark.parametrize(
+        ("field", "options"),
+        [
+            (
+                "--homeserver",
+                [
+                    "--homeserver",
+                    "",
+                    "--username",
+                    "@bot:example.org",
+                    "--password",
+                    "x",
+                ],
+            ),
+            (
+                "--username",
+                [
+                    "--homeserver",
+                    "https://example.org",
+                    "--username",
+                    "",
+                    "--password",
+                    "x",
+                ],
+            ),
+        ],
+    )
+    def test_empty_authentication_options_use_stderr(
+        self, field, options, monkeypatch, capsys
+    ):
+        """Empty required automation values should use the error channel."""
+        monkeypatch.setattr("sys.argv", ["biblebot", "auth", "login", *options])
+
+        with pytest.raises(SystemExit) as exc_info:
+            cli.main()
+
+        captured = capsys.readouterr()
+        assert exc_info.value.code == 1
+        assert captured.out == ""
+        assert f"{field} must be non-empty" in captured.err
+
 
 class TestModernCommands:
     """Test modern grouped command handling."""
