@@ -110,6 +110,23 @@ class TestLoadConfigForCheck:
         assert captured.err == ""
 
 
+class TestHandleAuthCommand:
+    """Test authentication dispatch independently of process exits."""
+
+    def test_partial_login_options_return_failure_without_exiting(self, capsys):
+        parser, _, auth_parser, _ = cli.create_parser()
+        args = parser.parse_args(
+            ["auth", "login", "--username", "@bot:example.org", "--password", "x"]
+        )
+
+        status = cli.handle_auth_command(args, auth_parser)
+
+        captured = capsys.readouterr()
+        assert status == 1
+        assert captured.out == ""
+        assert "Missing: --homeserver" in captured.err
+
+
 class TestGenerateConfig:
     """Test config file generation."""
 

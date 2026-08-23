@@ -505,6 +505,107 @@ Examples:
     return parser, config_parser, auth_parser, service_parser
 
 
+def handle_auth_command(
+    args: argparse.Namespace, auth_parser: argparse.ArgumentParser
+) -> int | None:
+    """Handle one authentication command and return its process status when needed."""
+    if args.auth_action == CMD_LOGIN:
+        homeserver = getattr(args, "homeserver", None)
+        username = getattr(args, "username", None)
+        password = getattr(args, "password", None)
+        provided_params = [
+            value for value in (homeserver, username, password) if value is not None
+        ]
+
+        if 0 < len(provided_params) < 3:
+            missing_params = []
+            if homeserver is None:
+                missing_params.append("--homeserver")
+            if username is None:
+                missing_params.append("--username")
+            if password is None:
+                missing_params.append("--password")
+
+            print(
+                "❌ Error: All authentication parameters are required when using command-line options.",
+                file=sys.stderr,
+            )
+            print(f"   Missing: {', '.join(missing_params)}", file=sys.stderr)
+            print(file=sys.stderr)
+            print("💡 Options:", file=sys.stderr)
+            print(
+                "   • For secure interactive authentication: biblebot auth login",
+                file=sys.stderr,
+            )
+            print(
+                "   • For automated authentication: provide all three parameters",
+                file=sys.stderr,
+            )
+            print(file=sys.stderr)
+            print(
+                "⚠️  Security Note: Command-line passwords may be visible in process lists and shell history.",
+                file=sys.stderr,
+            )
+            print(
+                "   Interactive mode is recommended for manual use.",
+                file=sys.stderr,
+            )
+            return 1
+
+        if len(provided_params) == 3:
+            if not homeserver or not homeserver.strip():
+                print(
+                    "❌ Error: --homeserver must be non-empty for non-interactive login.",
+                    file=sys.stderr,
+                )
+                return 1
+            if not username or not username.strip():
+                print(
+                    "❌ Error: --username must be non-empty for non-interactive login.",
+                    file=sys.stderr,
+                )
+                return 1
+
+        ok = run_async(interactive_login(homeserver, username, password))
+        return 0 if ok else 1
+
+    if args.auth_action == CMD_LOGOUT:
+        ok = run_async(interactive_logout())
+        return 0 if ok else 1
+
+    if args.auth_action == CMD_STATUS:
+        from biblebot.auth import print_e2ee_status
+
+        creds = load_credentials()
+        if creds:
+            print("🔑 Authentication Status: ✓ Logged in")
+            print(f"  User: {creds.user_id}")
+            print(f"  Homeserver: {creds.homeserver}")
+            print(f"  Device: {creds.device_id}")
+        else:
+            print("🔑 Authentication Status: ✗ Not logged in")
+            print("  Run 'biblebot auth login' to authenticate")
+        print_e2ee_status()
+        return None
+
+    if args.auth_action == "cross-sign":
+        try:
+            result = run_async(
+                ensure_bot_cross_signing(bootstrap=bool(args.bootstrap))
+            )
+            print(f"Cross-signing ready: {result}")
+            return 0
+        except CrossSigningRefused as exc:
+            print(f"Cross-signing refused: {exc}")
+            return 1
+        except Exception as exc:  # noqa: BLE001 - convert provider errors to CLI failure
+            logger.error("Cross-signing failed: %s", exc)
+            return 1
+
+    auth_parser.print_help()
+    return 2
+
+
 def main():
     """
     Entry point for the BibleBot command-line interface.
@@ -586,106 +687,10 @@ def main():
             sys.exit(2)
 
     elif args.command == CMD_AUTH:
-        if args.auth_action == CMD_LOGIN:
-            # Extract arguments if provided
-            homeserver = getattr(args, "homeserver", None)
-            username = getattr(args, "username", None)
-            password = getattr(args, "password", None)
-
-            # Validate argument combinations
-            provided_params = [
-                p for p in [homeserver, username, password] if p is not None
-            ]
-
-            if len(provided_params) > 0 and len(provided_params) < 3:
-                # Some but not all parameters provided - show error
-                missing_params = []
-                if homeserver is None:
-                    missing_params.append("--homeserver")
-                if username is None:
-                    missing_params.append("--username")
-                if password is None:
-                    missing_params.append("--password")
-
-                print(
-                    "❌ Error: All authentication parameters are required when using command-line options.",
-                    file=sys.stderr,
-                )
-                print(f"   Missing: {', '.join(missing_params)}", file=sys.stderr)
-                print(file=sys.stderr)
-                print("💡 Options:", file=sys.stderr)
-                print(
-                    "   • For secure interactive authentication: biblebot auth login",
-                    file=sys.stderr,
-                )
-                print(
-                    "   • For automated authentication: provide all three parameters",
-                    file=sys.stderr,
-                )
-                print(file=sys.stderr)
-                print(
-                    "⚠️  Security Note: Command-line passwords may be visible in process lists and shell history.",
-                    file=sys.stderr,
-                )
-                print(
-                    "   Interactive mode is recommended for manual use.",
-                    file=sys.stderr,
-                )
-                sys.exit(1)
-            elif len(provided_params) == 3:
-                # All parameters provided - validate required non-empty fields
-                if not homeserver or not homeserver.strip():
-                    print(
-                        "❌ Error: --homeserver must be non-empty for non-interactive login.",
-                        file=sys.stderr,
-                    )
-                    sys.exit(1)
-                if not username or not username.strip():
-                    print(
-                        "❌ Error: --username must be non-empty for non-interactive login.",
-                        file=sys.stderr,
-                    )
-                    sys.exit(1)
-                # Password may be empty (some flows may prompt)
-
-            ok = run_async(interactive_login(homeserver, username, password))
-            sys.exit(0 if ok else 1)
-        elif args.auth_action == CMD_LOGOUT:
-            ok = run_async(interactive_logout())
-            sys.exit(0 if ok else 1)
-        elif args.auth_action == CMD_STATUS:
-            from biblebot.auth import print_e2ee_status
-
-            # Show authentication status
-            creds = load_credentials()
-            if creds:
-                print("🔑 Authentication Status: ✓ Logged in")
-                print(f"  User: {creds.user_id}")
-                print(f"  Homeserver: {creds.homeserver}")
-                print(f"  Device: {creds.device_id}")
-            else:
-                print("🔑 Authentication Status: ✗ Not logged in")
-                print("  Run 'biblebot auth login' to authenticate")
-
-            # Show E2EE status
-            print_e2ee_status()
-            return
-        elif args.auth_action == "cross-sign":
-            try:
-                result = run_async(
-                    ensure_bot_cross_signing(bootstrap=bool(args.bootstrap))
-                )
-                print(f"Cross-signing ready: {result}")
-                sys.exit(0)
-            except CrossSigningRefused as exc:
-                print(f"Cross-signing refused: {exc}")
-                sys.exit(1)
-            except Exception as exc:  # noqa: BLE001 - convert provider errors to CLI failure
-                logger.error("Cross-signing failed: %s", exc)
-                sys.exit(1)
-        else:
-            auth_parser.print_help()
-            sys.exit(2)
+        status = handle_auth_command(args, auth_parser)
+        if status is not None:
+            sys.exit(status)
+        return
 
     elif args.command == CMD_SERVICE:
         if args.service_action == CMD_INSTALL:
