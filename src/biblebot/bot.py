@@ -72,7 +72,6 @@ from biblebot.constants.config import (
 )
 from biblebot.constants.logging import LOGGER_NIO
 from biblebot.constants.matrix import (
-    _PLACEHOLDER_ROOM_IDS,
     DEFAULT_RETRY_AFTER_MS,
     MAX_RATE_LIMIT_RETRIES,
     MIN_PRACTICAL_CHUNK_SIZE,
@@ -100,6 +99,12 @@ from biblebot.formatting import (
     trim_reference_for_suffix,
 )
 from biblebot.log_utils import configure_component_loggers, configure_logging
+from biblebot.rooms import (
+    is_alias,
+    is_placeholder_room_id,
+    merge_resolved_entries,
+    read_room_ids,
+)
 from biblebot.triggers import detect_trigger
 from biblebot.update_check import (
     perform_startup_update_check,
@@ -585,12 +590,9 @@ class BibleBot:
         - Logs info for successful resolutions and warnings for aliases that could not be resolved.
         """
         resolved_ids = []
-        # Support both old and new config schema
-        room_ids = self.config.get("matrix", {}).get("room_ids") or self.config.get(
-            CONFIG_MATRIX_ROOM_IDS, []
-        )
+        room_ids = read_room_ids(self.config)
         for entry in room_ids:
-            if entry.startswith("#"):
+            if is_alias(entry):
                 try:
                     resp = await self.client.room_resolve_alias(entry)
                     if hasattr(resp, "room_id"):
@@ -607,7 +609,7 @@ class BibleBot:
         # Update configuration with resolved IDs (support both schemas)
         # This deduplicates room IDs and replaces aliases with their resolved room IDs
         # to avoid duplicate joins and ensure we're working with canonical room IDs
-        unique_ids = list(dict.fromkeys(resolved_ids))
+        unique_ids = merge_resolved_entries(room_ids, resolved_ids)
         if (
             CONFIG_KEY_MATRIX in self.config
             and "room_ids" in self.config[CONFIG_KEY_MATRIX]
@@ -631,13 +633,13 @@ class BibleBot:
         if (
             room_id_or_alias.startswith("!your_room_id:")
             or room_id_or_alias.endswith(":your_homeserver_domain")
-            or room_id_or_alias in _PLACEHOLDER_ROOM_IDS
+            or is_placeholder_room_id(room_id_or_alias)
         ):
             logger.debug(f"Skipping placeholder room ID: {room_id_or_alias}")
             return
 
         try:
-            if room_id_or_alias.startswith("#"):
+            if is_alias(room_id_or_alias):
                 # If it's a room alias, resolve it to a room ID
                 response = await self.client.room_resolve_alias(room_id_or_alias)
                 if not hasattr(response, "room_id"):
