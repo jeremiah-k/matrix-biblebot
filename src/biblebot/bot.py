@@ -536,7 +536,7 @@ class BibleBot:
             config (dict): Loaded configuration mapping used to populate bot settings.
 
         Notes:
-        - The optional client parameter is an injected Matrix AsyncClient (runtime service) and is intentionally not documented above.
+        - The optional client parameter is an injected BotClient implementation (for example ``nio.AsyncClient`` in production or a ``MagicMock`` in tests) and is intentionally not documented above.
         - The initializer enforces type coercion and caps to prevent generating oversized message chunks.
         """
         self.config = config
@@ -593,7 +593,7 @@ class BibleBot:
         """
         Return a concise, developer-oriented representation of the BibleBot.
 
-        The string includes the list of keys present in the bot's `config` (empty list if `config` is not a dict) and a boolean `client_set` indicating whether an AsyncClient was provided.
+        The string includes the list of keys present in the bot's `config` (empty list if `config` is not a dict) and a boolean `client_set` indicating whether a BotClient implementation was provided.
 
         Returns:
             str: A representation like "BibleBot(config_keys=['a','b'], client_set=True)".

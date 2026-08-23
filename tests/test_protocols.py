@@ -95,7 +95,12 @@ def test_fake_client_satisfies_bot_client_protocol():
 
 
 def test_async_methods_actually_coroutine():
-    """All async methods on the protocol must be coroutine functions."""
+    """All async methods on the protocol must be coroutine functions.
+
+    Inspect the protocol declarations directly so changing the protocol from
+    async to sync (or vice versa) is detected here, not just changing the test
+    fake.
+    """
     for name in (
         "room_resolve_alias",
         "join",
@@ -106,8 +111,10 @@ def test_async_methods_actually_coroutine():
         "room_send",
         "close",
     ):
-        method = getattr(_FakeClient, name)
-        assert inspect.iscoroutinefunction(method), f"{name} should be async"
+        method = getattr(BotClient, name)
+        assert inspect.iscoroutinefunction(method), (
+            f"BotClient.{name} must be declared async, got {method!r}"
+        )
 
 
 def test_bot_client_is_runtime_checkable():
