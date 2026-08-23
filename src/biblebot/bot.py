@@ -70,7 +70,7 @@ from biblebot.constants.config import (
     ENV_MATRIX_ACCESS_TOKEN,
 )
 from biblebot.constants.logging import LOGGER_NIO
-from biblebot.constants.matrix import (,
+from biblebot.constants.matrix import (
     MAX_RATE_LIMIT_RETRIES,
     MIN_PRACTICAL_CHUNK_SIZE,
     SYNC_TIMEOUT_MS,

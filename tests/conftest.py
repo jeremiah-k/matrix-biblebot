@@ -44,6 +44,22 @@ class MockLocalProtocolError(Exception):
     pass
 
 
+class MockMatrixRequestError(Exception):
+    def __init__(self, message="", status_code=None, errcode=None):
+        super().__init__(message)
+        self.message = message
+        self.status_code = status_code
+        self.errcode = errcode
+        # Mirror the nio library shape so bot._send_message_parts can inspect it
+        self.status = status_code
+
+    def __repr__(self):
+        return (
+            f"MockMatrixRequestError(message={self.message!r}, "
+            f"status_code={self.status_code!r}, errcode={self.errcode!r})"
+        )
+
+
 class MockDiscoveryInfoError(Exception):
     pass
 
@@ -133,6 +149,7 @@ nio_exceptions_mock = MagicMock()
 nio_exceptions_mock.RemoteProtocolError = MockRemoteProtocolError
 nio_exceptions_mock.RemoteTransportError = MockRemoteTransportError
 nio_exceptions_mock.LocalProtocolError = MockLocalProtocolError
+nio_exceptions_mock.MatrixRequestError = MockMatrixRequestError
 nio_exceptions_mock.DiscoveryInfoError = MockDiscoveryInfoError
 nio_exceptions_mock.LoginError = MockLoginError
 nio_exceptions_mock.RoomResolveAliasError = MockRoomResolveAliasError
