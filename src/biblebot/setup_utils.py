@@ -8,7 +8,6 @@ and related configuration tasks.
 import getpass
 import importlib.resources
 import os
-import re
 import shlex
 import shutil
 import subprocess
@@ -22,7 +21,6 @@ from biblebot.constants.app import (
     DIR_TOOLS,
     EXECUTABLE_NAME,
     FILE_MODE_READ,
-    SERVICE_DESCRIPTION,
     SERVICE_NAME,
 )
 from biblebot.constants.config import DEFAULT_CONFIG_FILENAME, ENV_USER, ENV_USERNAME
@@ -36,6 +34,7 @@ from biblebot.constants.system import (
     SYSTEMCTL_PATH,
     SYSTEMD_USER_DIR,
 )
+from biblebot.service import ServicePlan, render_service_unit
 from biblebot.tools import copy_service_template_to
 
 
@@ -251,57 +250,6 @@ def _service_runtime_dir(config_dir: Path) -> str:
     return f"%h/.config/{biblebot_paths.APP_CONFIG_DIRNAME}"
 
 
-def _quote_systemd_value(value: str, *, preserve_specifiers: bool = False) -> str:
-    """Escape and quote a value for a systemd unit setting or argument."""
-    if not preserve_specifiers:
-        value = value.replace("%", "%%")
-    needs_quotes = any(char in value for char in (" ", "\t", '"', "\\", "$"))
-    if not needs_quotes:
-        return value
-    escaped = value.replace("\\", "\\\\").replace('"', '\\"').replace("$", "$$")
-    return f'"{escaped}"'
-
-
-def _replace_or_add_service_setting(content: str, setting: str, value: str) -> str:
-    """Replace one service setting or add it immediately after ``[Service]``."""
-    replacement = f"{setting}={value}"
-    content, replacements = re.subn(
-        rf"^{re.escape(setting)}=.*$",
-        replacement,
-        content,
-        count=1,
-        flags=re.MULTILINE,
-    )
-    if replacements:
-        return content
-    return re.sub(
-        r"(?m)^\[Service\]\s*$",
-        f"[Service]\n{replacement}",
-        content,
-        count=1,
-    )
-
-
-def _replace_or_add_environment(content: str, name: str, value: str) -> str:
-    """Set one environment variable without replacing unrelated entries."""
-    replacement = f"Environment={_quote_systemd_value(f'{name}={value}')}"
-    content, replacements = re.subn(
-        rf'^Environment="?{re.escape(name)}=.*$',
-        replacement,
-        content,
-        count=1,
-        flags=re.MULTILINE,
-    )
-    if replacements:
-        return content
-    return re.sub(
-        r"(?m)^\[Service\]\s*$",
-        f"[Service]\n{replacement}",
-        content,
-        count=1,
-    )
-
-
 def is_service_enabled():
     """
     Return True if the user systemd service is enabled to start at boot.
@@ -389,53 +337,33 @@ def create_service_file():
         print("Error: Could not find service template file")
         return False
 
-    # Fill optional description placeholder if present
-    service_template = service_template.replace(
-        "{SERVICE_DESCRIPTION}", SERVICE_DESCRIPTION
-    )
-
-    # Compute ExecStart command (systemd-friendly: quote only when needed, with double quotes)
     if executable_path == sys.executable:
-        exec_parts = [sys.executable, "-m", "biblebot"]
+        command = (sys.executable, "-m", "biblebot")
     else:
-        exec_parts = [executable_path]
-
-    def _q(arg: str, *, preserve_specifiers: bool = False) -> str:
-        """Return one systemd-safe command argument."""
-        return _quote_systemd_value(str(arg), preserve_specifiers=preserve_specifiers)
+        command = (executable_path,)
 
     config_path = f"{service_runtime_dir}/{DEFAULT_CONFIG_FILENAME}"
     preserve_specifiers = not os.environ.get(biblebot_paths.ENV_BIBLEBOT_HOME)
-    exec_start_line = "ExecStart=" + " ".join(
-        [
-            *(_q(part) for part in exec_parts),
-            "--config",
-            _q(config_path, preserve_specifiers=preserve_specifiers),
-        ]
-    )
-    service_content = _replace_or_add_service_setting(
-        service_template, "ExecStart", exec_start_line.removeprefix("ExecStart=")
-    )
-    service_content = _replace_or_add_service_setting(
-        service_content,
-        "WorkingDirectory",
-        _quote_systemd_value(
-            service_runtime_dir, preserve_specifiers=preserve_specifiers
-        ),
-    )
-
     configured_home = os.environ.get(biblebot_paths.ENV_BIBLEBOT_HOME)
-    if configured_home:
-        service_content = _replace_or_add_environment(
-            service_content, biblebot_paths.ENV_BIBLEBOT_HOME, str(config_dir)
-        )
-    if not service_content.endswith("\n"):
-        service_content += "\n"
+    environment = (
+        ((biblebot_paths.ENV_BIBLEBOT_HOME, str(config_dir)),)
+        if configured_home
+        else ()
+    )
+    plan = ServicePlan(
+        service_path=get_user_service_path(),
+        command=command,
+        config_path=config_path,
+        working_directory=service_runtime_dir,
+        environment=environment,
+        preserve_specifiers=preserve_specifiers,
+    )
+    service_content = render_service_unit(service_template, plan)
 
     # Write service file
     try:
-        get_user_service_path().write_text(service_content, encoding="utf-8")
-        print(f"Service file created at {get_user_service_path()}")
+        plan.service_path.write_text(service_content, encoding="utf-8")
+        print(f"Service file created at {plan.service_path}")
         return True
     except (IOError, OSError) as e:
         print(f"Error creating service file: {e}")
