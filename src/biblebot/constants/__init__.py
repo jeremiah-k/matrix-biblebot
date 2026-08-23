@@ -76,3 +76,15 @@ from .matrix import *  # noqa: F403, E402
 from .messages import *  # noqa: F403, E402
 from .system import *  # noqa: F403, E402
 from .update import *  # noqa: F403, E402
+
+# Keep environment-dependent paths lazy at this package facade as well.
+_DYNAMIC_PATH_EXPORTS = frozenset({"CONFIG_DIR", "CREDENTIALS_FILE", "E2EE_STORE_DIR"})
+for _name in _DYNAMIC_PATH_EXPORTS:
+    globals().pop(_name, None)
+
+
+def __getattr__(name: str):
+    """Delegate environment-dependent path exports to the config module."""
+    if name in _DYNAMIC_PATH_EXPORTS:
+        return getattr(_config, name)
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")

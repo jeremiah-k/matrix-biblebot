@@ -10,14 +10,11 @@ from pathlib import Path
 from typing import Awaitable, Optional, TypeVar
 
 from biblebot import __version__
+from biblebot import paths as biblebot_paths
 from biblebot.auth import interactive_login, interactive_logout, load_credentials
 from biblebot.bot import main as bot_main
 from biblebot.constants.app import LOGGER_NAME
-from biblebot.constants.config import (
-    CONFIG_DIR,
-    DEFAULT_CONFIG_FILENAME,
-    E2EE_KEY_AVAILABLE,
-)
+from biblebot.constants.config import DEFAULT_CONFIG_FILENAME, E2EE_KEY_AVAILABLE
 from biblebot.constants.logging import DEFAULT_LOG_LEVEL, LOG_LEVELS
 from biblebot.constants.messages import (
     CLI_ACTION_STORE_TRUE,
@@ -52,6 +49,23 @@ from biblebot.tools import copy_sample_config_to
 # Configure logging
 logger = logging.getLogger(LOGGER_NAME)
 
+# Compatibility patch point retained for callers that override the config root.
+CONFIG_DIR: Path | None = None
+
+
+def _resolved_config_path() -> Path:
+    """Return the default config path or derive it from an explicit override."""
+    if CONFIG_DIR is not None:
+        return CONFIG_DIR / DEFAULT_CONFIG_FILENAME
+    return biblebot_paths.get_config_path()
+
+
+def _resolved_credentials_path() -> Path:
+    """Return the credentials path or derive it from an explicit override."""
+    if CONFIG_DIR is not None:
+        return CONFIG_DIR / "credentials.json"
+    return biblebot_paths.get_credentials_path()
+
 
 # Wrapper to ease testing (tests can patch biblebot.cli.run_async)
 T = TypeVar("T")
@@ -82,7 +96,7 @@ def get_default_config_path() -> Path:
     Returns:
         pathlib.Path: Full path to the default configuration file.
     """
-    return CONFIG_DIR / DEFAULT_CONFIG_FILENAME
+    return _resolved_config_path()
 
 
 def detect_configuration_state() -> tuple[str, str, Optional[dict]]:
@@ -101,7 +115,7 @@ def detect_configuration_state() -> tuple[str, str, Optional[dict]]:
     Errors encountered while loading or validating the configuration or credentials are not raised; they are mapped to an appropriate state ("setup" or "auth") with an explanatory message.
     """
     config_path = get_default_config_path()
-    credentials_path = CONFIG_DIR / "credentials.json"
+    credentials_path = _resolved_credentials_path()
 
     # Check if config file exists
     if not config_path.exists():
