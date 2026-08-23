@@ -49,6 +49,7 @@ from biblebot.constants.messages import (
     MSG_NO_CONFIG_PROMPT,
     SUCCESS_CONFIG_GENERATED,
 )
+from biblebot.config import load_config_file
 from biblebot.log_utils import configure_logging, get_logger
 from biblebot.tools import copy_sample_config_to
 
@@ -64,6 +65,20 @@ def _resolved_config_path() -> Path:
     if CONFIG_DIR is not None:
         return CONFIG_DIR / DEFAULT_CONFIG_FILENAME
     return biblebot_paths.get_config_path()
+
+
+def load_config_for_check(config_path: str | Path) -> dict | None:
+    """Load config for CLI validation and print stable diagnostics to stderr."""
+    result = load_config_file(Path(config_path))
+    if result.ok:
+        return result.config
+    for diagnostic in result.diagnostics:
+        print(
+            f"✗ Configuration check failed [{diagnostic.code}]: "
+            f"{diagnostic.message}",
+            file=sys.stderr,
+        )
+    return None
 
 
 def _resolved_credentials_path() -> Path:
@@ -536,11 +551,8 @@ def main():
             generate_config(args.config)
             return
         elif args.config_action == CMD_CHECK:
-            from biblebot.bot import load_config
-
-            config = load_config(args.config)
+            config = load_config_for_check(args.config)
             if not config:
-                # load_config already logs the specific error.
                 sys.exit(1)
 
             try:

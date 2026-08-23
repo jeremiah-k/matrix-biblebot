@@ -67,6 +67,49 @@ class TestGetDefaultConfigPath:
         assert path.is_absolute()
 
 
+class TestLoadConfigForCheck:
+    """Test stable config-check diagnostics."""
+
+    def test_missing_file_reports_structured_diagnostic(self, tmp_path, capsys):
+        config_path = tmp_path / "missing.yaml"
+
+        result = cli.load_config_for_check(config_path)
+
+        captured = capsys.readouterr()
+        assert result is None
+        assert captured.out == ""
+        assert (
+            f"✗ Configuration check failed [read_error]: "
+            f"Error loading config from {config_path}\n" == captured.err
+        )
+
+    def test_invalid_yaml_diagnostic_does_not_echo_file_content(
+        self, tmp_path, capsys
+    ):
+        config_path = tmp_path / "config.yaml"
+        secret = "sentinel-config-secret"  # noqa: S105
+        config_path.write_text(f"api_keys: [{secret}", encoding="utf-8")
+
+        result = cli.load_config_for_check(config_path)
+
+        captured = capsys.readouterr()
+        assert result is None
+        assert "[invalid_yaml]" in captured.err
+        assert secret not in captured.err
+
+    def test_valid_config_returns_normalized_mapping(self, tmp_path, capsys):
+        config_path = tmp_path / "config.yaml"
+        config_path.write_text("matrix_room_ids:\n  - '!room:example.org'\n")
+
+        result = cli.load_config_for_check(config_path)
+
+        captured = capsys.readouterr()
+        assert result is not None
+        assert result["matrix"]["room_ids"] == ["!room:example.org"]
+        assert captured.out == ""
+        assert captured.err == ""
+
+
 class TestGenerateConfig:
     """Test config file generation."""
 
@@ -592,20 +635,22 @@ class TestCLIMainFunction:
         mock_generate.assert_called_once()
 
     @patch("sys.argv", ["biblebot", "config", "check"])
-    @patch("biblebot.bot.load_config")
+    @patch("biblebot.cli.load_config_for_check")
     @patch("biblebot.bot.load_environment")
     @patch("biblebot.auth.check_e2ee_status")
     @patch("builtins.print")
     def test_config_check_command(
-        self, mock_print, mock_e2ee, mock_load_env, mock_load_config
+        self, mock_print, mock_e2ee, mock_load_env, mock_load_config_for_check
     ):
         """Test config check command."""
-        mock_load_config.return_value = {"matrix_room_ids": ["!room1", "!room2"]}
+        mock_load_config_for_check.return_value = {
+            "matrix_room_ids": ["!room1", "!room2"]
+        }
         mock_load_env.return_value = (None, {"api_key1": "value1", "api_key2": ""})
         mock_e2ee.return_value = {"available": True}
 
         cli.main()
-        mock_load_config.assert_called_once()
+        mock_load_config_for_check.assert_called_once()
         mock_print.assert_called()
 
     @patch("sys.argv", ["biblebot", "auth", "login"])
