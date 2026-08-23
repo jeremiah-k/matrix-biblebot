@@ -16,6 +16,17 @@ SRC_DIR = PROJECT_ROOT / "src"
 if str(SRC_DIR) not in sys.path:
     sys.path.insert(0, str(SRC_DIR))
 
+
+@pytest.fixture(autouse=True)
+def isolate_passage_cache():
+    """Prevent process-global passage cache entries from leaking between tests."""
+    from biblebot import bot
+
+    bot._passage_cache.clear()
+    yield
+    bot._passage_cache.clear()
+
+
 # Mock all E2EE dependencies before any imports can occur
 # This prevents ImportError and allows tests to run without real E2EE setup
 
