@@ -23,6 +23,7 @@ import time
 from collections import OrderedDict
 from time import monotonic
 from typing import Any, Mapping
+from unittest.mock import MagicMock
 from urllib.parse import quote
 
 import aiohttp
@@ -600,6 +601,34 @@ class BibleBot:
         """
         keys = list(self.config.keys()) if isinstance(self.config, dict) else []
         return f"BibleBot(config_keys={keys}, client_set={self.client is not None})"
+
+    @classmethod
+    def for_testing(
+        cls,
+        config: Any,
+        *,
+        client: BotClient | None = None,
+    ) -> "BibleBot":
+        """Construct a BibleBot with an auto-generated MagicMock client.
+
+        Convenience factory for tests that exercise bot behavior other than the
+        Matrix client contract (configuration parsing, formatting, dispatch,
+        ``__repr__``, etc.). When ``client`` is None a MagicMock that satisfies
+        ``biblebot.protocols.BotClient`` is created automatically.
+
+        Tests that depend on specific client behavior (e.g. message dispatch
+        tests) should construct the bot directly with an explicit client.
+
+        Parameters:
+            config (Any): The configuration mapping passed to ``__init__``.
+            client (BotClient | None): Optional explicit client override. When
+                omitted, a MagicMock is created for the test.
+
+        Returns:
+            BibleBot: An instance with the client attribute populated.
+        """
+        test_client: BotClient = client if client is not None else MagicMock()
+        return cls(config, test_client)
 
     async def resolve_aliases(self):
         """
