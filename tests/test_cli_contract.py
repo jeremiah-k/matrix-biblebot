@@ -67,6 +67,18 @@ def test_partial_authentication_options_report_error_on_stderr_without_password(
     assert password not in result.stderr
 
 
+def test_config_check_missing_file_uses_stable_stderr_diagnostic(tmp_path: Path):
+    config_path = tmp_path / "missing.yaml"
+
+    result = run_cli("--config", str(config_path), "config", "check")
+
+    assert result.returncode == 1
+    assert result.stdout == ""
+    assert "Configuration check failed [read_error]" in result.stderr
+    assert str(config_path) in result.stderr
+    assert "Traceback" not in result.stderr
+
+
 @pytest.mark.parametrize(
     ("field", "args"),
     [
