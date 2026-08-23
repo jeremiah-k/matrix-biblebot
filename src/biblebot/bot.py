@@ -20,8 +20,6 @@ import json
 import logging
 import os
 import random
-import re
-import textwrap
 import time
 from collections import OrderedDict
 from time import monotonic
@@ -92,10 +90,14 @@ from biblebot.constants.messages import (
     INFO_RESOLVED_ALIAS,
     MESSAGE_SUFFIX,
     REACTION_OK,
-    REFERENCE_SEPARATOR_LEN,
     TRUNCATION_INDICATOR,
     WARN_COULD_NOT_RESOLVE_ALIAS,
     WARN_MATRIX_ACCESS_TOKEN_NOT_SET,
+)
+from biblebot.formatting import (
+    format_text_for_display,
+    split_text_into_chunks,
+    trim_reference_for_suffix,
 )
 from biblebot.log_utils import configure_component_loggers, configure_logging
 from biblebot.triggers import detect_trigger
@@ -931,110 +933,22 @@ class BibleBot:
                 )
 
     def _format_text_for_display(self, text: str) -> tuple[str, str]:
-        """
-        Return a plain-text and an HTML-escaped representation of a passage suitable for sending.
-
-        If the bot's preserve_poetry_formatting is True, paragraph and line breaks are preserved (consecutive blank lines collapsed), internal runs of spaces/tabs are normalized, and newlines in the HTML variant are converted to `<br />`. Otherwise all whitespace (including newlines) is collapsed to single spaces in both plain and HTML variants.
-
-        Returns:
-            tuple[str, str]: (plain_text, html_text) where html_text is HTML-escaped and safe for inclusion in an HTML-formatted message.
-        """
-        if self.preserve_poetry_formatting:
-            # Poetry mode: preserve newlines, clean excess whitespace
-            # This formatting preserves the structure of biblical poetry and verse formatting
-            # while cleaning up inconsistent spacing from API responses
-            formatted_text = re.sub(
-                r"[ \t]+", " ", text
-            )  # Multiple spaces/tabs -> single space
-            formatted_text = re.sub(
-                r"\n\s*\n", "\n\n", formatted_text
-            )  # Multiple newlines -> double newline
-            formatted_text = (
-                formatted_text.strip()
-            )  # Remove leading/trailing whitespace
-            html_text = html.escape(formatted_text).replace("\n", "<br />")
-        else:
-            # Default mode: collapse all whitespace (original behavior)
-            formatted_text = " ".join(text.replace("\n", " ").split())
-            html_text = html.escape(formatted_text)
-
-        return formatted_text, html_text
+        """Format text according to this bot's poetry-preservation setting."""
+        return format_text_for_display(
+            text, preserve_poetry=self.preserve_poetry_formatting
+        )
 
     def _split_text_into_chunks(self, text, max_length):
-        """
-        Split text into chunks of specified maximum length, preferring word boundaries.
-
-        This is used when split_message_length is configured to break long Bible passages
-        into multiple messages while preserving readability by avoiding mid-word breaks.
-
-        Parameters:
-            text (str): The text to split (typically a Bible passage)
-            max_length (int): Maximum length for each chunk (from split_message_length config)
-
-        Returns:
-            list[str]: List of text chunks, each under max_length characters
-        """
-        return textwrap.wrap(
-            text,
-            width=max_length,
-            break_long_words=True,
-            replace_whitespace=False,
-            break_on_hyphens=True,
-        )
+        """Split passage text according to the configured maximum length."""
+        return split_text_into_chunks(text, max_length=max_length)
 
     def _trim_reference_for_suffix(self, reference, reserve_fallback_space=False):
-        """
-        Return a reference string that will fit alongside the message suffix within the bot's max_message_length.
-
-        If the full reference would make the final message (text + " - " + reference + MESSAGE_SUFFIX) exceed max_message_length,
-        this returns a shortened reference ending with TRUNCATION_INDICATOR when space allows, or None if no reference can be included.
-        If reserve_fallback_space is True, the function reserves space for FALLBACK_MESSAGE_TOO_LONG instead of one character of text
-        (used when the passage text may be replaced by a fallback message).
-
-        Parameters:
-            reference (str | None): Canonical Bible reference to include; None or empty returns None.
-            reserve_fallback_space (bool): Reserve space for the worst-case fallback message instead of a single text character.
-
-        Returns:
-            str | None: A reference guaranteed to fit with the configured suffix and reserved text, or None if it must be omitted.
-        """
-        if not reference:
-            return None
-
-        # Calculate budget for reference (reserve space for " - ", MESSAGE_SUFFIX, and text)
-        if reserve_fallback_space:
-            # Reserve space for fallback text in single-message path. This is conservative,
-            # reserving space for the worst-case scenario where the message text itself is
-            # so long it must be replaced by FALLBACK_MESSAGE_TOO_LONG. This guarantees
-            # the final combined message (text + reference + suffix) will not exceed max_message_length.
-            # This prevents edge cases where a very long reference could cause the fallback message
-            # to exceed the maximum length when the original text needs to be replaced.
-            reserved_text_len = len(FALLBACK_MESSAGE_TOO_LONG)
-        else:
-            # Reserve space for at least 1 character of text in splitting path
-            # This is used when splitting messages where we know there will be actual text content
-            reserved_text_len = 1
-
-        budget = (
-            self.max_message_length
-            - len(MESSAGE_SUFFIX)
-            - REFERENCE_SEPARATOR_LEN
-            - reserved_text_len
+        """Trim a reference to this bot's configured message-length budget."""
+        return trim_reference_for_suffix(
+            reference,
+            max_message_length=self.max_message_length,
+            reserve_fallback_space=reserve_fallback_space,
         )
-        if budget <= 0:
-            # Not enough space even for minimal reference, drop it entirely
-            return None
-
-        # Check if full reference fits within budget
-        if len(reference) <= budget:
-            return reference
-
-        # Truncate reference with truncation indicator if needed
-        if budget >= len(TRUNCATION_INDICATOR):  # Need space for truncation indicator
-            keep = max(0, budget - len(TRUNCATION_INDICATOR))
-            return reference[:keep] + TRUNCATION_INDICATOR if keep > 0 else None
-        else:
-            return None
 
     async def _send_message_parts(self, room_id, text_parts, reference):
         """
