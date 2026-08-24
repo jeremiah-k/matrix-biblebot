@@ -17,11 +17,11 @@ if str(SRC_DIR) not in sys.path:
 @pytest.fixture(autouse=True)
 def isolate_passage_cache():
     """Prevent process-global passage cache entries from leaking between tests."""
-    from biblebot import bot
+    from biblebot import passages
 
-    bot._passage_cache.clear()
+    passages._passage_cache.clear()
     yield
-    bot._passage_cache.clear()
+    passages._passage_cache.clear()
 
 
 # Mock all E2EE dependencies before any imports can occur

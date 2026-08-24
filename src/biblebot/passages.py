@@ -7,8 +7,8 @@ This module owns everything between a scripture reference and its text:
 - get_esv_text / get_kjv_text: per-translation API backends
 - get_bible_text: cache-aware dispatch to the right backend
 
-The bot module re-exports these names; production code and tests should
-import from here.
+The bot module re-exports the public retrieval functions and exceptions for
+compatibility. Cache internals remain owned by this module.
 """
 
 from __future__ import annotations

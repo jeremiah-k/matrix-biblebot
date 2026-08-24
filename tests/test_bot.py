@@ -1027,8 +1027,7 @@ class TestBibleTextRetrieval:
     async def test_get_bible_text_with_cache(self):
         """Test Bible text retrieval with caching."""
         # Clear cache first
-        if hasattr(bot, "_passage_cache"):
-            bot._passage_cache.clear()
+        passages._passage_cache.clear()
 
         mock_response = {
             "text": "For God so loved the world...",
@@ -2055,40 +2054,37 @@ class TestCacheFunctions:
     def test_cache_get_miss(self):
         """Test cache miss."""
         # Clear cache first
-        if hasattr(bot, "_passage_cache"):
-            bot._passage_cache.clear()
+        passages._passage_cache.clear()
 
-        result = bot._cache_get(TEST_BIBLE_REFERENCE, "kjv")
+        result = passages._cache_get(TEST_BIBLE_REFERENCE, "kjv")
         assert result is None
 
     def test_cache_set_and_get(self):
         """Test cache set and get."""
         # Clear cache first
-        if hasattr(bot, "_passage_cache"):
-            bot._passage_cache.clear()
+        passages._passage_cache.clear()
 
         # Set cache
-        bot._cache_set(
+        passages._cache_set(
             TEST_BIBLE_REFERENCE, "kjv", ("For God so loved...", TEST_BIBLE_REFERENCE)
         )
 
         # Get from cache
-        result = bot._cache_get(TEST_BIBLE_REFERENCE, "kjv")
+        result = passages._cache_get(TEST_BIBLE_REFERENCE, "kjv")
         assert result == ("For God so loved...", TEST_BIBLE_REFERENCE)
 
     def test_cache_case_insensitive(self):
         """Test cache is case insensitive."""
         # Clear cache first
-        if hasattr(bot, "_passage_cache"):
-            bot._passage_cache.clear()
+        passages._passage_cache.clear()
 
         # Set with one case
-        bot._cache_set(
+        passages._cache_set(
             TEST_BIBLE_REFERENCE, "KJV", ("For God so loved...", TEST_BIBLE_REFERENCE)
         )
 
         # Get with different case
-        result = bot._cache_get(TEST_BIBLE_REFERENCE.lower(), "kjv")
+        result = passages._cache_get(TEST_BIBLE_REFERENCE.lower(), "kjv")
         assert result == ("For God so loved...", TEST_BIBLE_REFERENCE)
 
 

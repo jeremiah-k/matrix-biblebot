@@ -98,9 +98,6 @@ from biblebot.messaging import (
 from biblebot.passages import (  # noqa: F401 - re-export for import compatibility
     APIKeyMissing,
     PassageNotFound,
-    _cache_get,
-    _cache_set,
-    _passage_cache,
     get_bible_text,
     get_esv_text,
     get_kjv_text,

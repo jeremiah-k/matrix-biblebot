@@ -8,7 +8,7 @@ from nio import RemoteTransportError
 import pytest
 import yaml
 
-from biblebot import auth, bot, cli
+from biblebot import auth, bot, cli, passages
 
 
 class TestEndToEndWorkflow:
@@ -326,8 +326,7 @@ class TestCacheManagement:
     async def test_bible_text_caching(self):
         """Test Bible text caching behavior."""
         # Clear cache
-        if hasattr(bot, "_passage_cache"):
-            bot._passage_cache.clear()
+        passages._passage_cache.clear()
 
         mock_response = {"text": "Test verse", "reference": "Test 1:1"}
 
@@ -353,20 +352,19 @@ class TestCacheManagement:
     def test_cache_size_limits(self):
         """Test that cache respects size limits."""
         # Clear cache
-        if hasattr(bot, "_passage_cache"):
-            bot._passage_cache.clear()
+        passages._passage_cache.clear()
 
         # Test cache size management
 
         # Temporarily set a small cache size for testing
         with patch("biblebot.passages._PASSAGE_CACHE_MAX", 2):
             # Add items to cache
-            bot._cache_set("passage1", "kjv", ("text1", "ref1"))
-            bot._cache_set("passage2", "kjv", ("text2", "ref2"))
-            bot._cache_set("passage3", "kjv", ("text3", "ref3"))  # Should evict oldest
+            passages._cache_set("passage1", "kjv", ("text1", "ref1"))
+            passages._cache_set("passage2", "kjv", ("text2", "ref2"))
+            passages._cache_set("passage3", "kjv", ("text3", "ref3"))  # Should evict oldest
 
             # Cache should not exceed max size
-            assert len(bot._passage_cache) <= 2
+            assert len(passages._passage_cache) <= 2
 
 
 class TestCLIIntegration:
@@ -516,12 +514,11 @@ class TestDataFlowIntegration:
     async def test_api_to_cache_flow(self):
         """Test API response to cache data flow integration."""
         # Clear cache
-        if hasattr(bot, "_passage_cache"):
-            bot._passage_cache.clear()
+        passages._passage_cache.clear()
 
         # Test data flow
-        bot._cache_set("Test 1:1", "kjv", ("Test text", "Test 1:1"))
-        result = bot._cache_get("Test 1:1", "kjv")
+        passages._cache_set("Test 1:1", "kjv", ("Test text", "Test 1:1"))
+        result = passages._cache_get("Test 1:1", "kjv")
 
         # Verify data flow integration
         assert result == ("Test text", "Test 1:1")
@@ -546,7 +543,7 @@ class TestErrorPropagationIntegration:
     async def test_api_error_propagation(self):
         """Test API errors propagate properly."""
         # Clear cache to ensure we hit the API
-        bot._passage_cache.clear()
+        passages._passage_cache.clear()
 
         with patch(
             "biblebot.passages.make_api_request", new=AsyncMock(return_value=None)
@@ -593,12 +590,11 @@ class TestComponentInteractionIntegration:
     def test_bot_cache_interaction(self):
         """Test bot and cache component interaction."""
         # Clear cache
-        if hasattr(bot, "_passage_cache"):
-            bot._passage_cache.clear()
+        passages._passage_cache.clear()
 
         # Test interaction
-        bot._cache_set("Interaction 1:1", "test", ("Test", "Interaction 1:1"))
-        result = bot._cache_get("interaction 1:1", "TEST")  # Different case
+        passages._cache_set("Interaction 1:1", "test", ("Test", "Interaction 1:1"))
+        result = passages._cache_get("interaction 1:1", "TEST")  # Different case
 
         # Should interact with case insensitivity
         assert result == ("Test", "Interaction 1:1")

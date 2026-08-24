@@ -4,7 +4,8 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from biblebot.bot import BibleBot, _cache_get, _cache_set, get_bible_text, load_config
+from biblebot.bot import BibleBot, get_bible_text, load_config
+from biblebot.passages import _cache_get, _cache_set, _passage_cache
 
 
 class TestBotConfiguration:
@@ -420,8 +421,6 @@ class TestCacheConfiguration:
         This test clears the module-level _passage_cache, calls _cache_set with cache disabled, and asserts the cache remains empty.
         """
         # Clear any existing cache
-        from biblebot.bot import _passage_cache
-
         _passage_cache.clear()
 
         # Try to set with cache disabled
