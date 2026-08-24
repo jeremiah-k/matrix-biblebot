@@ -10,35 +10,65 @@ from typing import Final
 from biblebot.constants.matrix import DEFAULT_RETRY_AFTER_MS, MAX_RATE_LIMIT_RETRIES
 from biblebot.constants.messages import MESSAGE_SUFFIX
 
-
 _RATE_LIMIT_STATUS: Final[int] = 429
+_RATE_LIMIT_ERRCODE: Final[str] = "M_LIMIT_EXCEEDED"
 
 
-def is_rate_limit_error(exc: BaseException) -> bool:
-    """Return True when an exception represents a retriable Matrix rate-limit."""
-    return getattr(exc, "status", None) == _RATE_LIMIT_STATUS
+def _has_message_attr(obj: object) -> bool:
+    """Return True when *obj* looks like an nio Response (has ``message``)."""
+    return hasattr(obj, "message")
+
+
+def is_error_response(response: object) -> bool:
+    """Return True when a client return value is an nio ``ErrorResponse``.
+
+    ``nio.AsyncClient`` methods return ``ErrorResponse`` objects instead of
+    raising for Matrix-level failures, so callers must inspect return values
+    rather than catch exceptions.
+    """
+    from nio.responses import ErrorResponse  # deferred: keeps import cost local
+
+    return isinstance(response, ErrorResponse)
+
+
+def is_rate_limit_response(response: object) -> bool:
+    """Return True when an ErrorResponse is a retriable rate-limit (429).
+
+    Mirrors nio's own detection in ``AsyncClient._send``: the limit may be
+    signalled by an integer 429 status or the ``M_LIMIT_EXCEEDED`` error
+    code, on either the ``status_code`` or ``errcode`` attribute depending
+    on how the response was constructed.
+    """
+    if response is None or not _has_message_attr(response):
+        return False
+    markers = (
+        getattr(response, "status_code", None),
+        getattr(response, "errcode", None),
+    )
+    return _RATE_LIMIT_STATUS in markers or _RATE_LIMIT_ERRCODE in markers
+
+
+def response_retry_delay_seconds(
+    response: object,
+    *,
+    attempt: int,
+    rng=random.uniform,
+) -> float:
+    """Compute bounded-jitter backoff for one retry of a rate-limited send.
+
+    Uses the server-provided ``retry_after_ms`` hint when present, falling
+    back to the configured default; grows exponentially with ``attempt``.
+    """
+    retry_ms = getattr(response, "retry_after_ms", None)
+    if not retry_ms:
+        retry_ms = DEFAULT_RETRY_AFTER_MS
+    base_delay = int(retry_ms) / 1000.0 * (2**attempt)
+    return base_delay * rng(0.8, 1.2)
 
 
 def remaining_retry_budget(retries_left: int) -> int:
     """Clamp a retry-remaining counter to the configured maximum."""
     return max(0, min(retries_left, MAX_RATE_LIMIT_RETRIES))
-
-
-def should_retry_rate_limit(retries_left: int, exc: BaseException) -> bool:
-    """Return True if a rate-limit error should trigger another retry attempt."""
-    if retries_left <= 0:
-        return False
-    return is_rate_limit_error(exc)
-
-
-def compute_retry_delay_seconds(
-    retries_left: int, exc: BaseException, *, rng=random.uniform
-) -> float:
-    """Compute exponential backoff with bounded jitter for one retry attempt."""
-    retry_ms = int(getattr(exc, "retry_after_ms", DEFAULT_RETRY_AFTER_MS))
-    attempt_index = MAX_RATE_LIMIT_RETRIES - retries_left
-    base_delay = retry_ms / 1000.0 * (2**attempt_index)
-    return base_delay * rng(0.8, 1.2)
 
 
 def compose_final_chunk_bodies(

@@ -28,19 +28,22 @@ from unittest.mock import MagicMock
 from urllib.parse import quote
 
 import aiohttp
-import nio.exceptions
 from dotenv import load_dotenv
 from nio import (
     AsyncClient,
     AsyncClientConfig,
     InviteEvent,
+    LocalProtocolError,
     MatrixRoom,
     MegolmEvent,
+    RemoteProtocolError,
+    RemoteTransportError,
     RoomMessageText,
     RoomResolveAliasError,
 )
 
 from biblebot.auth import get_store_dir, load_credentials
+from biblebot.config import load_config_file
 from biblebot.constants.api import (
     API_PARAM_FALSE,
     API_PARAM_INCLUDE_FOOTNOTES,
@@ -55,7 +58,6 @@ from biblebot.constants.api import (
     ESV_API_URL,
     KJV_API_URL_TEMPLATE,
 )
-from biblebot.config import load_config_file
 from biblebot.constants.app import BIBLEBOT_HTTP_USER_AGENT, LOGGER_NAME
 from biblebot.constants.bible import (
     DEFAULT_TRANSLATION,
@@ -99,13 +101,14 @@ from biblebot.formatting import (
     split_text_into_chunks,
     trim_reference_for_suffix,
 )
+from biblebot.log_utils import configure_component_loggers, configure_logging
 from biblebot.messaging import (
     compose_final_chunk_bodies,
-    compute_retry_delay_seconds,
-    should_retry_rate_limit,
+    is_error_response,
+    is_rate_limit_response,
+    response_retry_delay_seconds,
 )
 from biblebot.protocols import BotClient
-from biblebot.log_utils import configure_component_loggers, configure_logging
 from biblebot.rooms import (
     is_alias,
     is_placeholder_room_id,
@@ -129,6 +132,15 @@ class PassageNotFound(Exception):
 
 class APIKeyMissing(Exception):
     """Raised when a required API key is missing."""
+
+
+class MessageSendError(Exception):
+    """Raised when a Matrix message send fails at the transport level.
+
+    nio reports Matrix-level (HTTP) failures by returning an
+    ``ErrorResponse`` rather than raising; transport-level failures such as
+    dropped connections surface as exceptions and are wrapped in this type.
+    """
 
 
 # Patchable cache constants for backward compatibility and testing
@@ -731,9 +743,9 @@ class BibleBot:
             else:
                 logger.debug(f"Bot is already in room '{room_id_or_alias}'")
         except (
-            nio.exceptions.LocalProtocolError,
-            nio.exceptions.RemoteProtocolError,
-            nio.exceptions.RemoteTransportError,
+            LocalProtocolError,
+            RemoteProtocolError,
+            RemoteTransportError,
             aiohttp.ClientError,
             RoomResolveAliasError,
             asyncio.TimeoutError,
@@ -871,7 +883,7 @@ class BibleBot:
                 logger.info(
                     f"Requested keys via client.request_room_key for event {getattr(event, 'event_id', '?')}"
                 )
-            except nio.exceptions.LocalProtocolError:
+            except LocalProtocolError:
                 # Duplicate/pending request — fall back to manual to-device path
                 request = event.as_key_request(
                     self.client.user_id, getattr(self.client, "device_id", None)
@@ -920,13 +932,15 @@ class BibleBot:
             }
         }
         try:
-            await self.client.room_send(
+            response = await self.client.room_send(
                 room_id,
                 "m.reaction",
                 content,
                 ignore_unverified_devices=True,
             )
-        except (nio.exceptions.MatrixRequestError, aiohttp.ClientError) as e:
+            if is_error_response(response):
+                logger.warning(f"Failed to send reaction: {response}")
+        except aiohttp.ClientError as e:
             logger.warning(f"Failed to send reaction: {e}", exc_info=True)
         except Exception:
             logger.exception("Unexpected error sending reaction")
@@ -1023,15 +1037,18 @@ class BibleBot:
         """
         Send multiple message parts to a Matrix room, appending the provided Bible reference and MESSAGE_SUFFIX only to the final part.
 
-        Each text part is formatted for plain and HTML display via _format_text_for_display. If a reference is given, the last part is suffixed with " - {reference}{MESSAGE_SUFFIX}"; otherwise the last part ends with MESSAGE_SUFFIX. Sends messages using the bot's Matrix client and retries transient 429 (rate-limited) responses with exponential backoff and jitter up to MAX_RATE_LIMIT_RETRIES before propagating the underlying MatrixRequestError.
+        Each text part is formatted for plain and HTML display via _format_text_for_display. If a reference is given, the last part is suffixed with " - {reference}{MESSAGE_SUFFIX}"; otherwise the last part ends with MESSAGE_SUFFIX. Sends messages using the bot's Matrix client. Because nio's room_send returns ErrorResponse objects rather than raising, each response is inspected: transient 429 (rate-limited) responses are retried with exponential backoff and jitter up to MAX_RATE_LIMIT_RETRIES; any other ErrorResponse or transport failure stops the send.
 
         Parameters:
             room_id (str): Target Matrix room ID.
             text_parts (list[str]): Ordered message fragments to send.
             reference (str | None): Bible reference to append to the final message, or None to omit.
 
+        Returns:
+            The first non-retriable nio ErrorResponse encountered, or None when every part was sent.
+
         Raises:
-            nio.exceptions.MatrixRequestError: If sending fails for non-retriable reasons or retries are exhausted.
+            MessageSendError: If the underlying transport fails (aiohttp.ClientError) or the client raises a nio protocol/transport error (e.g. LocalProtocolError when not logged in).
         """
         for i, text_part in enumerate(text_parts):
             # Format the text part
@@ -1053,27 +1070,41 @@ class BibleBot:
                 "formatted_body": formatted_body,
             }
 
-            # Send with enhanced rate limit handling
-            retries = MAX_RATE_LIMIT_RETRIES
+            # Send with enhanced rate limit handling: inspect the returned
+            # response (nio returns ErrorResponse instead of raising) and
+            # retry only transient 429 rate-limit responses.
+            retries_left = MAX_RATE_LIMIT_RETRIES
+            attempt = 0
             while True:
                 try:
-                    await self.client.room_send(
+                    response = await self.client.room_send(
                         room_id,
                         "m.room.message",
                         content,
                         ignore_unverified_devices=True,
                     )
+                except (
+                    aiohttp.ClientError,
+                    LocalProtocolError,
+                    RemoteProtocolError,
+                    RemoteTransportError,
+                ) as e:
+                    raise MessageSendError(
+                        f"Transport error sending message to {room_id}: {e}"
+                    ) from e
+                if response is None or not is_error_response(response):
                     break  # Success
-                except nio.exceptions.MatrixRequestError as e:
-                    if should_retry_rate_limit(retries, e):
-                        delay = compute_retry_delay_seconds(retries, e)
-                        logger.warning(
-                            f"Rate limited; backing off for {delay:.1f}s (attempt {MAX_RATE_LIMIT_RETRIES + 1 - retries}/{MAX_RATE_LIMIT_RETRIES})"
-                        )
-                        await asyncio.sleep(delay)
-                        retries -= 1
-                    else:
-                        raise
+                if retries_left > 0 and is_rate_limit_response(response):
+                    delay = response_retry_delay_seconds(response, attempt=attempt)
+                    logger.warning(
+                        f"Rate limited; backing off for {delay:.1f}s "
+                        f"(attempt {attempt + 1}/{MAX_RATE_LIMIT_RETRIES})"
+                    )
+                    await asyncio.sleep(delay)
+                    retries_left -= 1
+                    attempt += 1
+                    continue
+                return response
 
     async def handle_scripture_command(self, room_id, passage, translation, event):
         """
@@ -1149,9 +1180,15 @@ class BibleBot:
                         )
 
                     logger.info(f"Splitting message into {len(text_chunks)} parts")
-                    await self._send_message_parts(
+                    send_error = await self._send_message_parts(
                         room_id, text_chunks, trimmed_reference
                     )
+
+                    if send_error is not None:
+                        logger.error(
+                            f"Failed to send split scripture to {room_id}: {send_error}"
+                        )
+                        return
 
                     if trimmed_reference:
                         logger.info(f"Sent split scripture: {trimmed_reference}")
@@ -1186,7 +1223,13 @@ class BibleBot:
                 else:
                     message_text = FALLBACK_MESSAGE_TOO_LONG
 
-            await self._send_message_parts(room_id, [message_text], trimmed_reference)
+            send_error = await self._send_message_parts(
+                room_id, [message_text], trimmed_reference
+            )
+
+            if send_error is not None:
+                logger.error(f"Failed to send scripture to {room_id}: {send_error}")
+                return
 
             if trimmed_reference:
                 logger.info(f"Sent scripture: {trimmed_reference}")
@@ -1358,9 +1401,9 @@ async def main(config_path=DEFAULT_CONFIG_FILENAME, config=None):
                 await client.keys_upload()
                 logger.info("Encryption keys uploaded")
         except (
-            nio.exceptions.LocalProtocolError,
-            nio.exceptions.RemoteProtocolError,
-            nio.exceptions.RemoteTransportError,
+            LocalProtocolError,
+            RemoteProtocolError,
+            RemoteTransportError,
             aiohttp.ClientError,
         ):
             logger.exception("Failed to upload E2EE keys")

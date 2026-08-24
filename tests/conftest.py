@@ -30,6 +30,17 @@ def isolate_passage_cache():
 # Mock all E2EE dependencies before any imports can occur
 # This prevents ImportError and allows tests to run without real E2EE setup
 
+# Preserve the real nio.responses module so code under test can still do
+# ``from nio.responses import ErrorResponse`` after the ``nio`` package is
+# replaced by the mock below. A pre-seeded sys.modules entry short-circuits
+# the submodule import, which would otherwise fail against a MagicMock parent.
+try:
+    import nio.responses as _real_nio_responses
+
+    sys.modules.setdefault("nio.responses", _real_nio_responses)
+except ImportError:  # pragma: no cover - environment without a real nio
+    pass
+
 
 # Create proper Exception classes for nio.exceptions
 class MockRemoteProtocolError(Exception):
@@ -188,6 +199,9 @@ nio_mock.DiscoveryInfoError = MockDiscoveryInfoError
 nio_mock.LoginError = MockLoginError
 nio_mock.RoomResolveAliasError = MockRoomResolveAliasError
 nio_mock.LoginResponse = MockLoginResponse
+nio_mock.LocalProtocolError = MockLocalProtocolError
+nio_mock.RemoteProtocolError = MockRemoteProtocolError
+nio_mock.RemoteTransportError = MockRemoteTransportError
 
 # Set up proper __spec__ for nio module to support importlib.util.find_spec
 nio_mock.__spec__ = MagicMock()
@@ -333,7 +347,7 @@ def comprehensive_cleanup():
     yield
 
     # Force cleanup of all async tasks and event loops
-    try:  # noqa: S110 - intentional try-except-pass for test cleanup
+    try:
         try:
             loop = asyncio.get_running_loop()
         except RuntimeError:
@@ -373,7 +387,7 @@ def comprehensive_cleanup():
 
     except (  # noqa: S110 - intentional try-except-pass for test cleanup
         Exception
-    ):  # noqa: BLE001 - test cleanup needs broad exception handling
+    ):
         # Suppress cleanup errors to avoid affecting test results
         pass
 
