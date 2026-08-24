@@ -32,11 +32,20 @@ def is_error_response(response: object) -> bool:
 
 
 def is_rate_limit_response(response: object) -> bool:
-    """Return True when an ErrorResponse is a retriable rate-limit (429)."""
+    """Return True when an ErrorResponse is a retriable rate-limit (429).
+
+    Mirrors nio's own detection in ``AsyncClient._send``: the limit may be
+    signalled by an integer 429 status or the ``M_LIMIT_EXCEEDED`` error
+    code, on either the ``status_code`` or ``errcode`` attribute depending
+    on how the response was constructed.
+    """
     if response is None or not _has_message_attr(response):
         return False
-    status_code = getattr(response, "status_code", None)
-    return status_code == _RATE_LIMIT_STATUS or status_code == _RATE_LIMIT_ERRCODE
+    markers = (
+        getattr(response, "status_code", None),
+        getattr(response, "errcode", None),
+    )
+    return _RATE_LIMIT_STATUS in markers or _RATE_LIMIT_ERRCODE in markers
 
 
 def response_retry_delay_seconds(

@@ -1048,7 +1048,7 @@ class BibleBot:
             The first non-retriable nio ErrorResponse encountered, or None when every part was sent.
 
         Raises:
-            MessageSendError: If the underlying transport raises (e.g. aiohttp.ClientError) or the client is unreachable.
+            MessageSendError: If the underlying transport fails (aiohttp.ClientError) or the client raises a nio protocol/transport error (e.g. LocalProtocolError when not logged in).
         """
         for i, text_part in enumerate(text_parts):
             # Format the text part
@@ -1083,7 +1083,12 @@ class BibleBot:
                         content,
                         ignore_unverified_devices=True,
                     )
-                except aiohttp.ClientError as e:
+                except (
+                    aiohttp.ClientError,
+                    LocalProtocolError,
+                    RemoteProtocolError,
+                    RemoteTransportError,
+                ) as e:
                     raise MessageSendError(
                         f"Transport error sending message to {room_id}: {e}"
                     ) from e
@@ -1175,9 +1180,15 @@ class BibleBot:
                         )
 
                     logger.info(f"Splitting message into {len(text_chunks)} parts")
-                    await self._send_message_parts(
+                    send_error = await self._send_message_parts(
                         room_id, text_chunks, trimmed_reference
                     )
+
+                    if send_error is not None:
+                        logger.error(
+                            f"Failed to send split scripture to {room_id}: {send_error}"
+                        )
+                        return
 
                     if trimmed_reference:
                         logger.info(f"Sent split scripture: {trimmed_reference}")
@@ -1212,7 +1223,13 @@ class BibleBot:
                 else:
                     message_text = FALLBACK_MESSAGE_TOO_LONG
 
-            await self._send_message_parts(room_id, [message_text], trimmed_reference)
+            send_error = await self._send_message_parts(
+                room_id, [message_text], trimmed_reference
+            )
+
+            if send_error is not None:
+                logger.error(f"Failed to send scripture to {room_id}: {send_error}")
+                return
 
             if trimmed_reference:
                 logger.info(f"Sent scripture: {trimmed_reference}")

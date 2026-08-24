@@ -41,6 +41,13 @@ def test_is_rate_limit_response_matches_errcode_and_status():
     assert not is_rate_limit_response(None)
 
 
+def test_is_rate_limit_response_checks_errcode_field_separately():
+    """A M_LIMIT_EXCEEDED errcode is retriable even with a non-429 status."""
+    resp = _fake_error_response(status_code=503)
+    resp.errcode = "M_LIMIT_EXCEEDED"
+    assert is_rate_limit_response(resp)
+
+
 def test_remaining_retry_budget_clamps_to_max():
     assert remaining_retry_budget(0) == 0
     assert remaining_retry_budget(2) == 2

@@ -8,6 +8,7 @@ contract that the bot inspects returned responses rather than catching a
 
 from __future__ import annotations
 
+import logging
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
@@ -110,6 +111,95 @@ class TestSendMessageParts:
 
         with pytest.raises(MessageSendError):
             await bot._send_message_parts("!room:x", ["Verse"], None)
+
+    @pytest.mark.asyncio
+    async def test_raises_message_send_error_on_nio_transport_errors(self):
+        from nio import LocalProtocolError, RemoteProtocolError, RemoteTransportError
+
+        bot = BibleBot(config={"matrix_room_ids": []}, client=MagicMock())
+        for exc in (
+            LocalProtocolError("not logged in"),
+            RemoteProtocolError("bad response"),
+            RemoteTransportError("connection lost"),
+        ):
+            bot.client.room_send = AsyncMock(side_effect=exc)
+            with pytest.raises(MessageSendError):
+                await bot._send_message_parts("!room:x", ["Verse"], None)
+
+
+class TestHandleScriptureCommandSendFailure:
+    """handle_scripture_command must not log success when Matrix rejects a send."""
+
+    @staticmethod
+    def _bot_with_failing_send(error_response):
+        bot = BibleBot(config={"matrix_room_ids": ["!room:x"]}, client=MagicMock())
+        bot.client.room_send = AsyncMock(return_value=error_response)
+        bot._send_error_message = AsyncMock()
+        return bot
+
+    @staticmethod
+    def _event():
+        event = MagicMock()
+        event.event_id = "$evt:example.org"
+        return event
+
+    @pytest.mark.asyncio
+    async def test_single_message_failure_skips_success_log(self, monkeypatch, caplog):
+        from nio.responses import ErrorResponse
+
+        bot = self._bot_with_failing_send(
+            ErrorResponse("rejected", status_code="M_UNKNOWN")
+        )
+        monkeypatch.setattr(
+            "biblebot.bot.get_bible_text",
+            AsyncMock(return_value=("For God so loved the world", "John 3:16")),
+        )
+
+        with caplog.at_level(logging.INFO):
+            await bot.handle_scripture_command(
+                "!room:x", "John 3:16", None, self._event()
+            )
+
+        assert "Failed to send scripture" in caplog.text
+        assert "Sent scripture" not in caplog.text
+
+    @pytest.mark.asyncio
+    async def test_split_message_failure_skips_success_log(self, monkeypatch, caplog):
+        from nio.responses import ErrorResponse
+
+        bot = self._bot_with_failing_send(
+            ErrorResponse("rejected", status_code="M_LIMIT_EXCEEDED")
+        )
+        bot.split_message_length = 10  # force the split path
+        monkeypatch.setattr(
+            "biblebot.bot.get_bible_text",
+            AsyncMock(return_value=("long text " * 50, "John 3:16")),
+        )
+
+        with caplog.at_level(logging.INFO):
+            await bot.handle_scripture_command(
+                "!room:x", "John 3:16", None, self._event()
+            )
+
+        assert "Failed to send split scripture" in caplog.text
+        assert "Sent split scripture" not in caplog.text
+
+    @pytest.mark.asyncio
+    async def test_success_still_logs_sent(self, monkeypatch, caplog):
+        bot = BibleBot(config={"matrix_room_ids": ["!room:x"]}, client=MagicMock())
+        bot.client.room_send = AsyncMock(return_value=MagicMock())
+        monkeypatch.setattr(
+            "biblebot.bot.get_bible_text",
+            AsyncMock(return_value=("For God so loved the world", "John 3:16")),
+        )
+
+        with caplog.at_level(logging.INFO):
+            await bot.handle_scripture_command(
+                "!room:x", "John 3:16", None, self._event()
+            )
+
+        assert "Sent scripture" in caplog.text
+        assert "Failed to send" not in caplog.text
 
 
 async def _record_sleep(sleeps):
