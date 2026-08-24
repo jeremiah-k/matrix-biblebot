@@ -179,6 +179,8 @@ class TestHandleScriptureCommandSendFailure:
             "biblebot.bot.get_bible_text",
             AsyncMock(return_value=("long text " * 50, "John 3:16")),
         )
+        # Skip the real exponential backoff (would otherwise sleep ~7s)
+        monkeypatch.setattr("biblebot.bot.asyncio.sleep", AsyncMock(return_value=None))
 
         with caplog.at_level(logging.INFO):
             await bot.handle_scripture_command(
@@ -209,6 +211,8 @@ class TestHandleScriptureCommandSendFailure:
     async def test_send_failure_sends_user_facing_notice(self, monkeypatch):
         from nio.responses import ErrorResponse
 
+        # Forbidden response: the room rejects posts entirely, so no notice
+        # can be delivered there. The bot must NOT attempt a doomed send.
         bot = self._bot_with_failing_send(
             ErrorResponse("rejected", status_code="M_FORBIDDEN")
         )
@@ -219,18 +223,52 @@ class TestHandleScriptureCommandSendFailure:
 
         await bot.handle_scripture_command("!room:x", "John 3:16", None, self._event())
 
-        # The room receives a notice matching the failure kind
-        bot._send_error_message.assert_awaited_once()
-        notice = bot._send_error_message.await_args.args[1]
-        assert "not permitted to post in this room" in notice
+        # 2 sends total: the reaction attempt (fails, logged) and the passage
+        # send (429-style retry loop does not apply to M_FORBIDDEN, so only
+        # one attempt). The delivery-failure notice is deliberately NOT sent
+        # to the same forbidden room.
+        assert bot.client.room_send.await_count == 2
+        kinds = [c.args[1] for c in bot.client.room_send.await_args_list]
+        assert "m.room.message" in kinds  # passage attempt happened
 
     @pytest.mark.asyncio
     async def test_rate_limit_exhaustion_notice_mentions_retry(self, monkeypatch):
         from nio.responses import ErrorResponse
 
-        bot = self._bot_with_failing_send(
-            ErrorResponse("slow down", status_code="M_LIMIT_EXCEEDED")
+        limited = ErrorResponse("slow down", status_code="M_LIMIT_EXCEEDED")
+        bot = BibleBot(config={"matrix_room_ids": ["!room:x"]}, client=MagicMock())
+        # Sequence: reaction fails, 4 passage attempts rate-limited, then the
+        # notice finally succeeds on its own send.
+        bot.client.room_send = AsyncMock(
+            side_effect=[limited, limited, limited, limited, limited, MagicMock()]
         )
+        monkeypatch.setattr(
+            "biblebot.bot.get_bible_text",
+            AsyncMock(return_value=("For God so loved the world", "John 3:16")),
+        )
+        # Skip the real exponential backoff (would otherwise sleep ~7s)
+        monkeypatch.setattr("biblebot.bot.asyncio.sleep", AsyncMock(return_value=None))
+
+        await bot.handle_scripture_command("!room:x", "John 3:16", None, self._event())
+
+        calls = bot.client.room_send.await_args_list
+        # 5 failed passage/reaction sends + 1 notice that got through
+        assert len(calls) == 6
+        notice_bodies = [
+            c.args[2]["body"]
+            for c in calls[1:]
+            if c.args[1] == "m.room.message" and "rate-limited" in c.args[2]["body"]
+        ]
+        assert notice_bodies, "expected a delivered rate-limited notice"
+
+    @pytest.mark.asyncio
+    async def test_transport_failure_reports_delivery_not_lookup(self, monkeypatch):
+        """room_send raising aiohttp.ClientError must yield ERROR_SEND_OTHER,
+        not the generic ERROR_PASSAGE_NOT_FOUND lookup message."""
+        import aiohttp
+
+        bot = BibleBot(config={"matrix_room_ids": ["!room:x"]}, client=MagicMock())
+        bot.client.room_send = AsyncMock(side_effect=aiohttp.ClientError("conn died"))
         monkeypatch.setattr(
             "biblebot.bot.get_bible_text",
             AsyncMock(return_value=("For God so loved the world", "John 3:16")),
@@ -238,8 +276,12 @@ class TestHandleScriptureCommandSendFailure:
 
         await bot.handle_scripture_command("!room:x", "John 3:16", None, self._event())
 
-        notice = bot._send_error_message.await_args.args[1]
-        assert "rate-limited" in notice
+        calls = bot.client.room_send.await_args_list
+        # reaction + passage + notice attempts; notice body must be the
+        # delivery-failure message, never the passage-not-found lookup text
+        bodies = [c.args[2]["body"] for c in calls if c.args[1] == "m.room.message"]
+        assert any("could not be delivered" in b for b in bodies)
+        assert not any("passage could not be found" in b.lower() for b in bodies)
 
 
 async def _record_sleep(sleeps):

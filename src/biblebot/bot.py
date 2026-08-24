@@ -685,12 +685,17 @@ class BibleBot:
             "formatted_body": html.escape(message),
         }
         try:
-            await self.client.room_send(
+            response = await self.client.room_send(
                 room_id,
                 "m.room.message",
                 content,
                 ignore_unverified_devices=True,
             )
+            # The notice itself can be rejected (e.g. M_FORBIDDEN in the very
+            # room that rejected the passage). Never claim delivery that did
+            # not happen; the error is already logged by callers.
+            if is_error_response(response):
+                logger.error(f"Error notice to {room_id} was not delivered: {response}")
         except Exception:
             logger.exception(f"Failed to send error message to room {room_id}")
 
@@ -910,10 +915,18 @@ class BibleBot:
                         logger.error(
                             f"Failed to send split scripture to {room_id}: {send_error}"
                         )
-                        await self._send_error_message(
-                            room_id,
-                            self._send_failure_notice(send_error),
-                        )
+                        if classify_send_failure(send_error) == "forbidden":
+                            # The room rejects our posts; a notice to the same
+                            # room cannot be delivered, so only record it.
+                            logger.error(
+                                f"Not posting delivery-failure notice to "
+                                f"forbidden room {room_id}"
+                            )
+                        else:
+                            await self._send_error_message(
+                                room_id,
+                                self._send_failure_notice(send_error),
+                            )
                         return
 
                     if trimmed_reference:
@@ -955,10 +968,18 @@ class BibleBot:
 
             if send_error is not None:
                 logger.error(f"Failed to send scripture to {room_id}: {send_error}")
-                await self._send_error_message(
-                    room_id,
-                    self._send_failure_notice(send_error),
-                )
+                if classify_send_failure(send_error) == "forbidden":
+                    # The room rejects our posts; a notice to the same
+                    # room cannot be delivered, so only record it.
+                    logger.error(
+                        f"Not posting delivery-failure notice to "
+                        f"forbidden room {room_id}"
+                    )
+                else:
+                    await self._send_error_message(
+                        room_id,
+                        self._send_failure_notice(send_error),
+                    )
                 return
 
             if trimmed_reference:
@@ -971,6 +992,11 @@ class BibleBot:
             # Send helpful message about missing API key
             api_key_error = f"ESV translation requires an API key. Please configure one in your config.yaml or use KJV instead. (Try: {passage} kjv)"
             await self._send_error_message(room_id, api_key_error)
+        except MessageSendError as e:
+            # The passage was fetched but delivery failed at the transport
+            # level; report it as a delivery failure, not a lookup failure.
+            logger.error(f"Transport failure delivering passage to {room_id}: {e}")
+            await self._send_error_message(room_id, ERROR_SEND_OTHER)
         except PassageNotFound as e:
             logger.warning(f"Failed to retrieve passage: {passage} ({e})")
             await self._send_error_message(room_id, ERROR_PASSAGE_NOT_FOUND)

@@ -100,3 +100,20 @@ def test_classify_send_failure_kinds():
     assert classify_send_failure(_fake_error_response(403)) == "forbidden"
     assert classify_send_failure(_fake_error_response("M_UNKNOWN")) == "other"
     assert classify_send_failure(None) == "other"
+
+
+def test_classify_send_failure_checks_both_markers_independently():
+    """An unknown errcode must not mask a forbidden HTTP status (and vice versa)."""
+    from biblebot.messaging import classify_send_failure
+
+    mixed = _fake_error_response(status_code=403)
+    mixed.errcode = "M_UNKNOWN"
+    assert classify_send_failure(mixed) == "forbidden"
+
+    mixed_reverse = _fake_error_response(status_code=200)
+    mixed_reverse.errcode = "M_FORBIDDEN"
+    assert classify_send_failure(mixed_reverse) == "forbidden"
+
+    neither = _fake_error_response(200)
+    neither.errcode = "M_UNKNOWN"
+    assert classify_send_failure(neither) == "other"

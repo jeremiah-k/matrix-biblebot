@@ -90,11 +90,10 @@ def classify_send_failure(response: object) -> str:
     ``"forbidden"``, or ``"other"``. Unknown errcodes fall back to
     ``"other"`` so callers never have to handle an unmapped kind.
     """
-    errcode = getattr(response, "errcode", None) or getattr(
-        response, "status_code", None
-    )
+    errcode = getattr(response, "errcode", None)
+    status_code = getattr(response, "status_code", None)
     if is_rate_limit_response(response):
         return "rate_limited"
-    if errcode in ("M_FORBIDDEN", 403):
+    if errcode == "M_FORBIDDEN" or status_code == "M_FORBIDDEN" or status_code == 403:
         return "forbidden"
     return "other"
