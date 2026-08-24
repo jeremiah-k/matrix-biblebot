@@ -65,18 +65,14 @@ class TestSendMessageParts:
         limited = _error("M_LIMIT_EXCEEDED", retry_after_ms=1000)
         bot.client.room_send = AsyncMock(return_value=limited)
 
-        sleeps: list[float] = []
-
-        async def _record_sleep(delay):
-            sleeps.append(delay)
-
-        monkeypatch.setattr("biblebot.bot.asyncio.sleep", _record_sleep)
+        retry_delay = MagicMock(return_value=0.0)
+        monkeypatch.setattr("biblebot.bot.response_retry_delay_seconds", retry_delay)
 
         result = await bot._send_message_parts("!room:x", ["Verse"], None)
 
         assert result is limited
         assert bot.client.room_send.await_count == 4  # initial + MAX_RATE_LIMIT_RETRIES
-        assert len(sleeps) == 3
+        assert retry_delay.call_count == 3
 
     @pytest.mark.asyncio
     async def test_returns_first_non_rate_limit_error_immediately(self, monkeypatch):
@@ -84,18 +80,14 @@ class TestSendMessageParts:
         server_error = _error("M_UNKNOWN")
         bot.client.room_send = AsyncMock(return_value=server_error)
 
-        sleeps: list[float] = []
-
-        async def _record_sleep(delay):
-            sleeps.append(delay)
-
-        monkeypatch.setattr("biblebot.bot.asyncio.sleep", _record_sleep)
+        retry_delay = MagicMock(return_value=0.0)
+        monkeypatch.setattr("biblebot.bot.response_retry_delay_seconds", retry_delay)
 
         result = await bot._send_message_parts("!room:x", ["Verse"], None)
 
         assert result is server_error
         assert bot.client.room_send.await_count == 1
-        assert sleeps == []
+        retry_delay.assert_not_called()
 
     @pytest.mark.asyncio
     async def test_returns_none_on_success(self):
@@ -179,8 +171,10 @@ class TestHandleScriptureCommandSendFailure:
             "biblebot.bot.get_bible_text",
             AsyncMock(return_value=("long text " * 50, "John 3:16")),
         )
-        # Skip the real exponential backoff (would otherwise sleep ~7s)
-        monkeypatch.setattr("biblebot.bot.asyncio.sleep", AsyncMock(return_value=None))
+        # Keep the retry path real while collapsing backoff to an event-loop yield.
+        monkeypatch.setattr(
+            "biblebot.bot.response_retry_delay_seconds", lambda *_args, **_kwargs: 0.0
+        )
 
         with caplog.at_level(logging.INFO):
             await bot.handle_scripture_command(
@@ -246,8 +240,10 @@ class TestHandleScriptureCommandSendFailure:
             "biblebot.bot.get_bible_text",
             AsyncMock(return_value=("For God so loved the world", "John 3:16")),
         )
-        # Skip the real exponential backoff (would otherwise sleep ~7s)
-        monkeypatch.setattr("biblebot.bot.asyncio.sleep", AsyncMock(return_value=None))
+        # Keep the retry path real while collapsing backoff to an event-loop yield.
+        monkeypatch.setattr(
+            "biblebot.bot.response_retry_delay_seconds", lambda *_args, **_kwargs: 0.0
+        )
 
         await bot.handle_scripture_command("!room:x", "John 3:16", None, self._event())
 
