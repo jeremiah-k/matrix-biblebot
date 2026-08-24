@@ -44,4 +44,7 @@ COPY --from=builder /opt/biblebot /opt/biblebot
 WORKDIR /data
 USER 1000:1000
 
+HEALTHCHECK --interval=60s --timeout=10s --start-period=30s --retries=3 \
+    CMD ["biblebot", "--version"]
+
 CMD ["biblebot"]
