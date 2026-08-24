@@ -6,7 +6,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 import yaml
 
-from biblebot import bot
+from biblebot import bot, passages
 from biblebot.bot import BibleBot
 from biblebot.validation import validate_and_normalize_book_name
 from tests.test_constants import (
@@ -975,9 +975,9 @@ class TestBibleTextRetrieval:
         }
 
         with patch.object(
-            bot, "make_api_request", new=AsyncMock(return_value=mock_response)
+            passages, "make_api_request", new=AsyncMock(return_value=mock_response)
         ):
-            result = await bot.get_kjv_text(TEST_BIBLE_REFERENCE)
+            result = await passages.get_kjv_text(TEST_BIBLE_REFERENCE)
 
             assert result is not None
             text, reference = result
@@ -987,9 +987,11 @@ class TestBibleTextRetrieval:
     @pytest.mark.asyncio
     async def test_get_kjv_text_not_found(self):
         """Test KJV text retrieval when verse not found."""
-        with patch.object(bot, "make_api_request", new=AsyncMock(return_value=None)):
+        with patch.object(
+            passages, "make_api_request", new=AsyncMock(return_value=None)
+        ):
             with pytest.raises(bot.PassageNotFound) as exc_info:
-                await bot.get_kjv_text("Invalid 99:99")
+                await passages.get_kjv_text("Invalid 99:99")
 
             assert "Invalid 99:99" in str(exc_info.value)
             assert "not found in KJV" in str(exc_info.value)
@@ -1003,9 +1005,9 @@ class TestBibleTextRetrieval:
         }
 
         with patch.object(
-            bot, "make_api_request", new=AsyncMock(return_value=mock_response)
+            passages, "make_api_request", new=AsyncMock(return_value=mock_response)
         ):
-            result = await bot.get_esv_text(TEST_BIBLE_REFERENCE, "test_api_key")
+            result = await passages.get_esv_text(TEST_BIBLE_REFERENCE, "test_api_key")
 
             assert result is not None
             text, reference = result
@@ -1025,8 +1027,7 @@ class TestBibleTextRetrieval:
     async def test_get_bible_text_with_cache(self):
         """Test Bible text retrieval with caching."""
         # Clear cache first
-        if hasattr(bot, "_passage_cache"):
-            bot._passage_cache.clear()
+        passages._passage_cache.clear()
 
         mock_response = {
             "text": "For God so loved the world...",
@@ -1034,13 +1035,13 @@ class TestBibleTextRetrieval:
         }
 
         with patch.object(
-            bot, "make_api_request", new=AsyncMock(return_value=mock_response)
+            passages, "make_api_request", new=AsyncMock(return_value=mock_response)
         ) as mock_request:
             # First call should hit the API
-            result1 = await bot.get_bible_text(TEST_BIBLE_REFERENCE, "kjv")
+            result1 = await passages.get_bible_text(TEST_BIBLE_REFERENCE, "kjv")
 
             # Second call should use cache
-            result2 = await bot.get_bible_text(TEST_BIBLE_REFERENCE, "kjv")
+            result2 = await passages.get_bible_text(TEST_BIBLE_REFERENCE, "kjv")
 
             assert result1 == result2
             # API should only be called once due to caching
@@ -1714,7 +1715,7 @@ class TestE2EEFunctionality:
             mock_client.device_id = TEST_DEVICE_ID
             mock_client.to_device = _AsyncMock()
             mock_client.request_room_key = _AsyncMock(
-                side_effect=nio.exceptions.LocalProtocolError("Duplicate request")
+                side_effect=nio.LocalProtocolError("Duplicate request")
             )
             mock_client_class.return_value = mock_client
 
@@ -2053,40 +2054,37 @@ class TestCacheFunctions:
     def test_cache_get_miss(self):
         """Test cache miss."""
         # Clear cache first
-        if hasattr(bot, "_passage_cache"):
-            bot._passage_cache.clear()
+        passages._passage_cache.clear()
 
-        result = bot._cache_get(TEST_BIBLE_REFERENCE, "kjv")
+        result = passages._cache_get(TEST_BIBLE_REFERENCE, "kjv")
         assert result is None
 
     def test_cache_set_and_get(self):
         """Test cache set and get."""
         # Clear cache first
-        if hasattr(bot, "_passage_cache"):
-            bot._passage_cache.clear()
+        passages._passage_cache.clear()
 
         # Set cache
-        bot._cache_set(
+        passages._cache_set(
             TEST_BIBLE_REFERENCE, "kjv", ("For God so loved...", TEST_BIBLE_REFERENCE)
         )
 
         # Get from cache
-        result = bot._cache_get(TEST_BIBLE_REFERENCE, "kjv")
+        result = passages._cache_get(TEST_BIBLE_REFERENCE, "kjv")
         assert result == ("For God so loved...", TEST_BIBLE_REFERENCE)
 
     def test_cache_case_insensitive(self):
         """Test cache is case insensitive."""
         # Clear cache first
-        if hasattr(bot, "_passage_cache"):
-            bot._passage_cache.clear()
+        passages._passage_cache.clear()
 
         # Set with one case
-        bot._cache_set(
+        passages._cache_set(
             TEST_BIBLE_REFERENCE, "KJV", ("For God so loved...", TEST_BIBLE_REFERENCE)
         )
 
         # Get with different case
-        result = bot._cache_get(TEST_BIBLE_REFERENCE.lower(), "kjv")
+        result = passages._cache_get(TEST_BIBLE_REFERENCE.lower(), "kjv")
         assert result == ("For God so loved...", TEST_BIBLE_REFERENCE)
 
 

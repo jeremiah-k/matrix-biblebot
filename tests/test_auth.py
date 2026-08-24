@@ -5,8 +5,9 @@ import json
 import os
 from unittest.mock import AsyncMock, MagicMock, Mock, patch
 
-import nio.exceptions
+import nio
 import pytest
+from nio import RemoteProtocolError, RemoteTransportError
 
 from biblebot import auth
 from biblebot.auth import _get_user_input
@@ -353,9 +354,7 @@ class TestDiscoverHomeserver:
     async def test_discover_homeserver_error(self):
         """Test homeserver discovery with error."""
         mock_client = AsyncMock()
-        mock_client.discovery_info.side_effect = nio.exceptions.RemoteProtocolError(
-            "Discovery failed"
-        )
+        mock_client.discovery_info.side_effect = RemoteProtocolError("Discovery failed")
 
         result = await auth.discover_homeserver(mock_client, "https://matrix.org")
 
@@ -954,9 +953,7 @@ class TestDiscoverHomeserverExceptions:
     async def test_discover_homeserver_exception(self):
         """Test homeserver discovery with exception."""
         mock_client = AsyncMock()
-        mock_client.discovery_info.side_effect = nio.exceptions.RemoteTransportError(
-            "Network error"
-        )
+        mock_client.discovery_info.side_effect = RemoteTransportError("Network error")
 
         result = await auth.discover_homeserver(mock_client, "https://matrix.org")
 

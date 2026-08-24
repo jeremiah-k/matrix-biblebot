@@ -4,7 +4,8 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from biblebot.bot import BibleBot, _cache_get, _cache_set, get_bible_text, load_config
+from biblebot.bot import BibleBot, get_bible_text, load_config
+from biblebot.passages import _cache_get, _cache_set, _passage_cache
 
 
 class TestBotConfiguration:
@@ -420,8 +421,6 @@ class TestCacheConfiguration:
         This test clears the module-level _passage_cache, calls _cache_set with cache disabled, and asserts the cache remains empty.
         """
         # Clear any existing cache
-        from biblebot.bot import _passage_cache
-
         _passage_cache.clear()
 
         # Try to set with cache disabled
@@ -443,11 +442,11 @@ class TestGetBibleTextConfiguration:
     async def test_get_bible_text_custom_default_translation(self):
         """Test get_bible_text uses custom default translation."""
         with patch(
-            "biblebot.bot.get_kjv_text",
+            "biblebot.passages.get_kjv_text",
             new=AsyncMock(return_value=("KJV text", "John 3:16")),
         ) as mock_kjv:
             with patch(
-                "biblebot.bot.get_esv_text",
+                "biblebot.passages.get_esv_text",
                 new=AsyncMock(return_value=("ESV text", "John 3:16")),
             ) as mock_esv:
                 # Test with custom default translation
@@ -465,11 +464,13 @@ class TestGetBibleTextConfiguration:
     async def test_get_bible_text_cache_disabled(self):
         """Test get_bible_text with cache disabled."""
         with patch(
-            "biblebot.bot.get_kjv_text",
+            "biblebot.passages.get_kjv_text",
             new=AsyncMock(return_value=("KJV text", "John 3:16")),
         ) as mock_kjv:
-            with patch("biblebot.bot._cache_get", return_value=None) as mock_cache_get:
-                with patch("biblebot.bot._cache_set") as mock_cache_set:
+            with patch(
+                "biblebot.passages._cache_get", return_value=None
+            ) as mock_cache_get:
+                with patch("biblebot.passages._cache_set") as mock_cache_set:
                     result = await get_bible_text(
                         "John 3:16", "kjv", cache_enabled=False
                     )

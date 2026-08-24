@@ -65,18 +65,14 @@ class TestSendMessageParts:
         limited = _error("M_LIMIT_EXCEEDED", retry_after_ms=1000)
         bot.client.room_send = AsyncMock(return_value=limited)
 
-        sleeps: list[float] = []
-
-        async def _record_sleep(delay):
-            sleeps.append(delay)
-
-        monkeypatch.setattr("biblebot.bot.asyncio.sleep", _record_sleep)
+        retry_delay = MagicMock(return_value=0.0)
+        monkeypatch.setattr("biblebot.bot.response_retry_delay_seconds", retry_delay)
 
         result = await bot._send_message_parts("!room:x", ["Verse"], None)
 
         assert result is limited
         assert bot.client.room_send.await_count == 4  # initial + MAX_RATE_LIMIT_RETRIES
-        assert len(sleeps) == 3
+        assert retry_delay.call_count == 3
 
     @pytest.mark.asyncio
     async def test_returns_first_non_rate_limit_error_immediately(self, monkeypatch):
@@ -84,18 +80,14 @@ class TestSendMessageParts:
         server_error = _error("M_UNKNOWN")
         bot.client.room_send = AsyncMock(return_value=server_error)
 
-        sleeps: list[float] = []
-
-        async def _record_sleep(delay):
-            sleeps.append(delay)
-
-        monkeypatch.setattr("biblebot.bot.asyncio.sleep", _record_sleep)
+        retry_delay = MagicMock(return_value=0.0)
+        monkeypatch.setattr("biblebot.bot.response_retry_delay_seconds", retry_delay)
 
         result = await bot._send_message_parts("!room:x", ["Verse"], None)
 
         assert result is server_error
         assert bot.client.room_send.await_count == 1
-        assert sleeps == []
+        retry_delay.assert_not_called()
 
     @pytest.mark.asyncio
     async def test_returns_none_on_success(self):
@@ -179,6 +171,10 @@ class TestHandleScriptureCommandSendFailure:
             "biblebot.bot.get_bible_text",
             AsyncMock(return_value=("long text " * 50, "John 3:16")),
         )
+        # Keep the retry path real while collapsing backoff to an event-loop yield.
+        monkeypatch.setattr(
+            "biblebot.bot.response_retry_delay_seconds", lambda *_args, **_kwargs: 0.0
+        )
 
         with caplog.at_level(logging.INFO):
             await bot.handle_scripture_command(
@@ -205,9 +201,88 @@ class TestHandleScriptureCommandSendFailure:
         assert "Sent scripture" in caplog.text
         assert "Failed to send" not in caplog.text
 
+    @pytest.mark.asyncio
+    async def test_forbidden_failure_skips_user_facing_notice(self, monkeypatch):
+        from nio.responses import ErrorResponse
 
-async def _record_sleep(sleeps):
-    async def _sleep(delay):
-        sleeps.append(delay)
+        # Forbidden response: the room rejects posts entirely, so no notice
+        # can be delivered there. The bot must NOT attempt a doomed send.
+        bot = self._bot_with_failing_send(
+            ErrorResponse("rejected", status_code="M_FORBIDDEN")
+        )
+        monkeypatch.setattr(
+            "biblebot.bot.get_bible_text",
+            AsyncMock(return_value=("For God so loved the world", "John 3:16")),
+        )
 
-    return _sleep
+        await bot.handle_scripture_command("!room:x", "John 3:16", None, self._event())
+
+        # 2 sends total: the reaction attempt (fails, logged) and the passage
+        # send (429-style retry loop does not apply to M_FORBIDDEN, so only
+        # one attempt). The delivery-failure notice is deliberately NOT sent
+        # to the same forbidden room.
+        assert bot.client.room_send.await_count == 2
+        kinds = [c.args[1] for c in bot.client.room_send.await_args_list]
+        assert "m.room.message" in kinds  # passage attempt happened
+
+    @pytest.mark.asyncio
+    async def test_rate_limit_exhaustion_notice_mentions_retry(self, monkeypatch):
+        from nio.responses import ErrorResponse
+
+        limited = ErrorResponse("slow down", status_code="M_LIMIT_EXCEEDED")
+        bot = BibleBot(config={"matrix_room_ids": ["!room:x"]}, client=MagicMock())
+        # Sequence: reaction fails, 4 passage attempts rate-limited, then the
+        # notice finally succeeds on its own send.
+        bot.client.room_send = AsyncMock(
+            side_effect=[limited, limited, limited, limited, limited, MagicMock()]
+        )
+        monkeypatch.setattr(
+            "biblebot.bot.get_bible_text",
+            AsyncMock(return_value=("For God so loved the world", "John 3:16")),
+        )
+        # Keep the retry path real while collapsing backoff to an event-loop yield.
+        monkeypatch.setattr(
+            "biblebot.bot.response_retry_delay_seconds", lambda *_args, **_kwargs: 0.0
+        )
+
+        await bot.handle_scripture_command("!room:x", "John 3:16", None, self._event())
+
+        calls = bot.client.room_send.await_args_list
+        # 5 failed passage/reaction sends + 1 notice that got through
+        assert len(calls) == 6
+        notice_bodies = [
+            c.args[2]["body"]
+            for c in calls[1:]
+            if c.args[1] == "m.room.message" and "rate-limited" in c.args[2]["body"]
+        ]
+        assert notice_bodies, "expected a delivered rate-limited notice"
+
+    @pytest.mark.asyncio
+    async def test_transport_failure_reports_delivery_not_lookup(self, monkeypatch):
+        """room_send raising aiohttp.ClientError must yield ERROR_SEND_OTHER,
+        not the generic ERROR_PASSAGE_NOT_FOUND lookup message."""
+        import aiohttp
+
+        bot = BibleBot(config={"matrix_room_ids": ["!room:x"]}, client=MagicMock())
+
+        async def _raise_transport_error(*_args, **_kwargs):
+            # A real failed request raises a fresh exception each time. Reusing one
+            # exception instance can create a cause/context cycle when the passage
+            # failure is wrapped and the follow-up notice also fails.
+            raise aiohttp.ClientError("conn died")
+
+        bot.client.room_send = AsyncMock(side_effect=_raise_transport_error)
+        monkeypatch.setattr(
+            "biblebot.bot.get_bible_text",
+            AsyncMock(return_value=("For God so loved the world", "John 3:16")),
+        )
+
+        await bot.handle_scripture_command("!room:x", "John 3:16", None, self._event())
+
+        calls = bot.client.room_send.await_args_list
+        assert bot.client.room_send.await_count == 3
+        # reaction + passage + notice attempts; notice body must be the
+        # delivery-failure message, never the passage-not-found lookup text
+        bodies = [c.args[2]["body"] for c in calls if c.args[1] == "m.room.message"]
+        assert any("could not be delivered" in b for b in bodies)
+        assert not any("passage could not be found" in b.lower() for b in bodies)

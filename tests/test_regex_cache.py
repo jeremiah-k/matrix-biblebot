@@ -1,6 +1,7 @@
 import pytest
 
 from biblebot import bot as botmod
+from biblebot import passages as passagesmod
 from biblebot.cli import run_async
 from biblebot.validation import validate_and_normalize_book_name
 
@@ -92,14 +93,14 @@ def test_passage_cache(monkeypatch):
     """
     Verify that get_bible_text caches API responses and avoids redundant external requests.
 
-    This test clears any existing passage cache, monkeypatches botmod.make_api_request with an async
-    fake that increments a counter and returns a deterministic payload for "John 3:16", then calls
-    botmod.get_bible_text twice for the same passage. It asserts the external request was made only
+    This test clears any existing passage cache, monkeypatches
+    passagesmod.make_api_request with an async fake that increments a counter and
+    returns a deterministic payload for "John 3:16", then calls botmod.get_bible_text
+    twice for the same passage. It asserts the external request was made only
     once and that both calls returned identical text and reference. The passage cache is cleared on
     setup and teardown to avoid cross-test contamination.
     """
-    if hasattr(botmod, "_passage_cache"):
-        botmod._passage_cache.clear()
+    passagesmod._passage_cache.clear()
 
     calls = {"n": 0}
 
@@ -125,7 +126,9 @@ def test_passage_cache(monkeypatch):
         # Simulate bible-api.com kjv response
         return {"text": "For God so loved the world...", "reference": "John 3:16"}
 
-    monkeypatch.setattr(botmod, "make_api_request", fake_req)
+    # get_bible_text resolves make_api_request through biblebot.passages,
+    # so the interception must land on the defining module.
+    monkeypatch.setattr(passagesmod, "make_api_request", fake_req)
 
     try:
         # First call populates cache
@@ -141,5 +144,4 @@ def test_passage_cache(monkeypatch):
         assert text1 == text2 and ref1 == ref2
     finally:
         # Clear cache after test
-        if hasattr(botmod, "_passage_cache"):
-            botmod._passage_cache.clear()
+        passagesmod._passage_cache.clear()

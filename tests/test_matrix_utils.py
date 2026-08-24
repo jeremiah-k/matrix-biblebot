@@ -283,7 +283,7 @@ def test_save_credentials(
         mock_replace.assert_called_once_with(temp_name, credentials_file)
 
 
-@patch("biblebot.bot.make_api_request", new_callable=AsyncMock)
+@patch("biblebot.passages.make_api_request", new_callable=AsyncMock)
 @pytest.mark.asyncio
 async def test_bible_api_verse_fetch(mock_api_request):
     """Test Bible API verse fetching."""
@@ -303,7 +303,7 @@ async def test_bible_api_verse_fetch(mock_api_request):
     mock_api_request.assert_called_once()
 
 
-@patch("biblebot.bot.make_api_request", new_callable=AsyncMock)
+@patch("biblebot.passages.make_api_request", new_callable=AsyncMock)
 @pytest.mark.asyncio
 async def test_bible_api_error_handling(mock_api_request):
     """Test Bible API error handling."""

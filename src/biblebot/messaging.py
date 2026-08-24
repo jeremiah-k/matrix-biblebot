@@ -1,17 +1,22 @@
-"""Pure helpers for Matrix message-retry policy and final-chunk body composition."""
+"""Pure helpers for Matrix message-send error handling and final-chunk bodies."""
 
 from __future__ import annotations
 
 import html
 import random
-from dataclasses import dataclass
-from typing import Final
+from typing import Final, Literal
 
-from biblebot.constants.matrix import DEFAULT_RETRY_AFTER_MS, MAX_RATE_LIMIT_RETRIES
-from biblebot.constants.messages import MESSAGE_SUFFIX
+from biblebot.constants.matrix import DEFAULT_RETRY_AFTER_MS
+from biblebot.constants.messages import (
+    ERROR_SEND_FORBIDDEN,
+    ERROR_SEND_OTHER,
+    ERROR_SEND_RATE_LIMITED,
+    MESSAGE_SUFFIX,
+)
 
 _RATE_LIMIT_STATUS: Final[int] = 429
 _RATE_LIMIT_ERRCODE: Final[str] = "M_LIMIT_EXCEEDED"
+SendFailureKind = Literal["rate_limited", "forbidden", "other"]
 
 
 def _has_message_attr(obj: object) -> bool:
@@ -66,11 +71,6 @@ def response_retry_delay_seconds(
     return base_delay * rng(0.8, 1.2)
 
 
-def remaining_retry_budget(retries_left: int) -> int:
-    """Clamp a retry-remaining counter to the configured maximum."""
-    return max(0, min(retries_left, MAX_RATE_LIMIT_RETRIES))
-
-
 def compose_final_chunk_bodies(
     formatted_text: str,
     html_text: str,
@@ -89,11 +89,26 @@ def compose_final_chunk_bodies(
     return plain, rendered
 
 
-@dataclass(frozen=True)
-class RetryPolicy:
-    """Immutable description of the message-retry policy used by send paths."""
+def classify_send_failure(response: object) -> SendFailureKind:
+    """Return a short operator-friendly reason for a failed Matrix send.
 
-    max_attempts: int = MAX_RATE_LIMIT_RETRIES
-    default_retry_after_ms: int = DEFAULT_RETRY_AFTER_MS
-    jitter_low: float = 0.8
-    jitter_high: float = 1.2
+    Maps nio ``ErrorResponse`` markers from ``errcode`` and ``status_code`` to
+    ``"rate_limited"``, ``"forbidden"``, or ``"other"``. Unknown markers
+    fall back to ``"other"`` so callers never have to handle an unmapped kind.
+    """
+    errcode = getattr(response, "errcode", None)
+    status_code = getattr(response, "status_code", None)
+    if is_rate_limit_response(response):
+        return "rate_limited"
+    if errcode == "M_FORBIDDEN" or status_code == "M_FORBIDDEN" or status_code == 403:
+        return "forbidden"
+    return "other"
+
+
+def send_failure_notice(kind: SendFailureKind) -> str:
+    """Return the user-facing notice for a classified Matrix send failure."""
+    if kind == "rate_limited":
+        return ERROR_SEND_RATE_LIMITED
+    if kind == "forbidden":
+        return ERROR_SEND_FORBIDDEN
+    return ERROR_SEND_OTHER

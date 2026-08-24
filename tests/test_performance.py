@@ -7,7 +7,7 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 
-from biblebot import bot
+from biblebot import bot, passages
 from biblebot.validation import validate_and_normalize_book_name
 
 
@@ -18,19 +18,18 @@ class TestCachePerformance:
     def test_cache_performance_single_operations(self):
         """Test cache performance for single operations."""
         # Clear cache
-        if hasattr(bot, "_passage_cache"):
-            bot._passage_cache.clear()
+        passages._passage_cache.clear()
 
         # Measure cache set performance
         start_time = time.perf_counter()
         for i in range(100):
-            bot._cache_set(f"Test {i}:1", "kjv", (f"Text {i}", f"Text {i}:1"))
+            passages._cache_set(f"Test {i}:1", "kjv", (f"Text {i}", f"Text {i}:1"))
         set_time = time.perf_counter() - start_time
 
         # Measure cache get performance
         start_time = time.perf_counter()
         for i in range(100):
-            result = bot._cache_get(f"Test {i}:1", "kjv")
+            result = passages._cache_get(f"Test {i}:1", "kjv")
             assert result is not None
         get_time = time.perf_counter() - start_time
 
@@ -50,21 +49,20 @@ class TestCachePerformance:
         skipped when the CI_SLOW_RUNNER environment variable is set.
         """
         # Clear cache
-        if hasattr(bot, "_passage_cache"):
-            bot._passage_cache.clear()
+        passages._passage_cache.clear()
 
         # Bulk set operations
         start_time = time.perf_counter()
         for i in range(50):
-            bot._cache_set(f"Bulk {i}:1", "kjv", (f"Bulk text {i}", f"Bulk {i}:1"))
+            passages._cache_set(f"Bulk {i}:1", "kjv", (f"Bulk text {i}", f"Bulk {i}:1"))
         bulk_set_time = time.perf_counter() - start_time
 
         # Bulk get operations
         start_time = time.perf_counter()
         for i in range(50):  # Only get entries that were actually set (0-49)
-            result = bot._cache_get(f"Bulk {i}:1", "kjv")
+            result = passages._cache_get(f"Bulk {i}:1", "kjv")
             # Only assert if cache is working, otherwise skip
-            if hasattr(bot, "_passage_cache") and bot._passage_cache:
+            if passages._passage_cache:
                 assert result is not None
         bulk_get_time = time.perf_counter() - start_time
 
@@ -77,24 +75,23 @@ class TestCachePerformance:
         """
         Measure cache performance for case-insensitive keys.
 
-        Clears the internal `_passage_cache` if present, writes 100 entries using mixed-case keys via `bot._cache_set`,
-        then reads them back using a different case via `bot._cache_get`. Asserts each read returns a non-None value
+        Clears the passage cache, writes 100 entries using mixed-case keys via `passages._cache_set`,
+        then reads them back using a different case via `passages._cache_get`. Asserts each read returns a non-None value
         and that the set phase completes under 1.0 second and the get phase under 0.5 seconds.
         """
         # Clear cache
-        if hasattr(bot, "_passage_cache"):
-            bot._passage_cache.clear()
+        passages._passage_cache.clear()
 
         # Set with mixed case
         start_time = time.perf_counter()
         for i in range(100):
-            bot._cache_set(f"CaSe {i}:1", "KJV", (f"Case text {i}", f"CaSe {i}:1"))
+            passages._cache_set(f"CaSe {i}:1", "KJV", (f"Case text {i}", f"CaSe {i}:1"))
         case_set_time = time.perf_counter() - start_time
 
         # Get with different case
         start_time = time.perf_counter()
         for i in range(100):
-            result = bot._cache_get(f"case {i}:1", "kjv")
+            result = passages._cache_get(f"case {i}:1", "kjv")
             assert result is not None
         case_get_time = time.perf_counter() - start_time
 
@@ -238,7 +235,7 @@ class TestAPIPerformance:
     """Test API performance characteristics."""
 
     @pytest.mark.asyncio
-    @patch("biblebot.bot.make_api_request", new_callable=AsyncMock)
+    @patch("biblebot.passages.make_api_request", new_callable=AsyncMock)
     async def test_api_request_performance_single(self, mock_api):
         """
         Verify that a single call to get_bible_text returns a non-None result and completes quickly when the underlying API is mocked.
@@ -256,7 +253,7 @@ class TestAPIPerformance:
         assert result is not None
 
     @pytest.mark.asyncio
-    @patch("biblebot.bot.make_api_request", new_callable=AsyncMock)
+    @patch("biblebot.passages.make_api_request", new_callable=AsyncMock)
     async def test_api_request_performance_concurrent(self, mock_api):
         """Test concurrent API request performance."""
         mock_api.return_value = {"text": "Test verse", "reference": "Test 1:1"}
@@ -284,14 +281,13 @@ class TestAPIPerformance:
         assert all(result is not None for result in results)
 
     @pytest.mark.asyncio
-    @patch("biblebot.bot.make_api_request", new_callable=AsyncMock)
+    @patch("biblebot.passages.make_api_request", new_callable=AsyncMock)
     async def test_api_request_performance_with_cache(self, mock_api):
         """Test API request performance with caching."""
         mock_api.return_value = {"text": "Cached verse", "reference": "Cache 1:1"}
 
         # Clear cache
-        if hasattr(bot, "_passage_cache"):
-            bot._passage_cache.clear()
+        passages._passage_cache.clear()
 
         # First request (should hit API)
         start_time = time.perf_counter()
@@ -379,20 +375,18 @@ class TestMemoryPerformance:
     def test_cache_memory_usage(self):
         """Test cache memory usage doesn't grow excessively."""
         # Clear cache
-        if hasattr(bot, "_passage_cache"):
-            bot._passage_cache.clear()
+        passages._passage_cache.clear()
 
         # Add many items to cache
         for i in range(1000):
-            bot._cache_set(
+            passages._cache_set(
                 f"Memory {i}:1", "kjv", (f"Memory text {i}", f"Memory {i}:1")
             )
 
         # Verify cache has items but isn't excessive
-        if hasattr(bot, "_passage_cache"):
-            cache_size = len(bot._passage_cache)
-            assert cache_size > 0
-            assert cache_size <= 1000  # Should not exceed what we put in
+        cache_size = len(passages._passage_cache)
+        assert cache_size > 0
+        assert cache_size <= 1000  # Should not exceed what we put in
 
     @pytest.mark.slow
     def test_normalization_memory_usage(self):
@@ -428,24 +422,23 @@ class TestStressPerformance:
         Measures total elapsed time and, unless the CI_SLOW_RUNNER environment variable is set, asserts the test completes in under 10 seconds.
         """
         # Clear cache
-        if hasattr(bot, "_passage_cache"):
-            bot._passage_cache.clear()
+        passages._passage_cache.clear()
 
         start_time = time.perf_counter()
 
         # Rapid mixed operations
         for i in range(500):
             # Set operation
-            bot._cache_set(
+            passages._cache_set(
                 f"Stress {i}:1", "kjv", (f"Stress text {i}", f"Stress {i}:1")
             )
 
             # Get operation
-            result = bot._cache_get(f"Stress {i}:1", "kjv")
+            result = passages._cache_get(f"Stress {i}:1", "kjv")
             assert result is not None
 
             # Get with different case
-            result2 = bot._cache_get(f"stress {i}:1", "KJV")
+            result2 = passages._cache_get(f"stress {i}:1", "KJV")
             assert result2 == result
 
         stress_time = time.perf_counter() - start_time

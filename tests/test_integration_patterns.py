@@ -386,7 +386,9 @@ class TestIntegrationPatterns:
         bot.start_time = 1234567880000  # Converted to milliseconds
 
         # Mock the entire API chain
-        with patch("biblebot.bot.make_api_request", new_callable=AsyncMock) as mock_api:
+        with patch(
+            "biblebot.passages.make_api_request", new_callable=AsyncMock
+        ) as mock_api:
             mock_api.return_value = {
                 "text": "For God so loved the world that he gave his one and only Son",
                 "reference": "John 3:16",

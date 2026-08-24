@@ -13,18 +13,25 @@ Matrix Bible Bot uses E2EE (End-to-End Encryption) libraries like `nio` and `olm
 **✅ CORRECT PATTERN** - All E2EE dependencies are mocked upfront in `tests/conftest.py`:
 
 ```python
-# Mock all E2EE dependencies before any imports can occur
+# Preserve response dataclasses used by production response inspection.
+import nio.responses as real_nio_responses
+sys.modules.setdefault("nio.responses", real_nio_responses)
+
+# Mock the heavy E2EE-facing nio surface before application imports occur.
 nio_mock = MagicMock()
 sys.modules["nio"] = nio_mock
 sys.modules["nio.events"] = MagicMock()
 sys.modules["nio.store"] = MagicMock()
 sys.modules["nio.crypto"] = MagicMock()
-sys.modules["nio.exceptions"] = nio_exceptions_mock
 
-# Mock olm (E2EE crypto library)
-olm_mock = MagicMock()
-olm_mock.__spec__ = MagicMock()  # Required for importlib.util.find_spec
-sys.modules["olm"] = olm_mock
+# NOTE: real response/error classes must also be assigned onto ``nio_mock``
+# (see "Create proper Exception classes" below); otherwise `from nio import X`
+# returns an auto-created MagicMock and isinstance() raises TypeError.
+
+# Mock the crypto provider used by E2EE support.
+vodozemac_mock = MagicMock()
+vodozemac_mock.__spec__ = MagicMock()  # Required for importlib.util.find_spec
+sys.modules["vodozemac"] = vodozemac_mock
 ```
 
 **❌ INCORRECT PATTERN** - Don't mock E2EE dependencies inside individual tests:
@@ -48,9 +55,14 @@ class MockRemoteProtocolError(Exception):
 class MockLocalProtocolError(Exception):
     pass
 
-nio_exceptions_mock = MagicMock()
-nio_exceptions_mock.RemoteProtocolError = MockRemoteProtocolError
-nio_exceptions_mock.LocalProtocolError = MockLocalProtocolError
+nio_mock.RemoteProtocolError = MockRemoteProtocolError
+nio_mock.LocalProtocolError = MockLocalProtocolError
+
+# Real response classes are exposed top-level for `from nio import X` +
+# isinstance() checks (e.g. auth.py's DiscoveryInfoResponse handling);
+# see tests/conftest.py for the complete assignment set.
+nio_mock.DiscoveryInfoResponse = MockDiscoveryInfoResponse
+nio_mock.LoginResponse = MockLoginResponse
 ```
 
 ## Async Function Mocking Patterns
@@ -189,12 +201,19 @@ class TestBibleBot:
 
 ### Resource Cleanup
 
-The project uses comprehensive cleanup fixtures in `tests/conftest.py`:
+Async test loop ownership belongs to `pytest-asyncio`. `pytest.ini` configures
+function-scoped fixture and test loops, so tests must not create competing
+autouse event-loop managers or rely on suite-order cleanup. Tests that acquire
+resources are responsible for releasing them explicitly (for example, a test
+that calls `BibleBot.start()` must also call `BibleBot.close()`).
 
-- `event_loop_safety`: Create a dedicated event loop per test
-- `mock_asyncmock_coroutines`: Ensure AsyncMock coroutines are awaited
-- `cleanup_asyncmock_objects`: Force GC to finalize AsyncMock objects
-- `comprehensive_cleanup`: Perform aggressive cleanup for CI environments
+`tests/conftest.py` keeps narrowly scoped isolation helpers only:
+
+- `isolate_passage_cache`: clear the process-global passage cache before and after each test
+- `cleanup_asyncmock_objects`: force GC for AsyncMock-heavy test modules so lifecycle warnings surface during the test run
+
+Warnings remain fatal through `pytest.ini` (`filterwarnings = error`), including
+resource warnings surfaced by pytest's unraisable-exception handling.
 
 ## Bible API Testing Patterns
 

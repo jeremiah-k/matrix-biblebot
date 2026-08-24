@@ -7,14 +7,19 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from biblebot.constants.messages import MESSAGE_SUFFIX
+from biblebot.constants.messages import (
+    ERROR_SEND_FORBIDDEN,
+    ERROR_SEND_OTHER,
+    ERROR_SEND_RATE_LIMITED,
+    MESSAGE_SUFFIX,
+)
 from biblebot.messaging import (
-    RetryPolicy,
+    classify_send_failure,
     compose_final_chunk_bodies,
     is_error_response,
     is_rate_limit_response,
-    remaining_retry_budget,
     response_retry_delay_seconds,
+    send_failure_notice,
 )
 
 
@@ -46,12 +51,6 @@ def test_is_rate_limit_response_checks_errcode_field_separately():
     resp = _fake_error_response(status_code=503)
     resp.errcode = "M_LIMIT_EXCEEDED"
     assert is_rate_limit_response(resp)
-
-
-def test_remaining_retry_budget_clamps_to_max():
-    assert remaining_retry_budget(0) == 0
-    assert remaining_retry_budget(2) == 2
-    assert remaining_retry_budget(99) == 3
 
 
 def test_response_retry_delay_uses_server_hint_with_jitter():
@@ -95,9 +94,35 @@ def test_compose_final_chunk_bodies_without_reference():
     assert rendered == f"For God so loved the world{_html.escape(MESSAGE_SUFFIX)}"
 
 
-def test_retry_policy_defaults_match_constants():
-    policy = RetryPolicy()
-    assert policy.max_attempts == 3
-    assert policy.default_retry_after_ms == 1000
-    assert policy.jitter_low == 0.8
-    assert policy.jitter_high == 1.2
+def test_classify_send_failure_kinds():
+    assert (
+        classify_send_failure(_fake_error_response(status_code="M_LIMIT_EXCEEDED"))
+        == "rate_limited"
+    )
+    assert classify_send_failure(_fake_error_response(status_code="M_FORBIDDEN")) == (
+        "forbidden"
+    )
+    assert classify_send_failure(_fake_error_response(403)) == "forbidden"
+    assert classify_send_failure(_fake_error_response("M_UNKNOWN")) == "other"
+    assert classify_send_failure(None) == "other"
+
+
+def test_classify_send_failure_checks_both_markers_independently():
+    """An unknown errcode must not mask a forbidden HTTP status (and vice versa)."""
+    mixed = _fake_error_response(status_code=403)
+    mixed.errcode = "M_UNKNOWN"
+    assert classify_send_failure(mixed) == "forbidden"
+
+    mixed_reverse = _fake_error_response(status_code=200)
+    mixed_reverse.errcode = "M_FORBIDDEN"
+    assert classify_send_failure(mixed_reverse) == "forbidden"
+
+    neither = _fake_error_response(200)
+    neither.errcode = "M_UNKNOWN"
+    assert classify_send_failure(neither) == "other"
+
+
+def test_send_failure_notice_maps_classification_to_message():
+    assert send_failure_notice("rate_limited") == ERROR_SEND_RATE_LIMITED
+    assert send_failure_notice("forbidden") == ERROR_SEND_FORBIDDEN
+    assert send_failure_notice("other") == ERROR_SEND_OTHER
