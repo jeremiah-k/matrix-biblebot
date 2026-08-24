@@ -310,8 +310,13 @@ class TestErrorScenarios:
             bot_instance.start_time = 1000
 
             # The bot should handle sync errors gracefully and continue to sync_forever
-            await bot_instance.start()
-            mock_client.sync_forever.assert_awaited_once()
+            try:
+                await bot_instance.start()
+                mock_client.sync_forever.assert_awaited_once()
+            finally:
+                await bot_instance.close()
+
+            assert bot_instance.http_session is None
 
 
 class TestCacheManagement:
