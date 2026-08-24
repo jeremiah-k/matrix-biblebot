@@ -341,7 +341,7 @@ class TestAsyncPatterns:
     async def test_async_event_loop_integration(self, mock_config, mock_client):
         """Test async event loop integration patterns."""
         with patch("biblebot.bot.AsyncClient", return_value=mock_client):
-            BibleBot(config=mock_config)
+            BibleBot(config=mock_config, client=MagicMock())
 
             # Test that bot works with different event loop policies
             loop = asyncio.get_running_loop()
@@ -394,7 +394,7 @@ class TestAsyncPatterns:
     async def test_async_background_tasks(self, mock_config, mock_client):
         """Test async background task patterns."""
         with patch("biblebot.bot.AsyncClient", return_value=mock_client):
-            BibleBot(config=mock_config)
+            BibleBot(config=mock_config, client=MagicMock())
 
             # Test background task management
             task_completed = False

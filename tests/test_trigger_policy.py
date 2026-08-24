@@ -21,7 +21,7 @@ def _make_bot(
             "default_translation": default_translation,
         },
     }
-    bot = BibleBot(cfg)
+    bot = BibleBot(cfg, client=MagicMock())
     bot.client = MagicMock()
     bot.client.user_id = bot_mxid
     bot.start_time = 0

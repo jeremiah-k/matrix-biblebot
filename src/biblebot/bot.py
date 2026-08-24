@@ -519,10 +519,10 @@ class BibleBot:
     def __init__(
         self,
         config: Any,
-        client: BotClient | None = None,
+        client: BotClient,
     ) -> None:
         """
-        Initialize the BibleBot with configuration and an optional Matrix client.
+        Initialize the BibleBot with configuration and a Matrix client.
 
         Read bot-specific settings from config["bot"], apply defaults, and coerce/validate numeric and boolean options to safe runtime values.
 
@@ -535,13 +535,13 @@ class BibleBot:
 
         Parameters:
             config (dict): Loaded configuration mapping used to populate bot settings.
+            client (BotClient): Required Matrix client implementation. In production this is ``nio.AsyncClient``; in tests it is typically a ``MagicMock`` or ``BibleBot.for_testing(config)`` factory output. The client must satisfy the ``biblebot.protocols.BotClient`` structural type.
 
         Notes:
-        - The optional client parameter is an injected BotClient implementation (for example ``nio.AsyncClient`` in production or a ``MagicMock`` in tests) and is intentionally not documented above.
         - The initializer enforces type coercion and caps to prevent generating oversized message chunks.
         """
         self.config = config
-        self.client: BotClient | None = client  # Injected client (AsyncClient or test double)
+        self.client: BotClient = client  # Injected client (AsyncClient or test double)
         self.api_keys: Any = {}  # Will be set in main()
         self._room_id_set: set[str] = set()
         self.http_session: aiohttp.ClientSession | None = None  # set in start(), closed in close()
@@ -594,13 +594,13 @@ class BibleBot:
         """
         Return a concise, developer-oriented representation of the BibleBot.
 
-        The string includes the list of keys present in the bot's `config` (empty list if `config` is not a dict) and a boolean `client_set` indicating whether a BotClient implementation was provided.
+        The string includes the list of keys present in the bot's `config` (empty list if `config` is not a dict). The client is always present after construction so it is not advertised in the repr.
 
         Returns:
-            str: A representation like "BibleBot(config_keys=['a','b'], client_set=True)".
+            str: A representation like "BibleBot(config_keys=['a','b'])".
         """
         keys = list(self.config.keys()) if isinstance(self.config, dict) else []
-        return f"BibleBot(config_keys={keys}, client_set={self.client is not None})"
+        return f"BibleBot(config_keys={keys})"
 
     @classmethod
     def for_testing(

@@ -13,7 +13,7 @@ class TestBotConfiguration:
     def test_bot_default_settings(self):
         """Test bot with default settings when no bot config provided."""
         config = {"matrix_room_ids": ["!test:example.org"]}
-        bot = BibleBot(config)
+        bot = BibleBot(config, client=MagicMock())
 
         assert bot.default_translation == "kjv"
         assert bot.cache_enabled is True
@@ -29,7 +29,7 @@ class TestBotConfiguration:
                 "max_message_length": 1500,
             },
         }
-        bot = BibleBot(config)
+        bot = BibleBot(config, client=MagicMock())
 
         assert bot.default_translation == "esv"
         assert bot.cache_enabled is False
@@ -44,7 +44,7 @@ class TestBotConfiguration:
                 # cache_enabled and max_message_length should use defaults
             },
         }
-        bot = BibleBot(config)
+        bot = BibleBot(config, client=MagicMock())
 
         assert bot.default_translation == "esv"
         assert bot.cache_enabled is True  # default
@@ -58,7 +58,7 @@ class TestBotConfiguration:
         }
 
         with patch("biblebot.bot.logger") as mock_logger:
-            bot = BibleBot(config)
+            bot = BibleBot(config, client=MagicMock())
 
             assert bot.max_message_length == 2000  # should use default
             mock_logger.warning.assert_called_once()
@@ -66,7 +66,7 @@ class TestBotConfiguration:
     def test_bot_non_dict_config(self):
         """Test bot handles non-dict config gracefully."""
         config = None
-        bot = BibleBot(config)
+        bot = BibleBot(config, client=MagicMock())
 
         assert bot.default_translation == "kjv"
         assert bot.cache_enabled is True
@@ -76,7 +76,7 @@ class TestBotConfiguration:
     def test_bot_split_message_length_default(self):
         """Test bot with default split_message_length setting."""
         config = {"matrix_room_ids": ["!test:example.org"]}
-        bot = BibleBot(config)
+        bot = BibleBot(config, client=MagicMock())
 
         assert bot.split_message_length == 0  # disabled by default
 
@@ -86,7 +86,7 @@ class TestBotConfiguration:
             "matrix_room_ids": ["!test:example.org"],
             "bot": {"split_message_length": 200},
         }
-        bot = BibleBot(config)
+        bot = BibleBot(config, client=MagicMock())
 
         assert bot.split_message_length == 200
 
@@ -98,7 +98,7 @@ class TestBotConfiguration:
         }
 
         with patch("biblebot.bot.logger") as mock_logger:
-            bot = BibleBot(config)
+            bot = BibleBot(config, client=MagicMock())
 
             assert bot.split_message_length == 0  # should disable splitting
             mock_logger.warning.assert_called_once()
@@ -111,7 +111,7 @@ class TestBotConfiguration:
         }
 
         with patch("biblebot.bot.logger") as mock_logger:
-            bot = BibleBot(config)
+            bot = BibleBot(config, client=MagicMock())
 
             assert bot.split_message_length == 0  # should disable splitting
             mock_logger.warning.assert_called_once()
@@ -127,7 +127,7 @@ class TestBotConfiguration:
         }
 
         with patch("biblebot.bot.logger") as mock_logger:
-            bot = BibleBot(config)
+            bot = BibleBot(config, client=MagicMock())
 
             assert bot.split_message_length == 2000  # should be capped
             mock_logger.info.assert_called_once()
@@ -139,7 +139,7 @@ class TestMessageSplitting:
     def test_split_text_into_chunks(self):
         """Test the _split_text_into_chunks method."""
         config = {"matrix_room_ids": ["!test:example.org"]}
-        bot = BibleBot(config)
+        bot = BibleBot(config, client=MagicMock())
 
         # Test short text (no splitting needed)
         short_text = "Short text"
@@ -173,7 +173,7 @@ class TestMessageSplitting:
         }
 
         mock_client = AsyncMock()
-        bot = BibleBot(config, mock_client)
+        bot = BibleBot(config=config, client=mock_client)
         bot.api_keys = {}
         bot._room_id_set = {"!test:example.org"}
 
@@ -227,7 +227,7 @@ class TestMessageSplitting:
         }
 
         mock_client = AsyncMock()
-        bot = BibleBot(config, mock_client)
+        bot = BibleBot(config=config, client=mock_client)
         bot.api_keys = {}
         bot._room_id_set = {"!test:example.org"}
 
@@ -268,7 +268,7 @@ class TestMessageSplitting:
         }
 
         mock_client = AsyncMock()
-        bot = BibleBot(config, mock_client)
+        bot = BibleBot(config=config, client=mock_client)
         bot.api_keys = {}
         bot._room_id_set = {"!test:example.org"}
 
@@ -308,7 +308,7 @@ class TestMessageSplitting:
         }
 
         mock_client = AsyncMock()
-        bot = BibleBot(config, mock_client)
+        bot = BibleBot(config=config, client=mock_client)
         bot.api_keys = {}
         bot._room_id_set = {"!test:example.org"}
 
@@ -355,7 +355,7 @@ class TestMessageSplitting:
             },  # force single-message path
         }
         mock_client = AsyncMock()
-        bot = BibleBot(config, mock_client)
+        bot = BibleBot(config=config, client=mock_client)
         bot.api_keys = {}
         bot._room_id_set = {"!test:example.org"}
         mock_event = MagicMock()
@@ -577,7 +577,7 @@ class TestMessageTruncation:
         }
 
         mock_client = AsyncMock()
-        bot = BibleBot(config, mock_client)
+        bot = BibleBot(config=config, client=mock_client)
         bot.api_keys = {}
         bot._room_id_set = {"!test:example.org"}
 
@@ -620,7 +620,7 @@ class TestMessageTruncation:
         }
 
         mock_client = AsyncMock()
-        bot = BibleBot(config, mock_client)
+        bot = BibleBot(config=config, client=mock_client)
         bot.api_keys = {}
         bot._room_id_set = {"!test:example.org"}
 

@@ -7,7 +7,7 @@ import json
 import os
 import tempfile
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import (patch, MagicMock)
 
 from biblebot.auth import Credentials, load_credentials
 from biblebot.bot import BibleBot
@@ -26,7 +26,7 @@ class TestConfigurationPatterns:
             "device_id": "TEST_DEVICE",
         }
 
-        bot = BibleBot(config=minimal_config)
+        bot = BibleBot(config=minimal_config, client=MagicMock())
 
         # Should have loaded configuration
         assert bot.config["homeserver"] == "https://matrix.org"
@@ -70,7 +70,7 @@ class TestConfigurationPatterns:
         for config in invalid_configs:
             # Should handle invalid configurations gracefully
             with patch("biblebot.bot.logger") as mock_logger:
-                bot = BibleBot(config=config)
+                bot = BibleBot(config=config, client=MagicMock())
                 # Bot should still be created but may have validation warnings
                 assert bot.config is not None
                 # Should log validation warnings for invalid bot settings
@@ -95,7 +95,7 @@ class TestConfigurationPatterns:
                 "device_id": os.environ.get("MATRIX_DEVICE_ID", "TEST_DEVICE"),
             }
 
-            bot = BibleBot(config=config)
+            bot = BibleBot(config=config, client=MagicMock())
 
             assert bot.config["homeserver"] == "https://env.matrix.org"
             assert bot.config["user_id"] == "@envtest:matrix.org"
@@ -120,7 +120,7 @@ class TestConfigurationPatterns:
             with open(config_file, "r") as f:
                 loaded_config = json.load(f)
 
-            bot = BibleBot(config=loaded_config)
+            bot = BibleBot(config=loaded_config, client=MagicMock())
 
             assert bot.config["homeserver"] == "https://file.matrix.org"
             assert bot.config["user_id"] == "@filetest:matrix.org"
@@ -148,7 +148,7 @@ class TestConfigurationPatterns:
         # Merge configurations
         merged_config = {**base_config, **override_config}
 
-        bot = BibleBot(config=merged_config)
+        bot = BibleBot(config=merged_config, client=MagicMock())
 
         # Should have both base and override values
         assert bot.config["homeserver"] == "https://matrix.org"
@@ -164,7 +164,7 @@ class TestConfigurationPatterns:
             "device_id": "TEST_DEVICE",
         }
 
-        bot = BibleBot(config=config_with_secrets)
+        bot = BibleBot(config=config_with_secrets, client=MagicMock())
 
         # Should store secrets securely
         assert bot.config["access_token"] == "fake_token_for_tests"  # noqa: S105
@@ -189,7 +189,7 @@ class TestConfigurationPatterns:
 
         for config in incomplete_configs:
             # Should handle incomplete configurations
-            bot = BibleBot(config=config)
+            bot = BibleBot(config=config, client=MagicMock())
             # Bot should be created but may have validation warnings
             assert bot.config is not None
 
@@ -226,7 +226,7 @@ class TestConfigurationPatterns:
 
         for config in type_configs:
             # Should handle type mismatches gracefully
-            bot = BibleBot(config=config)
+            bot = BibleBot(config=config, client=MagicMock())
             assert bot.config is not None
 
     def test_configuration_update_patterns(self):
@@ -239,7 +239,7 @@ class TestConfigurationPatterns:
             "matrix_room_ids": ["!room1:matrix.org"],
         }
 
-        bot = BibleBot(config=initial_config)
+        bot = BibleBot(config=initial_config, client=MagicMock())
 
         # Test configuration updates
         updated_config = initial_config.copy()
@@ -289,7 +289,7 @@ class TestConfigurationPatterns:
                         "device_id": loaded_creds.device_id,
                     }
 
-                    bot = BibleBot(config=config)
+                    bot = BibleBot(config=config, client=MagicMock())
 
                     assert bot.config["homeserver"] == "https://creds.matrix.org"
                     assert bot.config["user_id"] == "@credstest:matrix.org"
@@ -319,7 +319,7 @@ class TestConfigurationPatterns:
             "response_format": "html",
         }
 
-        bot = BibleBot(config=valid_config)
+        bot = BibleBot(config=valid_config, client=MagicMock())
 
         # Should accept valid schema
         assert bot.config["homeserver"].startswith("https://")
@@ -336,7 +336,7 @@ class TestConfigurationPatterns:
             "device_id": "TEST_DEVICE",
         }
 
-        bot = BibleBot(config=minimal_config)
+        bot = BibleBot(config=minimal_config, client=MagicMock())
 
         # Should have applied defaults for missing values
         # (Implementation may vary on what defaults are applied)
@@ -366,7 +366,7 @@ class TestConfigurationPatterns:
         # Apply overrides in precedence order
         final_config = {**base_config, **env_override, **explicit_override}
 
-        bot = BibleBot(config=final_config)
+        bot = BibleBot(config=final_config, client=MagicMock())
 
         # Should use highest precedence value
         assert bot.config["homeserver"] == "https://explicit.matrix.org"
@@ -386,7 +386,7 @@ class TestConfigurationPatterns:
             "matrix_room_ids": ["!room1:matrix.org"],
         }
 
-        bot = BibleBot(config=initial_config)
+        bot = BibleBot(config=initial_config, client=MagicMock())
         initial_rooms = bot.config["matrix_room_ids"].copy()
 
         # Simulate configuration reload
@@ -413,7 +413,7 @@ class TestConfigurationPatterns:
             "matrix_room_ids": ["!room:matrix.org"],
         }
 
-        bot = BibleBot(config=original_config)
+        bot = BibleBot(config=original_config, client=MagicMock())
 
         # Create backup of configuration
         config_backup = bot.config.copy()
@@ -443,7 +443,7 @@ class TestConfigurationPatterns:
         if "rooms" in migrated_config:
             migrated_config["matrix_room_ids"] = migrated_config.pop("rooms")
 
-        bot = BibleBot(config=migrated_config)
+        bot = BibleBot(config=migrated_config, client=MagicMock())
 
         # Should use new format
         assert "matrix_room_ids" in bot.config
