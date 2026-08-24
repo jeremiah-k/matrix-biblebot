@@ -305,7 +305,7 @@ class TestErrorScenarios:
             # Test sync error handling
             mock_client.sync.side_effect = Exception("Sync failed")
 
-            bot_instance = bot.BibleBot(sample_config)
+            bot_instance = bot.BibleBot(sample_config, client=MagicMock())
             bot_instance.client = mock_client
             bot_instance.start_time = 1000
 

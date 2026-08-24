@@ -15,6 +15,7 @@ unencrypted Matrix rooms, with proper E2EE support when available.
 """
 
 import asyncio
+import copy
 import html
 import json
 import logging
@@ -23,6 +24,7 @@ import time
 from collections import OrderedDict
 from time import monotonic
 from typing import Any, Mapping
+from unittest.mock import MagicMock
 from urllib.parse import quote
 
 import aiohttp
@@ -518,10 +520,10 @@ class BibleBot:
     def __init__(
         self,
         config: Any,
-        client: BotClient | None = None,
+        client: BotClient,
     ) -> None:
         """
-        Initialize the BibleBot with configuration and an optional Matrix client.
+        Initialize the BibleBot with configuration and a Matrix client.
 
         Read bot-specific settings from config["bot"], apply defaults, and coerce/validate numeric and boolean options to safe runtime values.
 
@@ -534,13 +536,13 @@ class BibleBot:
 
         Parameters:
             config (dict): Loaded configuration mapping used to populate bot settings.
+            client (BotClient): Required Matrix client implementation. In production this is ``nio.AsyncClient``; tests may inject a compatible test double directly. The client must satisfy the ``biblebot.protocols.BotClient`` structural type.
 
         Notes:
-        - The optional client parameter is an injected BotClient implementation (for example ``nio.AsyncClient`` in production or a ``MagicMock`` in tests) and is intentionally not documented above.
         - The initializer enforces type coercion and caps to prevent generating oversized message chunks.
         """
         self.config = config
-        self.client: BotClient | None = client  # Injected client (AsyncClient or test double)
+        self.client: BotClient = client  # Injected client (AsyncClient or test double)
         self.api_keys: Any = {}  # Will be set in main()
         self._room_id_set: set[str] = set()
         self.http_session: aiohttp.ClientSession | None = None  # set in start(), closed in close()
@@ -593,13 +595,52 @@ class BibleBot:
         """
         Return a concise, developer-oriented representation of the BibleBot.
 
-        The string includes the list of keys present in the bot's `config` (empty list if `config` is not a dict) and a boolean `client_set` indicating whether a BotClient implementation was provided.
+        The string includes the list of keys present in the bot's `config` (empty list if `config` is not a dict). The client is always present after construction so it is not advertised in the repr.
 
         Returns:
-            str: A representation like "BibleBot(config_keys=['a','b'], client_set=True)".
+            str: A representation like "BibleBot(config_keys=['a','b'])".
         """
         keys = list(self.config.keys()) if isinstance(self.config, dict) else []
-        return f"BibleBot(config_keys={keys}, client_set={self.client is not None})"
+        return f"BibleBot(config_keys={keys})"
+
+    @classmethod
+    def for_testing(
+        cls,
+        config: Any,
+        *,
+        client: BotClient | None = None,
+    ) -> "BibleBot":
+        """Construct a BibleBot with an auto-generated MagicMock client.
+
+        Convenience factory for tests that exercise bot behavior other than the
+        Matrix client contract (configuration parsing, formatting, dispatch,
+        ``__repr__``, etc.). When ``client`` is None a ``MagicMock`` that
+        satisfies ``biblebot.protocols.BotClient`` is created automatically.
+        The factory deep-copies ``config`` so mutations to the original dict
+        after construction do not leak into the bot.
+
+        Tests that depend on specific client behavior (e.g. message dispatch
+        tests) should construct the bot directly with an explicit client.
+
+        Parameters:
+            config (Any): The configuration mapping passed to ``__init__``.
+                Deep-copied so the factory does not retain a reference.
+            client (BotClient | None): Optional explicit client override. When
+                omitted, a spec'd MagicMock is created for the test.
+
+        Returns:
+            BibleBot: An instance with the client attribute populated. The bot's
+            ``config`` attribute is an independent copy of the input.
+        """
+        if client is None:
+            mock_client = MagicMock(spec=BotClient)
+            mock_client.user_id = None
+            mock_client.device_id = None
+            mock_client.rooms = {}
+            test_client: BotClient = mock_client
+        else:
+            test_client = client
+        return cls(copy.deepcopy(config), test_client)
 
     async def resolve_aliases(self):
         """

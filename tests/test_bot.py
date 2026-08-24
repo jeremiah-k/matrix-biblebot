@@ -853,7 +853,7 @@ class TestReferenceMatching:
         config = {
             "matrix_room_ids": ["!test:example.org"],
         }
-        bible_bot = BibleBot(config)
+        bible_bot = BibleBot(config, client=MagicMock())
         bible_bot.start_time = 0
         bible_bot._room_id_set = {"!test:example.org"}
         bible_bot.client = MagicMock()
@@ -902,7 +902,7 @@ class TestReferenceMatching:
             "matrix_room_ids": ["!test:example.org"],
             "bot": {},
         }
-        bible_bot = BibleBot(config)
+        bible_bot = BibleBot(config, client=MagicMock())
         bible_bot.start_time = 0
         bible_bot._room_id_set = {"!test:example.org"}
         bible_bot.client = MagicMock()
@@ -933,7 +933,7 @@ class TestReferenceMatching:
             "matrix_room_ids": ["!test:example.org"],
             "bot": {},
         }
-        bible_bot = BibleBot(config)
+        bible_bot = BibleBot(config, client=MagicMock())
         bible_bot.start_time = 0
         bible_bot._room_id_set = {"!test:example.org"}
         bible_bot.client = MagicMock()
@@ -1053,7 +1053,7 @@ class TestBibleBot:
     def test_biblebot_init(self, sample_config):
         """Test BibleBot initialization."""
         mock_client = MagicMock()
-        bot_instance = bot.BibleBot(sample_config, mock_client)
+        bot_instance = bot.BibleBot(config=sample_config, client=mock_client)
 
         assert bot_instance.config == sample_config
         assert bot_instance.client == mock_client
@@ -1094,7 +1094,7 @@ class TestBibleBot:
             mock_response.room_id = TEST_RESOLVED_ROOM_ID
             mock_client.room_resolve_alias = AsyncMock(return_value=mock_response)
 
-            bot_instance = bot.BibleBot(config_with_alias)
+            bot_instance = bot.BibleBot(config_with_alias, client=MagicMock())
             bot_instance.client = mock_client
 
             await bot_instance.resolve_aliases()
@@ -1114,7 +1114,7 @@ class TestBibleBot:
         mock_response.room_id = TEST_ROOM_IDS[0]
         mock_client.join = AsyncMock(return_value=mock_response)
 
-        bot_instance = bot.BibleBot(sample_config)
+        bot_instance = bot.BibleBot(sample_config, client=MagicMock())
         bot_instance.client = mock_client
 
         await bot_instance.join_matrix_room(TEST_ROOM_IDS[0])
@@ -1144,7 +1144,7 @@ class TestBibleBot:
             mock_client_class.return_value = mock_client
             mock_client.rooms = {TEST_ROOM_IDS[0]: MagicMock()}  # Already in room
 
-            bot_instance = bot.BibleBot(sample_config)
+            bot_instance = bot.BibleBot(sample_config, client=MagicMock())
             bot_instance.client = mock_client
 
             await bot_instance.join_matrix_room(TEST_ROOM_IDS[0])
@@ -1176,7 +1176,7 @@ class TestBibleBot:
             # Ensure room_send is AsyncMock
             mock_client.room_send = AsyncMock()
 
-            bot_instance = bot.BibleBot(sample_config)
+            bot_instance = bot.BibleBot(sample_config, client=MagicMock())
             bot_instance.client = mock_client
 
             await bot_instance.send_reaction(TEST_ROOM_ID, "$event:matrix.org", "✅")
@@ -1216,7 +1216,7 @@ class TestMessageHandling:
             mock_client_class.return_value = mock_client
             mock_client.user_id = TEST_USER_ID
 
-            bot_instance = bot.BibleBot(sample_config)
+            bot_instance = bot.BibleBot(sample_config, client=MagicMock())
             bot_instance.client = mock_client
             bot_instance.start_time = 1000000000000  # Set start time (milliseconds)
             # Populate room ID set for testing (normally done in initialize())
@@ -1267,7 +1267,7 @@ class TestMessageHandling:
             mock_client_class.return_value = mock_client
             mock_client.user_id = TEST_USER_ID
 
-            bot_instance = bot.BibleBot(sample_config)
+            bot_instance = bot.BibleBot(sample_config, client=MagicMock())
             bot_instance.client = mock_client
             bot_instance.start_time = 1000000000000
 
@@ -1308,7 +1308,7 @@ class TestMessageHandling:
             mock_client_class.return_value = mock_client
             mock_client.user_id = TEST_USER_ID
 
-            bot_instance = bot.BibleBot(sample_config)
+            bot_instance = bot.BibleBot(sample_config, client=MagicMock())
             bot_instance.client = mock_client
             bot_instance.start_time = 2000000000000
 
@@ -1349,7 +1349,7 @@ class TestMessageHandling:
             mock_client_class.return_value = mock_client
             mock_client.user_id = TEST_USER_ID
 
-            bot_instance = bot.BibleBot(sample_config)
+            bot_instance = bot.BibleBot(sample_config, client=MagicMock())
             bot_instance.client = mock_client
             bot_instance.start_time = 1000
 
@@ -1393,7 +1393,7 @@ class TestMessageHandling:
             # Ensure room_send is AsyncMock
             mock_client.room_send = AsyncMock()
 
-            bot_instance = bot.BibleBot(sample_config)
+            bot_instance = bot.BibleBot(sample_config, client=MagicMock())
             bot_instance.client = mock_client
             bot_instance.api_keys = {"kjv": None}
 
@@ -1451,7 +1451,7 @@ class TestMessageHandling:
             # Ensure room_send is AsyncMock
             mock_client.room_send = AsyncMock()
 
-            bot_instance = bot.BibleBot(sample_config)
+            bot_instance = bot.BibleBot(sample_config, client=MagicMock())
             bot_instance.client = mock_client
             bot_instance.api_keys = {"kjv": None}
 
@@ -1507,7 +1507,7 @@ class TestInviteHandling:
             )
             mock_client_class.return_value = mock_client
 
-            bot_instance = bot.BibleBot(sample_config)
+            bot_instance = bot.BibleBot(sample_config, client=MagicMock())
             bot_instance.client = mock_client
             # Initialize room ID set for membership checks
             bot_instance._room_id_set = set(sample_config["matrix_room_ids"])
@@ -1544,7 +1544,7 @@ class TestInviteHandling:
             )
             mock_client_class.return_value = mock_client
 
-            bot_instance = bot.BibleBot(sample_config)
+            bot_instance = bot.BibleBot(sample_config, client=MagicMock())
             bot_instance.client = mock_client
 
             mock_room = MagicMock()
@@ -1668,7 +1668,7 @@ class TestE2EEFunctionality:
             mock_client.user_id = TEST_USER_ID
             mock_client.device_id = TEST_DEVICE_ID
 
-            bot_instance = bot.BibleBot(e2ee_config)
+            bot_instance = bot.BibleBot(e2ee_config, client=MagicMock())
             bot_instance.client = mock_client
 
             try:
@@ -1718,7 +1718,7 @@ class TestE2EEFunctionality:
             )
             mock_client_class.return_value = mock_client
 
-            bot_instance = bot.BibleBot(e2ee_config)
+            bot_instance = bot.BibleBot(e2ee_config, client=MagicMock())
             bot_instance.client = mock_client
 
             try:
@@ -2126,7 +2126,7 @@ class TestTextFormatting:
     def test_format_text_default_mode(self):
         """Test text formatting with default settings (collapse whitespace)."""
         config = {"bot": {"preserve_poetry_formatting": False}}
-        bible_bot = bot.BibleBot(config)
+        bible_bot = bot.BibleBot(config, client=MagicMock())
 
         # Test text with newlines and extra spaces
         input_text = "Line 1\n\nLine 2   with   spaces\nLine 3"
@@ -2141,7 +2141,7 @@ class TestTextFormatting:
     def test_format_text_poetry_mode(self):
         """Test text formatting with poetry preservation enabled."""
         config = {"bot": {"preserve_poetry_formatting": True}}
-        bible_bot = bot.BibleBot(config)
+        bible_bot = bot.BibleBot(config, client=MagicMock())
 
         # Test text with newlines and extra spaces
         input_text = "Line 1\n\nLine 2   with   spaces\nLine 3"
@@ -2156,7 +2156,7 @@ class TestTextFormatting:
     def test_format_text_default_mode_no_config(self):
         """Test text formatting with no explicit configuration (should default to False)."""
         config = {"bot": {}}  # No preserve_poetry_formatting specified
-        bible_bot = bot.BibleBot(config)
+        bible_bot = bot.BibleBot(config, client=MagicMock())
 
         # Should default to False (original behavior)
         assert bible_bot.preserve_poetry_formatting is False
@@ -2172,7 +2172,7 @@ class TestTextFormatting:
     def test_format_text_poetry_mode_complex(self):
         """Test poetry mode with complex formatting scenarios."""
         config = {"bot": {"preserve_poetry_formatting": True}}
-        bible_bot = bot.BibleBot(config)
+        bible_bot = bot.BibleBot(config, client=MagicMock())
 
         # Test with tabs, multiple spaces, and multiple newlines
         input_text = "  Psalm 1:1  \n\n\n  Blessed is the man\t\twho walks not\n  in the counsel of the wicked  "
@@ -2188,20 +2188,20 @@ class TestTextFormatting:
         """Test that configuration is loaded correctly."""
         # Test with explicit True
         config_true = {"bot": {"preserve_poetry_formatting": True}}
-        bot_true = bot.BibleBot(config_true)
+        bot_true = bot.BibleBot(config_true, client=MagicMock())
         assert bot_true.preserve_poetry_formatting is True
 
         # Test with explicit False
         config_false = {"bot": {"preserve_poetry_formatting": False}}
-        bot_false = bot.BibleBot(config_false)
+        bot_false = bot.BibleBot(config_false, client=MagicMock())
         assert bot_false.preserve_poetry_formatting is False
 
         # Test with no bot section
         config_no_bot = {}
-        bot_no_bot = bot.BibleBot(config_no_bot)
+        bot_no_bot = bot.BibleBot(config_no_bot, client=MagicMock())
         assert bot_no_bot.preserve_poetry_formatting is False
 
         # Test with invalid config type
         config_invalid = "not a dict"
-        bot_invalid = bot.BibleBot(config_invalid)
+        bot_invalid = bot.BibleBot(config_invalid, client=MagicMock())
         assert bot_invalid.preserve_poetry_formatting is False
