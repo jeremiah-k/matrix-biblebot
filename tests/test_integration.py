@@ -4,7 +4,7 @@ import asyncio
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import nio
-import nio.exceptions
+from nio import RemoteTransportError
 import pytest
 import yaml
 
@@ -443,7 +443,7 @@ class TestCrossModuleIntegration:
         """Test bot module integrates with auth functions."""
         # Test homeserver discovery integration
         mock_client = AsyncMock()
-        mock_client.discovery_info.side_effect = nio.exceptions.RemoteTransportError(
+        mock_client.discovery_info.side_effect = RemoteTransportError(
             "Network error"
         )
 

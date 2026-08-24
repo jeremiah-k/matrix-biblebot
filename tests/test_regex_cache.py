@@ -125,7 +125,6 @@ def test_passage_cache(monkeypatch):
         # Simulate bible-api.com kjv response
         return {"text": "For God so loved the world...", "reference": "John 3:16"}
 
-    monkeypatch.setattr(botmod, "make_api_request", fake_req)
     # get_bible_text resolves make_api_request through biblebot.passages,
     # so the interception must land on the defining module.
     import biblebot.passages as passagesmod

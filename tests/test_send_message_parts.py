@@ -202,7 +202,7 @@ class TestHandleScriptureCommandSendFailure:
         assert "Failed to send" not in caplog.text
 
     @pytest.mark.asyncio
-    async def test_send_failure_sends_user_facing_notice(self, monkeypatch):
+    async def test_forbidden_failure_skips_user_facing_notice(self, monkeypatch):
         from nio.responses import ErrorResponse
 
         # Forbidden response: the room rejects posts entirely, so no notice
@@ -286,10 +286,3 @@ class TestHandleScriptureCommandSendFailure:
         bodies = [c.args[2]["body"] for c in calls if c.args[1] == "m.room.message"]
         assert any("could not be delivered" in b for b in bodies)
         assert not any("passage could not be found" in b.lower() for b in bodies)
-
-
-async def _record_sleep(sleeps):
-    async def _sleep(delay):
-        sleeps.append(delay)
-
-    return _sleep

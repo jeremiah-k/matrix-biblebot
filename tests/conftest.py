@@ -1,9 +1,7 @@
-import asyncio
 import gc
 import os
 import sys
 import warnings
-from concurrent.futures import Future
 from pathlib import Path
 from unittest.mock import MagicMock
 
@@ -41,7 +39,7 @@ except ImportError:  # pragma: no cover - environment without a real nio
     pass
 
 
-# Create proper Exception classes for nio.exceptions
+# Create proper Exception classes for the mocked top-level nio API
 class MockRemoteProtocolError(Exception):
     pass
 
@@ -52,22 +50,6 @@ class MockRemoteTransportError(Exception):
 
 class MockLocalProtocolError(Exception):
     pass
-
-
-class MockMatrixRequestError(Exception):
-    def __init__(self, message="", status_code=None, errcode=None):
-        super().__init__(message)
-        self.message = message
-        self.status_code = status_code
-        self.errcode = errcode
-        # Mirror the nio library shape so bot._send_message_parts can inspect it
-        self.status = status_code
-
-    def __repr__(self):
-        return (
-            f"MockMatrixRequestError(message={self.message!r}, "
-            f"status_code={self.status_code!r}, errcode={self.errcode!r})"
-        )
 
 
 class MockDiscoveryInfoError(Exception):
@@ -155,15 +137,6 @@ class MockLoginResponse:
 
 # Create nio mock with proper exception classes
 nio_mock = MagicMock()
-nio_exceptions_mock = MagicMock()
-nio_exceptions_mock.RemoteProtocolError = MockRemoteProtocolError
-nio_exceptions_mock.RemoteTransportError = MockRemoteTransportError
-nio_exceptions_mock.LocalProtocolError = MockLocalProtocolError
-nio_exceptions_mock.MatrixRequestError = MockMatrixRequestError
-nio_exceptions_mock.DiscoveryInfoError = MockDiscoveryInfoError
-nio_exceptions_mock.LoginError = MockLoginError
-nio_exceptions_mock.RoomResolveAliasError = MockRoomResolveAliasError
-
 sys.modules["nio"] = nio_mock
 sys.modules["nio.events"] = MagicMock()
 sys.modules["nio.events.room_events"] = MagicMock()
@@ -176,7 +149,6 @@ nio_cross_signing_mock.cross_signing_sidecar_path.side_effect = (
     lambda store_path, user_id: Path(store_path) / f"{user_id}_cross_signing.json"
 )
 sys.modules["nio.crypto.cross_signing"] = nio_cross_signing_mock
-sys.modules["nio.exceptions"] = nio_exceptions_mock
 
 # Mock vodozemac (E2EE crypto provider)
 vodozemac_mock = MagicMock()
@@ -192,7 +164,6 @@ sys.modules["cachetools"] = MagicMock()
 nio_mock.AsyncClient = MagicMock()
 nio_mock.AsyncClientConfig = MagicMock()
 nio_mock.SqliteStore = MagicMock()
-nio_mock.exceptions = nio_exceptions_mock
 nio_mock.DiscoveryInfoResponse = MockDiscoveryInfoResponse
 nio_mock.DiscoveryInfoError = MockDiscoveryInfoError
 nio_mock.LoginError = MockLoginError
@@ -257,50 +228,3 @@ def cleanup_asyncmock_objects(request):
                 "ignore", category=RuntimeWarning, message=".*never awaited.*"
             )
             gc.collect()
-
-
-@pytest.fixture(autouse=True)
-def mock_submit_coro(monkeypatch):
-    """
-    Pytest fixture that patches biblebot.bot._submit_coro (if present) with a synchronous runner for coroutine objects.
-
-    The replacement runner returns None for non-coroutine inputs. For coroutine inputs it creates a temporary event loop, runs the coroutine to completion (so AsyncMock coroutines are actually awaited), closes the loop, and returns a concurrent.futures.Future that is already resolved with the coroutine's result or completed with the raised exception. Yields control to the test; monkeypatch restores the original attribute on teardown.
-    """
-    import inspect
-
-    def mock_submit(coro):
-        """
-        Run a coroutine to completion on a temporary event loop and return a Future containing its outcome.
-
-        If `coro` is not a coroutine object, returns None. Otherwise this function creates a new event loop,
-        runs the coroutine to completion, and returns a concurrent.futures.Future that is already resolved
-        with the coroutine's result or completed with the coroutine's raised exception. The temporary loop
-        is closed before returning.
-        """
-        if not inspect.iscoroutine(coro):  # Not a coroutine
-            return None
-
-        # For AsyncMock coroutines, we need to actually await them to get the result
-        # and prevent "never awaited" warnings, while also triggering any side effects
-        temp_loop = asyncio.new_event_loop()
-        try:
-            result = temp_loop.run_until_complete(coro)
-            outcome_ok, payload = True, result
-        except Exception as e:
-            outcome_ok, payload = False, e
-        finally:
-            temp_loop.close()
-        future = Future()
-        (future.set_result if outcome_ok else future.set_exception)(payload)
-        return future
-
-    # Try to patch any _submit_coro functions that might exist
-    try:
-        import biblebot.bot as bot_module
-
-        if hasattr(bot_module, "_submit_coro"):
-            monkeypatch.setattr(bot_module, "_submit_coro", mock_submit)
-    except (ImportError, AttributeError):
-        pass
-
-    yield

@@ -1716,7 +1716,7 @@ class TestE2EEFunctionality:
             mock_client.device_id = TEST_DEVICE_ID
             mock_client.to_device = _AsyncMock()
             mock_client.request_room_key = _AsyncMock(
-                side_effect=nio.exceptions.LocalProtocolError("Duplicate request")
+                side_effect=nio.LocalProtocolError("Duplicate request")
             )
             mock_client_class.return_value = mock_client
 
