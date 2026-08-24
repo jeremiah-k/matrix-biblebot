@@ -49,7 +49,9 @@ class TestMessagingHelpers:
         assert delay == pytest.approx(2.0)
 
     def test_retry_delay_falls_back_and_grows_with_attempts(self):
-        rng = lambda lo, hi: 1.0
+        def rng(lo, hi):
+            return 1.0
+
         first = response_retry_delay_seconds(_error(), attempt=0, rng=rng)
         second = response_retry_delay_seconds(_error(), attempt=2, rng=rng)
         assert first > 0
@@ -107,7 +109,9 @@ class TestSendMessageParts:
         import aiohttp
 
         bot = BibleBot(config={"matrix_room_ids": []}, client=MagicMock())
-        bot.client.room_send = AsyncMock(side_effect=aiohttp.ClientError("conn dropped"))
+        bot.client.room_send = AsyncMock(
+            side_effect=aiohttp.ClientError("conn dropped")
+        )
 
         with pytest.raises(MessageSendError):
             await bot._send_message_parts("!room:x", ["Verse"], None)

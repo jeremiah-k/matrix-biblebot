@@ -62,7 +62,9 @@ def test_response_retry_delay_uses_server_hint_with_jitter():
 
 
 def test_response_retry_delay_falls_back_and_grows_with_attempts():
-    rng = lambda lo, hi: 1.0
+    def rng(lo, hi):
+        return 1.0
+
     first = response_retry_delay_seconds(_fake_error_response(), attempt=0, rng=rng)
     second = response_retry_delay_seconds(_fake_error_response(), attempt=2, rng=rng)
     assert first > 0
@@ -91,7 +93,6 @@ def test_compose_final_chunk_bodies_without_reference():
 
     assert plain == f"For God so loved the world{MESSAGE_SUFFIX}"
     assert rendered == f"For God so loved the world{_html.escape(MESSAGE_SUFFIX)}"
-
 
 
 def test_retry_policy_defaults_match_constants():

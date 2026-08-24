@@ -26,15 +26,17 @@ def run_cli(
     )
 
 
-def test_help_uses_current_runtime_home():
+def test_help_uses_current_runtime_home(tmp_path: Path):
     """Top-level help should describe the config path selected at invocation time."""
-    runtime_home = Path("/tmp/BibleBot Contract Home")
+    runtime_home = tmp_path / "BibleBot Contract Home"
 
     result = run_cli("--help", env={"BIBLEBOT_HOME": str(runtime_home)})
 
     assert result.returncode == 0
-    normalized_help = " ".join(result.stdout.split())
-    assert str(runtime_home / "config.yaml") in normalized_help
+    # argparse wraps long option-help lines, even mid-path (breaking at
+    # hyphens), so compare with ALL whitespace removed on both sides.
+    normalized_help = "".join(result.stdout.split())
+    assert "".join(str(runtime_home / "config.yaml").split()) in normalized_help
     assert result.stderr == ""
 
 

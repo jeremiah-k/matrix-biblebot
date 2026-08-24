@@ -83,9 +83,7 @@ class TestLoadConfigForCheck:
             f"Error loading config from {config_path}\n" == captured.err
         )
 
-    def test_invalid_yaml_diagnostic_does_not_echo_file_content(
-        self, tmp_path, capsys
-    ):
+    def test_invalid_yaml_diagnostic_does_not_echo_file_content(self, tmp_path, capsys):
         config_path = tmp_path / "config.yaml"
         secret = "sentinel-config-secret"  # noqa: S105
         config_path.write_text(f"api_keys: [{secret}", encoding="utf-8")

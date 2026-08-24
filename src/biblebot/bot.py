@@ -557,7 +557,9 @@ class BibleBot:
         self.client: BotClient = client  # Injected client (AsyncClient or test double)
         self.api_keys: Any = {}  # Will be set in main()
         self._room_id_set: set[str] = set()
-        self.http_session: aiohttp.ClientSession | None = None  # set in start(), closed in close()
+        self.http_session: aiohttp.ClientSession | None = (
+            None  # set in start(), closed in close()
+        )
 
         # Bot configuration settings with defaults
         bot_settings = config.get("bot", {}) if isinstance(config, dict) else {}

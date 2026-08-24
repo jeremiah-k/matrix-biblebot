@@ -25,21 +25,21 @@ def _has_return_annotation(func) -> bool:
 
 
 def test_get_bible_text_has_return_annotation():
-    assert _has_return_annotation(get_bible_text), (
-        "get_bible_text must declare a return annotation"
-    )
+    assert _has_return_annotation(
+        get_bible_text
+    ), "get_bible_text must declare a return annotation"
 
 
 def test_get_esv_text_has_return_annotation():
-    assert _has_return_annotation(get_esv_text), (
-        "get_esv_text must declare a return annotation"
-    )
+    assert _has_return_annotation(
+        get_esv_text
+    ), "get_esv_text must declare a return annotation"
 
 
 def test_get_kjv_text_has_return_annotation():
-    assert _has_return_annotation(get_kjv_text), (
-        "get_kjv_text must declare a return annotation"
-    )
+    assert _has_return_annotation(
+        get_kjv_text
+    ), "get_kjv_text must declare a return annotation"
 
 
 def test_get_bible_text_return_annotation_allows_none_reference():
@@ -50,23 +50,23 @@ def test_get_bible_text_return_annotation_allows_none_reference():
     """
     hints = get_type_hints(get_bible_text)
     return_hint = str(hints["return"])
-    assert "None" in return_hint, (
-        f"get_bible_text return annotation must allow a None reference; got {return_hint!r}"
-    )
+    assert (
+        "None" in return_hint
+    ), f"get_bible_text return annotation must allow a None reference; got {return_hint!r}"
 
 
 def test_get_esv_text_return_annotation_allows_none_reference():
     hints = get_type_hints(get_esv_text)
-    assert "None" in str(hints["return"]), (
-        f"get_esv_text return annotation must allow a None reference; got {hints['return']!r}"
-    )
+    assert "None" in str(
+        hints["return"]
+    ), f"get_esv_text return annotation must allow a None reference; got {hints['return']!r}"
 
 
 def test_get_kjv_text_return_annotation_allows_none_reference():
     hints = get_type_hints(get_kjv_text)
-    assert "None" in str(hints["return"]), (
-        f"get_kjv_text return annotation must allow a None reference; got {hints['return']!r}"
-    )
+    assert "None" in str(
+        hints["return"]
+    ), f"get_kjv_text return annotation must allow a None reference; got {hints['return']!r}"
 
 
 def test_passage_exceptions_are_distinct_and_inherit_exception():

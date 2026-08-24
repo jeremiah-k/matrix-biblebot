@@ -83,6 +83,7 @@ except ImportError:
 
 logger = logging.getLogger(LOGGER_NAME)
 
+
 class CrossSigningRefused(RuntimeError):
     """Raised when proceeding could silently rotate the account identity."""
 

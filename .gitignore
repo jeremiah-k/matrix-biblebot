@@ -54,4 +54,4 @@ test-results/
 
 # Logs
 *.log
-logs/
+.hermes-pr-body.md

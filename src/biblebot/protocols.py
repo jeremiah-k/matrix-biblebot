@@ -25,9 +25,7 @@ class BotClient(Protocol):
     device_id: str | None
     rooms: dict[str, Any]
 
-    async def room_resolve_alias(
-        self, room_alias: str
-    ) -> Any: ...
+    async def room_resolve_alias(self, room_alias: str) -> Any: ...
 
     async def join(self, room_id: str) -> Any: ...
 

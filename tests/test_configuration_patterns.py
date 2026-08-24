@@ -7,7 +7,7 @@ import json
 import os
 import tempfile
 from pathlib import Path
-from unittest.mock import (patch, MagicMock)
+from unittest.mock import MagicMock, patch
 
 from biblebot.auth import Credentials, load_credentials
 from biblebot.bot import BibleBot

@@ -8,7 +8,6 @@ from biblebot.bot import BibleBot
 from biblebot.protocols import BotClient
 
 
-
 def test_for_testing_returns_biblebot_instance():
     """for_testing must return a BibleBot constructed with the supplied config."""
     config: dict = {"bot": {}, "matrix": {"room_ids": ["!room:example.org"]}}

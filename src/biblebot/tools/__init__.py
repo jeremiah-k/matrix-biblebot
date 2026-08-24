@@ -7,7 +7,6 @@ import warnings
 from contextlib import contextmanager
 
 import biblebot.tools as _tools
-
 from biblebot.constants import SAMPLE_CONFIG_FILENAME
 
 

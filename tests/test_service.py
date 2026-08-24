@@ -4,7 +4,6 @@ from pathlib import Path
 
 from biblebot.service import ServicePlan, render_service_unit
 
-
 BASE_TEMPLATE = """[Unit]
 Description={SERVICE_DESCRIPTION}
 
