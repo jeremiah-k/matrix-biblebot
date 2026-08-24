@@ -264,7 +264,14 @@ class TestHandleScriptureCommandSendFailure:
         import aiohttp
 
         bot = BibleBot(config={"matrix_room_ids": ["!room:x"]}, client=MagicMock())
-        bot.client.room_send = AsyncMock(side_effect=aiohttp.ClientError("conn died"))
+
+        async def _raise_transport_error(*_args, **_kwargs):
+            # A real failed request raises a fresh exception each time. Reusing one
+            # exception instance can create a cause/context cycle when the passage
+            # failure is wrapped and the follow-up notice also fails.
+            raise aiohttp.ClientError("conn died")
+
+        bot.client.room_send = AsyncMock(side_effect=_raise_transport_error)
         monkeypatch.setattr(
             "biblebot.bot.get_bible_text",
             AsyncMock(return_value=("For God so loved the world", "John 3:16")),
@@ -273,6 +280,7 @@ class TestHandleScriptureCommandSendFailure:
         await bot.handle_scripture_command("!room:x", "John 3:16", None, self._event())
 
         calls = bot.client.room_send.await_args_list
+        assert bot.client.room_send.await_count == 3
         # reaction + passage + notice attempts; notice body must be the
         # delivery-failure message, never the passage-not-found lookup text
         bodies = [c.args[2]["body"] for c in calls if c.args[1] == "m.room.message"]
