@@ -8,7 +8,6 @@ from biblebot import paths as biblebot_paths
 ENV_BIBLEBOT_HOME = biblebot_paths.ENV_BIBLEBOT_HOME
 
 __all__ = [
-    "CONFIG_DIR",
     "CONFIG_DIR_PERMISSIONS",
     "CONFIG_KEY_MATRIX",
     "CONFIG_MATRIX_E2EE",
@@ -23,7 +22,6 @@ __all__ = [
     "CRED_KEY_DEVICE_ID",
     "CRED_KEY_HOMESERVER",
     "CRED_KEY_USER_ID",
-    "CREDENTIALS_FILE",
     "CREDENTIALS_FILE_PERMISSIONS",
     "DEFAULT_CONFIG_FILENAME",
     "DEFAULT_ENV_FILENAME",
@@ -33,7 +31,6 @@ __all__ = [
     "E2EE_KEY_PLATFORM_SUPPORTED",
     "E2EE_KEY_READY",
     "E2EE_KEY_STORE_EXISTS",
-    "E2EE_STORE_DIR",
     "ENV_BIBLEBOT_HOME",
     "ENV_ESV_API_KEY",
     "ENV_MATRIX_ACCESS_TOKEN",
