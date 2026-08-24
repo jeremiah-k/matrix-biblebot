@@ -7,12 +7,19 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from biblebot.constants.messages import MESSAGE_SUFFIX
+from biblebot.constants.messages import (
+    ERROR_SEND_FORBIDDEN,
+    ERROR_SEND_OTHER,
+    ERROR_SEND_RATE_LIMITED,
+    MESSAGE_SUFFIX,
+)
 from biblebot.messaging import (
+    classify_send_failure,
     compose_final_chunk_bodies,
     is_error_response,
     is_rate_limit_response,
     response_retry_delay_seconds,
+    send_failure_notice,
 )
 
 
@@ -88,8 +95,6 @@ def test_compose_final_chunk_bodies_without_reference():
 
 
 def test_classify_send_failure_kinds():
-    from biblebot.messaging import classify_send_failure
-
     assert (
         classify_send_failure(_fake_error_response(status_code="M_LIMIT_EXCEEDED"))
         == "rate_limited"
@@ -104,8 +109,6 @@ def test_classify_send_failure_kinds():
 
 def test_classify_send_failure_checks_both_markers_independently():
     """An unknown errcode must not mask a forbidden HTTP status (and vice versa)."""
-    from biblebot.messaging import classify_send_failure
-
     mixed = _fake_error_response(status_code=403)
     mixed.errcode = "M_UNKNOWN"
     assert classify_send_failure(mixed) == "forbidden"
@@ -117,3 +120,9 @@ def test_classify_send_failure_checks_both_markers_independently():
     neither = _fake_error_response(200)
     neither.errcode = "M_UNKNOWN"
     assert classify_send_failure(neither) == "other"
+
+
+def test_send_failure_notice_maps_classification_to_message():
+    assert send_failure_notice("rate_limited") == ERROR_SEND_RATE_LIMITED
+    assert send_failure_notice("forbidden") == ERROR_SEND_FORBIDDEN
+    assert send_failure_notice("other") == ERROR_SEND_OTHER

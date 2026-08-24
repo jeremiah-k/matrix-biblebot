@@ -4,13 +4,19 @@ from __future__ import annotations
 
 import html
 import random
-from typing import Final
+from typing import Final, Literal
 
 from biblebot.constants.matrix import DEFAULT_RETRY_AFTER_MS
-from biblebot.constants.messages import MESSAGE_SUFFIX
+from biblebot.constants.messages import (
+    ERROR_SEND_FORBIDDEN,
+    ERROR_SEND_OTHER,
+    ERROR_SEND_RATE_LIMITED,
+    MESSAGE_SUFFIX,
+)
 
 _RATE_LIMIT_STATUS: Final[int] = 429
 _RATE_LIMIT_ERRCODE: Final[str] = "M_LIMIT_EXCEEDED"
+SendFailureKind = Literal["rate_limited", "forbidden", "other"]
 
 
 def _has_message_attr(obj: object) -> bool:
@@ -83,12 +89,12 @@ def compose_final_chunk_bodies(
     return plain, rendered
 
 
-def classify_send_failure(response: object) -> str:
+def classify_send_failure(response: object) -> SendFailureKind:
     """Return a short operator-friendly reason for a failed Matrix send.
 
-    Maps the nio ``ErrorResponse`` errcode to one of ``"rate_limited"``,
-    ``"forbidden"``, or ``"other"``. Unknown errcodes fall back to
-    ``"other"`` so callers never have to handle an unmapped kind.
+    Maps nio ``ErrorResponse`` markers from ``errcode`` and ``status_code`` to
+    ``"rate_limited"``, ``"forbidden"``, or ``"other"``. Unknown markers
+    fall back to ``"other"`` so callers never have to handle an unmapped kind.
     """
     errcode = getattr(response, "errcode", None)
     status_code = getattr(response, "status_code", None)
@@ -97,3 +103,12 @@ def classify_send_failure(response: object) -> str:
     if errcode == "M_FORBIDDEN" or status_code == "M_FORBIDDEN" or status_code == 403:
         return "forbidden"
     return "other"
+
+
+def send_failure_notice(kind: SendFailureKind) -> str:
+    """Return the user-facing notice for a classified Matrix send failure."""
+    if kind == "rate_limited":
+        return ERROR_SEND_RATE_LIMITED
+    if kind == "forbidden":
+        return ERROR_SEND_FORBIDDEN
+    return ERROR_SEND_OTHER

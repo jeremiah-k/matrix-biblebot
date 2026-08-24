@@ -68,9 +68,7 @@ from biblebot.constants.messages import (
     ERROR_AUTH_INSTRUCTIONS,
     ERROR_NO_CREDENTIALS_AND_TOKEN,
     ERROR_PASSAGE_NOT_FOUND,
-    ERROR_SEND_FORBIDDEN,
     ERROR_SEND_OTHER,
-    ERROR_SEND_RATE_LIMITED,
     FALLBACK_MESSAGE_TOO_LONG,
     INFO_API_KEY_FOUND,
     INFO_LOADING_ENV,
@@ -95,6 +93,7 @@ from biblebot.messaging import (
     is_error_response,
     is_rate_limit_response,
     response_retry_delay_seconds,
+    send_failure_notice,
 )
 from biblebot.passages import (  # noqa: F401 - re-export for import compatibility
     APIKeyMissing,
@@ -658,14 +657,15 @@ class BibleBot:
         except Exception:
             logger.exception("Unexpected error sending reaction")
 
-    def _send_failure_notice(self, send_error) -> str:
-        """Map a failed-send ErrorResponse to a user-facing notice."""
+    async def _handle_failed_send(self, room_id: str, send_error: object) -> None:
+        """Report a failed Matrix send without attempting an impossible notice."""
         kind = classify_send_failure(send_error)
-        if kind == "rate_limited":
-            return ERROR_SEND_RATE_LIMITED
         if kind == "forbidden":
-            return ERROR_SEND_FORBIDDEN
-        return ERROR_SEND_OTHER
+            logger.error(
+                f"Not posting delivery-failure notice to forbidden room {room_id}"
+            )
+            return
+        await self._send_error_message(room_id, send_failure_notice(kind))
 
     async def _send_error_message(self, room_id: str, message: str):
         """
@@ -915,18 +915,7 @@ class BibleBot:
                         logger.error(
                             f"Failed to send split scripture to {room_id}: {send_error}"
                         )
-                        if classify_send_failure(send_error) == "forbidden":
-                            # The room rejects our posts; a notice to the same
-                            # room cannot be delivered, so only record it.
-                            logger.error(
-                                f"Not posting delivery-failure notice to "
-                                f"forbidden room {room_id}"
-                            )
-                        else:
-                            await self._send_error_message(
-                                room_id,
-                                self._send_failure_notice(send_error),
-                            )
+                        await self._handle_failed_send(room_id, send_error)
                         return
 
                     if trimmed_reference:
@@ -968,18 +957,7 @@ class BibleBot:
 
             if send_error is not None:
                 logger.error(f"Failed to send scripture to {room_id}: {send_error}")
-                if classify_send_failure(send_error) == "forbidden":
-                    # The room rejects our posts; a notice to the same
-                    # room cannot be delivered, so only record it.
-                    logger.error(
-                        f"Not posting delivery-failure notice to "
-                        f"forbidden room {room_id}"
-                    )
-                else:
-                    await self._send_error_message(
-                        room_id,
-                        self._send_failure_notice(send_error),
-                    )
+                await self._handle_failed_send(room_id, send_error)
                 return
 
             if trimmed_reference:
