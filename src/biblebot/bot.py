@@ -536,7 +536,7 @@ class BibleBot:
 
         Parameters:
             config (dict): Loaded configuration mapping used to populate bot settings.
-            client (BotClient): Required Matrix client implementation. In production this is ``nio.AsyncClient``; in tests it is typically a ``MagicMock`` or ``BibleBot.for_testing(config)`` factory output. The client must satisfy the ``biblebot.protocols.BotClient`` structural type.
+            client (BotClient): Required Matrix client implementation. In production this is ``nio.AsyncClient``; tests may inject a compatible test double directly. The client must satisfy the ``biblebot.protocols.BotClient`` structural type.
 
         Notes:
         - The initializer enforces type coercion and caps to prevent generating oversized message chunks.
@@ -632,20 +632,14 @@ class BibleBot:
             BibleBot: An instance with the client attribute populated. The bot's
             ``config`` attribute is an independent copy of the input.
         """
-        client_spec = (
-            "room_resolve_alias",
-            "join",
-            "sync",
-            "sync_forever",
-            "request_room_key",
-            "to_device",
-            "room_send",
-            "close",
-            "user_id",
-        )
-        test_client: BotClient = (
-            client if client is not None else MagicMock(spec=client_spec)
-        )
+        if client is None:
+            mock_client = MagicMock(spec=BotClient)
+            mock_client.user_id = None
+            mock_client.device_id = None
+            mock_client.rooms = {}
+            test_client: BotClient = mock_client
+        else:
+            test_client = client
         return cls(copy.deepcopy(config), test_client)
 
     async def resolve_aliases(self):

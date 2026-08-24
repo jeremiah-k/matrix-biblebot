@@ -2,25 +2,11 @@
 
 from __future__ import annotations
 
-from unittest.mock import MagicMock
+from unittest.mock import AsyncMock, MagicMock
 
 from biblebot.bot import BibleBot
+from biblebot.protocols import BotClient
 
-
-# The full set of client surface methods/attributes BibleBot accesses.
-# Used for spec'ing the auto-generated test client so ``hasattr`` checks are
-# meaningful (a plain MagicMock auto-creates any attribute on access).
-_TEST_CLIENT_SPEC = (
-    "room_resolve_alias",
-    "join",
-    "sync",
-    "sync_forever",
-    "request_room_key",
-    "to_device",
-    "room_send",
-    "close",
-    "user_id",
-)
 
 
 def test_for_testing_returns_biblebot_instance():
@@ -30,28 +16,42 @@ def test_for_testing_returns_biblebot_instance():
     assert isinstance(bot, BibleBot)
 
 
-def test_for_testing_attaches_specd_mock_client():
-    """for_testing must wire a spec'd mock client that exposes every method
-    BibleBot uses on its client.
-
-    Using ``MagicMock(spec=...)`` (rather than a plain MagicMock) makes
-    ``hasattr`` checks meaningful: a plain MagicMock auto-creates any
-    attribute on access and would pass a getattr-based test even when the
-    real client has no such method.
-    """
+def test_for_testing_attaches_protocol_compatible_mock_client():
+    """The generated client satisfies BotClient, including its async surface."""
     bot = BibleBot.for_testing({"bot": {}})
 
-    # The client is a MagicMock.
     assert isinstance(bot.client, MagicMock)
+    assert isinstance(bot.client, BotClient)
+    assert bot.client.user_id is None
+    assert bot.client.device_id is None
+    assert bot.client.rooms == {}
 
-    # Every method BibleBot uses on its client must be reachable AND callable.
-    for name in _TEST_CLIENT_SPEC:
-        assert hasattr(bot.client, name), f"client must expose {name}"
-        assert callable(getattr(bot.client, name)), f"{name} must be callable"
+    for name in (
+        "room_resolve_alias",
+        "join",
+        "sync",
+        "sync_forever",
+        "request_room_key",
+        "to_device",
+        "room_send",
+        "close",
+    ):
+        assert isinstance(getattr(bot.client, name), AsyncMock)
 
-    # An attribute that is NOT part of the contract must not be auto-created
-    # (this proves the spec is actually applied).
     assert not hasattr(bot.client, "definitely_not_a_method")
+
+
+async def test_for_testing_generated_client_is_awaitable():
+    """Generated protocol methods can be awaited by normal BibleBot code."""
+    bot = BibleBot.for_testing({"bot": {}})
+
+    await bot.client.room_send(
+        "!room:example.org",
+        "m.room.message",
+        {"msgtype": "m.text", "body": "test"},
+    )
+
+    bot.client.room_send.assert_awaited_once()
 
 
 def test_for_testing_accepts_optional_client_override():
