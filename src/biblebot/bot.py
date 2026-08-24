@@ -15,6 +15,7 @@ unencrypted Matrix rooms, with proper E2EE support when available.
 """
 
 import asyncio
+import copy
 import html
 import json
 import logging
@@ -613,22 +614,39 @@ class BibleBot:
 
         Convenience factory for tests that exercise bot behavior other than the
         Matrix client contract (configuration parsing, formatting, dispatch,
-        ``__repr__``, etc.). When ``client`` is None a MagicMock that satisfies
-        ``biblebot.protocols.BotClient`` is created automatically.
+        ``__repr__``, etc.). When ``client`` is None a ``MagicMock`` that
+        satisfies ``biblebot.protocols.BotClient`` is created automatically.
+        The factory deep-copies ``config`` so mutations to the original dict
+        after construction do not leak into the bot.
 
         Tests that depend on specific client behavior (e.g. message dispatch
         tests) should construct the bot directly with an explicit client.
 
         Parameters:
             config (Any): The configuration mapping passed to ``__init__``.
+                Deep-copied so the factory does not retain a reference.
             client (BotClient | None): Optional explicit client override. When
-                omitted, a MagicMock is created for the test.
+                omitted, a spec'd MagicMock is created for the test.
 
         Returns:
-            BibleBot: An instance with the client attribute populated.
+            BibleBot: An instance with the client attribute populated. The bot's
+            ``config`` attribute is an independent copy of the input.
         """
-        test_client: BotClient = client if client is not None else MagicMock()
-        return cls(config, test_client)
+        client_spec = (
+            "room_resolve_alias",
+            "join",
+            "sync",
+            "sync_forever",
+            "request_room_key",
+            "to_device",
+            "room_send",
+            "close",
+            "user_id",
+        )
+        test_client: BotClient = (
+            client if client is not None else MagicMock(spec=client_spec)
+        )
+        return cls(copy.deepcopy(config), test_client)
 
     async def resolve_aliases(self):
         """
