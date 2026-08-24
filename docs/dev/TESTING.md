@@ -24,6 +24,10 @@ sys.modules["nio.events"] = MagicMock()
 sys.modules["nio.store"] = MagicMock()
 sys.modules["nio.crypto"] = MagicMock()
 
+# NOTE: real response/error classes must also be assigned onto ``nio_mock``
+# (see "Create proper Exception classes" below); otherwise `from nio import X`
+# returns an auto-created MagicMock and isinstance() raises TypeError.
+
 # Mock the crypto provider used by E2EE support.
 vodozemac_mock = MagicMock()
 vodozemac_mock.__spec__ = MagicMock()  # Required for importlib.util.find_spec
@@ -53,6 +57,12 @@ class MockLocalProtocolError(Exception):
 
 nio_mock.RemoteProtocolError = MockRemoteProtocolError
 nio_mock.LocalProtocolError = MockLocalProtocolError
+
+# Real response classes are exposed top-level for `from nio import X` +
+# isinstance() checks (e.g. auth.py's DiscoveryInfoResponse handling);
+# see tests/conftest.py for the complete assignment set.
+nio_mock.DiscoveryInfoResponse = MockDiscoveryInfoResponse
+nio_mock.LoginResponse = MockLoginResponse
 ```
 
 ## Async Function Mocking Patterns
