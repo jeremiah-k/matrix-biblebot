@@ -7,7 +7,7 @@ import logging
 import os
 import sys
 from pathlib import Path
-from typing import Awaitable, Optional, TypeVar
+from typing import Any, Coroutine, Optional, TypeVar
 
 from biblebot import __version__
 from biblebot import paths as biblebot_paths
@@ -92,12 +92,15 @@ def _resolved_credentials_path() -> Path:
 T = TypeVar("T")
 
 
-def run_async(coro: Awaitable[T]) -> T:
+def run_async(coro: Coroutine[Any, Any, T]) -> T:
     """
     Run an asyncio coroutine to completion using asyncio.run and return its result.
 
     Parameters:
-        coro: An awaitable coroutine to execute.
+        coro: A coroutine object to execute. Callers pass the result of calling
+            an async function (i.e., a coroutine), not a bare awaitable. This
+            matches asyncio.run's own type expectation, which is stricter than
+            Awaitable since Python 3.13.
 
     Returns:
         The result returned by the coroutine.
