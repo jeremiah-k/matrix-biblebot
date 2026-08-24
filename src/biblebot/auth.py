@@ -23,13 +23,16 @@ from typing import Optional
 from urllib.parse import urlparse
 
 import aiohttp
-import nio.exceptions
 from nio import (
     AsyncClient,
     AsyncClientConfig,
     DiscoveryInfoError,
     DiscoveryInfoResponse,
+    RemoteProtocolError,
+    RemoteTransportError,
 )
+
+# pyright: reportMissingImports=false
 from nio.crypto.cross_signing import cross_signing_sidecar_path
 
 from biblebot import paths as biblebot_paths
@@ -514,8 +517,8 @@ async def discover_homeserver(
         # the correct server and discovery is just slow or unavailable
         logger.debug("Server discovery timed out; using provided homeserver URL")
     except (
-        nio.exceptions.RemoteProtocolError,
-        nio.exceptions.RemoteTransportError,
+        RemoteProtocolError,
+        RemoteTransportError,
         aiohttp.ClientError,
     ) as e:
         # Network/protocol errors: fall back to original homeserver as it's the most reliable option

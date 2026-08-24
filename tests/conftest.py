@@ -188,6 +188,9 @@ nio_mock.DiscoveryInfoError = MockDiscoveryInfoError
 nio_mock.LoginError = MockLoginError
 nio_mock.RoomResolveAliasError = MockRoomResolveAliasError
 nio_mock.LoginResponse = MockLoginResponse
+nio_mock.LocalProtocolError = MockLocalProtocolError
+nio_mock.RemoteProtocolError = MockRemoteProtocolError
+nio_mock.RemoteTransportError = MockRemoteTransportError
 
 # Set up proper __spec__ for nio module to support importlib.util.find_spec
 nio_mock.__spec__ = MagicMock()
