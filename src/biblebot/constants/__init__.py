@@ -5,7 +5,14 @@ This package follows the mmrelay pattern of organizing constants into
 separate files by category. This __init__.py re-exports the public constants
 (union of submodule __all__) for convenience, allowing for imports
 like `from biblebot.constants import APP_NAME`.
+
+The `__all__` for this facade is constructed at runtime by unioning each
+submodule's `__all__`. Pyright can't analyze runtime-built `__all__`
+values, so we silence that warning locally: the export surface is
+intentionally dynamic.
 """
+
+# pyright: reportUnsupportedDunderAll=false
 
 from collections import Counter
 
