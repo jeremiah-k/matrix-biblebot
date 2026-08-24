@@ -6,6 +6,8 @@ import shutil
 import warnings
 from contextlib import contextmanager
 
+import biblebot.tools as _tools
+
 from biblebot.constants import SAMPLE_CONFIG_FILENAME
 
 
@@ -20,7 +22,7 @@ def open_sample_config():
         use it after exiting the context. Prefer this context manager over retrieving a raw path string
         from the package (which may be ephemeral under certain installation formats).
     """
-    res = importlib.resources.files(__package__) / SAMPLE_CONFIG_FILENAME
+    res = importlib.resources.files(_tools) / SAMPLE_CONFIG_FILENAME
     with importlib.resources.as_file(res) as p:
         yield pathlib.Path(p)
 
@@ -39,7 +41,7 @@ def get_sample_config_path():
         DeprecationWarning,
         stacklevel=2,
     )
-    res = importlib.resources.files(__package__) / SAMPLE_CONFIG_FILENAME
+    res = importlib.resources.files(_tools) / SAMPLE_CONFIG_FILENAME
     # Caller should prefer copy_sample_config_to(); this path may be ephemeral.
     with importlib.resources.as_file(res) as p:
         return str(p)
@@ -55,7 +57,7 @@ def copy_sample_config_to(dst_path: str) -> str:
     Returns:
         str: Filesystem path to the copied sample configuration file.
     """
-    res = importlib.resources.files(__package__) / SAMPLE_CONFIG_FILENAME
+    res = importlib.resources.files(_tools) / SAMPLE_CONFIG_FILENAME
     dst = pathlib.Path(dst_path)
     # If dst is an existing dir or a path without a suffix, treat as directory
     if dst.exists() and dst.is_dir():
@@ -79,7 +81,7 @@ def open_service_template():
         be ephemeral (e.g., a temporary file) and should not be relied on after exiting the
         context.
     """
-    res = importlib.resources.files(__package__) / "biblebot.service"
+    res = importlib.resources.files(_tools) / "biblebot.service"
     with importlib.resources.as_file(res) as p:
         yield pathlib.Path(p)
 
@@ -98,7 +100,7 @@ def get_service_template_path():
         DeprecationWarning,
         stacklevel=2,
     )
-    res = importlib.resources.files(__package__) / "biblebot.service"
+    res = importlib.resources.files(_tools) / "biblebot.service"
     with importlib.resources.as_file(res) as p:
         return str(p)
 
@@ -110,7 +112,7 @@ def copy_service_template_to(dst_path: str) -> str:
     If dst_path names an existing directory, or if it has no suffix, the function will place the service template inside that directory using the filename "biblebot.service". Parent directories are created as needed. The returned string is the path to the copied file on the local filesystem.
     """
     filename = "biblebot.service"
-    res = importlib.resources.files(__package__) / filename
+    res = importlib.resources.files(_tools) / filename
     dst = pathlib.Path(dst_path)
     if dst.exists() and dst.is_dir():
         dst = dst / filename
