@@ -1,5 +1,4 @@
 import asyncio
-import contextlib
 import gc
 import os
 import sys
@@ -229,32 +228,6 @@ def clear_env(keys):
 
 
 @pytest.fixture(autouse=True)
-def event_loop_safety():
-    """
-    Create and provide a dedicated asyncio event loop for tests, ensuring proper cleanup.
-
-    This fixture creates a fresh event loop, assigns it for use during tests,
-    yields the loop, then cancels any remaining tasks, waits for them to finish,
-    closes the loop, and clears the global event loop reference on teardown.
-    """
-    loop = asyncio.new_event_loop()
-    asyncio.set_event_loop(loop)
-
-    yield loop
-
-    # Teardown: Clean up the loop
-    try:
-        tasks = asyncio.all_tasks(loop=loop)
-        for task in tasks:
-            task.cancel()
-        if tasks:
-            loop.run_until_complete(asyncio.gather(*tasks, return_exceptions=True))
-    finally:
-        loop.close()
-        asyncio.set_event_loop(None)
-
-
-@pytest.fixture(autouse=True)
 def cleanup_asyncmock_objects(request):
     """
     Force garbage collection after tests that commonly create AsyncMock objects to prevent "never awaited" RuntimeWarning messages.
@@ -331,76 +304,3 @@ def mock_submit_coro(monkeypatch):
         pass
 
     yield
-
-
-@pytest.fixture(autouse=True)
-def comprehensive_cleanup():
-    """
-    Perform comprehensive asynchronous resource cleanup after a test.
-
-    This autouse teardown fixture cancels pending asyncio tasks, attempts to shut down
-    and close non-main event loops and their executors, resets the global event loop
-    reference, and forces garbage collection while suppressing common warnings about
-    unclosed resources or never-awaited coroutines. Broad exception handling is used
-    to avoid test interruptions during cleanup.
-    """
-    yield
-
-    # Force cleanup of all async tasks and event loops
-    try:
-        try:
-            loop = asyncio.get_running_loop()
-        except RuntimeError:
-            loop = asyncio.get_event_loop_policy().get_event_loop()
-
-        if loop and not loop.is_closed():
-            # Cancel all pending tasks
-            pending_tasks = [
-                task for task in asyncio.all_tasks(loop) if not task.done()
-            ]
-            if pending_tasks:
-                for task in pending_tasks:
-                    task.cancel()
-                # Only drive the loop if it is not currently running
-                if not loop.is_running():
-                    with contextlib.suppress(Exception):
-                        loop.run_until_complete(
-                            asyncio.gather(*pending_tasks, return_exceptions=True)
-                        )
-
-            # Shutdown any remaining executors
-            with contextlib.suppress(Exception):
-                if hasattr(loop, "shutdown_default_executor"):
-                    # Python 3.9+ public API
-                    if not loop.is_running():
-                        loop.run_until_complete(loop.shutdown_default_executor())
-                elif hasattr(loop, "_default_executor") and loop._default_executor:
-                    # Fallback for older Python versions
-                    executor = loop._default_executor
-                    loop._default_executor = None
-                    executor.shutdown(wait=True)
-
-            # Close the original event loop if it's not the main one
-            if loop is not asyncio.get_event_loop_policy().get_event_loop():
-                with contextlib.suppress(Exception):
-                    loop.close()
-
-    except Exception:  # noqa: S110 - intentional try-except-pass for test cleanup
-        # Suppress cleanup errors to avoid affecting test results
-        pass
-
-    # Ensure the main event loop is reset
-    asyncio.set_event_loop(None)
-
-    # Force garbage collection to clean up any remaining resources
-    with warnings.catch_warnings():
-        warnings.filterwarnings(
-            "ignore", category=ResourceWarning, message="unclosed.*"
-        )
-        warnings.filterwarnings(
-            "ignore", category=RuntimeWarning, message=".*never awaited.*"
-        )
-        warnings.filterwarnings(
-            "ignore", category=DeprecationWarning, message=".*no current event loop.*"
-        )
-        gc.collect()
