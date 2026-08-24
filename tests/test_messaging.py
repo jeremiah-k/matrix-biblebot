@@ -2,32 +2,43 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+import html as _html
+from unittest.mock import MagicMock
 
 import pytest
-
-import html as _html
 
 from biblebot.constants.messages import MESSAGE_SUFFIX
 from biblebot.messaging import (
     RetryPolicy,
     compose_final_chunk_bodies,
-    compute_retry_delay_seconds,
-    is_rate_limit_error,
+    is_error_response,
+    is_rate_limit_response,
     remaining_retry_budget,
-    should_retry_rate_limit,
+    response_retry_delay_seconds,
 )
 
 
-@dataclass
-class _FakeRateLimitError(Exception):
-    status: int = 429
-    retry_after_ms: int = 1000
+def _fake_error_response(status_code=None, retry_after_ms=None):
+    from nio.responses import ErrorResponse
+
+    return ErrorResponse(
+        message="boom", status_code=status_code, retry_after_ms=retry_after_ms
+    )
 
 
-def test_is_rate_limit_error_matches_matrix_429():
-    assert is_rate_limit_error(_FakeRateLimitError())
-    assert not is_rate_limit_error(_FakeRateLimitError(status=500))
+def test_is_error_response_detects_nio_error_response():
+    from nio.responses import ErrorResponse
+
+    assert is_error_response(ErrorResponse("limit exceeded", "M_LIMIT_EXCEEDED"))
+    assert not is_error_response(MagicMock(spec=[]))
+    assert not is_error_response(None)
+
+
+def test_is_rate_limit_response_matches_errcode_and_status():
+    assert is_rate_limit_response(_fake_error_response("M_LIMIT_EXCEEDED"))
+    assert is_rate_limit_response(_fake_error_response(429))
+    assert not is_rate_limit_response(_fake_error_response("M_UNKNOWN"))
+    assert not is_rate_limit_response(None)
 
 
 def test_remaining_retry_budget_clamps_to_max():
@@ -36,25 +47,18 @@ def test_remaining_retry_budget_clamps_to_max():
     assert remaining_retry_budget(99) == 3
 
 
-def test_should_retry_rate_limit_requires_budget_and_status():
-    assert should_retry_rate_limit(1, _FakeRateLimitError())
-    assert not should_retry_rate_limit(0, _FakeRateLimitError())
-    assert not should_retry_rate_limit(1, _FakeRateLimitError(status=500))
-
-
-def test_compute_retry_delay_seconds_uses_fixed_rng():
-    delay = compute_retry_delay_seconds(
-        retries_left=2, exc=_FakeRateLimitError(retry_after_ms=1000), rng=lambda lo, hi: 1.0
+def test_response_retry_delay_uses_server_hint_with_jitter():
+    delay = response_retry_delay_seconds(
+        _fake_error_response(retry_after_ms=2000), attempt=0, rng=lambda lo, hi: 1.0
     )
-
     assert delay == pytest.approx(2.0)
 
 
-def test_compute_retry_delay_seconds_grows_with_attempts():
-    rng = lambda lo, hi: 1.0  # noqa: E731
-    first = compute_retry_delay_seconds(retries_left=2, exc=_FakeRateLimitError(), rng=rng)
-    second = compute_retry_delay_seconds(retries_left=1, exc=_FakeRateLimitError(), rng=rng)
-
+def test_response_retry_delay_falls_back_and_grows_with_attempts():
+    rng = lambda lo, hi: 1.0
+    first = response_retry_delay_seconds(_fake_error_response(), attempt=0, rng=rng)
+    second = response_retry_delay_seconds(_fake_error_response(), attempt=2, rng=rng)
+    assert first > 0
     assert second > first
 
 
