@@ -1,13 +1,12 @@
-"""Pure helpers for Matrix message-retry policy and final-chunk body composition."""
+"""Pure helpers for Matrix message-send error handling and final-chunk bodies."""
 
 from __future__ import annotations
 
 import html
 import random
-from dataclasses import dataclass
 from typing import Final
 
-from biblebot.constants.matrix import DEFAULT_RETRY_AFTER_MS, MAX_RATE_LIMIT_RETRIES
+from biblebot.constants.matrix import DEFAULT_RETRY_AFTER_MS
 from biblebot.constants.messages import MESSAGE_SUFFIX
 
 _RATE_LIMIT_STATUS: Final[int] = 429
@@ -66,11 +65,6 @@ def response_retry_delay_seconds(
     return base_delay * rng(0.8, 1.2)
 
 
-def remaining_retry_budget(retries_left: int) -> int:
-    """Clamp a retry-remaining counter to the configured maximum."""
-    return max(0, min(retries_left, MAX_RATE_LIMIT_RETRIES))
-
-
 def compose_final_chunk_bodies(
     formatted_text: str,
     html_text: str,
@@ -89,11 +83,18 @@ def compose_final_chunk_bodies(
     return plain, rendered
 
 
-@dataclass(frozen=True)
-class RetryPolicy:
-    """Immutable description of the message-retry policy used by send paths."""
+def classify_send_failure(response: object) -> str:
+    """Return a short operator-friendly reason for a failed Matrix send.
 
-    max_attempts: int = MAX_RATE_LIMIT_RETRIES
-    default_retry_after_ms: int = DEFAULT_RETRY_AFTER_MS
-    jitter_low: float = 0.8
-    jitter_high: float = 1.2
+    Maps the nio ``ErrorResponse`` errcode to one of ``"rate_limited"``,
+    ``"forbidden"``, or ``"other"``. Unknown errcodes fall back to
+    ``"other"`` so callers never have to handle an unmapped kind.
+    """
+    errcode = getattr(response, "errcode", None) or getattr(
+        response, "status_code", None
+    )
+    if is_rate_limit_response(response):
+        return "rate_limited"
+    if errcode in ("M_FORBIDDEN", 403):
+        return "forbidden"
+    return "other"

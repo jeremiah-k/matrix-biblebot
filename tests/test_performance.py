@@ -238,7 +238,7 @@ class TestAPIPerformance:
     """Test API performance characteristics."""
 
     @pytest.mark.asyncio
-    @patch("biblebot.bot.make_api_request", new_callable=AsyncMock)
+    @patch("biblebot.passages.make_api_request", new_callable=AsyncMock)
     async def test_api_request_performance_single(self, mock_api):
         """
         Verify that a single call to get_bible_text returns a non-None result and completes quickly when the underlying API is mocked.
@@ -256,7 +256,7 @@ class TestAPIPerformance:
         assert result is not None
 
     @pytest.mark.asyncio
-    @patch("biblebot.bot.make_api_request", new_callable=AsyncMock)
+    @patch("biblebot.passages.make_api_request", new_callable=AsyncMock)
     async def test_api_request_performance_concurrent(self, mock_api):
         """Test concurrent API request performance."""
         mock_api.return_value = {"text": "Test verse", "reference": "Test 1:1"}
@@ -284,7 +284,7 @@ class TestAPIPerformance:
         assert all(result is not None for result in results)
 
     @pytest.mark.asyncio
-    @patch("biblebot.bot.make_api_request", new_callable=AsyncMock)
+    @patch("biblebot.passages.make_api_request", new_callable=AsyncMock)
     async def test_api_request_performance_with_cache(self, mock_api):
         """Test API request performance with caching."""
         mock_api.return_value = {"text": "Cached verse", "reference": "Cache 1:1"}

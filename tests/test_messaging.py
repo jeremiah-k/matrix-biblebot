@@ -9,11 +9,9 @@ import pytest
 
 from biblebot.constants.messages import MESSAGE_SUFFIX
 from biblebot.messaging import (
-    RetryPolicy,
     compose_final_chunk_bodies,
     is_error_response,
     is_rate_limit_response,
-    remaining_retry_budget,
     response_retry_delay_seconds,
 )
 
@@ -46,12 +44,6 @@ def test_is_rate_limit_response_checks_errcode_field_separately():
     resp = _fake_error_response(status_code=503)
     resp.errcode = "M_LIMIT_EXCEEDED"
     assert is_rate_limit_response(resp)
-
-
-def test_remaining_retry_budget_clamps_to_max():
-    assert remaining_retry_budget(0) == 0
-    assert remaining_retry_budget(2) == 2
-    assert remaining_retry_budget(99) == 3
 
 
 def test_response_retry_delay_uses_server_hint_with_jitter():
@@ -95,9 +87,16 @@ def test_compose_final_chunk_bodies_without_reference():
     assert rendered == f"For God so loved the world{_html.escape(MESSAGE_SUFFIX)}"
 
 
-def test_retry_policy_defaults_match_constants():
-    policy = RetryPolicy()
-    assert policy.max_attempts == 3
-    assert policy.default_retry_after_ms == 1000
-    assert policy.jitter_low == 0.8
-    assert policy.jitter_high == 1.2
+def test_classify_send_failure_kinds():
+    from biblebot.messaging import classify_send_failure
+
+    assert (
+        classify_send_failure(_fake_error_response(status_code="M_LIMIT_EXCEEDED"))
+        == "rate_limited"
+    )
+    assert classify_send_failure(_fake_error_response(status_code="M_FORBIDDEN")) == (
+        "forbidden"
+    )
+    assert classify_send_failure(_fake_error_response(403)) == "forbidden"
+    assert classify_send_failure(_fake_error_response("M_UNKNOWN")) == "other"
+    assert classify_send_failure(None) == "other"

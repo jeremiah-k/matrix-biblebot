@@ -6,7 +6,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 import yaml
 
-from biblebot import bot
+from biblebot import bot, passages
 from biblebot.bot import BibleBot
 from biblebot.validation import validate_and_normalize_book_name
 from tests.test_constants import (
@@ -975,9 +975,9 @@ class TestBibleTextRetrieval:
         }
 
         with patch.object(
-            bot, "make_api_request", new=AsyncMock(return_value=mock_response)
+            passages, "make_api_request", new=AsyncMock(return_value=mock_response)
         ):
-            result = await bot.get_kjv_text(TEST_BIBLE_REFERENCE)
+            result = await passages.get_kjv_text(TEST_BIBLE_REFERENCE)
 
             assert result is not None
             text, reference = result
@@ -987,9 +987,11 @@ class TestBibleTextRetrieval:
     @pytest.mark.asyncio
     async def test_get_kjv_text_not_found(self):
         """Test KJV text retrieval when verse not found."""
-        with patch.object(bot, "make_api_request", new=AsyncMock(return_value=None)):
+        with patch.object(
+            passages, "make_api_request", new=AsyncMock(return_value=None)
+        ):
             with pytest.raises(bot.PassageNotFound) as exc_info:
-                await bot.get_kjv_text("Invalid 99:99")
+                await passages.get_kjv_text("Invalid 99:99")
 
             assert "Invalid 99:99" in str(exc_info.value)
             assert "not found in KJV" in str(exc_info.value)
@@ -1003,9 +1005,9 @@ class TestBibleTextRetrieval:
         }
 
         with patch.object(
-            bot, "make_api_request", new=AsyncMock(return_value=mock_response)
+            passages, "make_api_request", new=AsyncMock(return_value=mock_response)
         ):
-            result = await bot.get_esv_text(TEST_BIBLE_REFERENCE, "test_api_key")
+            result = await passages.get_esv_text(TEST_BIBLE_REFERENCE, "test_api_key")
 
             assert result is not None
             text, reference = result
@@ -1034,13 +1036,13 @@ class TestBibleTextRetrieval:
         }
 
         with patch.object(
-            bot, "make_api_request", new=AsyncMock(return_value=mock_response)
+            passages, "make_api_request", new=AsyncMock(return_value=mock_response)
         ) as mock_request:
             # First call should hit the API
-            result1 = await bot.get_bible_text(TEST_BIBLE_REFERENCE, "kjv")
+            result1 = await passages.get_bible_text(TEST_BIBLE_REFERENCE, "kjv")
 
             # Second call should use cache
-            result2 = await bot.get_bible_text(TEST_BIBLE_REFERENCE, "kjv")
+            result2 = await passages.get_bible_text(TEST_BIBLE_REFERENCE, "kjv")
 
             assert result1 == result2
             # API should only be called once due to caching

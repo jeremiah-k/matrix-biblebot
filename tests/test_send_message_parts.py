@@ -205,6 +205,42 @@ class TestHandleScriptureCommandSendFailure:
         assert "Sent scripture" in caplog.text
         assert "Failed to send" not in caplog.text
 
+    @pytest.mark.asyncio
+    async def test_send_failure_sends_user_facing_notice(self, monkeypatch):
+        from nio.responses import ErrorResponse
+
+        bot = self._bot_with_failing_send(
+            ErrorResponse("rejected", status_code="M_FORBIDDEN")
+        )
+        monkeypatch.setattr(
+            "biblebot.bot.get_bible_text",
+            AsyncMock(return_value=("For God so loved the world", "John 3:16")),
+        )
+
+        await bot.handle_scripture_command("!room:x", "John 3:16", None, self._event())
+
+        # The room receives a notice matching the failure kind
+        bot._send_error_message.assert_awaited_once()
+        notice = bot._send_error_message.await_args.args[1]
+        assert "not permitted to post in this room" in notice
+
+    @pytest.mark.asyncio
+    async def test_rate_limit_exhaustion_notice_mentions_retry(self, monkeypatch):
+        from nio.responses import ErrorResponse
+
+        bot = self._bot_with_failing_send(
+            ErrorResponse("slow down", status_code="M_LIMIT_EXCEEDED")
+        )
+        monkeypatch.setattr(
+            "biblebot.bot.get_bible_text",
+            AsyncMock(return_value=("For God so loved the world", "John 3:16")),
+        )
+
+        await bot.handle_scripture_command("!room:x", "John 3:16", None, self._event())
+
+        notice = bot._send_error_message.await_args.args[1]
+        assert "rate-limited" in notice
+
 
 async def _record_sleep(sleeps):
     async def _sleep(delay):

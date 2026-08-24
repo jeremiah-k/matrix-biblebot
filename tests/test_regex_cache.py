@@ -126,6 +126,11 @@ def test_passage_cache(monkeypatch):
         return {"text": "For God so loved the world...", "reference": "John 3:16"}
 
     monkeypatch.setattr(botmod, "make_api_request", fake_req)
+    # get_bible_text resolves make_api_request through biblebot.passages,
+    # so the interception must land on the defining module.
+    import biblebot.passages as passagesmod
+
+    monkeypatch.setattr(passagesmod, "make_api_request", fake_req)
 
     try:
         # First call populates cache

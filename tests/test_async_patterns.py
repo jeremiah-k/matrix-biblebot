@@ -213,7 +213,9 @@ class TestAsyncPatterns:
         BibleBot(config=mock_config, client=mock_client)
 
         # Test that our API calls work with successful response
-        with patch("biblebot.bot.make_api_request", new_callable=AsyncMock) as mock_api:
+        with patch(
+            "biblebot.passages.make_api_request", new_callable=AsyncMock
+        ) as mock_api:
             mock_api.return_value = {"text": "Success", "reference": "John 3:16"}
 
             # Test actual function

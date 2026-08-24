@@ -326,8 +326,14 @@ class TestCacheManagement:
 
         mock_response = {"text": "Test verse", "reference": "Test 1:1"}
 
+        # get_bible_text resolves its backend and HTTP layer in
+        # biblebot.passages; patch there so no real request is made.
+        import biblebot.passages as passagesmod
+
         with patch.object(
-            bot, "make_api_request", new=AsyncMock(return_value=mock_response)
+            passagesmod,
+            "make_api_request",
+            new=AsyncMock(return_value=mock_response),
         ) as mock_request:
             # First call should hit API
             result1 = await bot.get_bible_text("Test 1:1", "kjv")
@@ -348,7 +354,7 @@ class TestCacheManagement:
         # Test cache size management
 
         # Temporarily set a small cache size for testing
-        with patch("biblebot.bot._PASSAGE_CACHE_MAX", 2):
+        with patch("biblebot.passages._PASSAGE_CACHE_MAX", 2):
             # Add items to cache
             bot._cache_set("passage1", "kjv", ("text1", "ref1"))
             bot._cache_set("passage2", "kjv", ("text2", "ref2"))
@@ -537,7 +543,9 @@ class TestErrorPropagationIntegration:
         # Clear cache to ensure we hit the API
         bot._passage_cache.clear()
 
-        with patch("biblebot.bot.make_api_request", new=AsyncMock(return_value=None)):
+        with patch(
+            "biblebot.passages.make_api_request", new=AsyncMock(return_value=None)
+        ):
 
             # Test error propagation - should raise PassageNotFound
             from biblebot.bot import PassageNotFound

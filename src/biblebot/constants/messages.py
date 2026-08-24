@@ -33,6 +33,9 @@ __all__ = [
     "ERROR_NO_CREDENTIALS",
     "ERROR_NO_CREDENTIALS_AND_TOKEN",
     "ERROR_PASSAGE_NOT_FOUND",
+    "ERROR_SEND_FORBIDDEN",
+    "ERROR_SEND_OTHER",
+    "ERROR_SEND_RATE_LIMITED",
     "FALLBACK_MESSAGE_TOO_LONG",
     "INFO_API_KEY_FOUND",
     "INFO_LOADING_ENV",
@@ -159,6 +162,11 @@ WARNING_EXECUTABLE_NOT_FOUND = "Warning: Could not find biblebot executable in P
 
 # Generic error messages for security (don't expose internal API errors)
 ERROR_PASSAGE_NOT_FOUND = "Error: The requested passage could not be found. Please check the book, chapter, and verse."
+
+# User-facing send-failure notices, keyed by classify_send_failure() kind
+ERROR_SEND_RATE_LIMITED = "Error: The bot is being rate-limited by the homeserver and could not deliver the passage. Please try again in a moment."
+ERROR_SEND_FORBIDDEN = "Error: The bot is not permitted to post in this room."
+ERROR_SEND_OTHER = "Error: The passage could not be delivered to this room."
 
 # Warning messages
 WARN_MATRIX_ACCESS_TOKEN_NOT_SET = "MATRIX_ACCESS_TOKEN not set; will rely on saved credentials.json if available"  # nosec B105  # noqa: S105
