@@ -3,10 +3,9 @@
 import asyncio
 from unittest.mock import AsyncMock, MagicMock, patch
 
-import nio
-from nio import RemoteTransportError
 import pytest
 import yaml
+from nio import RemoteTransportError
 
 from biblebot import auth, bot, cli, passages
 
@@ -361,7 +360,9 @@ class TestCacheManagement:
             # Add items to cache
             passages._cache_set("passage1", "kjv", ("text1", "ref1"))
             passages._cache_set("passage2", "kjv", ("text2", "ref2"))
-            passages._cache_set("passage3", "kjv", ("text3", "ref3"))  # Should evict oldest
+            passages._cache_set(
+                "passage3", "kjv", ("text3", "ref3")
+            )  # Should evict oldest
 
             # Cache should not exceed max size
             assert len(passages._passage_cache) <= 2
@@ -441,9 +442,7 @@ class TestCrossModuleIntegration:
         """Test bot module integrates with auth functions."""
         # Test homeserver discovery integration
         mock_client = AsyncMock()
-        mock_client.discovery_info.side_effect = RemoteTransportError(
-            "Network error"
-        )
+        mock_client.discovery_info.side_effect = RemoteTransportError("Network error")
 
         result = await auth.discover_homeserver(mock_client, "https://matrix.org")
 
