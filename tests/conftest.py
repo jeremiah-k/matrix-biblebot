@@ -385,9 +385,7 @@ def comprehensive_cleanup():
                 with contextlib.suppress(Exception):
                     loop.close()
 
-    except (  # noqa: S110 - intentional try-except-pass for test cleanup
-        Exception
-    ):
+    except Exception:  # noqa: S110 - intentional try-except-pass for test cleanup
         # Suppress cleanup errors to avoid affecting test results
         pass
 

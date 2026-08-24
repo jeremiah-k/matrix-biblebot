@@ -7,7 +7,6 @@ from typing import Final
 from biblebot.constants.config import CONFIG_KEY_MATRIX, CONFIG_MATRIX_ROOM_IDS
 from biblebot.constants.matrix import _PLACEHOLDER_ROOM_IDS
 
-
 _PLACEHOLDER_PREFIX: Final[str] = "!your_room_id:"
 _PLACEHOLDER_SUFFIX: Final[str] = ":your_homeserver_domain"
 
@@ -23,9 +22,7 @@ def is_placeholder_room_id(value: str) -> bool:
         return False
     if value in _PLACEHOLDER_ROOM_IDS:
         return True
-    return value.startswith(_PLACEHOLDER_PREFIX) or value.endswith(
-        _PLACEHOLDER_SUFFIX
-    )
+    return value.startswith(_PLACEHOLDER_PREFIX) or value.endswith(_PLACEHOLDER_SUFFIX)
 
 
 def read_room_ids(config: dict) -> list[str]:

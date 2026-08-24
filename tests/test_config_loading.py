@@ -9,15 +9,13 @@ from biblebot.config import load_config_file
 
 def test_load_nested_config_returns_normalized_result(tmp_path: Path):
     config_path = tmp_path / "config.yaml"
-    config_path.write_text(
-        """
+    config_path.write_text("""
 matrix:
   homeserver: https://example.org
   user: '@bot:example.org'
   room_ids:
     - '!room:example.org'
-""".strip()
-    )
+""".strip())
 
     result = load_config_file(config_path)
 
@@ -31,14 +29,12 @@ matrix:
 
 def test_load_legacy_config_preserves_keys_and_adds_nested_matrix(tmp_path: Path):
     config_path = tmp_path / "config.yaml"
-    config_path.write_text(
-        """
+    config_path.write_text("""
 matrix_homeserver: https://example.org
 matrix_user: '@bot:example.org'
 matrix_room_ids:
   - '!room:example.org'
-""".strip()
-    )
+""".strip())
 
     result = load_config_file(config_path)
 

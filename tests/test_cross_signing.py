@@ -12,7 +12,7 @@ def credentials():
     return auth.Credentials(
         homeserver="https://matrix.example.org",
         user_id="@bot:example.org",
-        access_token="secret-token",
+        access_token="secret-token",  # noqa: S106 - test fixture value
         device_id="BOTDEVICE",
     )
 
@@ -39,7 +39,9 @@ async def test_cross_signing_restores_session_and_closes_client(credentials, tmp
         device_id=credentials.device_id,
         access_token=credentials.access_token,
     )
-    client.ensure_cross_signing.assert_awaited_once_with(password="matrix-password")
+    client.ensure_cross_signing.assert_awaited_once_with(
+        password="matrix-password"  # noqa: S106 - test fixture value
+    )
     client.close.assert_awaited_once()
     prompt.assert_called_once()
 

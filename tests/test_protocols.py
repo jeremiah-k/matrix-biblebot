@@ -112,9 +112,9 @@ def test_async_methods_actually_coroutine():
         "close",
     ):
         method = getattr(BotClient, name)
-        assert inspect.iscoroutinefunction(method), (
-            f"BotClient.{name} must be declared async, got {method!r}"
-        )
+        assert inspect.iscoroutinefunction(
+            method
+        ), f"BotClient.{name} must be declared async, got {method!r}"
 
 
 def test_bot_client_is_runtime_checkable():

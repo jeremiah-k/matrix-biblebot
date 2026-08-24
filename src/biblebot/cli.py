@@ -19,6 +19,7 @@ from biblebot.auth import (
     load_credentials,
 )
 from biblebot.bot import main as bot_main
+from biblebot.config import load_config_file
 from biblebot.constants.app import LOGGER_NAME
 from biblebot.constants.config import DEFAULT_CONFIG_FILENAME, E2EE_KEY_AVAILABLE
 from biblebot.constants.logging import DEFAULT_LOG_LEVEL, LOG_LEVELS
@@ -49,7 +50,6 @@ from biblebot.constants.messages import (
     MSG_NO_CONFIG_PROMPT,
     SUCCESS_CONFIG_GENERATED,
 )
-from biblebot.config import load_config_file
 from biblebot.log_utils import configure_logging, get_logger
 from biblebot.tools import copy_sample_config_to
 
@@ -593,15 +593,15 @@ def handle_auth_command(
 
     if args.auth_action == "cross-sign":
         try:
-            result = run_async(
-                ensure_bot_cross_signing(bootstrap=bool(args.bootstrap))
-            )
+            result = run_async(ensure_bot_cross_signing(bootstrap=bool(args.bootstrap)))
             print(f"Cross-signing ready: {result}")
             return 0
         except CrossSigningRefused as exc:
             print(f"Cross-signing refused: {exc}")
             return 1
-        except Exception as exc:  # noqa: BLE001 - convert provider errors to CLI failure
+        except (
+            Exception
+        ) as exc:  # noqa: BLE001 - convert provider errors to CLI failure
             logger.error("Cross-signing failed: %s", exc)
             return 1
 
