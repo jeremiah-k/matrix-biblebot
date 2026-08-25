@@ -170,6 +170,12 @@ pip install 'matrix-biblebot[e2e]'
 2. **Check device verification:**
    - Verify bot's device in your Matrix client
    - Look for unverified device warnings
+   - For automated test clients, `OlmUnverifiedDeviceError` is raised by the
+     **sending client** before it encrypts to an unverified recipient. Keep the
+     test client alive for the whole round trip and either verify the bot device
+     in that same session or send the trigger with
+     `ignore_unverified_devices=True`. This does not disable room encryption;
+     it only tells nio to encrypt to devices whose trust state is not verified.
 
 3. **Reset E2EE store (last resort):**
    ```bash

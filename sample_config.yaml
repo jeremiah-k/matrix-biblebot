@@ -23,9 +23,8 @@ matrix:
   #   # Manual access tokens do NOT support E2EE
   #   # Requires: `biblebot auth login` (credentials.json); legacy MATRIX_ACCESS_TOKEN cannot be used with E2EE
   #   enabled: false
-  #   # Optional: override store path (default: ~/.config/matrix-biblebot/e2ee-store)
-  #   # Ensure this directory is private (0700) to protect keys.
-  #   store_path: null
+  #   # The encryption store lives under BIBLEBOT_HOME/e2ee-store and is kept
+  #   # private (0700). Change BIBLEBOT_HOME to relocate all runtime state.
 # Bot behavior configuration (optional - defaults shown)
 # bot:
 #   # Default Bible translation to use when none is specified

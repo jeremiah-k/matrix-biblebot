@@ -245,7 +245,8 @@ both own the `nio` import package and must not be co-installed.
 
 - **"No credentials found"** → Run `biblebot auth login` first
 - **Bot doesn't respond** → Check room IDs in config, ensure bot is invited
-- **E2EE issues** → Install with `[e2e]` extra, verify device in Matrix client
+- **E2EE issues** → Install with `[e2e]`; if your Matrix client withholds keys
+  from unverified devices, verify/cross-sign the bot device
 
 For detailed troubleshooting, see [Troubleshooting Guide](docs/TROUBLESHOOTING.md).
 

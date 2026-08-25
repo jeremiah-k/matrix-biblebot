@@ -36,7 +36,6 @@ matrix:
     - "#room-alias:example.com"
   e2ee:
     enabled: false
-    store_path: null
 
 bot:
   default_translation: kjv
@@ -102,9 +101,13 @@ matrix:
     - "!roomid:your-matrix-server.org"
   e2ee:
     enabled: true
-    # Optional: custom store path (default: ~/.config/matrix-biblebot/e2ee-store)
-    # store_path: /path/to/e2ee-store
 ```
+
+The encryption store is kept at `BIBLEBOT_HOME/e2ee-store` (by default
+`~/.config/matrix-biblebot/e2ee-store`). Set `BIBLEBOT_HOME` if you need to
+relocate runtime state. Keeping configuration, credentials, and encryption
+keys under one runtime home prevents a saved device from accidentally being
+started against a different crypto store.
 
 #### Authentication
 
@@ -125,7 +128,10 @@ biblebot auth logout
 - When enabled, BibleBot initializes the store, restores session, and uploads keys if needed
 - Decryption failures automatically trigger key requests
 - Unencrypted rooms continue to work normally alongside encrypted rooms
-- Device verification is not required for automated bots
+- BibleBot sends encrypted replies to unverified recipient devices so it does
+  not wedge on nio's sender-side trust check. Some Matrix clients may still
+  withhold room keys from an unverified bot device; verify/cross-sign the bot
+  device in those clients when required.
 
 #### Platform Support
 
