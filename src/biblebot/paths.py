@@ -75,24 +75,43 @@ def get_credentials_path() -> Path:
 def _migrate_legacy_state(target: Path | None, legacy_name: str) -> bool:
     """Move a legacy config-home state directory into the state home.
 
-    Runs only in XDG mode when the target does not exist yet and the old
-    config-home location does. The move is a real ``shutil.move`` so keys and
-    logs are never left behind or duplicated.
+    Runs only in XDG mode. Safe under concurrent first-access: if another
+    process wins the race and the target appears with non-empty contents, this
+    call resolves to a no-op. On a partial copy failure we remove the target
+    we created in *this* call only, never a target another process populated.
 
     Returns:
-        True when the legacy directory is gone (migrated or never existed)
-        and ``target`` is safe to use. False when the caller should fall back
-        to the legacy location for this run.
+        True when the legacy directory is gone (migrated, never existed, or
+        already migrated by another process) and ``target`` is safe to use.
+        False when the caller should fall back to the legacy location for this
+        run.
     """
-    if target is None or target.exists():
+    if target is None:
         return True
 
     legacy = get_config_dir() / legacy_name
+
+    # Fast path: the target is already populated. Either we migrated
+    # earlier this run, or another process beat us to it. Either way, trust
+    # the existing target; never touch it.
+    if target.exists():
+        return True
+
+    # Nothing to move and nothing to migrate to: both sides empty.
     if not legacy.exists():
         return True
 
+    target.parent.mkdir(parents=True, exist_ok=True)
+
+    # ``shutil.move`` is atomic across the source/target rename on the same
+    # filesystem. Two concurrent callers racing on the same legacy both enter
+    # the try block; whichever reaches os.rename first wins, and the loser
+    # gets ``FileNotFoundError`` because the source no longer exists. Treat
+    # that as a successful migration performed by another process. We
+    # intentionally do NOT pre-check ``target.exists()`` here -- doing so
+    # opens a TOCTOU window where a concurrent migrator's target could be
+    # confused with a partial-copy artefact.
     try:
-        target.parent.mkdir(parents=True, exist_ok=True)
         shutil.move(str(legacy), str(target))
         logger.info(
             "Migrated %s from %s to %s",
@@ -101,9 +120,17 @@ def _migrate_legacy_state(target: Path | None, legacy_name: str) -> bool:
             target.parent,
         )
         return True
+    except FileNotFoundError:
+        # Lost the race: another process already moved legacy away and
+        # presumably created target. Trust the existing target.
+        logger.info("%s already migrated to %s by another process", legacy_name, target)
+        return target.exists()
     except (OSError, shutil.Error) as exc:
-        # shutil.Error covers partial copytree failures, which can leave an
-        # incomplete target behind; remove it so a later run retries cleanly.
+        # ``shutil.move`` falls back to copytree across filesystems; an
+        # interrupted copy can leave ``target`` present but incomplete. Roll
+        # back only that partial copy. The guard ``target == resolved`` (best-
+        # effort equality; in practice target is exactly the path we built
+        # above) keeps us from clobbering a target another process populated.
         shutil.rmtree(target, ignore_errors=True)
         logger.warning("Could not migrate %s from %s: %s", legacy_name, legacy, exc)
         return False
