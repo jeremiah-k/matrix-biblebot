@@ -1,5 +1,6 @@
 """Behavioral tests for BibleBot runtime path resolution."""
 
+import shutil
 from pathlib import Path
 
 from biblebot import auth, cli, constants, paths, setup_utils
@@ -121,16 +122,10 @@ def test_failed_migration_falls_back_to_legacy_location(monkeypatch, tmp_path, c
     legacy_store.mkdir(parents=True)
     (legacy_store / "device.db").touch()
 
-    # Make the parent of the target unwritable so shutil.move fails.
-    blocked = tmp_path / ".local" / "state"
-    blocked.mkdir(parents=True)
     monkeypatch.delenv("BIBLEBOT_HOME", raising=False)
     monkeypatch.delenv("XDG_STATE_HOME", raising=False)
-    monkeypatch.setattr(
-        Path,
-        "home",
-        classmethod(lambda _cls: tmp_path),
-    )
+    monkeypatch.delenv("XDG_CONFIG_HOME", raising=False)
+    monkeypatch.setattr(Path, "home", classmethod(lambda _cls: tmp_path))
     monkeypatch.setattr(paths.shutil, "move", raise_os_error)
 
     with caplog.at_level(logging.WARNING):
@@ -139,6 +134,34 @@ def test_failed_migration_falls_back_to_legacy_location(monkeypatch, tmp_path, c
     assert resolved == legacy_store
     assert legacy_store.exists()
     assert any("Could not migrate" in record.message for record in caplog.records)
+
+
+def test_partial_migration_failure_cleans_target_and_falls_back(monkeypatch, tmp_path):
+    """A shutil.Error from a partial copy must not leave a broken target.
+
+    shutil.move falls back to copytree across filesystems; an interrupted
+    copy can leave the target present but incomplete. The resolver must
+    clean it up and fall back to the intact legacy store.
+    """
+    legacy_store = tmp_path / ".config" / "matrix-biblebot" / "e2ee-store"
+    legacy_store.mkdir(parents=True)
+    (legacy_store / "device.db").touch()
+
+    monkeypatch.delenv("BIBLEBOT_HOME", raising=False)
+    monkeypatch.delenv("XDG_STATE_HOME", raising=False)
+    monkeypatch.delenv("XDG_CONFIG_HOME", raising=False)
+    monkeypatch.setattr(Path, "home", classmethod(lambda _cls: tmp_path))
+
+    def partial_move(_source, target):
+        Path(target).mkdir(parents=True)
+        raise shutil.Error([("source", str(target), "copy failed")])
+
+    monkeypatch.setattr(paths.shutil, "move", partial_move)
+
+    resolved = paths.get_e2ee_store_dir()
+
+    assert resolved == legacy_store
+    assert (legacy_store / "device.db").exists()
 
 
 def raise_os_error(*_args, **_kwargs):

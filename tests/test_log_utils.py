@@ -49,7 +49,7 @@ class TestLogDirectory:
         mock_get_log_dir.return_value = Path("/test/state/logs")
 
         log_dir = log_utils.get_log_dir()
-        assert str(log_dir) == "/test/state/logs"
+        assert log_dir == Path("/test/state/logs")
 
 
 class TestLoggerCreation:

@@ -1,0 +1,6 @@
+# CKV_DOCKER_2 wants a HEALTHCHECK. The healthcheck was deliberately removed:
+# `biblebot --version` is a build smoke test, not a readiness probe (see
+# docs/DOCKER.md). Orchestration should decide health. All other Checkov
+# Docker checks stay active.
+skip-check:
+  - CKV_DOCKER_2

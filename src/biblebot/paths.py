@@ -18,6 +18,7 @@ from __future__ import annotations
 import logging
 import os
 import shutil
+from collections.abc import Callable
 from pathlib import Path
 
 APP_CONFIG_DIRNAME = "matrix-biblebot"
@@ -71,21 +72,24 @@ def get_credentials_path() -> Path:
     return get_config_dir() / _CREDENTIALS_FILENAME
 
 
-def _migrate_legacy_state(target: Path, legacy_name: str) -> None:
+def _migrate_legacy_state(target: Path | None, legacy_name: str) -> bool:
     """Move a legacy config-home state directory into the state home.
 
     Runs only in XDG mode when the target does not exist yet and the old
     config-home location does. The move is a real ``shutil.move`` so keys and
-    logs are never left behind or duplicated; failures are logged and leave
-    both paths untouched so startup can proceed against the legacy location on
-    the next attempt.
+    logs are never left behind or duplicated.
+
+    Returns:
+        True when the legacy directory is gone (migrated or never existed)
+        and ``target`` is safe to use. False when the caller should fall back
+        to the legacy location for this run.
     """
     if target is None or target.exists():
-        return
+        return True
 
     legacy = get_config_dir() / legacy_name
     if not legacy.exists():
-        return
+        return True
 
     try:
         target.parent.mkdir(parents=True, exist_ok=True)
@@ -96,8 +100,28 @@ def _migrate_legacy_state(target: Path, legacy_name: str) -> None:
             legacy.parent,
             target.parent,
         )
-    except OSError as exc:  # pragma: no cover - filesystem failure path
+        return True
+    except (OSError, shutil.Error) as exc:
+        # shutil.Error covers partial copytree failures, which can leave an
+        # incomplete target behind; remove it so a later run retries cleanly.
+        shutil.rmtree(target, ignore_errors=True)
         logger.warning("Could not migrate %s from %s: %s", legacy_name, legacy, exc)
+        return False
+
+
+def _resolve_state_dir(
+    state_dir: Path | None, dirname: str, fallback: Callable[[], Path]
+) -> Path:
+    """Resolve one state directory with legacy migration and fallback."""
+    if state_dir is None:
+        return fallback()
+
+    target = state_dir / dirname
+    if _migrate_legacy_state(target, dirname):
+        return target
+
+    legacy = get_config_dir() / dirname
+    return legacy if legacy.exists() else target
 
 
 def get_e2ee_store_dir() -> Path:
@@ -107,18 +131,11 @@ def get_e2ee_store_dir() -> Path:
     under the state home; a pre-existing store in the legacy config-home
     location is migrated here automatically.
     """
-    state_dir = _state_home_dir()
-    if state_dir is None:
-        return get_config_dir() / _E2EE_STORE_DIRNAME
-
-    target = state_dir / _E2EE_STORE_DIRNAME
-    if not target.exists():
-        _migrate_legacy_state(target, _E2EE_STORE_DIRNAME)
-    # If migration failed, fall back to the legacy location for this run.
-    if target.exists():
-        return target
-    legacy = get_config_dir() / _E2EE_STORE_DIRNAME
-    return legacy if legacy.exists() else target
+    return _resolve_state_dir(
+        _state_home_dir(),
+        _E2EE_STORE_DIRNAME,
+        lambda: get_config_dir() / _E2EE_STORE_DIRNAME,
+    )
 
 
 def get_log_dir() -> Path:
@@ -127,17 +144,9 @@ def get_log_dir() -> Path:
     Under ``BIBLEBOT_HOME`` this is ``<home>/logs``. In XDG mode it lives under
     the state home; existing legacy logs are migrated automatically.
     """
-    state_dir = _state_home_dir()
-    if state_dir is None:
-        return get_config_dir() / _LOGS_DIRNAME
-
-    target = state_dir / _LOGS_DIRNAME
-    if not target.exists():
-        _migrate_legacy_state(target, _LOGS_DIRNAME)
-    if target.exists():
-        return target
-    legacy = get_config_dir() / _LOGS_DIRNAME
-    return legacy if legacy.exists() else target
+    return _resolve_state_dir(
+        _state_home_dir(), _LOGS_DIRNAME, lambda: get_config_dir() / _LOGS_DIRNAME
+    )
 
 
 # Backward-compatible alias: older callers treated "the home" as one directory.
