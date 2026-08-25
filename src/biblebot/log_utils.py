@@ -15,6 +15,7 @@ from rich.console import Console
 from rich.logging import RichHandler
 from rich.theme import Theme
 
+from biblebot import paths as biblebot_paths
 from biblebot.constants.app import APP_DISPLAY_NAME
 from biblebot.constants.logging import COMPONENT_LOGGERS as _COMPONENT_LOGGERS
 from biblebot.constants.logging import (
@@ -97,14 +98,14 @@ def get_log_dir():
     """
     Return the default directory for application logs.
 
-    This is the application's config directory with "logs" appended (i.e., get_config_dir() / "logs").
+    Delegates to :func:`biblebot.paths.get_log_dir`, which resolves the
+    directory from ``BIBLEBOT_HOME`` or the XDG state home and migrates a
+    legacy config-home ``logs`` directory automatically.
 
     Returns:
         pathlib.Path: Path to the logs directory (may not exist).
     """
-    from biblebot.auth import get_config_dir
-
-    return get_config_dir() / "logs"
+    return biblebot_paths.get_log_dir()
 
 
 def get_logger(name, *, force: bool = False):

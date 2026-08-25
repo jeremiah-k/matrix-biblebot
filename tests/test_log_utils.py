@@ -43,13 +43,13 @@ class TestLogDirectory:
         assert isinstance(log_dir, Path)
         assert str(log_dir).endswith("logs")
 
-    @patch("biblebot.auth.get_config_dir")
-    def test_get_log_dir_with_mock(self, mock_get_config_dir):
-        """Test get_log_dir with mocked config dir."""
-        mock_get_config_dir.return_value = Path("/test/config")
+    @patch("biblebot.paths.get_log_dir")
+    def test_get_log_dir_with_mock(self, mock_get_log_dir):
+        """Test get_log_dir with mocked path authority."""
+        mock_get_log_dir.return_value = Path("/test/state/logs")
 
         log_dir = log_utils.get_log_dir()
-        assert str(log_dir) == "/test/config/logs"
+        assert log_dir == Path("/test/state/logs")
 
 
 class TestLoggerCreation:
