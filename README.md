@@ -223,9 +223,14 @@ biblebot --log-level debug  # Debug mode
 
 ### Bot self-cross-signing
 
-Cross-signing is never run during login or bot startup. Back up the E2EE store
-(`~/.local/state/matrix-biblebot/e2ee-store`, or `<BIBLEBOT_HOME>/e2ee-store`)
-before using the explicit command. An
+Cross-signing is never run during login or bot startup. Back up the E2EE
+store before using the explicit command. The default location is
+`~/.local/state/matrix-biblebot/e2ee-store`. If you have set a non-default
+state directory, the store lives at `$XDG_STATE_HOME/matrix-biblebot/e2ee-store`
+(or, when `XDG_STATE_HOME` is unset, `~/.local/state/matrix-biblebot/e2ee-store`).
+When `BIBLEBOT_HOME` is set, everything is under `<BIBLEBOT_HOME>/e2ee-store`
+instead. Use `biblebot auth status` to confirm the resolved path on your
+install before backing up. An
 existing BibleBot-managed identity can be refreshed with
 `biblebot auth cross-sign`; the Matrix password is prompted for and never saved.
 
