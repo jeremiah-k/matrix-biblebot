@@ -65,6 +65,7 @@ jobs:
           docker run --rm matrix-biblebot:validate python -c \
             'import nio, vodozemac; from nio.crypto import ENCRYPTION_ENABLED; assert ENCRYPTION_ENABLED'
           test "$(docker run --rm matrix-biblebot:validate id -u)" = "1000"
+          test "$(docker inspect -f '{{if .Config.Healthcheck}}present{{else}}absent{{end}}' matrix-biblebot:validate)" = "absent"
 
           runtime_home="$(mktemp -d)"
           docker run --rm \
