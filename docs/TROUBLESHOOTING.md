@@ -178,10 +178,16 @@ pip install 'matrix-biblebot[e2e]'
      it only tells nio to encrypt to devices whose trust state is not verified.
 
 3. **Reset E2EE store (last resort):**
+
    ```bash
    biblebot auth logout  # This removes E2EE store
    biblebot auth login   # Re-login and re-verify
    ```
+
+4. **Find the store:** default location is
+   `~/.local/state/matrix-biblebot/e2ee-store` (or `<BIBLEBOT_HOME>/e2ee-store`
+   when set). Upgraded installs are migrated there automatically from the old
+   `~/.config/matrix-biblebot/e2ee-store`.
 
 ### E2EE dependency errors
 

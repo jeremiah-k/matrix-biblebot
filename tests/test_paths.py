@@ -6,8 +6,8 @@ from biblebot import auth, cli, constants, paths, setup_utils
 from biblebot.constants import config as config_constants
 
 
-def test_unset_runtime_home_preserves_default_layout(monkeypatch, tmp_path):
-    """Without overrides, BibleBot should retain its historical config home."""
+def test_unset_runtime_home_preserves_default_config_layout(monkeypatch, tmp_path):
+    """Config files keep their historical XDG config-home location."""
     monkeypatch.delenv("BIBLEBOT_HOME", raising=False)
     monkeypatch.delenv("XDG_CONFIG_HOME", raising=False)
     monkeypatch.setattr(Path, "home", classmethod(lambda _cls: tmp_path))
@@ -16,16 +16,49 @@ def test_unset_runtime_home_preserves_default_layout(monkeypatch, tmp_path):
     assert paths.get_home_dir() == expected_home
     assert paths.get_config_path() == expected_home / "config.yaml"
     assert paths.get_credentials_path() == expected_home / "credentials.json"
-    assert paths.get_e2ee_store_dir() == expected_home / "e2ee-store"
 
 
-def test_unset_runtime_home_preserves_xdg_layout(monkeypatch, tmp_path):
+def test_state_paths_follow_xdg_state_home(monkeypatch, tmp_path):
+    """E2EE store and logs are runtime state and live under XDG_STATE_HOME."""
+    monkeypatch.delenv("BIBLEBOT_HOME", raising=False)
+    monkeypatch.delenv("XDG_CONFIG_HOME", raising=False)
+    monkeypatch.delenv("XDG_STATE_HOME", raising=False)
+    monkeypatch.setattr(Path, "home", classmethod(lambda _cls: tmp_path))
+
+    state_home = tmp_path / ".local" / "state" / "matrix-biblebot"
+    assert paths.get_e2ee_store_dir() == state_home / "e2ee-store"
+    assert paths.get_log_dir() == state_home / "logs"
+
+
+def test_unset_runtime_home_preserves_xdg_config_layout(monkeypatch, tmp_path):
     """XDG_CONFIG_HOME should remain the fallback when BIBLEBOT_HOME is unset."""
     xdg_home = tmp_path / "xdg"
     monkeypatch.delenv("BIBLEBOT_HOME", raising=False)
     monkeypatch.setenv("XDG_CONFIG_HOME", str(xdg_home))
 
     assert paths.get_home_dir() == xdg_home / "matrix-biblebot"
+
+
+def test_xdg_state_home_controls_state_paths(monkeypatch, tmp_path):
+    """XDG_STATE_HOME should control the E2EE store and log locations."""
+    state_home = tmp_path / "xdg-state"
+    monkeypatch.delenv("BIBLEBOT_HOME", raising=False)
+    monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path / "xdg-config"))
+    monkeypatch.setenv("XDG_STATE_HOME", str(state_home))
+
+    assert paths.get_e2ee_store_dir() == state_home / "matrix-biblebot" / "e2ee-store"
+    assert paths.get_log_dir() == state_home / "matrix-biblebot" / "logs"
+
+
+def test_biblebot_home_keeps_single_directory_layout(monkeypatch, tmp_path):
+    """BIBLEBOT_HOME still places everything under one portable directory."""
+    runtime_home = tmp_path / "runtime-home"
+    monkeypatch.setenv("BIBLEBOT_HOME", str(runtime_home))
+
+    assert paths.get_config_path() == runtime_home / "config.yaml"
+    assert paths.get_credentials_path() == runtime_home / "credentials.json"
+    assert paths.get_e2ee_store_dir() == runtime_home / "e2ee-store"
+    assert paths.get_log_dir() == runtime_home / "logs"
 
 
 def test_biblebot_home_controls_default_config_after_import(monkeypatch, tmp_path):
@@ -59,6 +92,78 @@ def test_biblebot_home_controls_e2ee_store_after_import(monkeypatch, tmp_path):
     monkeypatch.setenv("BIBLEBOT_HOME", str(runtime_home))
 
     assert auth.get_store_dir() == runtime_home / "e2ee-store"
+
+
+def test_legacy_e2ee_store_is_migrated_to_state_home(monkeypatch, tmp_path):
+    """A pre-existing store in the old location moves into the state home."""
+    legacy_store = tmp_path / ".config" / "matrix-biblebot" / "e2ee-store"
+    legacy_store.mkdir(parents=True)
+    (legacy_store / "device.db").touch()
+
+    monkeypatch.delenv("BIBLEBOT_HOME", raising=False)
+    monkeypatch.delenv("XDG_STATE_HOME", raising=False)
+    monkeypatch.delenv("XDG_CONFIG_HOME", raising=False)
+    monkeypatch.setattr(Path, "home", classmethod(lambda _cls: tmp_path))
+
+    resolved = paths.get_e2ee_store_dir()
+
+    new_store = tmp_path / ".local" / "state" / "matrix-biblebot" / "e2ee-store"
+    assert resolved == new_store
+    assert (new_store / "device.db").exists()
+    assert not legacy_store.exists()
+
+
+def test_failed_migration_falls_back_to_legacy_location(monkeypatch, tmp_path, caplog):
+    """If the move fails, the bot keeps using the legacy path for this run."""
+    import logging
+
+    legacy_store = tmp_path / ".config" / "matrix-biblebot" / "e2ee-store"
+    legacy_store.mkdir(parents=True)
+    (legacy_store / "device.db").touch()
+
+    # Make the parent of the target unwritable so shutil.move fails.
+    blocked = tmp_path / ".local" / "state"
+    blocked.mkdir(parents=True)
+    monkeypatch.delenv("BIBLEBOT_HOME", raising=False)
+    monkeypatch.delenv("XDG_STATE_HOME", raising=False)
+    monkeypatch.setattr(
+        Path,
+        "home",
+        classmethod(lambda _cls: tmp_path),
+    )
+    monkeypatch.setattr(paths.shutil, "move", raise_os_error)
+
+    with caplog.at_level(logging.WARNING):
+        resolved = paths.get_e2ee_store_dir()
+
+    assert resolved == legacy_store
+    assert legacy_store.exists()
+    assert any("Could not migrate" in record.message for record in caplog.records)
+
+
+def raise_os_error(*_args, **_kwargs):
+    raise OSError("permission denied")
+
+
+def test_no_migration_when_new_store_already_exists(monkeypatch, tmp_path):
+    """An existing state-home store must never be clobbered by migration."""
+    legacy_store = tmp_path / ".config" / "matrix-biblebot" / "e2ee-store"
+    legacy_store.mkdir(parents=True)
+    (legacy_store / "old-device.db").touch()
+
+    monkeypatch.delenv("BIBLEBOT_HOME", raising=False)
+    monkeypatch.delenv("XDG_STATE_HOME", raising=False)
+    monkeypatch.delenv("XDG_CONFIG_HOME", raising=False)
+    monkeypatch.setattr(Path, "home", classmethod(lambda _cls: tmp_path))
+
+    new_store = tmp_path / ".local" / "state" / "matrix-biblebot" / "e2ee-store"
+    new_store.mkdir(parents=True)
+    (new_store / "new-device.db").touch()
+
+    assert paths.get_e2ee_store_dir() == new_store
+    assert (new_store / "new-device.db").exists()
+    # Legacy directory left in place; user data is never silently discarded.
+    assert (legacy_store / "old-device.db").exists()
 
 
 def test_path_constants_follow_environment_changes(monkeypatch, tmp_path):

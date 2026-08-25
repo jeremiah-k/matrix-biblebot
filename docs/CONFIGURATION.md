@@ -103,11 +103,13 @@ matrix:
     enabled: true
 ```
 
-The encryption store is kept at `BIBLEBOT_HOME/e2ee-store` (by default
-`~/.config/matrix-biblebot/e2ee-store`). Set `BIBLEBOT_HOME` if you need to
-relocate runtime state. Keeping configuration, credentials, and encryption
-keys under one runtime home prevents a saved device from accidentally being
-started against a different crypto store.
+The encryption store is kept at `BIBLEBOT_HOME/e2ee-store` when
+`BIBLEBOT_HOME` is set. Without it, the store lives under the XDG state
+home at `~/.local/state/matrix-biblebot/e2ee-store` — see
+[Runtime State Location](#runtime-state-location-e2ee-store-and-logs).
+Keeping configuration, credentials, and encryption keys under one runtime
+home prevents a saved device from accidentally being started against a
+different crypto store.
 
 #### Authentication
 
@@ -143,9 +145,23 @@ Windows, Linux, and macOS use the same `biblebot auth login` and E2EE flow.
 #### Security Notes
 
 - Protect `~/.config/matrix-biblebot/credentials.json` and the E2EE store directory
-- Default location: `~/.config/matrix-biblebot/e2ee-store`
+- Default location: `~/.local/state/matrix-biblebot/e2ee-store` (XDG state home)
 - Contains cryptographic keys - keep secure
 - If lost, bot can't decrypt old messages
+
+#### Runtime State Location (E2EE Store and Logs)
+
+The E2EE crypto store and logs are runtime state, not user-edited
+configuration. They live under the XDG state home:
+
+- **E2EE Store:** `~/.local/state/matrix-biblebot/e2ee-store/`
+- **Logs:** `~/.local/state/matrix-biblebot/logs/`
+
+Installations upgrading from an older release are migrated automatically:
+on first access, a store or log directory found at the old config-home
+location is moved into the state home. Set `BIBLEBOT_HOME` to place all
+state under one portable directory instead (this is what the Docker image
+does with `/data`).
 
 ## Bot Behavior Configuration
 
@@ -245,7 +261,10 @@ Environment variables take precedence over config file values.
 
 - **Configuration:** `~/.config/matrix-biblebot/config.yaml`
 - **Credentials:** `~/.config/matrix-biblebot/credentials.json`
-- **E2EE Store:** `~/.config/matrix-biblebot/e2ee-store/`
+- **E2EE Store:** `~/.local/state/matrix-biblebot/e2ee-store/`
+- **Logs:** `~/.local/state/matrix-biblebot/logs/`
+
+Setting `BIBLEBOT_HOME` places all four under that one directory instead.
 
 ### Custom Configuration Path
 
