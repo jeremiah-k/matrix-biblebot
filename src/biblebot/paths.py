@@ -18,6 +18,7 @@ from __future__ import annotations
 import logging
 import os
 import shutil
+import uuid
 from collections.abc import Callable
 from pathlib import Path
 
@@ -75,10 +76,17 @@ def get_credentials_path() -> Path:
 def _migrate_legacy_state(target: Path | None, legacy_name: str) -> bool:
     """Move a legacy config-home state directory into the state home.
 
-    Runs only in XDG mode. Safe under concurrent first-access: if another
-    process wins the race and the target appears with non-empty contents, this
-    call resolves to a no-op. On a partial copy failure we remove the target
-    we created in *this* call only, never a target another process populated.
+    Runs only in XDG mode. Safe under concurrent first-access:
+
+    - The legacy-to-target move goes through a uniquely-owned staging
+      directory under ``target.parent``. Any rollback (interrupted copy,
+      peer racing in) only removes this call's staging directory and never
+      touches ``target``, so a peer that publishes ``target`` while this
+      call is in flight keeps its data.
+    - Two concurrent callers racing on the same legacy both enter the
+      move; whichever reaches ``os.rename`` first wins, and the loser gets
+      ``FileNotFoundError`` because the source no longer exists. The loser
+      treats that as a successful migration performed by another process.
 
     Returns:
         True when the legacy directory is gone (migrated, never existed, or
@@ -91,49 +99,72 @@ def _migrate_legacy_state(target: Path | None, legacy_name: str) -> bool:
 
     legacy = get_config_dir() / legacy_name
 
-    # Fast path: the target is already populated. Either we migrated
-    # earlier this run, or another process beat us to it. Either way, trust
-    # the existing target; never touch it.
+    # Fast path: target already exists. Either we migrated earlier this run,
+    # or another process beat us to it. Either way, trust the existing
+    # target; never touch it.
     if target.exists():
         return True
 
-    # Nothing to move and nothing to migrate to: both sides empty.
     if not legacy.exists():
         return True
 
-    target.parent.mkdir(parents=True, exist_ok=True)
+    # Move legacy into a uniquely-owned staging directory under the same
+    # parent as target. This isolates the move's artefacts from ``target``
+    # so a partial copy, an interrupted copy, or a peer that publishes
+    # target mid-migration never causes us to remove ``target`` itself.
+    staging = target.parent / f".{target.name}.migrate-{uuid.uuid4().hex}"
 
-    # ``shutil.move`` is atomic across the source/target rename on the same
-    # filesystem. Two concurrent callers racing on the same legacy both enter
-    # the try block; whichever reaches os.rename first wins, and the loser
-    # gets ``FileNotFoundError`` because the source no longer exists. Treat
-    # that as a successful migration performed by another process. We
-    # intentionally do NOT pre-check ``target.exists()`` here -- doing so
-    # opens a TOCTOU window where a concurrent migrator's target could be
-    # confused with a partial-copy artefact.
     try:
-        shutil.move(str(legacy), str(target))
-        logger.info(
-            "Migrated %s from %s to %s",
-            legacy_name,
-            legacy.parent,
+        target.parent.mkdir(parents=True, exist_ok=True)
+    except OSError as exc:
+        logger.warning(
+            "Could not create state directory %s: %s; falling back to legacy",
             target.parent,
+            exc,
         )
-        return True
+        return False
+
+    try:
+        shutil.move(str(legacy), str(staging))
     except FileNotFoundError:
-        # Lost the race: another process already moved legacy away and
-        # presumably created target. Trust the existing target.
-        logger.info("%s already migrated to %s by another process", legacy_name, target)
+        # Lost the race: another process already moved legacy away.
+        # ``target`` may have been published by the peer; trust whatever
+        # exists at ``target`` and clean up our (empty) staging.
+        shutil.rmtree(staging, ignore_errors=True)
         return target.exists()
     except (OSError, shutil.Error) as exc:
-        # ``shutil.move`` falls back to copytree across filesystems; an
-        # interrupted copy can leave ``target`` present but incomplete. Roll
-        # back only that partial copy. The guard ``target == resolved`` (best-
-        # effort equality; in practice target is exactly the path we built
-        # above) keeps us from clobbering a target another process populated.
-        shutil.rmtree(target, ignore_errors=True)
+        # Rollback removes *only* the staging directory this call created.
+        # ``target`` is left untouched so any peer data there survives.
+        shutil.rmtree(staging, ignore_errors=True)
         logger.warning("Could not migrate %s from %s: %s", legacy_name, legacy, exc)
         return False
+
+    # Publish: atomically rename staging -> target. If a peer has already
+    # published target between the move and now, we lose to the peer and
+    # remove our staging instead of overwriting their data.
+    if target.exists():
+        shutil.rmtree(staging, ignore_errors=True)
+        return True
+
+    try:
+        os.replace(staging, target)
+    except OSError as exc:
+        shutil.rmtree(staging, ignore_errors=True)
+        logger.warning(
+            "Could not publish migration of %s to %s: %s",
+            legacy_name,
+            target,
+            exc,
+        )
+        return False
+
+    logger.info(
+        "Migrated %s from %s to %s",
+        legacy_name,
+        legacy.parent,
+        target.parent,
+    )
+    return True
 
 
 def _resolve_state_dir(
