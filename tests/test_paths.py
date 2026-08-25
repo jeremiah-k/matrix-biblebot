@@ -162,6 +162,166 @@ def test_partial_migration_failure_cleans_target_and_falls_back(monkeypatch, tmp
 
     assert resolved == legacy_store
     assert (legacy_store / "device.db").exists()
+    new_store = tmp_path / ".local" / "state" / "matrix-biblebot" / "e2ee-store"
+    assert not new_store.exists()
+
+
+def test_failed_migration_does_not_delete_peer_target(monkeypatch, tmp_path):
+    """A peer that publishes target while our move fails must keep its data.
+
+    Race: this process's ``shutil.move`` partially succeeds and then fails;
+    before the resolver runs its rollback, a peer process writes the real
+    crypto store into ``target``. The rollback must remove only the partial
+    copy that this call produced and never delete the peer's data.
+    """
+    legacy_store = tmp_path / ".config" / "matrix-biblebot" / "e2ee-store"
+    legacy_store.mkdir(parents=True)
+    (legacy_store / "device.db").touch()
+
+    target = tmp_path / ".local" / "state" / "matrix-biblebot" / "e2ee-store"
+
+    monkeypatch.delenv("BIBLEBOT_HOME", raising=False)
+    monkeypatch.delenv("XDG_STATE_HOME", raising=False)
+    monkeypatch.delenv("XDG_CONFIG_HOME", raising=False)
+    monkeypatch.setattr(Path, "home", classmethod(lambda _cls: tmp_path))
+
+    def peer_writes_during_move(_source, _staging):
+        """Simulate shutil.move failing mid-copy AFTER a peer publishes the
+        real target. The peer's independent write targets the real target
+        directory, not our staging directory."""
+        target.mkdir(parents=True)
+        (target / "device.db").write_bytes(b"peers-keys")
+        raise shutil.Error([("source", "staging", "copy failed")])
+
+    monkeypatch.setattr(paths.shutil, "move", peer_writes_during_move)
+
+    resolved = paths.get_e2ee_store_dir()
+
+    # Fall back to legacy because this call's migration failed.
+    assert resolved == legacy_store
+    # The peer's data must still be in target; we must not have deleted it.
+    assert target.exists()
+    assert (target / "device.db").read_bytes() == b"peers-keys"
+
+
+def test_state_parent_creation_failure_falls_back_to_legacy(
+    monkeypatch, tmp_path, caplog
+):
+    """If the state home is not writable, fall back to the legacy store.
+
+    ``target.parent.mkdir`` raises ``OSError`` on permission errors. Without
+    a try/except the resolver crashes instead of using the intact legacy
+    store for this run.
+    """
+    import logging
+
+    legacy_store = tmp_path / ".config" / "matrix-biblebot" / "e2ee-store"
+    legacy_store.mkdir(parents=True)
+    (legacy_store / "device.db").touch()
+
+    monkeypatch.delenv("BIBLEBOT_HOME", raising=False)
+    monkeypatch.delenv("XDG_STATE_HOME", raising=False)
+    monkeypatch.delenv("XDG_CONFIG_HOME", raising=False)
+    monkeypatch.setattr(Path, "home", classmethod(lambda _cls: tmp_path))
+
+    def raise_oserror(*_args, **_kwargs):
+        raise OSError(13, "Permission denied")
+
+    monkeypatch.setattr(paths.Path, "mkdir", raise_oserror)
+
+    with caplog.at_level(logging.WARNING):
+        resolved = paths.get_e2ee_store_dir()
+
+    assert resolved == legacy_store
+    assert any(
+        "Could not create state directory" in record.message
+        for record in caplog.records
+    )
+
+
+def test_lost_race_does_not_overwrite_other_process_migration(monkeypatch, tmp_path):
+    """When two processes race to migrate the same legacy store, neither may
+    delete the target the other created.
+
+    The TOCTOU window: process A starts the move while process B is past the
+    pre-check but hasn't entered shutil.move yet. A succeeds; B sees legacy
+    gone and must not delete target. The resolver must treat the
+    FileNotFoundError from the move as a successful migration and trust the
+    target already there.
+    """
+    legacy_store = tmp_path / ".config" / "matrix-biblebot" / "e2ee-store"
+    legacy_store.mkdir(parents=True)
+    (legacy_store / "device.db").write_bytes(b"original-keys")
+
+    target = tmp_path / ".local" / "state" / "matrix-biblebot" / "e2ee-store"
+
+    monkeypatch.delenv("BIBLEBOT_HOME", raising=False)
+    monkeypatch.delenv("XDG_STATE_HOME", raising=False)
+    monkeypatch.delenv("XDG_CONFIG_HOME", raising=False)
+    monkeypatch.setattr(Path, "home", classmethod(lambda _cls: tmp_path))
+
+    moved_keys = b""
+
+    def losing_race_move(_source, _staging):
+        # The winning process already moved the store and published it.
+        # Simulate the legacy directory disappearing and the real target
+        # (not our staging directory) containing its data.
+        target.mkdir(parents=True, exist_ok=True)
+        (target / "device.db").write_bytes(moved_keys)
+        if legacy_store.exists():
+            shutil.rmtree(legacy_store)
+        raise FileNotFoundError(2, "No such file", str(legacy_store))
+
+    moved_keys = b"migrated-by-other-process"
+    monkeypatch.setattr(paths.shutil, "move", losing_race_move)
+
+    resolved = paths.get_e2ee_store_dir()
+
+    assert resolved == target
+    # The migration performed by the other process must be intact.
+    assert (target / "device.db").read_bytes() == moved_keys
+
+
+def test_migrator_does_not_clobber_target_published_during_move(monkeypatch, tmp_path):
+    """If shutil.move partially succeeds and a peer publishes target before we
+    roll back, the rollback must not delete the peer's data.
+    """
+    legacy_store = tmp_path / ".config" / "matrix-biblebot" / "e2ee-store"
+    legacy_store.mkdir(parents=True)
+    (legacy_store / "device.db").touch()
+
+    target = tmp_path / ".local" / "state" / "matrix-biblebot" / "e2ee-store"
+
+    monkeypatch.delenv("BIBLEBOT_HOME", raising=False)
+    monkeypatch.delenv("XDG_STATE_HOME", raising=False)
+    monkeypatch.delenv("XDG_CONFIG_HOME", raising=False)
+    monkeypatch.setattr(Path, "home", classmethod(lambda _cls: tmp_path))
+
+    peer_state = {"phase": "before"}
+
+    def failing_then_peer_writes(_source, _staging):
+        if peer_state["phase"] == "before":
+            # Our move failed mid-copy. The rollback removes only our
+            # staging directory; the real target remains untouched.
+            peer_state["phase"] = "failed"
+            raise shutil.Error([("source", "staging", "copy failed")])
+        # Peer races past our roll-back and publishes the real target.
+        target.mkdir(parents=True, exist_ok=True)
+        (target / "device.db").write_bytes(b"peers-keys")
+
+    monkeypatch.setattr(paths.shutil, "move", failing_then_peer_writes)
+
+    # First call: our move fails; rollback runs against the partial copy.
+    resolved = paths.get_e2ee_store_dir()
+    assert resolved == legacy_store
+
+    # Second call (simulates a second migration attempt): peer has finished
+    # writing real data; the move should now see target.exists() and not
+    # touch it.
+    peer_state["phase"] = "after"
+    resolved_again = paths.get_e2ee_store_dir()
+    assert resolved_again == target
+    assert (target / "device.db").read_bytes() == b"peers-keys"
 
 
 def raise_os_error(*_args, **_kwargs):
