@@ -223,8 +223,9 @@ biblebot --log-level debug  # Debug mode
 
 ### Bot self-cross-signing
 
-Cross-signing is never run during login or bot startup. Back up
-`~/.config/matrix-biblebot/e2ee-store` before using the explicit command. An
+Cross-signing is never run during login or bot startup. Back up the E2EE store
+(`~/.local/state/matrix-biblebot/e2ee-store`, or `<BIBLEBOT_HOME>/e2ee-store`)
+before using the explicit command. An
 existing BibleBot-managed identity can be refreshed with
 `biblebot auth cross-sign`; the Matrix password is prompted for and never saved.
 
@@ -259,7 +260,7 @@ For detailed troubleshooting, see [Troubleshooting Guide](docs/TROUBLESHOOTING.m
 
 ## Contributing
 
-Contributions welcome! Please see [Development Guide](docs/DEVELOPMENT.md) for setup instructions and guidelines.
+Contributions welcome! Please see [Development Guide](docs/DEVELOPMENT.md) for setup instructions, project structure, and the [Testing Guide](docs/dev/TESTING.md) for test conventions.
 
 ## License
 
