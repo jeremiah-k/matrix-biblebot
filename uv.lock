@@ -486,8 +486,8 @@ test = [
 requires-dist = [
     { name = "aiohttp", specifier = "==3.14.3" },
     { name = "coverage", marker = "extra == 'test'", specifier = "==7.16.0" },
-    { name = "mindroom-nio", specifier = "==0.40.0" },
-    { name = "mindroom-nio", extras = ["e2e"], marker = "extra == 'e2e'", specifier = "==0.40.0" },
+    { name = "mindroom-nio", specifier = "==1.0.8" },
+    { name = "mindroom-nio", extras = ["e2e"], marker = "extra == 'e2e'", specifier = "==1.0.8" },
     { name = "packaging", specifier = "==26.3" },
     { name = "pytest", marker = "extra == 'test'", specifier = "==9.1.1" },
     { name = "pytest-aiohttp", marker = "extra == 'test'", specifier = "==1.1.1" },
@@ -510,7 +510,7 @@ wheels = [
 
 [[package]]
 name = "mindroom-nio"
-version = "0.40.0"
+version = "1.0.8"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "aiofiles" },
@@ -522,9 +522,9 @@ dependencies = [
     { name = "pycryptodome" },
     { name = "unpaddedbase64" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/65/ed/5d97779ebcfa01555ce70c0b6fa03a5daf8ad48251cf4aa1a75107f90f3d/mindroom_nio-0.40.0.tar.gz", hash = "sha256:6e17647aa90b80e08e1307cb1792041455337515969fce14ef78e2831c3a84c0", size = 217631, upload-time = "2026-08-13T05:54:19.297Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/a9/17/e09f396db07cd51cc7fe9d178f79f552e7313195f73f3d99b9c8ad96c33b/mindroom_nio-1.0.8.tar.gz", hash = "sha256:22c848272088224da71222fa59dd1ee7b1d2330c514743adde3e61f8f6616dbe", size = 212638, upload-time = "2026-09-13T16:10:45.613Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/b9/9b/8a7614d969252ccce2c55bc8e54fef5c20df0a81d4b0f47f98616fdf7304/mindroom_nio-0.40.0-py3-none-any.whl", hash = "sha256:007a0146dbbe7438e5dbe9ea47f09a5078cb8d21009a0dca6da88bcb64f663df", size = 248192, upload-time = "2026-08-13T05:54:17.816Z" },
+    { url = "https://files.pythonhosted.org/packages/f5/24/2cc27dbca4f85497d58c0123af62c2626a9ac8c2571f6de83e11620b28ae/mindroom_nio-1.0.8-py3-none-any.whl", hash = "sha256:c6479ad94d43bd869067077b564fa7855f2516db9151694c26196b3bc2ff5001", size = 247834, upload-time = "2026-09-13T16:10:43.953Z" },
 ]
 
 [package.optional-dependencies]
