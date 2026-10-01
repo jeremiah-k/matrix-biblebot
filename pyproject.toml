@@ -23,7 +23,7 @@ classifiers = [
 dependencies = [
   "mindroom-nio==0.40.0",
   "PyYAML==6.0.3",
-  "python-dotenv==1.2.3",
+  "python-dotenv==1.2.4",
   "aiohttp==3.14.3",
   "rich==15.0.0",
   "packaging==26.3",
