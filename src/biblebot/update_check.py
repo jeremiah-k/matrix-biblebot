@@ -41,6 +41,9 @@ async def get_latest_release_version() -> Optional[str]:
                 data = await response.json()
                 if isinstance(data, list):
                     data = data[0] if data else {}
+                if not isinstance(data, dict):
+                    logger.debug("Latest release from GitHub is not an object")
+                    return None
                 tag = data.get("tag_name")
                 if not tag:
                     logger.debug("Latest release from GitHub missing tag_name")

@@ -35,11 +35,11 @@ from nio import (
     RemoteProtocolError,
     RemoteTransportError,
     RoomMessageText,
-    RoomResolveAliasError,
 )
 
 from biblebot.auth import get_store_dir, load_credentials
-from biblebot.config import load_config_file
+from biblebot.config import e2ee_enabled as config_e2ee_enabled
+from biblebot.config import load_config_file, normalize_config
 from biblebot.constants.api import (
     API_REQUEST_TIMEOUT_SEC,
 )
@@ -50,7 +50,6 @@ from biblebot.constants.bible import (
 )
 from biblebot.constants.config import (
     CONFIG_KEY_MATRIX,
-    CONFIG_MATRIX_E2EE,
     CONFIG_MATRIX_ROOM_IDS,
     CONFIG_PRESERVE_POETRY_FORMATTING,
     DEFAULT_CONFIG_FILENAME,
@@ -76,6 +75,7 @@ from biblebot.constants.messages import (
     INFO_NO_ENV_FILE,
     INFO_RESOLVED_ALIAS,
     MESSAGE_SUFFIX,
+    MIN_MESSAGE_LENGTH,
     REACTION_OK,
     TRUNCATION_INDICATOR,
     WARN_COULD_NOT_RESOLVE_ALIAS,
@@ -86,7 +86,11 @@ from biblebot.formatting import (
     split_text_into_chunks,
     trim_reference_for_suffix,
 )
-from biblebot.log_utils import configure_component_loggers, configure_logging
+from biblebot.log_utils import (
+    configure_component_loggers,
+    configure_logging,
+    get_logger,
+)
 from biblebot.messaging import (
     classify_send_failure,
     compose_final_chunk_bodies,
@@ -146,8 +150,7 @@ def load_config(config_file, log_loading=True):
 
     Returns:
         dict | None: Parsed configuration dictionary on success; None if the file
-        cannot be read, contains invalid YAML, or fails validation (missing or
-        non-list room IDs).
+        cannot be read, contains invalid YAML, or fails schema validation.
     """
     result = load_config_file(config_file)
     if not result.ok:
@@ -269,12 +272,19 @@ class BibleBot:
         )
 
         # Bot configuration settings with defaults
-        bot_settings = config.get("bot", {}) if isinstance(config, dict) else {}
+        bot_settings = (config.get("bot") or {}) if isinstance(config, dict) else {}
+        if not isinstance(bot_settings, dict):
+            bot_settings = {}
         self.default_translation = bot_settings.get(
             "default_translation", DEFAULT_TRANSLATION
         )
         self.cache_enabled = bot_settings.get("cache_enabled", True)
-        self.max_message_length = bot_settings.get("max_message_length", 2000)
+        raw_max_len = bot_settings.get("max_message_length", 2000)
+        try:
+            self.max_message_length = int(raw_max_len)
+        except (TypeError, ValueError, OverflowError):
+            logger.warning("Invalid max_message_length type; using default 2000")
+            self.max_message_length = 2000
         self.preserve_poetry_formatting = bot_settings.get(
             CONFIG_PRESERVE_POETRY_FORMATTING, False
         )
@@ -289,7 +299,7 @@ class BibleBot:
             self.split_message_length = 0
 
         # Validate settings
-        if self.max_message_length <= 0:
+        if self.max_message_length < MIN_MESSAGE_LENGTH:
             logger.warning(
                 f"Invalid max_message_length: {self.max_message_length}, using default 2000"
             )
@@ -383,28 +393,31 @@ class BibleBot:
             if is_alias(entry):
                 try:
                     resp = await self.client.room_resolve_alias(entry)
-                    if hasattr(resp, "room_id"):
+                    if isinstance(getattr(resp, "room_id", None), str) and resp.room_id:
                         resolved_ids.append(resp.room_id)
                         logger.info(INFO_RESOLVED_ALIAS.format(entry, resp.room_id))
                     else:
+                        resolved_ids.append(entry)
                         logger.warning(f"{WARN_COULD_NOT_RESOLVE_ALIAS}: {entry}")
-                except RoomResolveAliasError:
+                except (
+                    LocalProtocolError,
+                    RemoteProtocolError,
+                    RemoteTransportError,
+                    aiohttp.ClientError,
+                    asyncio.TimeoutError,
+                ):
+                    resolved_ids.append(entry)
                     logger.warning(
-                        f"{WARN_COULD_NOT_RESOLVE_ALIAS} (exception): {entry}"
+                        "%s: %s", WARN_COULD_NOT_RESOLVE_ALIAS, entry, exc_info=True
                     )
             else:
                 resolved_ids.append(entry)
-        # Update configuration with resolved IDs (support both schemas)
-        # This deduplicates room IDs and replaces aliases with their resolved room IDs
-        # to avoid duplicate joins and ensure we're working with canonical room IDs
-        unique_ids = merge_resolved_entries(room_ids, resolved_ids)
-        if (
-            CONFIG_KEY_MATRIX in self.config
-            and "room_ids" in self.config[CONFIG_KEY_MATRIX]
-        ):
-            self.config[CONFIG_KEY_MATRIX]["room_ids"] = unique_ids
-        else:
-            self.config[CONFIG_MATRIX_ROOM_IDS] = unique_ids
+        unique_ids = merge_resolved_entries([], resolved_ids)
+        self.config[CONFIG_MATRIX_ROOM_IDS] = unique_ids
+        matrix = self.config.get(CONFIG_KEY_MATRIX)
+        if isinstance(matrix, dict):
+            matrix["room_ids"] = unique_ids
+        self._room_id_set = {room for room in unique_ids if not is_alias(room)}
 
     async def join_matrix_room(self, room_id_or_alias):
         """
@@ -418,11 +431,7 @@ class BibleBot:
         # Skip placeholder room IDs from sample config to prevent attempting to join
         # non-existent rooms that are just examples in the configuration template
         # This occurs when users haven't updated their config.yaml from the sample
-        if (
-            room_id_or_alias.startswith("!your_room_id:")
-            or room_id_or_alias.endswith(":your_homeserver_domain")
-            or is_placeholder_room_id(room_id_or_alias)
-        ):
+        if is_placeholder_room_id(room_id_or_alias):
             logger.debug(f"Skipping placeholder room ID: {room_id_or_alias}")
             return
 
@@ -436,6 +445,7 @@ class BibleBot:
                     )
                     return
                 room_id = response.room_id
+                self._room_id_set.add(room_id)
             else:
                 room_id = room_id_or_alias
 
@@ -456,7 +466,6 @@ class BibleBot:
             RemoteProtocolError,
             RemoteTransportError,
             aiohttp.ClientError,
-            RoomResolveAliasError,
             asyncio.TimeoutError,
         ):
             logger.exception(f"Error joining room '{room_id_or_alias}'")
@@ -466,7 +475,7 @@ class BibleBot:
         On startup, join all rooms in config if not already joined.
         Uses the join_matrix_room method for each room.
         """
-        for room_id in self.config[CONFIG_MATRIX_ROOM_IDS]:
+        for room_id in read_room_ids(self.config):
             await self.join_matrix_room(room_id)
 
     async def start(self):
@@ -506,7 +515,9 @@ class BibleBot:
                 logger.exception("Failed to create HTTP session")
                 raise
         await self.resolve_aliases()  # Support for aliases in config
-        self._room_id_set = set(self.config[CONFIG_MATRIX_ROOM_IDS])
+        self._room_id_set = {
+            room for room in read_room_ids(self.config) if not is_alias(room)
+        }
         await self.ensure_joined_rooms()  # Ensure bot is in all configured rooms
 
         logger.info("Performing initial sync...")
@@ -558,8 +569,7 @@ class BibleBot:
         When an encrypted event cannot be decrypted, attempt to recover by requesting the room key from the sender. The method sets event.room_id to the room's id if necessary, then prefers the client's high-level request_room_key API and falls back to sending a manual to-device key request when the high-level call is not usable. All errors are logged and not raised to callers; the method returns None.
         """
         # Check if E2EE is enabled in config
-        e2ee_config = self.config.get("matrix", {}).get("e2ee", {})
-        e2ee_enabled = e2ee_config.get("enabled", False)
+        e2ee_enabled = config_e2ee_enabled(self.config)
 
         if not e2ee_enabled:
             # E2EE is disabled in config but we received an encrypted message
@@ -747,7 +757,9 @@ class BibleBot:
 
     def _split_text_into_chunks(self, text, max_length):
         """Split passage text according to the configured maximum length."""
-        return split_text_into_chunks(text, max_length=max_length)
+        return split_text_into_chunks(
+            text, max_length=max_length, preserve_lines=self.preserve_poetry_formatting
+        )
 
     def _trim_reference_for_suffix(self, reference, reserve_fallback_space=False):
         """Trim a reference to this bot's configured message-length budget."""
@@ -809,6 +821,7 @@ class BibleBot:
                     )
                 except (
                     aiohttp.ClientError,
+                    asyncio.TimeoutError,
                     LocalProtocolError,
                     RemoteProtocolError,
                     RemoteTransportError,
@@ -989,11 +1002,13 @@ class BibleBot:
 
 
 # Run bot
-async def main(config_path=DEFAULT_CONFIG_FILENAME, config=None):
+async def main(
+    config_path=DEFAULT_CONFIG_FILENAME, config=None, *, log_level: str | None = None
+):
     """
     Start and run the BibleBot: load configuration and environment, create and configure the Matrix client and BibleBot instance, register event handlers, perform startup checks, and run the bot's main sync loop until shutdown.
 
-    If `config` is None, the YAML configuration at `config_path` is loaded and validated. If `config` is provided, it is used as-is; `config_path` is still consulted for environment- and key-resolution. The routine establishes authentication (modern credentials flow when available, otherwise a legacy access-token/homeserver/user flow), configures optional end-to-end encryption (E2EE) and key upload, wires API keys into the bot, registers Matrix event callbacks, runs a non-fatal startup update check, and starts the bot. On termination it attempts orderly cleanup of bot resources and the Matrix client.
+    If `config` is None, the YAML configuration at `config_path` is loaded and validated. If `config` is provided, it is copied, normalized, and validated; `config_path` is still consulted for environment- and key-resolution. The routine establishes authentication (modern credentials flow when available, otherwise a legacy access-token/homeserver/user flow), configures optional end-to-end encryption (E2EE) and key upload, wires API keys into the bot, registers Matrix event callbacks, runs a non-fatal startup update check, and starts the bot. On termination it attempts orderly cleanup of bot resources and the Matrix client.
 
     Parameters:
         config_path (str): Path used to load configuration when `config` is not provided and for environment/key resolution when `config` is provided.
@@ -1003,9 +1018,6 @@ async def main(config_path=DEFAULT_CONFIG_FILENAME, config=None):
         RuntimeError: When configuration, credentials, or required legacy homeserver/user information are missing or invalid.
         asyncio.CancelledError: Re-raised if startup tasks are cancelled to preserve cancellation semantics.
     """
-    # Print startup banner
-    print_startup_banner()
-
     # Load config and environment variables (only if not already provided)
     if config is None:
         config = load_config(config_path)
@@ -1013,22 +1025,26 @@ async def main(config_path=DEFAULT_CONFIG_FILENAME, config=None):
             logger.error(f"Failed to load configuration from {config_path}")
             raise RuntimeError(f"Failed to load configuration from {config_path}")
 
+    result = normalize_config(config, source=str(config_path))
+    if not result.ok:
+        raise RuntimeError("; ".join(d.message for d in result.diagnostics))
+    config = result.config
+
     matrix_access_token, api_keys = load_environment(config, config_path)
     # Now config's ready — publish it to log_utils and wire up component loggers
     configure_logging(config)
+    get_logger(LOGGER_NAME, force=True)
+    if log_level is not None:
+        logger.setLevel(log_level.upper())
     configure_component_loggers()
+    print_startup_banner()
     creds = load_credentials()
 
-    # Determine E2EE configuration from config
-    matrix_section = (
-        config.get(CONFIG_KEY_MATRIX, {})
-        if isinstance(config.get(CONFIG_KEY_MATRIX), dict)
-        else {}
-    )
-    e2ee_cfg = (
-        matrix_section.get(CONFIG_MATRIX_E2EE) or matrix_section.get("encryption") or {}
-    )
-    e2ee_enabled = bool(e2ee_cfg.get("enabled", False))
+    e2ee_enabled = config_e2ee_enabled(config)
+    if e2ee_enabled and (not creds or not creds.device_id):
+        raise RuntimeError(
+            "E2EE requires saved credentials with a device ID; run 'biblebot auth login'"
+        )
 
     # Create AsyncClient with optional E2EE store
     client_config = AsyncClientConfig(
@@ -1041,6 +1057,7 @@ async def main(config_path=DEFAULT_CONFIG_FILENAME, config=None):
         client = AsyncClient(
             creds.homeserver,
             creds.user_id,
+            device_id=creds.device_id,
             store_path=str(get_store_dir()) if e2ee_enabled else None,
             config=client_config,
         )
@@ -1087,77 +1104,77 @@ async def main(config_path=DEFAULT_CONFIG_FILENAME, config=None):
             config=client_config,
         )
 
-    logger.info("Creating BibleBot instance")
-    bot = BibleBot(config, client)
-    bot.api_keys = api_keys
-
-    # Perform update check on startup
+    bot = None
     try:
-        await perform_startup_update_check()
-    except asyncio.CancelledError:
-        raise
-    except Exception:  # noqa: BLE001 - intentional guard to keep startup resilient
-        logger.debug("Startup update check failed", exc_info=True)
+        logger.info("Creating BibleBot instance")
+        bot = BibleBot(config, client)
+        bot.api_keys = api_keys
 
-    if creds:
-        logger.info("Using saved credentials.json for Matrix session")
-        if matrix_access_token:
-            logger.debug(
-                "Found credentials.json, ignoring legacy MATRIX_ACCESS_TOKEN environment variable."
+        # Perform update check on startup
+        try:
+            await perform_startup_update_check()
+        except asyncio.CancelledError:
+            raise
+        except Exception:  # noqa: BLE001 - intentional guard to keep startup resilient
+            logger.debug("Startup update check failed", exc_info=True)
+
+        if creds:
+            logger.info("Using saved credentials.json for Matrix session")
+            if matrix_access_token:
+                logger.debug(
+                    "Found credentials.json, ignoring legacy MATRIX_ACCESS_TOKEN environment variable."
+                )
+            client.restore_login(
+                user_id=creds.user_id,
+                device_id=creds.device_id,
+                access_token=creds.access_token,
             )
-        client.restore_login(
-            user_id=creds.user_id,
-            device_id=creds.device_id,
-            access_token=creds.access_token,
-        )
-    else:
-        if matrix_access_token:
-            logger.warning(
-                "⚠️  Using MATRIX_ACCESS_TOKEN environment variable. This is deprecated and does NOT support E2EE."
-            )
-            logger.warning(
-                "⚠️  Consider using 'biblebot auth login' for secure session-based authentication with E2EE support."
-            )
-            client.access_token = matrix_access_token
         else:
-            logger.error(ERROR_NO_CREDENTIALS_AND_TOKEN)
-            logger.error(ERROR_AUTH_INSTRUCTIONS)
-            raise RuntimeError("No credentials or access token found")
+            if matrix_access_token:
+                logger.warning(
+                    "⚠️  Using MATRIX_ACCESS_TOKEN environment variable. This is deprecated and does NOT support E2EE."
+                )
+                logger.warning(
+                    "⚠️  Consider using 'biblebot auth login' for secure session-based authentication with E2EE support."
+                )
+                client.access_token = matrix_access_token
+            else:
+                logger.error(ERROR_NO_CREDENTIALS_AND_TOKEN)
+                logger.error(ERROR_AUTH_INSTRUCTIONS)
+                raise RuntimeError("No credentials or access token found")
 
-    # If E2EE is enabled, ensure keys are uploaded
-    if e2ee_enabled:
-        try:
-            if client.should_upload_keys:
-                logger.info("Uploading encryption keys...")
-                await client.keys_upload()
-                logger.info("Encryption keys uploaded")
-        except (
-            LocalProtocolError,
-            RemoteProtocolError,
-            RemoteTransportError,
-            aiohttp.ClientError,
-        ):
-            logger.exception("Failed to upload E2EE keys")
+        # If E2EE is enabled, ensure keys are uploaded
+        if e2ee_enabled:
+            try:
+                if client.should_upload_keys:
+                    logger.info("Uploading encryption keys...")
+                    await client.keys_upload()
+                    logger.info("Encryption keys uploaded")
+            except (
+                LocalProtocolError,
+                RemoteProtocolError,
+                RemoteTransportError,
+                aiohttp.ClientError,
+            ):
+                logger.exception("Failed to upload E2EE keys")
 
-    # Register event handlers
-    logger.debug("Registering event handlers")
-    client.add_event_callback(bot.on_invite, InviteEvent)
-    client.add_event_callback(bot.on_room_message, RoomMessageText)
+        # Register event handlers
+        logger.debug("Registering event handlers")
+        client.add_event_callback(bot.on_invite, InviteEvent)
+        client.add_event_callback(bot.on_room_message, RoomMessageText)
 
-    # Register encrypted message handlers for E2EE rooms
-    if e2ee_enabled:
-        try:
-            # Handle decryption failures for encrypted messages
-            # Successfully decrypted messages are converted to RoomMessageText by nio.
-            client.add_event_callback(bot.on_decryption_failure, MegolmEvent)
-        except AttributeError:
-            logger.debug(
-                "E2EE callback registration not supported by this nio version",
-                exc_info=True,
-            )
+        # Register encrypted message handlers for E2EE rooms
+        if e2ee_enabled:
+            try:
+                # Handle decryption failures for encrypted messages
+                # Successfully decrypted messages are converted to RoomMessageText by nio.
+                client.add_event_callback(bot.on_decryption_failure, MegolmEvent)
+            except AttributeError:
+                logger.debug(
+                    "E2EE callback registration not supported by this nio version",
+                    exc_info=True,
+                )
 
-    # Start the bot
-    try:
         await bot.start()
     finally:
         try:

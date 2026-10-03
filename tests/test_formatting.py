@@ -69,3 +69,11 @@ def test_trim_reference_for_suffix_handles_boundary_budgets():
         )
         is None
     )
+
+
+def test_poetry_split_preserves_newlines_within_chunks():
+    chunks = split_text_into_chunks(
+        "first line\nsecond line\n\nlast line", max_length=24, preserve_lines=True
+    )
+    assert chunks == ["first line\nsecond line\n", "last line"]
+    assert all(len(chunk) <= 24 for chunk in chunks)

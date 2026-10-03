@@ -51,6 +51,7 @@ from biblebot.constants.messages import (
     SUCCESS_CONFIG_GENERATED,
 )
 from biblebot.log_utils import configure_logging, get_logger
+from biblebot.rooms import read_room_ids
 from biblebot.tools import copy_sample_config_to
 
 # Configure logging
@@ -433,7 +434,7 @@ Examples:
     parser.add_argument(
         CLI_ARG_LOG_LEVEL,
         choices=LOG_LEVELS,
-        default=DEFAULT_LOG_LEVEL,
+        default=None,
         help=CLI_HELP_LOG_LEVEL.format(DEFAULT_LOG_LEVEL),
     )
     parser.add_argument(
@@ -645,7 +646,7 @@ def main():
     args = parser.parse_args()
 
     # Set up logging
-    log_level = getattr(logging, args.log_level.upper())
+    log_level = getattr(logging, (args.log_level or DEFAULT_LOG_LEVEL).upper())
     configure_logging(None)
     get_logger(LOGGER_NAME, force=True).setLevel(log_level)
 
@@ -662,9 +663,7 @@ def main():
             try:
                 print("✓ Configuration file is valid")
                 print(f"  Config file: {args.config}")
-                rooms = (config.get("matrix", {}) or {}).get("room_ids") or config.get(
-                    "matrix_room_ids", []
-                )
+                rooms = read_room_ids(config)
                 print(f"  Matrix rooms: {len(rooms or [])}")
                 from biblebot.bot import load_environment
 
@@ -699,7 +698,8 @@ def main():
         if args.service_action == CMD_INSTALL:
             from biblebot.setup_utils import install_service
 
-            install_service()
+            if not install_service():
+                sys.exit(1)
             return
         else:
             service_parser.print_help()
@@ -731,7 +731,10 @@ def main():
 
     # Run the bot
     try:
-        run_async(bot_main(args.config))
+        if args.log_level is None:
+            run_async(bot_main(args.config))
+        else:
+            run_async(bot_main(args.config, log_level=args.log_level))
     except KeyboardInterrupt:
         logging.info("Bot stopped by user")
     except FileNotFoundError:

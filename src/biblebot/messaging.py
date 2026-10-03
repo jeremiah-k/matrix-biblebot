@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import html
+import math
 import random
 from typing import Final, Literal
 
@@ -64,10 +65,16 @@ def response_retry_delay_seconds(
     Uses the server-provided ``retry_after_ms`` hint when present, falling
     back to the configured default; grows exponentially with ``attempt``.
     """
+    if attempt < 0:
+        raise ValueError("Retry attempt must be non-negative")
     retry_ms = getattr(response, "retry_after_ms", None)
-    if not retry_ms:
+    try:
+        retry_ms = float(retry_ms)
+    except (TypeError, ValueError, OverflowError):
         retry_ms = DEFAULT_RETRY_AFTER_MS
-    base_delay = int(retry_ms) / 1000.0 * (2**attempt)
+    if not math.isfinite(retry_ms) or retry_ms <= 0:
+        retry_ms = DEFAULT_RETRY_AFTER_MS
+    base_delay = retry_ms / 1000.0 * (2**attempt)
     return base_delay * rng(0.8, 1.2)
 
 
