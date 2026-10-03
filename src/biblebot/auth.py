@@ -17,7 +17,7 @@ import os
 import shutil
 import ssl
 import tempfile
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Optional
 from urllib.parse import urlparse
@@ -144,7 +144,7 @@ def _create_ssl_context():
 class Credentials:
     homeserver: str
     user_id: str
-    access_token: str
+    access_token: str = field(repr=False)
     device_id: Optional[str] = None
 
     def to_dict(self) -> dict:
@@ -235,76 +235,28 @@ def credentials_path() -> Path:
 
 
 def save_credentials(creds: Credentials) -> None:
-    """
-    Persist a Credentials object to the configured credentials file atomically.
+    """Atomically persist credentials, raising OSError if persistence fails.
 
-    The credentials are serialized to JSON and written to a temporary file in the same
-    directory before being atomically moved into place. File permissions are set to
-    the configured credentials-file mode. On failure the temporary file is removed
-    when possible; errors are logged but not raised.
-
-    Parameters:
-        creds (Credentials): Credentials to serialize and save.
+    The temporary file lives beside the destination, has owner-only
+    permissions, and is removed on every failed write or replacement.
+    Callers must not report a successful login until this returns.
     """
     path = credentials_path()
-
-    data = json.dumps(creds.to_dict(), indent=2)
-    tmp = None
-    tmp_name = None
+    tmp_path: Path | None = None
     try:
-        # Create a temporary file in the same directory to ensure `os.replace` is atomic.
-        tmp = tempfile.NamedTemporaryFile(
-            "w", dir=str(path.parent), delete=False, encoding=FILE_ENCODING_UTF8
-        )
-        tmp.write(data)
-        tmp.flush()
-        os.fsync(tmp.fileno())
-        tmp_name = tmp.name
+        with tempfile.NamedTemporaryFile(
+            "w", dir=path.parent, delete=False, encoding=FILE_ENCODING_UTF8
+        ) as stream:
+            tmp_path = Path(stream.name)
+            os.chmod(tmp_path, CREDENTIALS_FILE_PERMISSIONS)
+            json.dump(creds.to_dict(), stream, indent=2)
+            stream.flush()
+            os.fsync(stream.fileno())
+        os.replace(tmp_path, path)
     finally:
-        if tmp:
-            tmp.close()
-
-    if not tmp_name:
-        logger.error(
-            "Failed to create temporary file for credentials. "
-            "Possible causes: insufficient disk space, permission issues, "
-            f"or directory {path.parent} is not writable."
-        )
-        return
-
-    try:
-        os.chmod(tmp_name, CREDENTIALS_FILE_PERMISSIONS)
-        # Verify both files are on the same filesystem before using os.replace
-        tmp_stat = os.stat(tmp_name)
-        try:
-            dest_stat = os.stat(path.parent)
-            same_filesystem = tmp_stat.st_dev == dest_stat.st_dev
-        except OSError:
-            # Parent directory might not exist or be accessible, assume same filesystem
-            same_filesystem = True
-
-        if same_filesystem:
-            os.replace(tmp_name, path)
-        else:
-            # Cross-filesystem move - use copy and delete
-            logger.debug("Cross-filesystem move detected, using copy+delete fallback")
-            import shutil
-
-            shutil.copy2(tmp_name, path)
-            os.unlink(tmp_name)
-
-        logger.info(f"Saved credentials to {path}")
-    except OSError:
-        logger.exception(
-            f"Failed to save credentials to {path}. "
-            "Possible causes: insufficient permissions, disk full, "
-            "filesystem issues, or cross-filesystem move attempted."
-        )
-        # On failure, clean up the temporary file.
-        try:
-            os.unlink(tmp_name)
-        except OSError as cleanup_error:
-            logger.debug(f"Failed to clean up temp file: {cleanup_error}")
+        if tmp_path is not None:
+            tmp_path.unlink(missing_ok=True)
+    logger.info("Saved credentials to %s", path)
 
 
 def load_credentials() -> Optional[Credentials]:
@@ -320,8 +272,20 @@ def load_credentials() -> Optional[Credentials]:
     try:
         text = path.read_text(encoding=FILE_ENCODING_UTF8)
         data = json.loads(text)
-        return Credentials.from_dict(data)
-    except (OSError, json.JSONDecodeError):
+        if not isinstance(data, dict):
+            raise ValueError("Credentials must be a JSON object")
+        creds = Credentials.from_dict(data)
+        required = (creds.homeserver, creds.user_id, creds.access_token)
+        if any(not isinstance(value, str) or not value.strip() for value in required):
+            raise ValueError(
+                "Credentials require non-empty homeserver, user ID, and token"
+            )
+        if creds.device_id is not None and (
+            not isinstance(creds.device_id, str) or not creds.device_id.strip()
+        ):
+            raise ValueError("Device ID must be a non-empty string when present")
+        return creds
+    except (OSError, ValueError):
         logger.exception(f"Failed to read credentials from {path}")
         return None
 
@@ -475,8 +439,8 @@ def print_e2ee_status():
 
     if not status[E2EE_KEY_AVAILABLE] and status[E2EE_KEY_PLATFORM_SUPPORTED]:
         print("\n  To enable encryption:")
-        print('    pip install ".[e2e]"  # preferred')
-        print("    # or: pip install -r requirements-e2e.txt")
+        print('    pipx install --force "matrix-biblebot[e2e]"')
+        print('    # or: uv tool install --reinstall "matrix-biblebot[e2e]"')
         print("    biblebot auth login  # Re-login to enable encryption")
 
     print()
@@ -657,8 +621,10 @@ async def interactive_login(
 
     # Attempt server discovery to normalize homeserver URL
     original_hs = hs
-    discovered_hs = await discover_homeserver(temp_client, hs)
-    await temp_client.close()
+    try:
+        discovered_hs = await discover_homeserver(temp_client, hs)
+    finally:
+        await temp_client.close()
 
     logger.info(f"Server discovery: {original_hs} -> {discovered_hs}")
 
@@ -812,13 +778,15 @@ async def interactive_logout() -> bool:
             except Exception:
                 logger.debug("Failed to close client during logout", exc_info=True)
 
-    # Remove credentials.json
+    # Local cleanup determines success, even if remote logout was unavailable.
+    cleanup_ok = True
     try:
         p = credentials_path()
         if p.exists():
             p.unlink()
             logger.info(f"Removed {p}")
     except OSError:
+        cleanup_ok = False
         logger.warning("Failed to remove credentials.json", exc_info=True)
 
     # Remove E2EE store dir
@@ -828,6 +796,7 @@ async def interactive_logout() -> bool:
             shutil.rmtree(store)
             logger.info(f"Cleared E2EE store at {store}")
         except OSError:
+            cleanup_ok = False
             logger.exception(f"Failed to remove E2EE store at {store}")
 
-    return True
+    return cleanup_ok

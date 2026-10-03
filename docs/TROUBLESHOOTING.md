@@ -20,6 +20,13 @@ biblebot auth login
 - Legacy access tokens are deprecated and don't support E2EE
 - Use the modern authentication flow for best security
 
+### Credentials cannot be saved
+
+Login succeeds only after the session is written to disk. If persistence fails,
+check available space and write permissions on the runtime home. The previous
+credentials file is retained when replacement fails. Logout returns a failure
+status when local credentials or the encryption store cannot be removed.
+
 ### Login Fails with "Invalid credentials"
 
 **Problem:** `biblebot auth login` fails with authentication error.
