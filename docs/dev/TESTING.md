@@ -116,6 +116,11 @@ Use temporary runtime homes and monkeypatch environment settings. Avoid
 writing to a real credentials file or crypto store. Copy nested config
 fixtures before mutating them. The shared cache is cleared between tests.
 
+Lifecycle fixtures stub the startup release check automatically. Update-check
+tests use the real update orchestration with explicit HTTP doubles. Keep
+external services behind those doubles so unit tests are independent of GitHub
+availability and network transport teardown timing.
+
 `pytest-asyncio` owns each test's event loop. A test that calls `BibleBot.start`
 must close the bot's HTTP session in a `finally` block. Set `sync_forever` to a
 finite async double so a startup test can finish.
