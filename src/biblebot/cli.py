@@ -51,6 +51,7 @@ from biblebot.constants.messages import (
     SUCCESS_CONFIG_GENERATED,
 )
 from biblebot.log_utils import configure_logging, get_logger
+from biblebot.rooms import read_room_ids
 from biblebot.tools import copy_sample_config_to
 
 # Configure logging
@@ -662,9 +663,7 @@ def main():
             try:
                 print("✓ Configuration file is valid")
                 print(f"  Config file: {args.config}")
-                rooms = (config.get("matrix", {}) or {}).get("room_ids") or config.get(
-                    "matrix_room_ids", []
-                )
+                rooms = read_room_ids(config)
                 print(f"  Matrix rooms: {len(rooms or [])}")
                 from biblebot.bot import load_environment
 

@@ -655,3 +655,11 @@ class TestMessageTruncation:
             assert "..." in content["body"]
             assert len(content["body"]) <= 50
             assert "John 3:16" in content["body"]  # Reference should still be included
+
+
+def test_direct_bot_constructor_rejects_limit_smaller_than_mandatory_suffix():
+    bot = BibleBot(
+        {"matrix_room_ids": ["!room:server"], "bot": {"max_message_length": 1}},
+        client=MagicMock(),
+    )
+    assert bot.max_message_length == 2000

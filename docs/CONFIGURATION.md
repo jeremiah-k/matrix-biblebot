@@ -188,7 +188,7 @@ Control how long messages are handled:
 
 ```yaml
 bot:
-  max_message_length: 2000 # Maximum single message length
+  max_message_length: 2000 # Maximum single message length; minimum 9 characters
   split_message_length: 1000 # Split messages longer than this (0 = disabled)
 ```
 
@@ -384,13 +384,18 @@ Check your configuration:
 biblebot config check
 ```
 
-This validates:
+This checks YAML syntax, mapping sections, a non-empty list of Matrix room IDs
+or aliases, supported default translations, boolean flags, integer message
+lengths, API-key types, and logging settings. Optional null sections use defaults.
+Nested room settings take precedence over legacy keys, including when the list
+is empty; duplicate rooms are removed while preserving order. The legacy
+`matrix.encryption` spelling is accepted when `matrix.e2ee` is absent.
 
-- YAML syntax
-- Required fields
-- Room ID formats
-- API key presence
-- E2EE configuration
+Quoted strings such as `enabled: "false"` are rejected: use `enabled: false`.
+Invalid settings produce a diagnostic code and exit status 1 before startup.
+The check reports how many API keys are configured and whether encryption
+dependencies are installed. It does not contact Matrix or validate an API key
+against the upstream provider.
 
 ## Migration from Legacy Setup
 

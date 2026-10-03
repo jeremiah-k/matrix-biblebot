@@ -39,7 +39,8 @@ from nio import (
 )
 
 from biblebot.auth import get_store_dir, load_credentials
-from biblebot.config import load_config_file
+from biblebot.config import e2ee_enabled as config_e2ee_enabled
+from biblebot.config import load_config_file, normalize_config
 from biblebot.constants.api import (
     API_REQUEST_TIMEOUT_SEC,
 )
@@ -50,7 +51,6 @@ from biblebot.constants.bible import (
 )
 from biblebot.constants.config import (
     CONFIG_KEY_MATRIX,
-    CONFIG_MATRIX_E2EE,
     CONFIG_MATRIX_ROOM_IDS,
     CONFIG_PRESERVE_POETRY_FORMATTING,
     DEFAULT_CONFIG_FILENAME,
@@ -76,6 +76,7 @@ from biblebot.constants.messages import (
     INFO_NO_ENV_FILE,
     INFO_RESOLVED_ALIAS,
     MESSAGE_SUFFIX,
+    MIN_MESSAGE_LENGTH,
     REACTION_OK,
     TRUNCATION_INDICATOR,
     WARN_COULD_NOT_RESOLVE_ALIAS,
@@ -146,8 +147,7 @@ def load_config(config_file, log_loading=True):
 
     Returns:
         dict | None: Parsed configuration dictionary on success; None if the file
-        cannot be read, contains invalid YAML, or fails validation (missing or
-        non-list room IDs).
+        cannot be read, contains invalid YAML, or fails schema validation.
     """
     result = load_config_file(config_file)
     if not result.ok:
@@ -269,12 +269,19 @@ class BibleBot:
         )
 
         # Bot configuration settings with defaults
-        bot_settings = config.get("bot", {}) if isinstance(config, dict) else {}
+        bot_settings = (config.get("bot") or {}) if isinstance(config, dict) else {}
+        if not isinstance(bot_settings, dict):
+            bot_settings = {}
         self.default_translation = bot_settings.get(
             "default_translation", DEFAULT_TRANSLATION
         )
         self.cache_enabled = bot_settings.get("cache_enabled", True)
-        self.max_message_length = bot_settings.get("max_message_length", 2000)
+        raw_max_len = bot_settings.get("max_message_length", 2000)
+        try:
+            self.max_message_length = int(raw_max_len)
+        except (TypeError, ValueError, OverflowError):
+            logger.warning("Invalid max_message_length type; using default 2000")
+            self.max_message_length = 2000
         self.preserve_poetry_formatting = bot_settings.get(
             CONFIG_PRESERVE_POETRY_FORMATTING, False
         )
@@ -289,7 +296,7 @@ class BibleBot:
             self.split_message_length = 0
 
         # Validate settings
-        if self.max_message_length <= 0:
+        if self.max_message_length < MIN_MESSAGE_LENGTH:
             logger.warning(
                 f"Invalid max_message_length: {self.max_message_length}, using default 2000"
             )
@@ -558,8 +565,7 @@ class BibleBot:
         When an encrypted event cannot be decrypted, attempt to recover by requesting the room key from the sender. The method sets event.room_id to the room's id if necessary, then prefers the client's high-level request_room_key API and falls back to sending a manual to-device key request when the high-level call is not usable. All errors are logged and not raised to callers; the method returns None.
         """
         # Check if E2EE is enabled in config
-        e2ee_config = self.config.get("matrix", {}).get("e2ee", {})
-        e2ee_enabled = e2ee_config.get("enabled", False)
+        e2ee_enabled = config_e2ee_enabled(self.config)
 
         if not e2ee_enabled:
             # E2EE is disabled in config but we received an encrypted message
@@ -993,7 +999,7 @@ async def main(config_path=DEFAULT_CONFIG_FILENAME, config=None):
     """
     Start and run the BibleBot: load configuration and environment, create and configure the Matrix client and BibleBot instance, register event handlers, perform startup checks, and run the bot's main sync loop until shutdown.
 
-    If `config` is None, the YAML configuration at `config_path` is loaded and validated. If `config` is provided, it is used as-is; `config_path` is still consulted for environment- and key-resolution. The routine establishes authentication (modern credentials flow when available, otherwise a legacy access-token/homeserver/user flow), configures optional end-to-end encryption (E2EE) and key upload, wires API keys into the bot, registers Matrix event callbacks, runs a non-fatal startup update check, and starts the bot. On termination it attempts orderly cleanup of bot resources and the Matrix client.
+    If `config` is None, the YAML configuration at `config_path` is loaded and validated. If `config` is provided, it is copied, normalized, and validated; `config_path` is still consulted for environment- and key-resolution. The routine establishes authentication (modern credentials flow when available, otherwise a legacy access-token/homeserver/user flow), configures optional end-to-end encryption (E2EE) and key upload, wires API keys into the bot, registers Matrix event callbacks, runs a non-fatal startup update check, and starts the bot. On termination it attempts orderly cleanup of bot resources and the Matrix client.
 
     Parameters:
         config_path (str): Path used to load configuration when `config` is not provided and for environment/key resolution when `config` is provided.
@@ -1013,22 +1019,22 @@ async def main(config_path=DEFAULT_CONFIG_FILENAME, config=None):
             logger.error(f"Failed to load configuration from {config_path}")
             raise RuntimeError(f"Failed to load configuration from {config_path}")
 
+    result = normalize_config(config, source=str(config_path))
+    if not result.ok:
+        raise RuntimeError("; ".join(d.message for d in result.diagnostics))
+    config = result.config
+
     matrix_access_token, api_keys = load_environment(config, config_path)
     # Now config's ready — publish it to log_utils and wire up component loggers
     configure_logging(config)
     configure_component_loggers()
     creds = load_credentials()
 
-    # Determine E2EE configuration from config
-    matrix_section = (
-        config.get(CONFIG_KEY_MATRIX, {})
-        if isinstance(config.get(CONFIG_KEY_MATRIX), dict)
-        else {}
-    )
-    e2ee_cfg = (
-        matrix_section.get(CONFIG_MATRIX_E2EE) or matrix_section.get("encryption") or {}
-    )
-    e2ee_enabled = bool(e2ee_cfg.get("enabled", False))
+    e2ee_enabled = config_e2ee_enabled(config)
+    if e2ee_enabled and (not creds or not creds.device_id):
+        raise RuntimeError(
+            "E2EE requires saved credentials with a device ID; run 'biblebot auth login'"
+        )
 
     # Create AsyncClient with optional E2EE store
     client_config = AsyncClientConfig(
