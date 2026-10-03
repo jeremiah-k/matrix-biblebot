@@ -753,7 +753,9 @@ class BibleBot:
 
     def _split_text_into_chunks(self, text, max_length):
         """Split passage text according to the configured maximum length."""
-        return split_text_into_chunks(text, max_length=max_length)
+        return split_text_into_chunks(
+            text, max_length=max_length, preserve_lines=self.preserve_poetry_formatting
+        )
 
     def _trim_reference_for_suffix(self, reference, reserve_fallback_space=False):
         """Trim a reference to this bot's configured message-length budget."""

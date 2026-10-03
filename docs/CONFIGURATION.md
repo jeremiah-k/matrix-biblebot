@@ -212,7 +212,7 @@ bot:
 
 When enabled:
 
-- Preserves line breaks in Psalms, Proverbs, etc.
+- Preserves line breaks within each message, including when passages are split
 - Cleans up excess whitespace
 - Converts to HTML `<br />` tags in formatted messages
 
