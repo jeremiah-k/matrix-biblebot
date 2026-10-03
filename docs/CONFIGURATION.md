@@ -65,7 +65,7 @@ matrix:
 
 - **Room IDs** (starting with `!`) are permanent identifiers
 - **Room aliases** (starting with `#`) are human-readable names that resolve to room IDs
-- The bot automatically resolves aliases to room IDs at startup
+- The bot resolves aliases to room IDs at startup and uses those IDs for joining and accepting messages
 - Use either format in your configuration
 
 **Finding Room IDs:**

@@ -59,3 +59,45 @@ def test_merge_resolved_entries_drops_non_string_entries():
     merged = merge_resolved_entries(["!abc:example.org"], [None, 1, "!abc:example.org"])
 
     assert merged == ["!abc:example.org"]
+
+
+async def test_alias_resolution_updates_join_list_and_message_admission():
+    from types import SimpleNamespace
+    from unittest.mock import AsyncMock, MagicMock
+
+    from biblebot.bot import BibleBot
+
+    client = MagicMock()
+    client.rooms = {}
+    client.room_resolve_alias = AsyncMock(
+        return_value=SimpleNamespace(room_id="!resolved:server")
+    )
+    client.join = AsyncMock(return_value=SimpleNamespace(room_id="!resolved:server"))
+    config = {
+        "matrix": {"room_ids": ["#alias:server", "!resolved:server"]},
+        "matrix_room_ids": ["#stale:server"],
+    }
+    bot = BibleBot(config, client)
+    await bot.resolve_aliases()
+    await bot.ensure_joined_rooms()
+    assert config["matrix"]["room_ids"] == ["!resolved:server"]
+    assert config["matrix_room_ids"] == ["!resolved:server"]
+    assert bot._room_id_set == {"!resolved:server"}
+    client.room_resolve_alias.assert_awaited_once_with("#alias:server")
+    client.join.assert_awaited_once_with("!resolved:server")
+
+
+async def test_failed_alias_resolution_retains_entry_for_retry():
+    from types import SimpleNamespace
+    from unittest.mock import AsyncMock, MagicMock
+
+    from biblebot.bot import BibleBot
+
+    client = MagicMock()
+    client.room_resolve_alias = AsyncMock(
+        return_value=SimpleNamespace(message="not found")
+    )
+    bot = BibleBot({"matrix": {"room_ids": ["#alias:server"]}}, client)
+    await bot.resolve_aliases()
+    assert bot.config["matrix_room_ids"] == ["#alias:server"]
+    assert bot._room_id_set == set()

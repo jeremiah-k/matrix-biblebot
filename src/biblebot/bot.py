@@ -35,7 +35,6 @@ from nio import (
     RemoteProtocolError,
     RemoteTransportError,
     RoomMessageText,
-    RoomResolveAliasError,
 )
 
 from biblebot.auth import get_store_dir, load_credentials
@@ -390,28 +389,31 @@ class BibleBot:
             if is_alias(entry):
                 try:
                     resp = await self.client.room_resolve_alias(entry)
-                    if hasattr(resp, "room_id"):
+                    if isinstance(getattr(resp, "room_id", None), str) and resp.room_id:
                         resolved_ids.append(resp.room_id)
                         logger.info(INFO_RESOLVED_ALIAS.format(entry, resp.room_id))
                     else:
+                        resolved_ids.append(entry)
                         logger.warning(f"{WARN_COULD_NOT_RESOLVE_ALIAS}: {entry}")
-                except RoomResolveAliasError:
+                except (
+                    LocalProtocolError,
+                    RemoteProtocolError,
+                    RemoteTransportError,
+                    aiohttp.ClientError,
+                    asyncio.TimeoutError,
+                ):
+                    resolved_ids.append(entry)
                     logger.warning(
-                        f"{WARN_COULD_NOT_RESOLVE_ALIAS} (exception): {entry}"
+                        "%s: %s", WARN_COULD_NOT_RESOLVE_ALIAS, entry, exc_info=True
                     )
             else:
                 resolved_ids.append(entry)
-        # Update configuration with resolved IDs (support both schemas)
-        # This deduplicates room IDs and replaces aliases with their resolved room IDs
-        # to avoid duplicate joins and ensure we're working with canonical room IDs
-        unique_ids = merge_resolved_entries(room_ids, resolved_ids)
-        if (
-            CONFIG_KEY_MATRIX in self.config
-            and "room_ids" in self.config[CONFIG_KEY_MATRIX]
-        ):
-            self.config[CONFIG_KEY_MATRIX]["room_ids"] = unique_ids
-        else:
-            self.config[CONFIG_MATRIX_ROOM_IDS] = unique_ids
+        unique_ids = merge_resolved_entries([], resolved_ids)
+        self.config[CONFIG_MATRIX_ROOM_IDS] = unique_ids
+        matrix = self.config.get(CONFIG_KEY_MATRIX)
+        if isinstance(matrix, dict):
+            matrix["room_ids"] = unique_ids
+        self._room_id_set = {room for room in unique_ids if not is_alias(room)}
 
     async def join_matrix_room(self, room_id_or_alias):
         """
@@ -425,11 +427,7 @@ class BibleBot:
         # Skip placeholder room IDs from sample config to prevent attempting to join
         # non-existent rooms that are just examples in the configuration template
         # This occurs when users haven't updated their config.yaml from the sample
-        if (
-            room_id_or_alias.startswith("!your_room_id:")
-            or room_id_or_alias.endswith(":your_homeserver_domain")
-            or is_placeholder_room_id(room_id_or_alias)
-        ):
+        if is_placeholder_room_id(room_id_or_alias):
             logger.debug(f"Skipping placeholder room ID: {room_id_or_alias}")
             return
 
@@ -443,6 +441,7 @@ class BibleBot:
                     )
                     return
                 room_id = response.room_id
+                self._room_id_set.add(room_id)
             else:
                 room_id = room_id_or_alias
 
@@ -463,7 +462,6 @@ class BibleBot:
             RemoteProtocolError,
             RemoteTransportError,
             aiohttp.ClientError,
-            RoomResolveAliasError,
             asyncio.TimeoutError,
         ):
             logger.exception(f"Error joining room '{room_id_or_alias}'")
@@ -473,7 +471,7 @@ class BibleBot:
         On startup, join all rooms in config if not already joined.
         Uses the join_matrix_room method for each room.
         """
-        for room_id in self.config[CONFIG_MATRIX_ROOM_IDS]:
+        for room_id in read_room_ids(self.config):
             await self.join_matrix_room(room_id)
 
     async def start(self):
@@ -513,7 +511,9 @@ class BibleBot:
                 logger.exception("Failed to create HTTP session")
                 raise
         await self.resolve_aliases()  # Support for aliases in config
-        self._room_id_set = set(self.config[CONFIG_MATRIX_ROOM_IDS])
+        self._room_id_set = {
+            room for room in read_room_ids(self.config) if not is_alias(room)
+        }
         await self.ensure_joined_rooms()  # Ensure bot is in all configured rooms
 
         logger.info("Performing initial sync...")
