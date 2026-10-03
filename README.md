@@ -1,272 +1,152 @@
 # Matrix BibleBot
 
-A Matrix bot that fetches Bible verses and shares them in chat rooms. Simply send a Bible reference like "John 3:16" as a message and the bot will respond with the verse text.
+A Matrix bot that replies to Bible references such as `John 3:16` or
+`Psalm 23`. KJV is the default; ESV requires an [ESV API key](https://api.esv.org/).
+The bot responds when the whole message is a reference, supports encrypted
+rooms with the optional E2EE extra, and can split long passages.
 
-## What it does
+## Install and run
 
-**Input:** `John 3:16 esv`
-**Output:**
-
-> For God so loved the world, that he gave his only Son, that whoever believes in him should not perish but have eternal life. - John 3:16 🕊️✝️
-
-The bot supports both KJV (default) and ESV translations, works in encrypted rooms, and can split long passages into multiple messages.
-
-## Quick Start
-
-1. **Install the bot**
-
-   ```bash
-   pipx install matrix-biblebot
-   ```
-
-2. **Authenticate with Matrix**
-
-   ```bash
-   biblebot auth login
-   ```
-
-3. **Generate and edit config**
-
-   ```bash
-   biblebot config generate
-   ```
-
-   Then edit `~/.config/matrix-biblebot/config.yaml` to add your room IDs.
-
-4. **Run the bot**
-
-   ```bash
-   biblebot
-   ```
-
-5. **Invite the bot to your Matrix rooms** and start sending Bible references!
-
-## Features
-
-- 📖 **Bible Translations**: KJV (default) and ESV support
-- 🔒 **End-to-End Encryption**: Works in encrypted Matrix rooms
-- ✂️ **Smart Message Splitting**: Long passages split intelligently
-- 🚀 **Production Ready**: Rate limiting, error handling, systemd service
-- 🎯 **Direct-Only Triggers**: Responds only when the entire message is a scripture reference
-
-## Installation
-
-### Recommended: pipx
+Python 3.12 or newer is required. Install an isolated application with pipx:
 
 ```bash
-# Basic installation
-pipx install matrix-biblebot
-
-# With end-to-end encryption support
 pipx install 'matrix-biblebot[e2e]'
-# Windows PowerShell: pipx install "matrix-biblebot[e2e]"
+biblebot config generate
 ```
 
-### Alternative: pip
+Edit `~/.config/matrix-biblebot/config.yaml` and replace the sample room IDs
+with your rooms. For encrypted rooms, set `matrix.e2ee.enabled: true`. Invite
+the bot account, then authenticate, check the config, and start:
 
 ```bash
-pip install matrix-biblebot
-# or with E2EE support
-pip install 'matrix-biblebot[e2e]'
-# Windows PowerShell: pip install "matrix-biblebot[e2e]"
+biblebot auth login
+biblebot config check
+biblebot
 ```
 
-### From Source
+For unencrypted rooms, `pipx install matrix-biblebot` is sufficient. On
+PowerShell, use double quotes around packages with extras. Upgrade with
+`pipx upgrade matrix-biblebot`.
+
+[uv](https://docs.astral.sh/uv/) also supports isolated application installs:
+
+```bash
+uv tool install 'matrix-biblebot[e2e]'
+uv tool upgrade matrix-biblebot
+```
+
+Pip remains supported inside a virtual environment:
+
+```bash
+python -m pip install 'matrix-biblebot[e2e]'
+```
+
+### Docker
+
+The repository includes Make and Compose workflows for the published
+`ghcr.io/jeremiah-k/matrix-biblebot` image. From a clone:
+
+```bash
+make setup
+# Edit ~/.config/matrix-biblebot/config.yaml.
+make config-check
+make auth-login
+make run
+make logs
+```
+
+The container runs without root and keeps config, credentials, encryption
+keys, and logs under `/data`. `make use-source` and `make build` select a local
+build. See [Docker deployment](docs/DOCKER.md) for host paths, ownership, and
+upgrades.
+
+### Develop from source
 
 ```bash
 git clone https://github.com/jeremiah-k/matrix-biblebot.git
 cd matrix-biblebot
-pip install '.[e2e]'  # Includes E2EE support
+uv sync --locked --extra test --extra e2e
+uv run --locked --no-sync biblebot --version
+uv run --locked --no-sync pytest
 ```
 
-## Usage
+uv manages the checkout's `.venv` and installs dependencies from `uv.lock`.
+See [Development](docs/DEVELOPMENT.md) for a separate runtime home, editors,
+dependency updates, and package checks.
 
-### Supported Reference Formats
+## References
 
-The bot understands various Bible reference formats:
+| Message         | Result                       |
+| --------------- | ---------------------------- |
+| `John 3:16`     | One verse in KJV.            |
+| `1 Cor 15:1-4`  | A verse range.               |
+| `Psalm 23`      | A whole chapter.             |
+| `John 3:16 esv` | ESV, using a configured key. |
+| `jn 3:16`       | An abbreviated book name.    |
 
-| Format               | Example                 | Description                  |
-| -------------------- | ----------------------- | ---------------------------- |
-| **Single verse**     | `John 3:16`             | Gets one verse (KJV default) |
-| **Verse range**      | `1 Cor 15:1-4`          | Gets multiple verses         |
-| **Whole chapter**    | `Psalm 23`              | Gets entire chapter          |
-| **With translation** | `John 3:16 esv`         | Specify ESV or KJV           |
-| **Abbreviations**    | `jn 3:16`, `1co 15:1-4` | Short book names work        |
+Embedded references (`I like John 3:16`), command prefixes, and mentions do
+not trigger replies. Configure room IDs or aliases, translation defaults,
+message splitting, and poetry formatting in the
+[configuration guide](docs/CONFIGURATION.md).
 
-### Supported Translations
+## Commands
 
-- **KJV (King James Version)** - Default, no setup required
-- **ESV (English Standard Version)** - Requires free API key from [api.esv.org](https://api.esv.org/)
+| Command                      | Purpose                                            |
+| ---------------------------- | -------------------------------------------------- |
+| `biblebot config generate`   | Create a sample configuration.                     |
+| `biblebot config check`      | Check settings and dependency availability.        |
+| `biblebot auth login`        | Save a Matrix session.                             |
+| `biblebot auth status`       | Inspect authentication and E2EE readiness.         |
+| `biblebot auth logout`       | Remove credentials and the encryption store.       |
+| `biblebot auth cross-sign`   | Refresh a BibleBot-managed cross-signing identity. |
+| `biblebot service install`   | Install or update a systemd user service on Linux. |
+| `biblebot --log-level debug` | Start with debug logging.                          |
 
-### Book Abbreviations
+Global options go before the command: `biblebot --config /path/config.yaml config check`.
+`--config` selects the YAML file. Set `BIBLEBOT_HOME` for every command when
+you want to relocate credentials and encryption state together.
 
-The bot recognizes many abbreviations: `gen` (Genesis), `exo` (Exodus), `matt` (Matthew), `jn` (John), `1co` (1 Corinthians), `rev` (Revelation), and many more. See [full list](docs/CONFIGURATION.md#book-abbreviations).
-
-### Reference Detection
-
-The bot responds only when a message is **entirely** a scripture reference.
-
-| Should trigger   | Example           |
-| ---------------- | ----------------- |
-| Single verse     | `John 3:16`       |
-| Verse range      | `1 Cor 15:1-4`    |
-| Whole chapter    | `Psalm 23`        |
-| With translation | `Romans 8:28 ESV` |
-
-| Should NOT trigger | Example            |
-| ------------------ | ------------------ |
-| Prefix command     | `!bible John 3:16` |
-| Mention            | `@bot Psalm 23`    |
-| Embedded in text   | `I like John 3:16` |
-
-### Bot Response
-
-When you send a Bible reference, the bot will:
-
-1. Add a ✅ reaction to your message
-2. Reply with the verse text formatted like: `"Verse text - Reference 🕊️✝️"`
-
-## Configuration
-
-### Basic Setup
-
-1. **Authenticate with Matrix**
-
-   ```bash
-   biblebot auth login
-   ```
-
-2. **Generate configuration file**
-
-   ```bash
-   biblebot config generate
-   ```
-
-3. **Edit the config file** at `~/.config/matrix-biblebot/config.yaml`:
-
-   ```yaml
-   matrix:
-     room_ids:
-       - "!your_room_id:your_homeserver_domain"
-       - "#room_alias:your_homeserver_domain" # Aliases work too
-   ```
-
-4. **Run the bot**
-   ```bash
-   biblebot
-   ```
-
-### Advanced Configuration
-
-For detailed configuration options including:
-
-- End-to-end encryption setup
-- Message splitting configuration
-- API key configuration for ESV
-- Poetry formatting options
-- Custom file locations
-
-See the [Configuration Guide](docs/CONFIGURATION.md).
-
-### Docker
-
-The published image runs as a non-root user on amd64 and arm64 and keeps
-configuration, credentials, and E2EE state under `/data`.
+A systemd service can be managed with:
 
 ```bash
-make setup
-# Edit ~/.config/matrix-biblebot/config.yaml, then:
-make auth-login
-make run
+systemctl --user start biblebot.service
+systemctl --user stop biblebot.service
+systemctl --user status biblebot.service
 ```
 
-Use `make use-source && make build` to build locally instead of pulling the
-published image. See the [Docker guide](docs/DOCKER.md) for Compose, custom
-runtime paths, and direct Docker commands.
+The installer offers service enablement and lingering; startup at boot
+depends on the choices made during installation.
 
-## Running as a Service
+## Encryption and cross-signing
 
-For production use on Linux, install as a systemd user service:
+Install the `e2e` extra, enable encryption in config, and use saved credentials
+from `biblebot auth login`. Some Matrix clients withhold keys from unverified
+devices; verify the bot device in those clients.
 
-```bash
-biblebot service install
-```
+Cross-signing runs only through the explicit `auth cross-sign` command.
+Back up the complete encryption store before running it or upgrading its
+provider. The default store is `~/.local/state/matrix-biblebot/e2ee-store`;
+`XDG_STATE_HOME` relocates it, and `BIBLEBOT_HOME` puts it at
+`<BIBLEBOT_HOME>/e2ee-store`.
 
-This creates a user service that starts automatically. Manage it with:
+Without a local `_cross_signing.json` sidecar, the command refuses to bootstrap.
+Only after confirming the account has no Element-managed cross-signing
+identity, use `biblebot auth cross-sign --bootstrap`. Bootstrapping can replace
+a server-side identity. Corrupt or ambiguous sidecars are refused, and the
+prompted Matrix password is never saved.
 
-```bash
-systemctl --user start biblebot.service     # Start
-systemctl --user stop biblebot.service      # Stop
-systemctl --user status biblebot.service    # Check status
-```
-
-## CLI Commands
-
-```bash
-# Configuration
-biblebot config generate    # Create sample config
-biblebot config check       # Validate config
-
-# Authentication
-biblebot auth login         # Login to Matrix
-biblebot auth logout        # Clear credentials
-biblebot auth status        # Show auth status
-biblebot auth cross-sign    # Refresh an existing bot cross-signing identity
-
-# Service management
-biblebot service install    # Install systemd service
-
-# Running
-biblebot                    # Start the bot
-biblebot --log-level debug  # Debug mode
-```
-
-### Bot self-cross-signing
-
-Cross-signing is never run during login or bot startup. Back up the E2EE
-store before using the explicit command. The default location is
-`~/.local/state/matrix-biblebot/e2ee-store`. If you have set a non-default
-state directory, the store lives at `$XDG_STATE_HOME/matrix-biblebot/e2ee-store`
-(or, when `XDG_STATE_HOME` is unset, `~/.local/state/matrix-biblebot/e2ee-store`).
-When `BIBLEBOT_HOME` is set, everything is under `<BIBLEBOT_HOME>/e2ee-store`
-instead. Use `biblebot auth status` to confirm the resolved path on your
-install before backing up. An
-existing BibleBot-managed identity can be refreshed with
-`biblebot auth cross-sign`; the Matrix password is prompted for and never saved.
-
-The first run has no local `_cross_signing.json` sidecar and is refused by
-default. Only after confirming the account has no Element-managed cross-signing
-identity, run `biblebot auth cross-sign --bootstrap`. MindRoom nio cannot import
-or reconcile an existing server-side identity, so bootstrapping can replace it.
-Corrupt, unexpected, or multiple sidecars are refused rather than rotated.
-
-The provider upgrade migrates the encrypted store schema from version 2 to 10
-when first opened. Back up the complete store first. Recreate existing
-environments rather than upgrading in place: `matrix-nio` and `mindroom-nio`
-both own the `nio` import package and must not be co-installed.
-
-## Troubleshooting
-
-**Common issues:**
-
-- **"No credentials found"** → Run `biblebot auth login` first
-- **Bot doesn't respond** → Check room IDs in config, ensure bot is invited
-- **E2EE issues** → Install with `[e2e]`; if your Matrix client withholds keys
-  from unverified devices, verify/cross-sign the bot device
-
-For detailed troubleshooting, see [Troubleshooting Guide](docs/TROUBLESHOOTING.md).
+The mindroom-nio provider migrates store schema version 2 to 10 on first open.
+Back up the complete store first. `matrix-nio` and `mindroom-nio` both own the
+`nio` import package; recreate environments when switching providers so they
+are never co-installed.
 
 ## Documentation
 
-- [Configuration Guide](docs/CONFIGURATION.md) - Detailed setup, options, and E2EE setup
-- [Docker Guide](docs/DOCKER.md) - Prebuilt and source container deployment
-- [Development Guide](docs/DEVELOPMENT.md) - Contributing and development setup
-- [Troubleshooting](docs/TROUBLESHOOTING.md) - Common issues and solutions
+- [Configuration](docs/CONFIGURATION.md): rooms, translations, encryption, and runtime paths.
+- [Docker deployment](docs/DOCKER.md): prebuilt/source images and Compose.
+- [Troubleshooting](docs/TROUBLESHOOTING.md): startup, delivery, and encryption failures.
+- [Development](docs/DEVELOPMENT.md): uv setup and contribution workflow.
+- [Testing](docs/dev/TESTING.md): client doubles, async behavior, and test limits.
 
-## Contributing
-
-Contributions welcome! Please see [Development Guide](docs/DEVELOPMENT.md) for setup instructions, project structure, and the [Testing Guide](docs/dev/TESTING.md) for test conventions.
-
-## License
-
-MIT License - see [LICENSE](LICENSE) file for details.
+Contributions are welcome through pull requests. See [LICENSE](LICENSE) for
+the MIT license.
