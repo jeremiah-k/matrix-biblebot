@@ -1,6 +1,7 @@
 """Tests for the bot module."""
 
 import asyncio
+import copy
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -568,7 +569,7 @@ class E2EETestFramework:
 @pytest.fixture
 def sample_config():
     """Sample configuration for testing."""
-    return TEST_CONFIG_YAML
+    return copy.deepcopy(TEST_CONFIG_YAML)
 
 
 @pytest.fixture
