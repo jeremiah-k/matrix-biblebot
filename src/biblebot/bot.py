@@ -815,6 +815,7 @@ class BibleBot:
                     )
                 except (
                     aiohttp.ClientError,
+                    asyncio.TimeoutError,
                     LocalProtocolError,
                     RemoteProtocolError,
                     RemoteTransportError,
