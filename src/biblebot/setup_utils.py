@@ -27,7 +27,6 @@ from biblebot.constants.config import DEFAULT_CONFIG_FILENAME, ENV_USER, ENV_USE
 from biblebot.constants.messages import WARNING_EXECUTABLE_NOT_FOUND
 from biblebot.constants.system import (
     LOCAL_SHARE_DIR,
-    PIPX_VENV_PATH,
     SYSTEMCTL_ARG_IS_ENABLED,
     SYSTEMCTL_ARG_USER,
     SYSTEMCTL_COMMANDS,
@@ -243,13 +242,6 @@ WantedBy=default.target
 """
 
 
-def _service_runtime_dir(config_dir: Path) -> str:
-    """Return the runtime directory representation used in a systemd unit."""
-    if os.environ.get(biblebot_paths.ENV_BIBLEBOT_HOME):
-        return str(config_dir)
-    return f"%h/.config/{biblebot_paths.APP_CONFIG_DIRNAME}"
-
-
 def is_service_enabled():
     """
     Return True if the user systemd service is enabled to start at boot.
@@ -298,6 +290,31 @@ def is_service_active():
         return False
 
 
+def _service_plan(executable_path: str) -> ServicePlan:
+    """Use one runtime plan for installation and drift detection."""
+    config_dir = biblebot_paths.get_config_dir().absolute()
+    command = (
+        (sys.executable, "-m", "biblebot")
+        if executable_path == sys.executable
+        else (executable_path,)
+    )
+    environment = []
+    if os.environ.get(biblebot_paths.ENV_BIBLEBOT_HOME):
+        environment.append((biblebot_paths.ENV_BIBLEBOT_HOME, str(config_dir)))
+    else:
+        for name in ("XDG_CONFIG_HOME", "XDG_STATE_HOME"):
+            value = os.environ.get(name)
+            if value and Path(value).is_absolute():
+                environment.append((name, value))
+    return ServicePlan(
+        service_path=get_user_service_path(),
+        command=command,
+        config_path=str(config_dir / DEFAULT_CONFIG_FILENAME),
+        working_directory=str(config_dir),
+        environment=tuple(environment),
+    )
+
+
 def create_service_file():
     """
     Create or update the user-level systemd service unit for BibleBot.
@@ -322,46 +339,19 @@ def create_service_file():
         print("Error: Could not determine a command to start biblebot")
         return False
 
-    # Create service directory if it doesn't exist
-    service_dir = get_user_service_path().parent
-    service_dir.mkdir(parents=True, exist_ok=True)
-
-    # Create runtime directory if it doesn't exist
-    config_dir = biblebot_paths.get_config_dir()
-    config_dir.mkdir(parents=True, exist_ok=True)
-    service_runtime_dir = _service_runtime_dir(config_dir)
-
     # Get the template service content
     service_template = get_template_service_content()
     if not service_template:
         print("Error: Could not find service template file")
         return False
 
-    if executable_path == sys.executable:
-        command = (sys.executable, "-m", "biblebot")
-    else:
-        command = (executable_path,)
-
-    config_path = f"{service_runtime_dir}/{DEFAULT_CONFIG_FILENAME}"
-    preserve_specifiers = not os.environ.get(biblebot_paths.ENV_BIBLEBOT_HOME)
-    configured_home = os.environ.get(biblebot_paths.ENV_BIBLEBOT_HOME)
-    environment = (
-        ((biblebot_paths.ENV_BIBLEBOT_HOME, str(config_dir)),)
-        if configured_home
-        else ()
-    )
-    plan = ServicePlan(
-        service_path=get_user_service_path(),
-        command=command,
-        config_path=config_path,
-        working_directory=service_runtime_dir,
-        environment=environment,
-        preserve_specifiers=preserve_specifiers,
-    )
+    plan = _service_plan(executable_path)
     service_content = render_service_unit(service_template, plan)
 
     # Write service file
     try:
+        plan.service_path.parent.mkdir(parents=True, exist_ok=True)
+        Path(plan.working_directory).mkdir(parents=True, exist_ok=True)
         plan.service_path.write_text(service_content, encoding="utf-8")
         print(f"Service file created at {plan.service_path}")
         return True
@@ -400,20 +390,9 @@ def reload_daemon():
 
 
 def service_needs_update():
-    """
-    Determine whether the installed user systemd service file needs updating.
+    """Compare the installed command, paths, and environment with its runtime plan.
 
-    Performs these checks in order and returns the first applicable result:
-    - If no installed service file exists -> needs update.
-    - If a template service file cannot be located -> reports no update (template missing).
-    - If the discovered start command for the current installation cannot be determined -> reports no update.
-    - If the service's ExecStart line does not match the installation's expected command (either the Python `-m biblebot` form or the discovered executable) -> needs update.
-    - If the service file's PATH does not include the configured pipx venv path -> needs update.
-    - If the template file's modification time is newer than the installed service file -> needs update.
-    If none of the above indicate an update is necessary, reports the service file as up to date.
-
-    Returns:
-        tuple: (needs_update: bool, reason: str) — `needs_update` is True when an update is required; `reason` is a short explanation.
+    Return (needs_update, reason), also considering template modification time.
     """
     # Check if service already exists
     existing_service = read_service_file()
@@ -430,44 +409,17 @@ def service_needs_update():
     if not executable_path:
         return False, "Could not determine biblebot start command"
 
-    # Build variants that mirror create_service_file() quoting to avoid false positives
-    acceptable_snippets: list[str] = []
-    if executable_path == sys.executable:
-        acceptable_snippets.extend(
-            [
-                f"{shlex.quote(sys.executable)} -m biblebot",
-                f"{sys.executable} -m biblebot",
-            ]
-        )
-    else:
-        acceptable_snippets.extend(
-            [
-                shlex.quote(executable_path),
-                executable_path,
-            ]
-        )
-    # Focus only on the ExecStart= line to reduce accidental matches
-    execstart_line = next(
-        (
-            ln
-            for ln in existing_service.splitlines()
-            if ln.strip().startswith("ExecStart=")
-        ),
-        "",
-    )
-
-    # Check if the ExecStart uses a valid command
-    if not any(snippet in execstart_line for snippet in acceptable_snippets):
-        return True, "Service file ExecStart does not match the current installation"
-
-    # Check if the PATH environment includes pipx paths
-    # Detect pipx requirement from the unit body itself
-    requires_pipx = "pipx" in existing_service
-    pipx_ok = (str(PIPX_VENV_PATH) in existing_service) or (
-        "pipx/venvs" in existing_service
-    )
-    if requires_pipx and not pipx_ok:
-        return True, "Service file does not include pipx paths in PATH environment"
+    expected = render_service_unit("[Service]\n", _service_plan(executable_path))
+    installed_settings = {line.strip() for line in existing_service.splitlines()}
+    for line in expected.splitlines():
+        if (
+            line.startswith(("ExecStart=", "WorkingDirectory=", "Environment="))
+            and line not in installed_settings
+        ):
+            return (
+                True,
+                "Service file runtime plan does not match the current installation",
+            )
 
     # Check if the service file has been modified recently
     try:

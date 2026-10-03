@@ -22,14 +22,18 @@ class ServicePlan:
     description: str = SERVICE_DESCRIPTION
 
 
-def quote_systemd_value(value: str, *, preserve_specifiers: bool = False) -> str:
+def quote_systemd_value(
+    value: str, *, preserve_specifiers: bool = False, expand_variables: bool = True
+) -> str:
     """Escape and quote one systemd value or command argument."""
     if not preserve_specifiers:
         value = value.replace("%", "%%")
     needs_quotes = any(char in value for char in (" ", "\t", '"', "\\", "$"))
     if not needs_quotes:
         return value
-    escaped = value.replace("\\", "\\\\").replace('"', '\\"').replace("$", "$$")
+    escaped = value.replace("\\", "\\\\").replace('"', '\\"')
+    if expand_variables:
+        escaped = escaped.replace("$", "$$")
     return f'"{escaped}"'
 
 
@@ -37,7 +41,7 @@ def _replace_or_add_setting(content: str, setting: str, value: str) -> str:
     replacement = f"{setting}={value}"
     content, replacements = re.subn(
         rf"^{re.escape(setting)}=.*$",
-        replacement,
+        lambda _match: replacement,
         content,
         count=1,
         flags=re.MULTILINE,
@@ -46,17 +50,19 @@ def _replace_or_add_setting(content: str, setting: str, value: str) -> str:
         return content
     return re.sub(
         r"(?m)^\[Service\]\s*$",
-        f"[Service]\n{replacement}",
+        lambda _match: f"[Service]\n{replacement}",
         content,
         count=1,
     )
 
 
 def _replace_or_add_environment(content: str, name: str, value: str) -> str:
-    replacement = f"Environment={quote_systemd_value(f'{name}={value}')}"
+    replacement = (
+        f"Environment={quote_systemd_value(f'{name}={value}', expand_variables=False)}"
+    )
     content, replacements = re.subn(
         rf'^Environment="?{re.escape(name)}=.*$',
-        replacement,
+        lambda _match: replacement,
         content,
         count=1,
         flags=re.MULTILINE,
@@ -65,7 +71,7 @@ def _replace_or_add_environment(content: str, name: str, value: str) -> str:
         return content
     return re.sub(
         r"(?m)^\[Service\]\s*$",
-        f"[Service]\n{replacement}",
+        lambda _match: f"[Service]\n{replacement}",
         content,
         count=1,
     )
@@ -91,7 +97,9 @@ def render_service_unit(template: str, plan: ServicePlan) -> str:
         content,
         "WorkingDirectory",
         quote_systemd_value(
-            plan.working_directory, preserve_specifiers=plan.preserve_specifiers
+            plan.working_directory,
+            preserve_specifiers=plan.preserve_specifiers,
+            expand_variables=False,
         ),
     )
     for name, value in plan.environment:

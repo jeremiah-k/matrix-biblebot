@@ -282,6 +282,16 @@ Specify a different config location:
 biblebot --config /path/to/your/config.yaml
 ```
 
+### systemd runtime paths
+
+Run `biblebot service install` with the same `BIBLEBOT_HOME`,
+`XDG_CONFIG_HOME`, and `XDG_STATE_HOME` settings used for login and manual
+startup. The generated service records absolute configuration paths and
+carries those environment settings so the device uses the same crypto store.
+Run installation again after moving runtime directories or changing the
+Python environment. The install command returns a failure status if setup
+cannot complete.
+
 ### Directory Permissions
 
 The bot automatically sets secure permissions:

@@ -698,7 +698,8 @@ def main():
         if args.service_action == CMD_INSTALL:
             from biblebot.setup_utils import install_service
 
-            install_service()
+            if not install_service():
+                sys.exit(1)
             return
         else:
             service_parser.print_help()
