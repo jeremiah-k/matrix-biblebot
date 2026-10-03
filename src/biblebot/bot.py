@@ -86,7 +86,11 @@ from biblebot.formatting import (
     split_text_into_chunks,
     trim_reference_for_suffix,
 )
-from biblebot.log_utils import configure_component_loggers, configure_logging
+from biblebot.log_utils import (
+    configure_component_loggers,
+    configure_logging,
+    get_logger,
+)
 from biblebot.messaging import (
     classify_send_failure,
     compose_final_chunk_bodies,
@@ -998,7 +1002,9 @@ class BibleBot:
 
 
 # Run bot
-async def main(config_path=DEFAULT_CONFIG_FILENAME, config=None):
+async def main(
+    config_path=DEFAULT_CONFIG_FILENAME, config=None, *, log_level: str | None = None
+):
     """
     Start and run the BibleBot: load configuration and environment, create and configure the Matrix client and BibleBot instance, register event handlers, perform startup checks, and run the bot's main sync loop until shutdown.
 
@@ -1012,9 +1018,6 @@ async def main(config_path=DEFAULT_CONFIG_FILENAME, config=None):
         RuntimeError: When configuration, credentials, or required legacy homeserver/user information are missing or invalid.
         asyncio.CancelledError: Re-raised if startup tasks are cancelled to preserve cancellation semantics.
     """
-    # Print startup banner
-    print_startup_banner()
-
     # Load config and environment variables (only if not already provided)
     if config is None:
         config = load_config(config_path)
@@ -1030,7 +1033,11 @@ async def main(config_path=DEFAULT_CONFIG_FILENAME, config=None):
     matrix_access_token, api_keys = load_environment(config, config_path)
     # Now config's ready — publish it to log_utils and wire up component loggers
     configure_logging(config)
+    get_logger(LOGGER_NAME, force=True)
+    if log_level is not None:
+        logger.setLevel(log_level.upper())
     configure_component_loggers()
+    print_startup_banner()
     creds = load_credentials()
 
     e2ee_enabled = config_e2ee_enabled(config)

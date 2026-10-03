@@ -434,7 +434,7 @@ Examples:
     parser.add_argument(
         CLI_ARG_LOG_LEVEL,
         choices=LOG_LEVELS,
-        default=DEFAULT_LOG_LEVEL,
+        default=None,
         help=CLI_HELP_LOG_LEVEL.format(DEFAULT_LOG_LEVEL),
     )
     parser.add_argument(
@@ -646,7 +646,7 @@ def main():
     args = parser.parse_args()
 
     # Set up logging
-    log_level = getattr(logging, args.log_level.upper())
+    log_level = getattr(logging, (args.log_level or DEFAULT_LOG_LEVEL).upper())
     configure_logging(None)
     get_logger(LOGGER_NAME, force=True).setLevel(log_level)
 
@@ -731,7 +731,10 @@ def main():
 
     # Run the bot
     try:
-        run_async(bot_main(args.config))
+        if args.log_level is None:
+            run_async(bot_main(args.config))
+        else:
+            run_async(bot_main(args.config, log_level=args.log_level))
     except KeyboardInterrupt:
         logging.info("Bot stopped by user")
     except FileNotFoundError:

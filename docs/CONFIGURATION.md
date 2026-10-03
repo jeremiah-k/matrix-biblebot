@@ -299,6 +299,25 @@ The bot automatically sets secure permissions:
 - Config directory: `0700` (owner read/write/execute only)
 - Credentials file: `0600` (owner read/write only)
 
+## Logging
+
+```yaml
+logging:
+  level: info
+  color_enabled: true
+  log_to_file: true
+  max_log_size: 10 # Numeric values are MB; strings such as "10 MiB" also work.
+  backup_count: 3
+  debug:
+    matrix_nio: false
+```
+
+`biblebot --log-level debug` overrides `logging.level` for that invocation.
+Otherwise the config level applies, falling back to info. File logging uses
+`logs/biblebot.log` under the resolved state directory unless `logging.filename`
+selects another path. A directory or file setup failure keeps console logging
+available. External text is rendered literally rather than as Rich markup.
+
 ## Book Abbreviations
 
 The bot recognizes many book abbreviations:
