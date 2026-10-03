@@ -25,7 +25,9 @@ This guide covers all configuration options for Matrix BibleBot.
 
 ## Configuration File Structure
 
-The configuration file uses YAML format with the following structure:
+The configuration file uses YAML. `biblebot config generate` and `make setup`
+use the same template, `src/biblebot/tools/sample_config.yaml`; this packaged
+file is the sample configuration authority. A minimal configuration looks like:
 
 ```yaml
 version: 1
