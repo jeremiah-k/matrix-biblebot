@@ -2,18 +2,18 @@
 
 FROM python:3.12-slim-bookworm AS builder
 
-ENV PIP_DISABLE_PIP_VERSION_CHECK=1 \
-    PIP_NO_CACHE_DIR=1
+COPY --from=ghcr.io/astral-sh/uv:0.12.23 /uv /bin/uv
+
+ENV UV_PROJECT_ENVIRONMENT=/opt/biblebot \
+    UV_LINK_MODE=copy \
+    UV_PYTHON_DOWNLOADS=never
 
 WORKDIR /src
 
-RUN python -m venv /opt/biblebot
-
-COPY pyproject.toml MANIFEST.in README.md LICENSE ./
+COPY pyproject.toml uv.lock MANIFEST.in README.md LICENSE ./
 COPY src/ ./src/
 
-RUN /opt/biblebot/bin/python -m pip install --upgrade pip setuptools wheel && \
-    /opt/biblebot/bin/python -m pip install ".[e2e]"
+RUN uv sync --locked --no-dev --extra e2e --no-editable
 
 FROM python:3.12-slim-bookworm AS runtime
 
