@@ -163,6 +163,14 @@ location is moved into the state home. Set `BIBLEBOT_HOME` to place all
 state under one portable directory instead (this is what the Docker image
 does with `/data`).
 
+If migration cannot publish the moved state, BibleBot restores the legacy
+directory and uses it for that run. If restoration also fails, startup stops
+and reports the staging path that contains the preserved state. Restore that
+directory before restarting; do not delete it. An interrupted move also stops
+startup and preserves both source and staging for recovery, since either may
+contain keys absent from the other. A second process must wait for an in-progress
+migration to finish before starting. Relative XDG home values are ignored, as required by the XDG specification.
+
 ## Bot Behavior Configuration
 
 ### Default Translation

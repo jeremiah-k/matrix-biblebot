@@ -37,7 +37,9 @@ def _xdg_dir(env_var: str, default: Path) -> Path:
     """Return an XDG base directory, honoring ``env_var`` when set."""
     configured = os.environ.get(env_var)
     if configured:
-        return Path(configured).expanduser()
+        candidate = Path(configured)
+        if candidate.is_absolute():
+            return candidate
     return default
 
 
@@ -79,14 +81,14 @@ def _migrate_legacy_state(target: Path | None, legacy_name: str) -> bool:
     Runs only in XDG mode. Safe under concurrent first-access:
 
     - The legacy-to-target move goes through a uniquely-owned staging
-      directory under ``target.parent``. Any rollback (interrupted copy,
-      peer racing in) only removes this call's staging directory and never
-      touches ``target``, so a peer that publishes ``target`` while this
-      call is in flight keeps its data.
+      directory under ``target.parent``. Failed copies retain staging for
+      recovery because source removal may already have begun.
+      A completed move is restored if publication fails; if restoration
+      fails, staging is retained and an OSError stops startup.
     - Two concurrent callers racing on the same legacy both enter the
       move; whichever reaches ``os.rename`` first wins, and the loser gets
       ``FileNotFoundError`` because the source no longer exists. The loser
-      treats that as a successful migration performed by another process.
+      uses the published target, or stops until the peer finishes.
 
     Returns:
         True when the legacy directory is gone (migrated, never existed, or
@@ -105,6 +107,7 @@ def _migrate_legacy_state(target: Path | None, legacy_name: str) -> bool:
     if target.exists():
         return True
 
+    _check_unpublished_staging(target)
     if not legacy.exists():
         return True
 
@@ -126,30 +129,32 @@ def _migrate_legacy_state(target: Path | None, legacy_name: str) -> bool:
 
     try:
         shutil.move(str(legacy), str(staging))
-    except FileNotFoundError:
-        # Lost the race: another process already moved legacy away.
-        # ``target`` may have been published by the peer; trust whatever
-        # exists at ``target`` and clean up our (empty) staging.
-        shutil.rmtree(staging, ignore_errors=True)
-        return target.exists()
     except (OSError, shutil.Error) as exc:
-        # Rollback removes *only* the staging directory this call created.
-        # ``target`` is left untouched so any peer data there survives.
-        shutil.rmtree(staging, ignore_errors=True)
+        # Cross-filesystem move can fail while deleting the source, after
+        # copying successfully. Neither directory can be assumed complete.
+        if staging.exists():
+            raise OSError(
+                f"State migration failed; state is preserved at {staging} and "
+                f"{legacy}. Recover the complete store before restarting BibleBot."
+            ) from exc
+        if target.exists() and not legacy.exists():
+            return True
+        _check_unpublished_staging(target)
+        if not legacy.exists():
+            raise OSError(f"State migration source disappeared: {legacy}") from exc
         logger.warning("Could not migrate %s from %s: %s", legacy_name, legacy, exc)
         return False
 
-    # Publish: atomically rename staging -> target. If a peer has already
-    # published target between the move and now, we lose to the peer and
-    # remove our staging instead of overwriting their data.
+    # A completed move owns the only copy of legacy state. Restore it if
+    # publication fails, and retain staging if restoration cannot be done.
     if target.exists():
-        shutil.rmtree(staging, ignore_errors=True)
+        _restore_staged_state(staging, legacy)
         return True
 
     try:
         os.replace(staging, target)
     except OSError as exc:
-        shutil.rmtree(staging, ignore_errors=True)
+        _restore_staged_state(staging, legacy)
         logger.warning(
             "Could not publish migration of %s to %s: %s",
             legacy_name,
@@ -165,6 +170,31 @@ def _migrate_legacy_state(target: Path | None, legacy_name: str) -> bool:
         target.parent,
     )
     return True
+
+
+def _check_unpublished_staging(target: Path) -> None:
+    """Refuse an empty store while migration is in progress or interrupted."""
+    staged = next(target.parent.glob(f".{target.name}.migrate-*"), None)
+    if staged is not None and not target.exists():
+        raise OSError(
+            f"Unpublished state migration at {staged}; wait for the other process "
+            "to finish or recover the preserved state before restarting BibleBot."
+        )
+
+
+def _restore_staged_state(staging: Path, legacy: Path) -> None:
+    """Restore moved state or stop rather than discard the only copy of keys."""
+    if not staging.exists():
+        return
+    try:
+        if legacy.exists():
+            raise FileExistsError(f"Legacy state already exists at {legacy}")
+        os.rename(staging, legacy)
+    except OSError as exc:
+        raise OSError(
+            f"State migration could not restore {legacy}; state is preserved at "
+            f"{staging}. Restore it before restarting BibleBot."
+        ) from exc
 
 
 def _resolve_state_dir(
