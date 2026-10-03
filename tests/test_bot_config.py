@@ -454,6 +454,7 @@ class TestGetBibleTextConfiguration:
                     "John 3:16",
                     translation=None,  # Should use default
                     default_translation="esv",
+                    api_keys={"esv": "key"},
                 )
 
                 assert result[0] == "ESV text"
