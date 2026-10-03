@@ -9,7 +9,7 @@ WORKDIR /src
 
 RUN python -m venv /opt/biblebot
 
-COPY pyproject.toml MANIFEST.in setup.cfg README.md LICENSE ./
+COPY pyproject.toml MANIFEST.in README.md LICENSE ./
 COPY src/ ./src/
 
 RUN /opt/biblebot/bin/python -m pip install --upgrade pip setuptools wheel && \
