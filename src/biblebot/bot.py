@@ -1050,6 +1050,7 @@ async def main(config_path=DEFAULT_CONFIG_FILENAME, config=None):
         client = AsyncClient(
             creds.homeserver,
             creds.user_id,
+            device_id=creds.device_id,
             store_path=str(get_store_dir()) if e2ee_enabled else None,
             config=client_config,
         )
@@ -1096,77 +1097,77 @@ async def main(config_path=DEFAULT_CONFIG_FILENAME, config=None):
             config=client_config,
         )
 
-    logger.info("Creating BibleBot instance")
-    bot = BibleBot(config, client)
-    bot.api_keys = api_keys
-
-    # Perform update check on startup
+    bot = None
     try:
-        await perform_startup_update_check()
-    except asyncio.CancelledError:
-        raise
-    except Exception:  # noqa: BLE001 - intentional guard to keep startup resilient
-        logger.debug("Startup update check failed", exc_info=True)
+        logger.info("Creating BibleBot instance")
+        bot = BibleBot(config, client)
+        bot.api_keys = api_keys
 
-    if creds:
-        logger.info("Using saved credentials.json for Matrix session")
-        if matrix_access_token:
-            logger.debug(
-                "Found credentials.json, ignoring legacy MATRIX_ACCESS_TOKEN environment variable."
+        # Perform update check on startup
+        try:
+            await perform_startup_update_check()
+        except asyncio.CancelledError:
+            raise
+        except Exception:  # noqa: BLE001 - intentional guard to keep startup resilient
+            logger.debug("Startup update check failed", exc_info=True)
+
+        if creds:
+            logger.info("Using saved credentials.json for Matrix session")
+            if matrix_access_token:
+                logger.debug(
+                    "Found credentials.json, ignoring legacy MATRIX_ACCESS_TOKEN environment variable."
+                )
+            client.restore_login(
+                user_id=creds.user_id,
+                device_id=creds.device_id,
+                access_token=creds.access_token,
             )
-        client.restore_login(
-            user_id=creds.user_id,
-            device_id=creds.device_id,
-            access_token=creds.access_token,
-        )
-    else:
-        if matrix_access_token:
-            logger.warning(
-                "⚠️  Using MATRIX_ACCESS_TOKEN environment variable. This is deprecated and does NOT support E2EE."
-            )
-            logger.warning(
-                "⚠️  Consider using 'biblebot auth login' for secure session-based authentication with E2EE support."
-            )
-            client.access_token = matrix_access_token
         else:
-            logger.error(ERROR_NO_CREDENTIALS_AND_TOKEN)
-            logger.error(ERROR_AUTH_INSTRUCTIONS)
-            raise RuntimeError("No credentials or access token found")
+            if matrix_access_token:
+                logger.warning(
+                    "⚠️  Using MATRIX_ACCESS_TOKEN environment variable. This is deprecated and does NOT support E2EE."
+                )
+                logger.warning(
+                    "⚠️  Consider using 'biblebot auth login' for secure session-based authentication with E2EE support."
+                )
+                client.access_token = matrix_access_token
+            else:
+                logger.error(ERROR_NO_CREDENTIALS_AND_TOKEN)
+                logger.error(ERROR_AUTH_INSTRUCTIONS)
+                raise RuntimeError("No credentials or access token found")
 
-    # If E2EE is enabled, ensure keys are uploaded
-    if e2ee_enabled:
-        try:
-            if client.should_upload_keys:
-                logger.info("Uploading encryption keys...")
-                await client.keys_upload()
-                logger.info("Encryption keys uploaded")
-        except (
-            LocalProtocolError,
-            RemoteProtocolError,
-            RemoteTransportError,
-            aiohttp.ClientError,
-        ):
-            logger.exception("Failed to upload E2EE keys")
+        # If E2EE is enabled, ensure keys are uploaded
+        if e2ee_enabled:
+            try:
+                if client.should_upload_keys:
+                    logger.info("Uploading encryption keys...")
+                    await client.keys_upload()
+                    logger.info("Encryption keys uploaded")
+            except (
+                LocalProtocolError,
+                RemoteProtocolError,
+                RemoteTransportError,
+                aiohttp.ClientError,
+            ):
+                logger.exception("Failed to upload E2EE keys")
 
-    # Register event handlers
-    logger.debug("Registering event handlers")
-    client.add_event_callback(bot.on_invite, InviteEvent)
-    client.add_event_callback(bot.on_room_message, RoomMessageText)
+        # Register event handlers
+        logger.debug("Registering event handlers")
+        client.add_event_callback(bot.on_invite, InviteEvent)
+        client.add_event_callback(bot.on_room_message, RoomMessageText)
 
-    # Register encrypted message handlers for E2EE rooms
-    if e2ee_enabled:
-        try:
-            # Handle decryption failures for encrypted messages
-            # Successfully decrypted messages are converted to RoomMessageText by nio.
-            client.add_event_callback(bot.on_decryption_failure, MegolmEvent)
-        except AttributeError:
-            logger.debug(
-                "E2EE callback registration not supported by this nio version",
-                exc_info=True,
-            )
+        # Register encrypted message handlers for E2EE rooms
+        if e2ee_enabled:
+            try:
+                # Handle decryption failures for encrypted messages
+                # Successfully decrypted messages are converted to RoomMessageText by nio.
+                client.add_event_callback(bot.on_decryption_failure, MegolmEvent)
+            except AttributeError:
+                logger.debug(
+                    "E2EE callback registration not supported by this nio version",
+                    exc_info=True,
+                )
 
-    # Start the bot
-    try:
         await bot.start()
     finally:
         try:
