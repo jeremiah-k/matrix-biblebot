@@ -316,7 +316,7 @@ class TestPrintE2EEStatus:
 
         # Check for some indication of error being printed
         assert len(status_text) > 0  # At least something was printed
-        assert "pip install" in status_text
+        assert 'pipx install --force "matrix-biblebot[e2e]"' in status_text
 
 
 class TestDiscoverHomeserver:
@@ -1043,3 +1043,79 @@ class TestInteractiveLoginCancellation:
         result = await auth.interactive_login()
         assert result is False
         mock_logger.info.assert_called_with("\nLogin cancelled.")
+
+
+@pytest.mark.parametrize(
+    "payload",
+    [
+        [],
+        None,
+        {},
+        {"homeserver": 7},
+        {
+            "homeserver": "https://example.org",
+            "user_id": "@bot:example.org",
+            "access_token": "",
+            "device_id": "DEVICE",
+        },
+    ],
+)
+def test_load_credentials_rejects_invalid_saved_session(temp_config_dir, payload):
+    import json
+
+    (temp_config_dir / "credentials.json").write_text(json.dumps(payload))
+    assert auth.load_credentials() is None
+
+
+def test_failed_save_keeps_previous_credentials_and_removes_temporary_file(
+    temp_config_dir,
+    monkeypatch,
+):
+    previous = auth.Credentials("https://example.org", "@bot:example.org", "first")
+    auth.save_credentials(previous)
+
+    def fail_replace(*_args):
+        raise OSError("disk full")
+
+    monkeypatch.setattr(auth.os, "replace", fail_replace)
+    with pytest.raises(OSError, match="disk full"):
+        auth.save_credentials(
+            auth.Credentials("https://example.org", "@bot:example.org", "second")
+        )
+    assert auth.load_credentials().access_token == "first"
+    assert [p.name for p in temp_config_dir.iterdir()] == ["credentials.json"]
+
+
+def test_failed_flush_removes_temporary_credentials(temp_config_dir, monkeypatch):
+    def fail_fsync(*_args):
+        raise OSError("write failed")
+
+    monkeypatch.setattr(auth.os, "fsync", fail_fsync)
+    with pytest.raises(OSError, match="write failed"):
+        auth.save_credentials(
+            auth.Credentials("https://example.org", "@bot:example.org", "token")
+        )
+    assert list(temp_config_dir.iterdir()) == []
+
+
+def test_credentials_repr_hides_token():
+    assert "secret-sentinel" not in repr(
+        auth.Credentials(
+            "https://example.org",
+            "@bot:example.org",
+            "secret-sentinel",
+        )
+    )
+
+
+@pytest.mark.asyncio
+async def test_logout_reports_failed_local_cleanup(temp_config_dir, monkeypatch):
+    monkeypatch.setattr(auth, "load_credentials", lambda: None)
+    store = auth.get_store_dir()
+
+    def fail_delete(*_args):
+        raise OSError("permission denied")
+
+    monkeypatch.setattr(auth.shutil, "rmtree", fail_delete)
+    assert await auth.interactive_logout() is False
+    assert store.exists()

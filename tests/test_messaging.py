@@ -126,3 +126,11 @@ def test_send_failure_notice_maps_classification_to_message():
     assert send_failure_notice("rate_limited") == ERROR_SEND_RATE_LIMITED
     assert send_failure_notice("forbidden") == ERROR_SEND_FORBIDDEN
     assert send_failure_notice("other") == ERROR_SEND_OTHER
+
+
+@pytest.mark.parametrize("hint", ["bad", -1, 0, float("nan"), float("inf"), None])
+def test_invalid_retry_hint_uses_positive_default(hint):
+    delay = response_retry_delay_seconds(
+        _fake_error_response(retry_after_ms=hint), attempt=0, rng=lambda *_: 1
+    )
+    assert delay == 1.0

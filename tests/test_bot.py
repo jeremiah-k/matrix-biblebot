@@ -1,6 +1,7 @@
 """Tests for the bot module."""
 
 import asyncio
+import copy
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -568,7 +569,7 @@ class E2EETestFramework:
 @pytest.fixture
 def sample_config():
     """Sample configuration for testing."""
-    return TEST_CONFIG_YAML
+    return copy.deepcopy(TEST_CONFIG_YAML)
 
 
 @pytest.fixture
@@ -1857,7 +1858,8 @@ class TestMainFunction:
         tmp_path,
     ):
         """Test main function with access token."""
-        # Setup mocks - keep E2EE enabled to test real functionality
+        sample_config["matrix"]["e2ee"]["enabled"] = False
+        # Legacy access tokens support unencrypted operation.
         mock_load_config.return_value = sample_config
         mock_load_env.return_value = (TEST_ACCESS_TOKEN, {"esv": "test_key"})
         mock_load_creds.return_value = None  # No saved credentials
@@ -1919,6 +1921,7 @@ class TestMainFunction:
         self, mock_load_env, mock_load_config, mock_load_creds, sample_config
     ):
         """Test main function with no authentication."""
+        sample_config["matrix"]["e2ee"]["enabled"] = False
         # Setup mocks to simulate no authentication available
         mock_load_config.return_value = sample_config
         mock_load_env.return_value = (None, {"esv": "test_key"})  # No access token
@@ -1972,7 +1975,11 @@ class TestMainFunction:
 
         mock_load_config.return_value = e2ee_config
         mock_load_env.return_value = (TEST_ACCESS_TOKEN, {"esv": "test_key"})
-        mock_load_creds.return_value = None
+        from biblebot.auth import Credentials
+
+        mock_load_creds.return_value = Credentials(
+            TEST_HOMESERVER, TEST_USER_ID, TEST_ACCESS_TOKEN, TEST_DEVICE_ID
+        )
         mock_get_store.return_value = tmp_path / "store"
 
         # E2EE dependencies are mocked upfront in conftest.py

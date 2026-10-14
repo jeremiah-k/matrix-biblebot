@@ -286,3 +286,15 @@ class TestHandleScriptureCommandSendFailure:
         bodies = [c.args[2]["body"] for c in calls if c.args[1] == "m.room.message"]
         assert any("could not be delivered" in b for b in bodies)
         assert not any("passage could not be found" in b.lower() for b in bodies)
+
+
+async def test_send_timeout_uses_delivery_failure_contract():
+    from unittest.mock import AsyncMock, MagicMock
+
+    from biblebot.bot import BibleBot, MessageSendError
+
+    client = MagicMock()
+    client.room_send = AsyncMock(side_effect=TimeoutError("network timeout"))
+    bot = BibleBot({"matrix_room_ids": ["!room:server"]}, client)
+    with pytest.raises(MessageSendError, match="Transport error"):
+        await bot._send_message_parts("!room:server", ["verse"], None)

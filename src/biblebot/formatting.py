@@ -25,8 +25,34 @@ def format_text_for_display(text: str, *, preserve_poetry: bool) -> tuple[str, s
     return plain, html.escape(plain)
 
 
-def split_text_into_chunks(text: str, *, max_length: int) -> list[str]:
+def split_text_into_chunks(
+    text: str, *, max_length: int, preserve_lines: bool = False
+) -> list[str]:
     """Split text at word boundaries when possible within a maximum length."""
+    if max_length <= 0:
+        raise ValueError("Chunk length must be positive")
+    if preserve_lines:
+        chunks: list[str] = []
+        current = ""
+        for line in text.split("\n"):
+            wrapped = textwrap.wrap(
+                line, width=max_length, replace_whitespace=False
+            ) or [""]
+            for index, part in enumerate(wrapped):
+                separator = "\n" if index == 0 and current else ""
+                candidate = current + separator + part
+                if len(candidate) > max_length:
+                    if current:
+                        chunks.append(current)
+                    current = part
+                else:
+                    current = candidate
+                if index < len(wrapped) - 1:
+                    chunks.append(current)
+                    current = ""
+        if current:
+            chunks.append(current)
+        return chunks
     return textwrap.wrap(
         text,
         width=max_length,

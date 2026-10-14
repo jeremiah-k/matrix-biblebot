@@ -87,3 +87,47 @@ def test_render_adds_missing_service_settings(tmp_path: Path):
 
     assert "ExecStart=/usr/bin/biblebot --config /srv/biblebot/config.yaml" in rendered
     assert "WorkingDirectory=/srv/biblebot" in rendered
+
+
+def test_render_preserves_literal_backslashes_and_environment_dollars(tmp_path):
+    plan = ServicePlan(
+        service_path=tmp_path / "biblebot.service",
+        command=("/opt/biblebot",),
+        config_path="/srv/Bible\\Bot $Home/config.yaml",
+        working_directory="/srv/Bible\\Bot $Home",
+        environment=(("BIBLEBOT_HOME", "/srv/Bible\\Bot $Home"),),
+    )
+    rendered = render_service_unit(BASE_TEMPLATE, plan)
+    assert 'Environment="BIBLEBOT_HOME=/srv/Bible\\\\Bot $Home"' in rendered
+    assert 'WorkingDirectory="/srv/Bible\\\\Bot $Home"' in rendered
+    assert (
+        'ExecStart=/opt/biblebot --config "/srv/Bible\\\\Bot $$Home/config.yaml"'
+        in rendered
+    )
+
+
+def test_service_plan_carries_custom_xdg_state_home(monkeypatch, tmp_path):
+    from biblebot import setup_utils
+
+    monkeypatch.delenv("BIBLEBOT_HOME", raising=False)
+    monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path / "config"))
+    monkeypatch.setenv("XDG_STATE_HOME", str(tmp_path / "state"))
+    plan = setup_utils._service_plan("/usr/bin/biblebot")
+    assert plan.config_path == str(tmp_path / "config/matrix-biblebot/config.yaml")
+    assert ("XDG_STATE_HOME", str(tmp_path / "state")) in plan.environment
+
+
+def test_service_update_detects_config_path_change(monkeypatch, tmp_path):
+    from biblebot import setup_utils
+
+    monkeypatch.setenv("BIBLEBOT_HOME", str(tmp_path / "runtime"))
+    monkeypatch.setattr(setup_utils, "get_executable_path", lambda: "/usr/bin/biblebot")
+    monkeypatch.setattr(
+        setup_utils, "get_template_service_path", lambda: tmp_path / "template"
+    )
+    monkeypatch.setattr(
+        setup_utils,
+        "read_service_file",
+        lambda: "ExecStart=/usr/bin/biblebot --config /wrong/config.yaml",
+    )
+    assert setup_utils.service_needs_update()[0] is True

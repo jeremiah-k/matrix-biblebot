@@ -110,3 +110,62 @@ class TestLogUtilsIntegration:
         assert logger1.name == "test1"
         assert logger2.name == "test2"
         assert logger1 is not logger2
+
+
+def test_file_directory_failure_keeps_console_logging(monkeypatch, tmp_path):
+    def fail_mkdir(*_a, **_k):
+        raise OSError("read-only filesystem")
+
+    log_utils.configure_logging(
+        {"logging": {"filename": str(tmp_path / "logs/bot.log")}}
+    )
+    monkeypatch.setattr(Path, "mkdir", fail_mkdir)
+    logger = log_utils.get_logger("directory-failure-test", force=True)
+    assert len(logger.handlers) == 1
+    assert isinstance(logger.handlers[0], logging.Handler)
+    for handler in logger.handlers[:]:
+        handler.close()
+        logger.removeHandler(handler)
+
+
+def test_rich_handler_renders_external_text_literally():
+    from rich.logging import RichHandler
+
+    log_utils.configure_logging({"logging": {"log_to_file": False}})
+    logger = log_utils.get_logger("literal-message-test", force=True)
+    handler = logger.handlers[0]
+    assert isinstance(handler, RichHandler)
+    assert handler.markup is False
+    handler.close()
+    logger.removeHandler(handler)
+
+
+async def test_startup_applies_config_level_and_cli_override(monkeypatch, tmp_path):
+    from unittest.mock import AsyncMock, MagicMock
+
+    from biblebot import bot
+    from biblebot.auth import Credentials
+
+    client = MagicMock()
+    client.close = AsyncMock()
+    instance = MagicMock()
+    instance.http_session = None
+    instance.start = AsyncMock()
+    instance.close = AsyncMock()
+    monkeypatch.setattr(bot, "AsyncClient", lambda *a, **k: client)
+    monkeypatch.setattr(bot, "BibleBot", lambda *a, **k: instance)
+    monkeypatch.setattr(
+        bot,
+        "load_credentials",
+        lambda: Credentials("https://server", "@bot:server", "token", "DEVICE"),
+    )
+    monkeypatch.setattr(bot, "load_environment", lambda *_a: (None, {}))
+    monkeypatch.setattr(bot, "perform_startup_update_check", AsyncMock())
+    config = {
+        "matrix_room_ids": ["!room:server"],
+        "logging": {"level": "warning", "log_to_file": False},
+    }
+    await bot.main(config=config)
+    assert logging.getLogger("BibleBot").level == logging.WARNING
+    await bot.main(config=config, log_level="debug")
+    assert logging.getLogger("BibleBot").level == logging.DEBUG

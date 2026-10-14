@@ -138,3 +138,20 @@ class TestUpdateCheck:
 
         # The function should complete without raising exceptions
         # (Actual logger configuration depends on loaded config)
+
+
+@pytest.mark.parametrize("payload", [None, 17, "version", [None], [17]])
+async def test_malformed_release_payload_is_nonfatal(monkeypatch, payload):
+    from unittest.mock import AsyncMock, MagicMock
+
+    from biblebot import update_check
+
+    response = MagicMock()
+    response.json = AsyncMock(return_value=payload)
+    request = MagicMock()
+    request.__aenter__.return_value = response
+    session = MagicMock()
+    session.__aenter__.return_value = session
+    session.get.return_value = request
+    monkeypatch.setattr(update_check.aiohttp, "ClientSession", lambda **_k: session)
+    assert await update_check.get_latest_release_version() is None
