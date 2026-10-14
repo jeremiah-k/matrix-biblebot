@@ -228,3 +228,11 @@ def cleanup_asyncmock_objects(request):
                 "ignore", category=RuntimeWarning, message=".*never awaited.*"
             )
             gc.collect()
+
+
+@pytest.fixture(autouse=True)
+def isolate_startup_release_requests(monkeypatch):
+    """Keep lifecycle tests offline; update-check tests exercise their own HTTP mocks."""
+    from unittest.mock import AsyncMock
+
+    monkeypatch.setattr("biblebot.bot.perform_startup_update_check", AsyncMock())

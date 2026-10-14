@@ -21,11 +21,19 @@ concurrency:
 
 jobs:
   test:
+    name: Python ${{ matrix.python-version }} (${{ matrix.installer }})
     runs-on: ubuntu-latest
     timeout-minutes: 30
     strategy:
+      fail-fast: false
       matrix:
         python-version: ["3.12", "3.13", "3.14"]
+        installer: [uv]
+        include:
+          - python-version: "3.12"
+            installer: pip
+          - python-version: "3.14"
+            installer: pip
 
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
@@ -35,42 +43,88 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
 
-      - name: Cache pip dependencies
-        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
+      - name: Set up uv
+        if: matrix.installer == 'uv'
+        uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
         with:
-          path: ~/.cache/pip
-          key: ${{ runner.os }}-pip-${{ hashFiles('**/pyproject.toml') }}
-          restore-keys: |
-            ${{ runner.os }}-pip-
+          version: 0.12.23
+          enable-cache: true
+          cache-suffix: ${{ matrix.python-version }}
 
-      - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install -e .[test]
+      - name: Install locked dependencies
+        if: matrix.installer == 'uv'
+        run: uv sync --locked --no-dev --extra test --extra e2e --python '${{ matrix.python-version }}'
 
-      - name: Run tests with coverage
-        run: |
-          python -m pytest tests/ -v --cov --cov-report=xml --cov-report=html --junitxml=junit.xml
+      - name: Install with pip
+        if: matrix.installer == 'pip'
+        run: python -m pip install -e '.[e2e,test]'
 
-      - name: Debug Python version for codecov
-        run: |
-          echo "Current Python version: ${{ matrix.python-version }}"
-          echo "Will upload coverage: ${{ matrix.python-version == '3.12' }}"
+      - name: Run uv tests with coverage
+        if: matrix.installer == 'uv'
+        run: uv run --locked --no-sync python -m pytest tests/ -q --junitxml=junit.xml
+
+      - name: Run pip tests with coverage
+        if: matrix.installer == 'pip'
+        run: python -m pytest tests/ -q --junitxml=junit.xml
 
       - name: Upload coverage reports to Codecov
-        if: matrix.python-version == '3.12'
+        if: matrix.python-version == '3.12' && matrix.installer == 'uv'
         uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5 # v7
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           slug: jeremiah-k/matrix-biblebot
           flags: unittests
-          name: python-${{ matrix.python-version }}
+          name: python-${{ matrix.python-version }}-${{ matrix.installer }}
           fail_ci_if_error: false
           verbose: true
 
       - name: Upload test results to Codecov
-        if: ${{ !cancelled() }}
+        if: ${{ !cancelled() && matrix.python-version == '3.12' && matrix.installer == 'uv' }}
         uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5 # v7
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           report_type: test_results
+
+  package:
+    name: Build distributions and smoke test pipx
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7
+        with:
+          python-version: "3.12"
+      - uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
+        with:
+          version: 0.12.23
+          enable-cache: true
+      - name: Install development tools
+        run: uv sync --locked
+      - name: Check Python style
+        run: uv run --locked --no-sync ruff check --config .trunk/configs/ruff.toml src
+      - name: Build and check distributions
+        run: |
+          uv build
+          uv run --locked --no-sync twine check dist/*
+      - name: Install wheel with pipx
+        env:
+          PIPX_HOME: ${{ runner.temp }}/biblebot-pipx
+          PIPX_BIN_DIR: ${{ runner.temp }}/biblebot-pipx-bin
+        run: |
+          python -m pip install pipx
+          python - <<'PYCODE'
+          import pathlib
+          import subprocess
+          import sys
+          wheel = next(pathlib.Path("dist").glob("*.whl")).resolve()
+          subprocess.run([sys.executable, "-m", "pipx", "install", "--python", sys.executable, str(wheel)], check=True)
+          PYCODE
+      - name: Smoke test installed entry point and assets
+        env:
+          BIBLEBOT_HOME: ${{ runner.temp }}/biblebot-package-smoke
+          PIPX_BIN_DIR: ${{ runner.temp }}/biblebot-pipx-bin
+        run: |
+          cd "$RUNNER_TEMP"
+          "$PIPX_BIN_DIR/biblebot" --version
+          "$PIPX_BIN_DIR/biblebot" config generate
+          "$PIPX_BIN_DIR/biblebot" config check

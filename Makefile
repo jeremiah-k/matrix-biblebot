@@ -5,7 +5,7 @@ BIBLEBOT_HOST_HOME ?= $(HOME)/.config/matrix-biblebot
 COMPOSE_FILE ?= docker-compose.yaml
 SOURCE_OVERRIDE ?= docker-compose.source.yaml
 SAMPLE_CONFIG := src/biblebot/tools/sample_config.yaml
-COMPOSE_ENV = env BIBLEBOT_HOST_HOME="$(BIBLEBOT_HOST_HOME)" UID="$(shell id -u)" GID="$(shell id -g)
+COMPOSE_ENV = env BIBLEBOT_HOST_HOME="$(BIBLEBOT_HOST_HOME)" UID="$(shell id -u)" GID="$(shell id -g)" BIBLEBOT_UID="$(shell id -u)" BIBLEBOT_GID="$(shell id -g)"
 COMPOSE = $(COMPOSE_ENV) $(DOCKER_COMPOSE) -f "$(COMPOSE_FILE)" $(if $(wildcard $(SOURCE_OVERRIDE)),-f "$(SOURCE_OVERRIDE)")
 
 .PHONY: help setup use-source use-prebuilt config-check auth-login auth-status pull build run stop logs clean
@@ -25,8 +25,8 @@ help:
 	  "make clean         Remove the Compose deployment"
 
 setup:
-	@mkdir -p "$(BIBLEBOT_HOST_HOME)"
-	@if [ ! -f "$(BIBLEBOT_HOST_HOME)/config.yaml" ]; then cp "$(SAMPLE_CONFIG)" "$(BIBLEBOT_HOST_HOME)/config.yaml"; fi
+	@mkdir -p -m 0700 "$(BIBLEBOT_HOST_HOME)"
+	@if [ ! -f "$(BIBLEBOT_HOST_HOME)/config.yaml" ]; then install -m 0600 "$(SAMPLE_CONFIG)" "$(BIBLEBOT_HOST_HOME)/config.yaml"; fi
 	@if [ ! -f "$(COMPOSE_FILE)" ]; then cp sample-docker-compose.yaml "$(COMPOSE_FILE)"; fi
 	@printf 'Runtime: %s\nConfig: %s/config.yaml\nNext: edit the config, then run make auth-login && make run\n' "$(BIBLEBOT_HOST_HOME)" "$(BIBLEBOT_HOST_HOME)"
 

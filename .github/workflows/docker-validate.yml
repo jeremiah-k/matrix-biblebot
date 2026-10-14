@@ -13,6 +13,9 @@ on:
       - sample-docker-compose.source.yaml
       - src/**
       - pyproject.toml
+      - uv.lock
+      - MANIFEST.in
+      - README.md
 
 concurrency:
   group: docker-validate-${{ github.workflow }}-${{ github.ref }}
@@ -79,3 +82,17 @@ jobs:
 
       - name: Verify arm64 runtime under QEMU
         run: docker run --rm --platform linux/arm64 matrix-biblebot:validate-arm64 biblebot --version
+
+      - name: Validate Compose and Makefile
+        shell: bash
+        run: |
+          set -euo pipefail
+          runtime_home="$(mktemp -d)"
+          make setup BIBLEBOT_HOST_HOME="$runtime_home"
+          docker tag matrix-biblebot:validate ghcr.io/jeremiah-k/matrix-biblebot:latest
+          make config-check BIBLEBOT_HOST_HOME="$runtime_home"
+          env BIBLEBOT_HOST_HOME="$runtime_home" BIBLEBOT_UID="$(id -u)" BIBLEBOT_GID="$(id -g)" \
+            docker compose -f sample-docker-compose.yaml config --quiet
+          make use-source BIBLEBOT_HOST_HOME="$runtime_home"
+          make use-prebuilt BIBLEBOT_HOST_HOME="$runtime_home"
+          test ! -f docker-compose.source.yaml
