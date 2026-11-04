@@ -5,7 +5,7 @@ services:
     restart: unless-stopped
     init: true
     stop_grace_period: 30s
-    user: "${UID:-1000}:${GID:-1000}"
+    user: "${BIBLEBOT_UID:-1000}:${BIBLEBOT_GID:-1000}"
     environment:
       BIBLEBOT_HOME: /data
       TZ: "${TZ:-UTC}"

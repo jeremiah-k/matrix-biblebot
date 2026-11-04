@@ -1,4 +1,6 @@
 # Virtual environments
+.venv/
+.dev-runtime/
 .pyenv
 venv/
 env/

@@ -3,7 +3,7 @@
   "extends": ["config:best-practices"],
   "forkProcessing": "enabled",
   "mode": "full",
-  "enabledManagers": ["pep621", "github-actions"],
+  "enabledManagers": ["pep621", "github-actions", "dockerfile"],
   "timezone": "America/Chicago",
   "updateNotScheduled": true,
   "dependencyDashboard": true,
