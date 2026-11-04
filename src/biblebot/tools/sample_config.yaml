@@ -11,7 +11,7 @@ matrix:
     - "!your_room_id:your_homeserver_domain"
     - "!your_other_room_id:your_homeserver_domain"
   # End-to-End Encryption (E2EE) Settings (optional)
-  # Requires: pip install "mindroom-nio[e2e]==0.40.0"
+  # Install: pipx install 'matrix-biblebot[e2e]' (or uv sync --extra e2e in a checkout)
   # Note: E2EE requires proper authentication via 'biblebot auth login'
   # Manual access tokens do NOT support E2EE
   # e2ee:
@@ -31,3 +31,13 @@ matrix:
 # You can also set these as environment variables: ESV_API_KEY
 # api_keys:
 #   esv: null # Optional: ESV API key for enhanced ESV support (get from https://api.esv.org/)
+
+# Logging Settings (optional - defaults shown)
+# logging:
+#   level: info
+#   color_enabled: true
+#   log_to_file: true
+#   max_log_size: 10 # MB; strings such as "10 MiB" also work
+#   backup_count: 3
+#   debug:
+#     matrix_nio: false

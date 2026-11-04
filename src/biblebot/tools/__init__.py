@@ -56,17 +56,7 @@ def copy_sample_config_to(dst_path: str) -> str:
     Returns:
         str: Filesystem path to the copied sample configuration file.
     """
-    res = importlib.resources.files(_tools) / SAMPLE_CONFIG_FILENAME
-    dst = pathlib.Path(dst_path)
-    # If dst is an existing dir or a path without a suffix, treat as directory
-    if dst.exists() and dst.is_dir():
-        dst = dst / SAMPLE_CONFIG_FILENAME
-    elif dst.suffix == "":
-        dst = dst / SAMPLE_CONFIG_FILENAME
-    with importlib.resources.as_file(res) as p:
-        dst.parent.mkdir(parents=True, exist_ok=True)
-        shutil.copy2(p, dst)
-    return str(dst)
+    return _copy_resource_to(SAMPLE_CONFIG_FILENAME, dst_path)
 
 
 @contextmanager
@@ -110,14 +100,16 @@ def copy_service_template_to(dst_path: str) -> str:
 
     If dst_path names an existing directory, or if it has no suffix, the function will place the service template inside that directory using the filename "biblebot.service". Parent directories are created as needed. The returned string is the path to the copied file on the local filesystem.
     """
-    filename = "biblebot.service"
-    res = importlib.resources.files(_tools) / filename
-    dst = pathlib.Path(dst_path)
-    if dst.exists() and dst.is_dir():
-        dst = dst / filename
-    elif dst.suffix == "":
-        dst = dst / filename
-    with importlib.resources.as_file(res) as p:
-        dst.parent.mkdir(parents=True, exist_ok=True)
-        shutil.copy2(p, dst)
-    return str(dst)
+    return _copy_resource_to("biblebot.service", dst_path)
+
+
+def _copy_resource_to(filename: str, dst_path: str) -> str:
+    """Copy a bundled resource into a stable path, including zipped installs."""
+    resource = importlib.resources.files(_tools) / filename
+    destination = pathlib.Path(dst_path)
+    if destination.is_dir() or not destination.suffix:
+        destination /= filename
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    with importlib.resources.as_file(resource) as source:
+        shutil.copy2(source, destination)
+    return str(destination)

@@ -136,12 +136,12 @@ def test_failed_migration_falls_back_to_legacy_location(monkeypatch, tmp_path, c
     assert any("Could not migrate" in record.message for record in caplog.records)
 
 
-def test_partial_migration_failure_cleans_target_and_falls_back(monkeypatch, tmp_path):
+def test_partial_migration_failure_preserves_staging_and_stops(monkeypatch, tmp_path):
     """A shutil.Error from a partial copy must not leave a broken target.
 
     shutil.move falls back to copytree across filesystems; an interrupted
     copy can leave the target present but incomplete. The resolver must
-    clean it up and fall back to the intact legacy store.
+    retain it because source deletion could also have partially completed.
     """
     legacy_store = tmp_path / ".config" / "matrix-biblebot" / "e2ee-store"
     legacy_store.mkdir(parents=True)
@@ -158,12 +158,14 @@ def test_partial_migration_failure_cleans_target_and_falls_back(monkeypatch, tmp
 
     monkeypatch.setattr(paths.shutil, "move", partial_move)
 
-    resolved = paths.get_e2ee_store_dir()
+    import pytest
 
-    assert resolved == legacy_store
+    with pytest.raises(OSError, match="state is preserved at"):
+        paths.get_e2ee_store_dir()
     assert (legacy_store / "device.db").exists()
     new_store = tmp_path / ".local" / "state" / "matrix-biblebot" / "e2ee-store"
     assert not new_store.exists()
+    assert len(list(new_store.parent.glob(".e2ee-store.migrate-*"))) == 1
 
 
 def test_failed_migration_does_not_delete_peer_target(monkeypatch, tmp_path):
@@ -392,3 +394,125 @@ Environment=PYTHONUNBUFFERED=1
     assert f'WorkingDirectory="{runtime_home}"' in service
     assert f'Environment="BIBLEBOT_HOME={runtime_home}"' in service
     assert runtime_home.is_dir()
+
+
+def test_publish_failure_restores_complete_legacy_store(monkeypatch, tmp_path):
+    monkeypatch.delenv("BIBLEBOT_HOME", raising=False)
+    monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path / "config"))
+    monkeypatch.setenv("XDG_STATE_HOME", str(tmp_path / "state"))
+    legacy = paths.get_config_dir() / "e2ee-store"
+    legacy.mkdir(parents=True)
+    (legacy / "device.db").write_bytes(b"irreplaceable keys")
+    monkeypatch.setattr(paths.os, "replace", raise_os_error)
+
+    assert paths.get_e2ee_store_dir() == legacy
+    assert (legacy / "device.db").read_bytes() == b"irreplaceable keys"
+    assert not list((tmp_path / "state" / "matrix-biblebot").glob(".*.migrate-*"))
+
+
+def test_failed_restore_preserves_staging_and_stops_startup(monkeypatch, tmp_path):
+    import pytest
+
+    monkeypatch.delenv("BIBLEBOT_HOME", raising=False)
+    monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path / "config"))
+    monkeypatch.setenv("XDG_STATE_HOME", str(tmp_path / "state"))
+    legacy = paths.get_config_dir() / "e2ee-store"
+    legacy.mkdir(parents=True)
+    (legacy / "device.db").write_bytes(b"irreplaceable keys")
+
+    def fail_publish_and_restore(*_args):
+        monkeypatch.setattr(paths.os, "rename", raise_os_error)
+        raise OSError("publication failed")
+
+    monkeypatch.setattr(paths.os, "replace", fail_publish_and_restore)
+    with pytest.raises(OSError, match="state is preserved at"):
+        paths.get_e2ee_store_dir()
+    staged = list((tmp_path / "state" / "matrix-biblebot").glob(".*.migrate-*"))
+    assert len(staged) == 1
+    assert (staged[0] / "device.db").read_bytes() == b"irreplaceable keys"
+    with pytest.raises(OSError, match="Unpublished state migration"):
+        paths.get_e2ee_store_dir()
+    assert (staged[0] / "device.db").read_bytes() == b"irreplaceable keys"
+
+
+def test_completed_move_keeps_legacy_keys_when_peer_publishes(monkeypatch, tmp_path):
+    monkeypatch.delenv("BIBLEBOT_HOME", raising=False)
+    monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path / "config"))
+    monkeypatch.setenv("XDG_STATE_HOME", str(tmp_path / "state"))
+    legacy = paths.get_config_dir() / "e2ee-store"
+    legacy.mkdir(parents=True)
+    (legacy / "device.db").write_bytes(b"legacy keys")
+    target = tmp_path / "state" / "matrix-biblebot" / "e2ee-store"
+    real_move = shutil.move
+
+    def move_then_peer(source, staging):
+        real_move(source, staging)
+        target.mkdir()
+        (target / "device.db").write_bytes(b"peer keys")
+
+    monkeypatch.setattr(paths.shutil, "move", move_then_peer)
+    assert paths.get_e2ee_store_dir() == target
+    assert (legacy / "device.db").read_bytes() == b"legacy keys"
+    assert (target / "device.db").read_bytes() == b"peer keys"
+
+
+def test_relative_xdg_homes_use_specification_defaults(monkeypatch, tmp_path):
+    monkeypatch.delenv("BIBLEBOT_HOME", raising=False)
+    monkeypatch.setenv("XDG_CONFIG_HOME", "relative/config")
+    monkeypatch.setenv("XDG_STATE_HOME", "relative/state")
+    monkeypatch.setattr(Path, "home", classmethod(lambda _cls: tmp_path))
+    assert paths.get_config_dir() == tmp_path / ".config" / "matrix-biblebot"
+    assert paths.get_log_dir() == tmp_path / ".local/state/matrix-biblebot/logs"
+
+
+def test_move_failure_after_partial_source_removal_preserves_all_copies(
+    monkeypatch, tmp_path
+):
+    import pytest
+
+    monkeypatch.delenv("BIBLEBOT_HOME", raising=False)
+    monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path / "config"))
+    monkeypatch.setenv("XDG_STATE_HOME", str(tmp_path / "state"))
+    legacy = paths.get_config_dir() / "e2ee-store"
+    legacy.mkdir(parents=True)
+    (legacy / "device.db").write_bytes(b"irreplaceable keys")
+    (legacy / "other.db").write_bytes(b"other keys")
+
+    def copy_then_partial_remove(source, staging):
+        shutil.copytree(source, staging)
+        (Path(source) / "device.db").unlink()
+        raise OSError("source cleanup failed")
+
+    monkeypatch.setattr(paths.shutil, "move", copy_then_partial_remove)
+    with pytest.raises(OSError, match="state is preserved at"):
+        paths.get_e2ee_store_dir()
+    staged = next((tmp_path / "state" / "matrix-biblebot").glob(".*.migrate-*"))
+    assert (staged / "device.db").read_bytes() == b"irreplaceable keys"
+    assert (legacy / "other.db").read_bytes() == b"other keys"
+    with pytest.raises(OSError, match="Unpublished state migration"):
+        paths.get_e2ee_store_dir()
+
+
+def test_peer_move_without_publication_stops_instead_of_creating_empty_store(
+    monkeypatch, tmp_path
+):
+    import pytest
+
+    monkeypatch.delenv("BIBLEBOT_HOME", raising=False)
+    monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path / "config"))
+    monkeypatch.setenv("XDG_STATE_HOME", str(tmp_path / "state"))
+    legacy = paths.get_config_dir() / "e2ee-store"
+    legacy.mkdir(parents=True)
+    (legacy / "device.db").write_bytes(b"irreplaceable keys")
+    target = tmp_path / "state" / "matrix-biblebot" / "e2ee-store"
+    peer_staging = target.parent / ".e2ee-store.migrate-peer"
+
+    def peer_moves_first(source, _staging):
+        Path(source).rename(peer_staging)
+        raise FileNotFoundError("source moved by peer")
+
+    monkeypatch.setattr(paths.shutil, "move", peer_moves_first)
+    with pytest.raises(OSError, match="Unpublished state migration"):
+        paths.get_e2ee_store_dir()
+    assert not target.exists()
+    assert (peer_staging / "device.db").read_bytes() == b"irreplaceable keys"

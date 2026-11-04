@@ -1,457 +1,143 @@
-# Troubleshooting Guide
+# Troubleshooting
 
-Common issues and solutions for Matrix BibleBot.
-
-## Authentication Issues
-
-### "No credentials found" Error
-
-**Problem:** Bot fails to start with "No credentials found" message.
-
-**Solution:**
+Start with these commands, using the same `BIBLEBOT_HOME` or XDG settings as the
+running bot:
 
 ```bash
-biblebot auth login
+biblebot --version
+biblebot config check
+biblebot auth status
 ```
 
-**Details:**
+`config check` validates local settings and reports configured API keys and
+crypto dependency availability. It does not contact Matrix or verify an API key
+with its provider. See [configuration](CONFIGURATION.md) for runtime paths and
+[Docker](DOCKER.md) for container commands.
 
-- The bot requires proper authentication before running
-- Legacy access tokens are deprecated and don't support E2EE
-- Use the modern authentication flow for best security
+## Authentication
 
-### Login Fails with "Invalid credentials"
+Run `biblebot auth login` for interactive login. Enter the homeserver URL when
+prompted, followed by a full Matrix ID or a local username, then the password.
+A local username uses the entered homeserver's domain.
 
-**Problem:** `biblebot auth login` fails with authentication error.
+The CLI accepts either interactive login with no parameters, or all three of
+`--homeserver`, `--username`, and `--password`. Passing just a homeserver is an
+error. Prefer the interactive prompt for manual use: command-line passwords can
+appear in shell history and process listings.
 
-**Solutions:**
-
-1. **Check username format:**
-   - Use full MXID: `@username:homeserver.com`
-   - Or just username: `username` (homeserver will be auto-detected)
-
-2. **Verify homeserver URL:**
-   - Include protocol: `https://matrix.example.com`
-   - Check for typos in domain name
-
-3. **Check password:**
-   - Ensure correct password
-   - Some servers require app-specific passwords
-
-4. **Server connectivity:**
-   ```bash
-   curl -I https://your-homeserver.com
-   ```
-
-### "Server discovery failed"
-
-**Problem:** Bot can't find Matrix homeserver.
-
-**Solutions:**
-
-1. **Specify full homeserver URL:**
-
-   ```bash
-   biblebot auth login --homeserver https://matrix.example.com
-   ```
-
-2. **Check DNS/connectivity:**
-
-   ```bash
-   nslookup your-homeserver.com
-   ping your-homeserver.com
-   ```
-
-3. **Verify server supports discovery:**
-   ```bash
-   curl https://your-homeserver.com/.well-known/matrix/client
-   ```
-
-## Configuration Issues
-
-### Bot Doesn't Respond to Messages
-
-**Problem:** Bot is online but doesn't respond to Bible references.
-
-**Solutions:**
-
-1. **Check room configuration:**
-
-   ```bash
-   biblebot config check
-   ```
-
-   Verify room IDs are correct in config.yaml
-
-2. **Ensure bot is invited:**
-   - Bot must be invited to rooms listed in config
-   - Check bot is actually in the room (not just invited)
-
-3. **Check message format:**
-   - Try exact format: `John 3:16`
-   - Ensure no extra characters or formatting
-
-4. **Verify bot permissions:**
-   - Bot needs permission to send messages
-   - Check room power levels
-
-### "Could not resolve alias" Warning
-
-**Problem:** Bot warns about unresolvable room aliases.
-
-**Solutions:**
-
-1. **Use room IDs instead:**
-
-   ```yaml
-   matrix:
-     room_ids:
-       - "!AbCdEfGhIjKlMnOpQr:matrix.example.com" # Use this
-       # - "#room-alias:matrix.example.com"        # Instead of this
-   ```
-
-2. **Check alias exists:**
-   - Verify alias is published
-   - Try joining the alias manually in your client
-
-3. **Check permissions:**
-   - Bot needs permission to resolve aliases
-   - Some servers restrict alias resolution
-
-### Configuration File Not Found
-
-**Problem:** Bot can't find configuration file.
-
-**Solutions:**
-
-1. **Generate configuration:**
-
-   ```bash
-   biblebot config generate
-   ```
-
-2. **Check file location:**
-   - Default: `~/.config/matrix-biblebot/config.yaml`
-   - Specify custom path: `biblebot --config /path/to/config.yaml`
-
-3. **Check file permissions:**
-   ```bash
-   ls -la ~/.config/matrix-biblebot/
-   ```
-
-## End-to-End Encryption Issues
-
-### E2EE Dependencies Missing
-
-**Problem:** "E2EE dependencies not found" warning.
-
-**Solution:**
+If discovery fails, enter the full homeserver URL, including `https://`, in the
+interactive prompt. Check its discovery endpoint:
 
 ```bash
-pipx install 'matrix-biblebot[e2e]'
-# or
-pip install 'matrix-biblebot[e2e]'
+curl https://example.com/.well-known/matrix/client
 ```
 
-### Bot Can't Decrypt Messages
-
-**Problem:** Bot receives encrypted messages but can't decrypt them.
-
-**Solutions:**
-
-1. **Verify E2EE is enabled:**
-
-   ```yaml
-   matrix:
-     e2ee:
-       enabled: true
-   ```
-
-2. **Check device verification:**
-   - Verify bot's device in your Matrix client
-   - Look for unverified device warnings
-   - For automated test clients, `OlmUnverifiedDeviceError` is raised by the
-     **sending client** before it encrypts to an unverified recipient. Keep the
-     test client alive for the whole round trip and either verify the bot device
-     in that same session or send the trigger with
-     `ignore_unverified_devices=True`. This does not disable room encryption;
-     it only tells nio to encrypt to devices whose trust state is not verified.
-
-3. **Reset E2EE store (last resort):**
-
-   ```bash
-   biblebot auth logout  # This removes E2EE store
-   biblebot auth login   # Re-login and re-verify
-   ```
-
-4. **Find the store:** default location is
-   `~/.local/state/matrix-biblebot/e2ee-store` (or `<BIBLEBOT_HOME>/e2ee-store`
-   when set). Upgraded installs are migrated there automatically from the old
-   `~/.config/matrix-biblebot/e2ee-store`.
-
-### E2EE dependency errors
-
-**Problem:** E2EE dependencies are unavailable or the wrong nio provider is installed.
-
-**Explanation:**
-
-- E2EE requires the `mindroom-nio[e2e]` extra and its `vodozemac` provider
-- `matrix-nio` and `mindroom-nio` both install `nio` and must not be co-installed
-- Recreate the environment if an in-place provider change left both installed
-
-**Workarounds:**
-
-1. **Use without E2EE:**
-
-   ```yaml
-   matrix:
-     e2ee:
-       enabled: false
-   ```
-
-2. **Recreate the environment with the E2EE extra:**
-   - Remove the old virtual environment or pipx installation
-   - Install `matrix-biblebot[e2e]` into a clean environment
-
-## API and Network Issues
-
-### "Passage not found" Errors
-
-**Problem:** Bot reports "passage not found" for valid references.
-
-**Solutions:**
-
-1. **Check reference format:**
-   - Valid: `John 3:16`, `1 Cor 15:1-4`, `Psalm 23`
-   - Invalid: `John 3:99`, `NotABook 1:1`
-
-2. **Try different translation:**
-   - KJV: `John 3:16`
-   - ESV: `John 3:16 esv`
-
-3. **Check API connectivity:**
-   ```bash
-   curl "https://bible-api.com/john%203:16?translation=kjv"
-   ```
-
-### ESV API Issues
-
-**Problem:** ESV translation not working.
-
-**Solutions:**
-
-1. **Check API key:**
-
-   ```bash
-   biblebot config check
-   ```
-
-   Should show "ESV API key: Found"
-
-2. **Verify API key:**
-
-   ```bash
-   curl -H "Authorization: Token YOUR_API_KEY" \
-        "https://api.esv.org/v3/passage/text/?q=John+3:16"
-   ```
-
-3. **Get new API key:**
-   - Visit [api.esv.org](https://api.esv.org/)
-   - Register for free API key
-   - Add to config or environment variable
-
-### Network Timeout Issues
-
-**Problem:** Bot times out connecting to APIs or Matrix.
-
-**Solutions:**
-
-1. **Check internet connectivity:**
-
-   ```bash
-   ping google.com
-   ping matrix.org
-   ```
-
-2. **Check firewall/proxy:**
-   - Ensure HTTPS (443) is allowed
-   - Configure proxy if needed
-
-3. **Increase timeout (if running from source):**
-   - Edit timeout values in `src/biblebot/constants/api.py`
-   - Rebuild and reinstall
-
-## Performance Issues
-
-### Bot Responds Slowly
-
-**Problem:** Long delays between request and response.
-
-**Solutions:**
-
-1. **Enable caching:**
-
-   ```yaml
-   bot:
-     cache_enabled: true
-   ```
-
-2. **Check system resources:**
-
-   ```bash
-   top
-   free -h
-   ```
-
-3. **Check network latency:**
-   ```bash
-   ping your-homeserver.com
-   ```
-
-### High Memory Usage
-
-**Problem:** Bot uses excessive memory over time.
-
-**Solutions:**
-
-1. **Restart bot periodically:**
-
-   ```bash
-   systemctl --user restart biblebot.service
-   ```
-
-2. **Check for memory leaks:**
-   - Monitor memory usage over time
-   - Report if consistently increasing
-
-3. **Reduce cache size (if running from source):**
-   - Modify cache settings in configuration
-
-## Service Management Issues
-
-### Systemd Service Won't Start
-
-**Problem:** `systemctl --user start biblebot.service` fails.
-
-**Solutions:**
-
-1. **Check service status:**
-
-   ```bash
-   systemctl --user status biblebot.service
-   ```
-
-2. **Check service logs:**
-
-   ```bash
-   journalctl --user -u biblebot.service -f
-   ```
-
-3. **Verify installation:**
-
-   ```bash
-   biblebot service install
-   ```
-
-4. **Check file permissions:**
-   ```bash
-   ls -la ~/.config/systemd/user/biblebot.service
-   ```
-
-### Service Starts but Bot Doesn't Work
-
-**Problem:** Service shows as running but bot doesn't respond.
-
-**Solutions:**
-
-1. **Check service logs:**
-
-   ```bash
-   journalctl --user -u biblebot.service --since "1 hour ago"
-   ```
-
-2. **Test manual startup:**
-
-   ```bash
-   systemctl --user stop biblebot.service
-   biblebot --log-level debug
-   ```
-
-3. **Check configuration in service context:**
-   - Service runs with different environment
-   - Ensure config paths are absolute
-
-## Getting Help
-
-### Enable Debug Logging
-
-For detailed troubleshooting information:
+If the server rejects login, check the username and password in a Matrix client.
+A server using SSO may require an authentication method this password login does
+not support.
+
+Login reports success only after credentials are saved. If persistence fails,
+check free space and write permissions on the config directory. Failed atomic
+replacement retains the previous credentials file. Logout reports failure if
+local credentials or the encryption store cannot be removed; resolve the
+permissions issue before retrying.
+
+## The bot connects but does not reply
+
+1. Run `biblebot config check` and verify the room IDs or aliases.
+2. Invite the bot account to each configured room and check its permission to send.
+3. Send a whole-message reference such as `John 3:16` from another account after
+   startup. Messages sent before startup, the bot's own messages, and references
+   embedded in conversation do not trigger replies.
+4. Use `biblebot --log-level debug` to inspect room joining, alias resolution,
+   decryption, and passage retrieval.
+
+If an alias cannot be resolved, confirm it is published or use the room's internal
+ID from the Matrix client's room settings. Resolved aliases use the canonical room
+ID for both joining and accepting messages.
+
+## Encryption
+
+Install the encryption extra in the application's environment:
 
 ```bash
+pipx install --force 'matrix-biblebot[e2e]'
+# Alternative installer:
+uv tool install --reinstall 'matrix-biblebot[e2e]'
+```
+
+For a source checkout, use the development guide's sync command. Docker includes
+the extra. Encryption also needs `matrix.e2ee.enabled: true` and saved credentials
+with a device ID from `biblebot auth login`; a legacy access token alone is
+insufficient.
+
+The supported provider is `mindroom-nio[e2e]` with `vodozemac`. Both `matrix-nio`
+and `mindroom-nio` install `nio`; do not install them together. Recreate an
+environment containing both providers, then install BibleBot with its extra.
+
+Verify the bot device in a Matrix client. For an automated sender,
+`OlmUnverifiedDeviceError` occurs in the sending client before encryption to an
+unverified recipient. Keep that client alive for the round trip and verify the
+bot in that session, or explicitly send with `ignore_unverified_devices=True`.
+This setting retains encryption while accepting an unverified recipient.
+
+The default store is `~/.local/state/matrix-biblebot/e2ee-store`, or
+`<BIBLEBOT_HOME>/e2ee-store`. Back up the credentials and store together before
+changing providers or resetting a device. `biblebot auth logout` deletes the
+local store; use it as a last resort, then log in and verify the replacement
+device. See the configuration guide for explicit cross-signing commands and
+refusal checks.
+
+If startup reports an unpublished migration, wait for any other bot process to
+finish migrating. If the process was interrupted, preserve the named staging
+and legacy directories and recover the complete store before restarting. Do
+not delete staging or create an empty replacement store.
+
+## Passage APIs and timeouts
+
+KJV needs no API key. ESV needs a non-empty key in the config, `.env` beside the
+config, or `ESV_API_KEY`. The config check reports a count of configured keys;
+it does not test whether the ESV service accepts them.
+
+Check provider connectivity without credentials:
+
+```bash
+curl 'https://bible-api.com/john%203:16?translation=kjv'
+```
+
+For ESV, obtain or check a key at [api.esv.org](https://api.esv.org/). Avoid
+including the key in bug reports. Check DNS, outbound HTTPS, and server status
+when requests time out. API timeouts are defined in the source constants;
+there is no timeout setting in the YAML config.
+
+Caching is enabled by default and can be disabled with `bot.cache_enabled:
+false`. Cache capacity and expiry are source constants, not YAML options. Report
+sustained memory growth with its duration and approximate message volume.
+
+## systemd
+
+```bash
+systemctl --user status biblebot.service
+journalctl --user -u biblebot.service --since '1 hour ago'
+```
+
+Install or refresh the unit with `biblebot service install` after setting the
+runtime environment. The generated unit captures the executable, config path,
+and resolved runtime directories. It does not capture arbitrary shell variables;
+keep API keys in the configuration or its neighboring `.env`.
+
+To debug manually, stop the service first, then start the CLI with the same
+runtime environment:
+
+```bash
+systemctl --user stop biblebot.service
 biblebot --log-level debug
 ```
 
-### Check System Information
+## Report a problem
 
-```bash
-biblebot auth status  # Shows auth and E2EE status
-biblebot config check # Validates configuration
-```
-
-### Collect Information for Bug Reports
-
-When reporting issues, include:
-
-1. **Bot version:**
-
-   ```bash
-   biblebot --version
-   ```
-
-2. **System information:**
-
-   ```bash
-   python --version
-   uname -a  # Linux/macOS
-   ```
-
-3. **Configuration (sanitized):**
-
-   ```bash
-   biblebot config check
-   ```
-
-4. **Error logs:**
-
-   ```bash
-   biblebot --log-level debug 2>&1 | head -50
-   # Windows PowerShell: biblebot --log-level debug 2>&1 | Select-Object -First 50
-   ```
-
-5. **Steps to reproduce the issue**
-
-### Where to Get Help
-
-- **GitHub Issues:** [jeremiah-k/matrix-biblebot/issues](https://github.com/jeremiah-k/matrix-biblebot/issues)
-- **Matrix Room:** Join the support room (if available)
-- **Documentation:** Check other docs in this repository
-
-### Before Reporting Bugs
-
-1. **Update to latest version:**
-
-   ```bash
-   pipx upgrade matrix-biblebot
-   ```
-
-2. **Check existing issues:**
-   - Search GitHub issues for similar problems
-   - Check if issue is already known/fixed
-
-3. **Try minimal reproduction:**
-   - Test with fresh config
-   - Isolate the specific problem
-
-4. **Gather debug information:**
-   - Enable debug logging
-   - Collect relevant error messages
+Include the BibleBot version, installation method, Python/platform details,
+steps to reproduce, and relevant logs in a
+[GitHub issue](https://github.com/jeremiah-k/matrix-biblebot/issues). Remove
+passwords, access tokens, API keys, and private message contents. Review the
+existing issues and check whether an available release addresses the problem.

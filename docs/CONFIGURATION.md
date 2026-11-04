@@ -25,7 +25,9 @@ This guide covers all configuration options for Matrix BibleBot.
 
 ## Configuration File Structure
 
-The configuration file uses YAML format with the following structure:
+The configuration file uses YAML. `biblebot config generate` and `make setup`
+use the same template, `src/biblebot/tools/sample_config.yaml`; this packaged
+file is the sample configuration authority. A minimal configuration looks like:
 
 ```yaml
 version: 1
@@ -65,7 +67,7 @@ matrix:
 
 - **Room IDs** (starting with `!`) are permanent identifiers
 - **Room aliases** (starting with `#`) are human-readable names that resolve to room IDs
-- The bot automatically resolves aliases to room IDs at startup
+- The bot resolves aliases to room IDs at startup and uses those IDs for joining and accepting messages
 - Use either format in your configuration
 
 **Finding Room IDs:**
@@ -163,6 +165,14 @@ location is moved into the state home. Set `BIBLEBOT_HOME` to place all
 state under one portable directory instead (this is what the Docker image
 does with `/data`).
 
+If migration cannot publish the moved state, BibleBot restores the legacy
+directory and uses it for that run. If restoration also fails, startup stops
+and reports the staging path that contains the preserved state. Restore that
+directory before restarting; do not delete it. An interrupted move also stops
+startup and preserves both source and staging for recovery, since either may
+contain keys absent from the other. A second process must wait for an in-progress
+migration to finish before starting. Relative XDG home values are ignored, as required by the XDG specification.
+
 ## Bot Behavior Configuration
 
 ### Default Translation
@@ -180,7 +190,7 @@ Control how long messages are handled:
 
 ```yaml
 bot:
-  max_message_length: 2000 # Maximum single message length
+  max_message_length: 2000 # Maximum single message length; minimum 9 characters
   split_message_length: 1000 # Split messages longer than this (0 = disabled)
 ```
 
@@ -204,7 +214,7 @@ bot:
 
 When enabled:
 
-- Preserves line breaks in Psalms, Proverbs, etc.
+- Preserves line breaks within each message, including when passages are split
 - Cleans up excess whitespace
 - Converts to HTML `<br />` tags in formatted messages
 
@@ -274,12 +284,41 @@ Specify a different config location:
 biblebot --config /path/to/your/config.yaml
 ```
 
+### systemd runtime paths
+
+Run `biblebot service install` with the same `BIBLEBOT_HOME`,
+`XDG_CONFIG_HOME`, and `XDG_STATE_HOME` settings used for login and manual
+startup. The generated service records absolute configuration paths and
+carries those environment settings so the device uses the same crypto store.
+Run installation again after moving runtime directories or changing the
+Python environment. The install command returns a failure status if setup
+cannot complete.
+
 ### Directory Permissions
 
 The bot automatically sets secure permissions:
 
 - Config directory: `0700` (owner read/write/execute only)
 - Credentials file: `0600` (owner read/write only)
+
+## Logging
+
+```yaml
+logging:
+  level: info
+  color_enabled: true
+  log_to_file: true
+  max_log_size: 10 # Numeric values are MB; strings such as "10 MiB" also work.
+  backup_count: 3
+  debug:
+    matrix_nio: false
+```
+
+`biblebot --log-level debug` overrides `logging.level` for that invocation.
+Otherwise the config level applies, falling back to info. File logging uses
+`logs/biblebot.log` under the resolved state directory unless `logging.filename`
+selects another path. A directory or file setup failure keeps console logging
+available. External text is rendered literally rather than as Rich markup.
 
 ## Book Abbreviations
 
@@ -376,13 +415,18 @@ Check your configuration:
 biblebot config check
 ```
 
-This validates:
+This checks YAML syntax, mapping sections, a non-empty list of Matrix room IDs
+or aliases, supported default translations, boolean flags, integer message
+lengths, API-key types, and logging settings. Optional null sections use defaults.
+Nested room settings take precedence over legacy keys, including when the list
+is empty; duplicate rooms are removed while preserving order. The legacy
+`matrix.encryption` spelling is accepted when `matrix.e2ee` is absent.
 
-- YAML syntax
-- Required fields
-- Room ID formats
-- API key presence
-- E2EE configuration
+Quoted strings such as `enabled: "false"` are rejected: use `enabled: false`.
+Invalid settings produce a diagnostic code and exit status 1 before startup.
+The check reports how many API keys are configured and whether encryption
+dependencies are installed. It does not contact Matrix or validate an API key
+against the upstream provider.
 
 ## Migration from Legacy Setup
 

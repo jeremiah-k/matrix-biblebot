@@ -103,3 +103,74 @@ def test_get_bible_text_unsupported_translation_raises_documented_exception():
     with pytest.raises(PassageNotFound) as exc_info:
         asyncio.run(_check())
     assert "Unsupported translation" in str(exc_info.value)
+
+
+@pytest.mark.parametrize(
+    "response", [None, [], 17, "text", {"text": []}, {"text": 17}, {"text": "  "}]
+)
+async def test_kjv_malformed_payload_raises_lookup_error(monkeypatch, response):
+    from unittest.mock import AsyncMock
+
+    from biblebot import passages
+
+    monkeypatch.setattr(passages, "make_api_request", AsyncMock(return_value=response))
+    with pytest.raises(PassageNotFound):
+        await get_kjv_text("John 3:16")
+
+
+@pytest.mark.parametrize(
+    "response",
+    [
+        None,
+        [],
+        {"passages": "text"},
+        {"passages": [17]},
+        {"passages": [None]},
+        {"passages": ["  "]},
+    ],
+)
+async def test_esv_malformed_payload_raises_lookup_error(monkeypatch, response):
+    from unittest.mock import AsyncMock
+
+    from biblebot import passages
+
+    monkeypatch.setattr(passages, "make_api_request", AsyncMock(return_value=response))
+    with pytest.raises(PassageNotFound):
+        await get_esv_text("John 3:16", "key")
+
+
+@pytest.mark.parametrize("key", [None, "", "   "])
+async def test_esv_empty_key_never_requests_network(monkeypatch, key):
+    from unittest.mock import AsyncMock
+
+    from biblebot import passages
+
+    request = AsyncMock()
+    monkeypatch.setattr(passages, "make_api_request", request)
+    with pytest.raises(APIKeyMissing):
+        await get_esv_text("John 3:16", key)
+    request.assert_not_awaited()
+
+
+async def test_invalid_optional_reference_is_normalized_before_caching(monkeypatch):
+    from unittest.mock import AsyncMock
+
+    from biblebot import passages
+
+    request = AsyncMock(return_value={"text": " verse ", "reference": ["invalid"]})
+    monkeypatch.setattr(passages, "make_api_request", request)
+    assert await get_bible_text("John 3:16", "kjv") == ("verse", None)
+    assert await get_bible_text("John 3:16", "kjv") == ("verse", None)
+    request.assert_awaited_once()
+
+
+def test_replacing_cache_entry_refreshes_lru_order(monkeypatch):
+    from biblebot import passages
+
+    monkeypatch.setattr(passages, "_PASSAGE_CACHE_MAX", 2)
+    passages._cache_set("John 1:1", "kjv", ("first", None))
+    passages._cache_set("John 1:2", "kjv", ("second", None))
+    passages._cache_set("John 1:1", "kjv", ("refreshed", None))
+    passages._cache_set("John 1:3", "kjv", ("third", None))
+    assert passages._cache_get("John 1:1", "kjv") == ("refreshed", None)
+    assert passages._cache_get("John 1:2", "kjv") is None

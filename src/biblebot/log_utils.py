@@ -157,11 +157,12 @@ def get_logger(name, *, force: bool = False):
         # Use Rich handler with colors and timestamps
         console_handler = RichHandler(
             rich_tracebacks=True,
+            tracebacks_show_locals=False,
             console=console,
             show_time=True,
             show_level=True,
             show_path=False,
-            markup=True,
+            markup=False,
             log_time_format="%Y-%m-%d %H:%M:%S",
             omit_repeated_times=False,
         )
@@ -191,9 +192,6 @@ def get_logger(name, *, force: bool = False):
             # Default to standard log directory
             log_file = get_log_dir() / "biblebot.log"
 
-        # Create log directory if it doesn't exist
-        log_file.parent.mkdir(parents=True, exist_ok=True)
-
         # Store the log file path for later use
         if name == APP_DISPLAY_NAME:
             global log_file_path
@@ -201,6 +199,7 @@ def get_logger(name, *, force: bool = False):
 
         # Create a file handler for logging
         try:
+            log_file.parent.mkdir(parents=True, exist_ok=True)
             # Set up size-based log rotation
             max_bytes = DEFAULT_LOG_SIZE_MB * LOG_SIZE_BYTES_MULTIPLIER
             backup_count = DEFAULT_LOG_BACKUP_COUNT

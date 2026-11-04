@@ -3,7 +3,7 @@ import os
 import sys
 import warnings
 from pathlib import Path
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -12,6 +12,14 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent
 SRC_DIR = PROJECT_ROOT / "src"
 if str(SRC_DIR) not in sys.path:
     sys.path.insert(0, str(SRC_DIR))
+
+
+@pytest.fixture(autouse=True)
+def isolate_environment(tmp_path):
+    """Use temporary state and restore application environment changes per test."""
+    with patch.dict(os.environ):
+        os.environ["BIBLEBOT_HOME"] = str(tmp_path / "matrix-biblebot")
+        yield
 
 
 @pytest.fixture(autouse=True)
@@ -228,3 +236,11 @@ def cleanup_asyncmock_objects(request):
                 "ignore", category=RuntimeWarning, message=".*never awaited.*"
             )
             gc.collect()
+
+
+@pytest.fixture(autouse=True)
+def isolate_startup_release_requests(monkeypatch):
+    """Keep lifecycle tests offline; update-check tests exercise their own HTTP mocks."""
+    from unittest.mock import AsyncMock
+
+    monkeypatch.setattr("biblebot.bot.perform_startup_update_check", AsyncMock())

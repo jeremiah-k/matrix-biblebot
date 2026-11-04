@@ -43,6 +43,7 @@ __all__ = [
     "INFO_NO_ENV_FILE",
     "INFO_RESOLVED_ALIAS",
     "MESSAGE_SUFFIX",
+    "MIN_MESSAGE_LENGTH",
     "MSG_CONFIG_EXISTS",
     "MSG_DELETE_EXISTING",
     "MSG_E2EE_DEPS_NOT_FOUND",
@@ -77,6 +78,7 @@ REFERENCE_SEPARATOR_LEN = 3  # Length of " - " separator
 # Message formatting
 REACTION_OK = "✅"
 MESSAGE_SUFFIX = " 🕊️✝️"
+MIN_MESSAGE_LENGTH = len(MESSAGE_SUFFIX) + len(TRUNCATION_INDICATOR) + 1
 
 # Error messages
 ERROR_CONFIG_NOT_FOUND = "Config file not found"

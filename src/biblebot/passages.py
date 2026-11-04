@@ -17,8 +17,9 @@ import asyncio
 import json
 import logging
 from collections import OrderedDict
+from collections.abc import Mapping
 from time import monotonic
-from typing import Any, Mapping
+from typing import Any
 from urllib.parse import quote
 
 import aiohttp
@@ -190,6 +191,7 @@ def _cache_set(
 
     key = (passage.lower(), translation.lower())
     _passage_cache[key] = (monotonic(), value)
+    _passage_cache.move_to_end(key)
     # enforce LRU max size
     while len(_passage_cache) > _PASSAGE_CACHE_MAX:
         _passage_cache.popitem(last=False)
@@ -198,10 +200,10 @@ def _cache_set(
 async def get_bible_text(
     passage: str,
     translation: str | None = None,
-    api_keys: Mapping[str, str] | None = None,
+    api_keys: Mapping[str, str | None] | None = None,
     cache_enabled: bool = True,
     default_translation: str = DEFAULT_TRANSLATION,
-    session: Any | None = None,
+    session: aiohttp.ClientSession | None = None,
 ) -> tuple[str, str | None]:
     # Use provided translation or fall back to configurable default
     """
@@ -226,7 +228,10 @@ async def get_bible_text(
     """
     if translation is None:
         translation = default_translation
-    trans_norm = translation.lower()
+    trans_norm = translation.strip().lower()
+    key = api_keys.get(trans_norm) if api_keys else None
+    if trans_norm == TRANSLATION_ESV and (not isinstance(key, str) or not key.strip()):
+        raise APIKeyMissing(f"ESV API key is required for passage '{passage}'")
 
     # Check cache first
     cached = _cache_get(passage, trans_norm, cache_enabled)
@@ -250,7 +255,7 @@ async def get_bible_text(
 async def get_esv_text(
     passage: str,
     api_key: str | None,
-    session: Any | None = None,
+    session: aiohttp.ClientSession | None = None,
 ) -> tuple[str, str | None]:
     """
     Fetch a passage from the ESV API and return its text and canonical reference.
@@ -270,7 +275,7 @@ async def get_esv_text(
         APIKeyMissing: If api_key is None.
         PassageNotFound: If the API response is invalid or the passage could not be found.
     """
-    if api_key is None:
+    if not isinstance(api_key, str) or not api_key.strip():
         raise APIKeyMissing(f"ESV API key is required for passage '{passage}'")
 
     API_URL = ESV_API_URL
@@ -289,17 +294,14 @@ async def get_esv_text(
         raise PassageNotFound(f"Invalid API response for passage '{passage}'")
 
     passages = response.get("passages")
-    reference = response.get("canonical")
-
-    if not passages or not passages[0].strip():
+    if not isinstance(passages, list) or not passages:
         raise PassageNotFound(f"Passage '{passage}' not found in ESV")
-
-    return (passages[0].strip(), reference)
+    return _passage_result(passages[0], response.get("canonical"), passage, "ESV")
 
 
 async def get_kjv_text(
     passage: str,
-    session: Any | None = None,
+    session: aiohttp.ClientSession | None = None,
 ) -> tuple[str, str | None]:
     # Preserve ':' in chapter:verse while encoding spaces and punctuation
     """
@@ -320,13 +322,18 @@ async def get_kjv_text(
     API_URL = KJV_API_URL_TEMPLATE.format(passage=encoded)
     response = await make_api_request(API_URL, session=session)
 
-    if not response or not response.get("text"):
+    if not isinstance(response, dict):
         raise PassageNotFound(f"Passage '{passage}' not found in KJV")
+    return _passage_result(
+        response.get("text"), response.get("reference"), passage, "KJV"
+    )
 
-    text = response.get("text").strip()
-    reference = response.get("reference")
 
-    if not text:
-        raise PassageNotFound(f"Empty text returned for passage '{passage}' in KJV")
-
-    return (text, reference)
+def _passage_result(
+    text: object, reference: object, passage: str, translation: str
+) -> tuple[str, str | None]:
+    """Establish the retrieval contract before text enters the cache or renderer."""
+    if not isinstance(text, str) or not text.strip():
+        raise PassageNotFound(f"Passage '{passage}' not found in {translation}")
+    canonical = reference.strip() if isinstance(reference, str) else None
+    return text.strip(), canonical or None
