@@ -6,8 +6,10 @@
   "enabledManagers": ["pep621", "github-actions"],
   "timezone": "America/Chicago",
   "updateNotScheduled": true,
-  "dependencyDashboard": true,
-  "dependencyDashboardTitle": "Dependency Updates (matrix-biblebot)",
+  "dependencyDashboard": {
+    "enabled": true,
+    "title": "Dependency Updates (matrix-biblebot)"
+  },
   "automerge": false,
   "automergeType": "pr",
   "platformAutomerge": false,
